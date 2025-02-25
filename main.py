@@ -7,6 +7,7 @@ import jwt
 import bcrypt
 import os
 from dotenv import load_dotenv
+from fastapi.middleware.cors import CORSMiddleware
 
 # Load environment variables
 load_dotenv('config.env')
@@ -199,6 +200,16 @@ class ProviderAssociation(BaseModel):
 
 # ------------------- FastAPI App Setup -------------------
 app = FastAPI()
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://localhost:5173"],  # Allow both React and Vite default ports
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 # Create tables at startup
@@ -389,29 +400,59 @@ async def remove_provider_association(username: str, provider_id: int, current_u
 async def get_providers(current_user: UserModel = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if current_user.is_global_admin:
         result = await db.execute(
-            select(DataProviderModel).options(selectinload(DataProviderModel.datasets))
+            select(DataProviderModel)
+            .options(
+                selectinload(DataProviderModel.datasets)
+                .selectinload(DatasetModel.xmlArchives),
+                selectinload(DataProviderModel.datasets)
+                .selectinload(DatasetModel.usefulLinks)
+            )
         )
         return result.scalars().all()
-    allowed_ids = list(map(int, current_user.provider_roles.keys() if current_user.provider_roles else []))
+    
+    # Extract numeric IDs from provider role keys (e.g., 'provider1' -> 1)
+    allowed_ids = []
+    if current_user.provider_roles:
+        for key in current_user.provider_roles.keys():
+            try:
+                # Extract the numeric part from the key (e.g., 'provider1' -> '1')
+                numeric_part = ''.join(filter(str.isdigit, key))
+                if numeric_part:
+                    allowed_ids.append(int(numeric_part))
+            except ValueError:
+                continue
+
     result = await db.execute(
         select(DataProviderModel)
         .where(DataProviderModel.id.in_(allowed_ids))
-        .options(selectinload(DataProviderModel.datasets))
+        .options(
+            selectinload(DataProviderModel.datasets)
+            .selectinload(DatasetModel.xmlArchives),
+            selectinload(DataProviderModel.datasets)
+            .selectinload(DatasetModel.usefulLinks)
+        )
     )
     return result.scalars().all()
 
 @app.get("/providers/{provider_id}", response_model=DataProvider)
 async def get_provider(provider_id: int, current_user: UserModel = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    if not current_user.is_global_admin:
-        check_provider_permission(provider_id, current_user, "read")
+    check_provider_permission(provider_id, current_user)
+    
     result = await db.execute(
         select(DataProviderModel)
         .where(DataProviderModel.id == provider_id)
-        .options(selectinload(DataProviderModel.datasets))
+        .options(
+            selectinload(DataProviderModel.datasets)
+            .selectinload(DatasetModel.xmlArchives),
+            selectinload(DataProviderModel.datasets)
+            .selectinload(DatasetModel.usefulLinks)
+        )
     )
     provider = result.scalar_one_or_none()
+    
     if not provider:
         raise HTTPException(status_code=404, detail="Provider not found")
+    
     return provider
 
 @app.post("/providers", response_model=DataProvider, status_code=201)
