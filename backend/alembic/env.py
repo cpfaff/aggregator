@@ -8,8 +8,17 @@ import os
 from dotenv import load_dotenv
 from main import Base  # Import our SQLAlchemy models
 
-# Load environment variables
-load_dotenv('../config.env')
+# Load environment variables - try multiple locations
+# Docker will provide env vars directly, but for local dev we might need a file
+# First check if variables are already in the environment (set by Docker)
+if not os.getenv("SYNC_DATABASE_URL"):
+    # If not, try to load from .env files
+    if os.path.exists('../../.env'):
+        load_dotenv('../../.env')
+    elif os.path.exists('../.env'):
+        load_dotenv('../.env')
+    elif os.path.exists('../config.env'):  # For backward compatibility
+        load_dotenv('../config.env')
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

@@ -6,11 +6,22 @@ from datetime import datetime, timedelta
 import jwt
 import bcrypt
 import os
+import sys
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
-# Load environment variables
-load_dotenv('config.env')
+# Load environment variables - try multiple locations
+# Docker will provide env vars directly, but for local dev we might need a file
+# First check if variables are already in the environment (set by Docker)
+if not os.getenv("DATABASE_URL"):
+    # If not, try to load from .env files
+    if os.path.exists('../.env'):
+        load_dotenv('../.env')
+    elif os.path.exists('.env'):
+        load_dotenv('.env')
+    elif os.path.exists('config.env'):  # For backward compatibility
+        load_dotenv('config.env')
 
 # SQLAlchemy async imports
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
@@ -112,9 +123,8 @@ class UserPermissions(BaseModel):
         orm_mode = True
 
 # Data Provider and nested resource models
-class UsefulLink(BaseModel):
+class XmlArchive(BaseModel):
     id: Optional[int] = None  # Keep id for responses
-    title: str
     url: AnyUrl
     isLatest: bool
 
@@ -125,8 +135,9 @@ class UsefulLink(BaseModel):
             AnyUrl: str
         }
 
-class XmlArchive(BaseModel):
+class UsefulLink(BaseModel):
     id: Optional[int] = None  # Keep id for responses
+    title: str
     url: AnyUrl
     isLatest: bool
 
@@ -144,6 +155,15 @@ class Dataset(BaseModel):
     landingPageUrl: Optional[AnyUrl] = None
     xmlArchives: List[XmlArchive] = []
     usefulLinks: List[UsefulLink] = []
+
+    def dict(self, *args, **kwargs):
+        # Override dict to exclude empty lists
+        data = super().dict(*args, **kwargs)
+        if not data.get('xmlArchives'):
+            data.pop('xmlArchives', None)
+        if not data.get('usefulLinks'):
+            data.pop('usefulLinks', None)
+        return data
 
     class Config:
         from_attributes = True
@@ -176,8 +196,9 @@ class LegacyXmlArchive(BaseModel):
 
 class LegacyUsefulLink(BaseModel):
     link_id: int
-    useful_link: AnyUrl
-    latest: bool
+    title: str
+    url: AnyUrl
+    is_latest: bool
 
 class LegacyDataset(BaseModel):
     dataset_id: int
@@ -204,7 +225,7 @@ app = FastAPI()
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],  # Allow both React and Vite default ports
+    allow_origins=["http://localhost:3000", "http://localhost:5173", "http://localhost", "http://localhost:80"],  # Allow both development and production ports
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -220,7 +241,47 @@ async def on_startup():
 
 # ------------------- Helper Functions -------------------
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return bcrypt.checkpw(plain_password.encode(), hashed_password.encode())
+    try:
+        # Ensure proper encoding for bcrypt comparison
+        if isinstance(plain_password, str):
+            pwd_bytes = plain_password.encode('utf-8')
+        else:
+            pwd_bytes = plain_password
+            
+        if isinstance(hashed_password, str):
+            hash_bytes = hashed_password.encode('utf-8')
+        else:
+            hash_bytes = hashed_password
+            
+        return bcrypt.checkpw(pwd_bytes, hash_bytes)
+    except Exception as e:
+        print(f"Error verifying password: {e}")
+        return False
+
+def hash_password(password: str) -> str:
+    """
+    Hash a password for storing in the database.
+    Always returns a string.
+    """
+    if not password:
+        # For create operations, this would be caught by pydantic validation
+        # For update operations, we'll return empty to indicate "no change"
+        return ""
+    
+    # Ensure password is bytes
+    if isinstance(password, str):
+        password_bytes = password.encode('utf-8')
+    else:
+        password_bytes = password
+    
+    # Generate salt and hash password
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password_bytes, salt)
+    
+    # Ensure the hash is returned as a string
+    if isinstance(hashed, bytes):
+        return hashed.decode('utf-8')
+    return hashed
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
@@ -228,13 +289,29 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
+def normalize_provider_roles(roles):
+    """
+    Ensure provider_roles is always a clean dictionary.
+    """
+    if roles is None:
+        return {}
+    return dict(roles)
+
 async def get_user_model(username: str, db: AsyncSession) -> Optional[UserModel]:
     result = await db.execute(select(UserModel).where(UserModel.username == username))
     return result.scalar_one_or_none()
 
 async def authenticate_user(username: str, password: str, db: AsyncSession):
+    print(f"Authenticating user: {username}")
     user_model = await get_user_model(username, db)
-    if not user_model or not verify_password(password, user_model.hashed_password):
+    print(f"Found user model: {user_model}")
+    if not user_model:
+        print("User not found")
+        return None
+    valid = verify_password(password, user_model.hashed_password)
+    print(f"Password verification result: {valid}")
+    if not valid:
+        print(f"Invalid password. Expected hash: {user_model.hashed_password}")
         return None
     return user_model
 
@@ -246,13 +323,24 @@ def check_provider_permission(provider_id: int, current_user: UserModel, operati
     # Global admins bypass permission check
     if current_user.is_global_admin:
         return
-    roles = current_user.provider_roles or {}
+    roles = normalize_provider_roles(current_user.provider_roles)
     # Provider keys are stored as strings in the JSON column
     role = roles.get(str(provider_id))
     if role is None:
         raise HTTPException(status_code=403, detail="Operation not permitted for this provider")
-    if operation == "delete" and role != "admin":
-        raise HTTPException(status_code=403, detail="Delete operation requires provider admin privileges")
+    
+    # Define allowed operations for each role
+    if operation == "read":
+        # All roles can read
+        return
+    elif operation == "write":
+        # admin or curator can write/edit
+        if role not in ["admin", "curator"]:
+            raise HTTPException(status_code=403, detail="Write operation requires provider admin or curator privileges")
+    elif operation == "delete":
+        # Only admins can delete
+        if role != "admin":
+            raise HTTPException(status_code=403, detail="Delete operation requires provider admin privileges")
 
 # ------------------- Authentication Endpoint -------------------
 @app.post("/token")
@@ -286,10 +374,13 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
 # ------------------- User Endpoints -------------------
 @app.get("/me/permissions", response_model=UserPermissions)
 async def get_user_permissions(current_user: UserModel = Depends(get_current_user)):
+    # Ensure provider_roles is a clean dictionary to avoid JSON serialization issues
+    provider_roles = normalize_provider_roles(current_user.provider_roles)
+    
     return UserPermissions(
         username=current_user.username,
         is_global_admin=current_user.is_global_admin,
-        provider_roles=current_user.provider_roles or {}
+        provider_roles=provider_roles
     )
 
 @app.get("/users", response_model=List[User])
@@ -313,10 +404,17 @@ async def create_user(user: UserCreate, current_user: UserModel = Depends(get_cu
     existing = await get_user_model(user.username, db)
     if existing:
         raise HTTPException(status_code=400, detail="Username already exists")
+    
+    # Generate password hash properly
+    hashed_pw = hash_password(user.password)
+    
+    # Ensure provider_roles is a clean dictionary
+    provider_roles = normalize_provider_roles(user.provider_roles)
+    
     user_obj = UserModel(
         username=user.username,
-        hashed_password=bcrypt.hashpw(user.password.encode(), bcrypt.gensalt()).decode(),
-        provider_roles=user.provider_roles or {},
+        hashed_password=hashed_pw,
+        provider_roles=provider_roles,
         is_global_admin=user.is_global_admin
     )
     db.add(user_obj)
@@ -330,15 +428,32 @@ async def update_user(username: str, user_update: UserUpdate, current_user: User
     user_obj = await get_user_model(username, db)
     if not user_obj:
         raise HTTPException(status_code=404, detail="User not found")
+    
+    # Track if we made any changes that need to be committed
+    changes_made = False
+    
     if user_update.password is not None:
-        user_obj.hashed_password = bcrypt.hashpw(user_update.password.encode(), bcrypt.gensalt()).decode()
+        # Only update password if non-empty (UI might send empty string)
+        hashed_pw = hash_password(user_update.password)
+        if hashed_pw:  # Only update if we got a real hash
+            user_obj.hashed_password = hashed_pw
+            changes_made = True
+        
     if user_update.provider_roles is not None:
-        user_obj.provider_roles = user_update.provider_roles
+        # Make sure we're working with a proper dictionary to avoid JSON serialization issues
+        user_obj.provider_roles = normalize_provider_roles(user_update.provider_roles)
+        changes_made = True
+        
     if user_update.is_global_admin is not None:
         user_obj.is_global_admin = user_update.is_global_admin
-    db.add(user_obj)
-    await db.commit()
-    await db.refresh(user_obj)
+        changes_made = True
+    
+    # Only commit changes if we actually modified something
+    if changes_made:
+        db.add(user_obj)
+        await db.commit()
+        await db.refresh(user_obj)
+    
     return user_obj
 
 @app.delete("/users/{username}", status_code=204)
@@ -359,7 +474,7 @@ async def add_provider_association(username: str, association: ProviderAssociati
     user_obj = await get_user_model(username, db)
     if not user_obj:
         raise HTTPException(status_code=404, detail="User not found")
-    roles = user_obj.provider_roles or {}
+    roles = normalize_provider_roles(user_obj.provider_roles)
     roles[str(association.provider_id)] = association.role
     user_obj.provider_roles = roles
     db.add(user_obj)
@@ -371,9 +486,9 @@ async def add_provider_association(username: str, association: ProviderAssociati
 async def update_provider_association(username: str, provider_id: int, association: ProviderAssociation, current_user: UserModel = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     check_global_admin(current_user)
     user_obj = await get_user_model(username, db)
-    if not user_obj or not (user_obj.provider_roles and str(provider_id) in user_obj.provider_roles):
+    if not user_obj or not (normalize_provider_roles(user_obj.provider_roles) and str(provider_id) in normalize_provider_roles(user_obj.provider_roles)):
         raise HTTPException(status_code=404, detail="User or association not found")
-    roles = user_obj.provider_roles
+    roles = normalize_provider_roles(user_obj.provider_roles)
     roles[str(provider_id)] = association.role
     user_obj.provider_roles = roles
     db.add(user_obj)
@@ -385,9 +500,9 @@ async def update_provider_association(username: str, provider_id: int, associati
 async def remove_provider_association(username: str, provider_id: int, current_user: UserModel = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     check_global_admin(current_user)
     user_obj = await get_user_model(username, db)
-    if not user_obj or not (user_obj.provider_roles and str(provider_id) in user_obj.provider_roles):
+    if not user_obj or not (normalize_provider_roles(user_obj.provider_roles) and str(provider_id) in normalize_provider_roles(user_obj.provider_roles)):
         raise HTTPException(status_code=404, detail="User or association not found")
-    roles = user_obj.provider_roles
+    roles = normalize_provider_roles(user_obj.provider_roles)
     roles.pop(str(provider_id))
     user_obj.provider_roles = roles
     db.add(user_obj)
@@ -412,8 +527,8 @@ async def get_providers(current_user: UserModel = Depends(get_current_user), db:
     
     # Extract numeric IDs from provider role keys (e.g., 'provider1' -> 1)
     allowed_ids = []
-    if current_user.provider_roles:
-        for key in current_user.provider_roles.keys():
+    if normalize_provider_roles(current_user.provider_roles):
+        for key in normalize_provider_roles(current_user.provider_roles).keys():
             try:
                 # Extract the numeric part from the key (e.g., 'provider1' -> '1')
                 numeric_part = ''.join(filter(str.isdigit, key))
@@ -458,39 +573,89 @@ async def get_provider(provider_id: int, current_user: UserModel = Depends(get_c
 @app.post("/providers", response_model=DataProvider, status_code=201)
 async def create_provider(provider: DataProvider, current_user: UserModel = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     check_global_admin(current_user)
+    
+    # Create provider without datasets first
     provider_data = provider.dict(exclude={'datasets', 'id'}, exclude_unset=True)
-    # Convert AnyUrl to string if present
+    # Convert AnyUrl fields to strings
     if provider_data.get('url'):
         provider_data['url'] = str(provider_data['url'])
     if provider_data.get('biocaseUrl'):
         provider_data['biocaseUrl'] = str(provider_data['biocaseUrl'])
     
     provider_obj = DataProviderModel(**provider_data)
+    
+    # Create and attach datasets if present
+    if provider.datasets:
+        for dataset in provider.datasets:
+            dataset_data = dataset.dict(exclude={'id', 'xmlArchives', 'usefulLinks'}, exclude_unset=True)
+            if dataset_data.get('landingPageUrl'):
+                dataset_data['landingPageUrl'] = str(dataset_data['landingPageUrl'])
+            
+            db_dataset = DatasetModel(**dataset_data)
+            
+            # Handle XML archives if provided and not empty
+            if dataset.xmlArchives and len(dataset.xmlArchives) > 0:
+                for archive in dataset.xmlArchives:
+                    db_dataset.xmlArchives.append(
+                        XmlArchiveModel(
+                            url=str(archive.url),
+                            isLatest=archive.isLatest
+                        )
+                    )
+            
+            # Handle useful links if provided and not empty
+            if dataset.usefulLinks and len(dataset.usefulLinks) > 0:
+                for link in dataset.usefulLinks:
+                    db_dataset.usefulLinks.append(
+                        UsefulLinkModel(
+                            title=link.title,
+                            url=str(link.url),
+                            isLatest=link.isLatest
+                        )
+                    )
+            
+            provider_obj.datasets.append(db_dataset)
+    
     db.add(provider_obj)
     await db.commit()
     await db.refresh(provider_obj)
     
-    # Explicitly load the datasets relationship
+    # Explicitly load all relationships
     result = await db.execute(
         select(DataProviderModel)
-        .options(selectinload(DataProviderModel.datasets))
+        .options(
+            selectinload(DataProviderModel.datasets)
+            .selectinload(DatasetModel.xmlArchives),
+            selectinload(DataProviderModel.datasets)
+            .selectinload(DatasetModel.usefulLinks)
+        )
         .where(DataProviderModel.id == provider_obj.id)
     )
     return result.scalar_one()
 
 @app.put("/providers/{provider_id}", response_model=DataProvider)
 async def update_provider(provider_id: int, provider: DataProvider, current_user: UserModel = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    check_global_admin(current_user)
+    # Allow admins or curators of this provider to update it
+    check_provider_permission(provider_id, current_user, "write")
     
+    # Eager load relationships first
     result = await db.execute(
-        select(DataProviderModel).where(DataProviderModel.id == provider_id)
+        select(DataProviderModel)
+        .options(
+            selectinload(DataProviderModel.datasets)
+            .selectinload(DatasetModel.xmlArchives),
+            selectinload(DataProviderModel.datasets)
+            .selectinload(DatasetModel.usefulLinks)
+        )
+        .where(DataProviderModel.id == provider_id)
     )
     db_provider = result.scalar_one_or_none()
+    
     if not db_provider:
         raise HTTPException(status_code=404, detail="Provider not found")
-    
+
+    # Update provider fields
     provider_data = provider.dict(exclude={'datasets', 'id'}, exclude_unset=True)
-    # Convert AnyUrl to string if present
     if provider_data.get('url'):
         provider_data['url'] = str(provider_data['url'])
     if provider_data.get('biocaseUrl'):
@@ -499,13 +664,144 @@ async def update_provider(provider_id: int, provider: DataProvider, current_user
     for key, value in provider_data.items():
         setattr(db_provider, key, value)
     
-    await db.commit()
-    await db.refresh(db_provider)
+    # Add async context manager for dataset operations
+    async with db.begin_nested():
+        # Update nested datasets
+        if provider.datasets is not None:
+            # Create a map of existing datasets by ID for efficient lookup
+            existing_datasets = {ds.id: ds for ds in db_provider.datasets if ds.id is not None}
+            
+            # Keep track of processed dataset IDs
+            processed_dataset_ids = set()
+            updated_datasets = []
+            
+            # Process each dataset in the update
+            for dataset in provider.datasets:
+                if dataset.id is not None and dataset.id in existing_datasets:
+                    # Update existing dataset
+                    db_dataset = existing_datasets[dataset.id]
+                    processed_dataset_ids.add(dataset.id)
+                    
+                    dataset_data = dataset.dict(exclude={'id', 'xmlArchives', 'usefulLinks'}, exclude_unset=True)
+                    # Convert AnyUrl fields to strings
+                    if 'landingPageUrl' in dataset_data:
+                        dataset_data['landingPageUrl'] = str(dataset_data['landingPageUrl']) if dataset_data['landingPageUrl'] else None
+                    
+                    for key, value in dataset_data.items():
+                        setattr(db_dataset, key, value)
+                    
+                    # Update XML archives if provided and not empty
+                    if dataset.xmlArchives is not None and len(dataset.xmlArchives) > 0:
+                        # Create map of existing archives with valid IDs
+                        existing_archives = {arch.id: arch for arch in db_dataset.xmlArchives if arch.id is not None}
+                        new_archives = []
+                        
+                        for archive in dataset.xmlArchives:
+                            # Only consider it an existing archive if ID is not None AND it exists in our map
+                            if archive.id is not None and archive.id in existing_archives:
+                                db_archive = existing_archives[archive.id]
+                                archive_data = archive.dict(exclude={'id'}, exclude_unset=True)
+                                # Convert URL fields to strings
+                                if 'url' in archive_data:
+                                    archive_data['url'] = str(archive_data['url'])
+                                for key, value in archive_data.items():
+                                    setattr(db_archive, key, value)
+                                new_archives.append(db_archive)
+                            else:
+                                # For new archive, ignore any provided ID
+                                new_archive = XmlArchiveModel(
+                                    url=str(archive.url),
+                                    isLatest=archive.isLatest,
+                                    dataset_id=db_dataset.id
+                                )
+                                db.add(new_archive) # Add to session to ensure it gets a new ID assigned
+                                await db.flush()
+                                new_archives.append(new_archive)
+                        
+                        # Replace the archives collection only if we have new archives
+                        if new_archives:
+                            db_dataset.xmlArchives = new_archives
+                    
+                    # Update useful links if provided and not empty
+                    if dataset.usefulLinks is not None and len(dataset.usefulLinks) > 0:
+                        # Create map of existing links with valid IDs
+                        existing_links = {link.id: link for link in db_dataset.usefulLinks if link.id is not None}
+                        new_links = []
+                        
+                        for link in dataset.usefulLinks:
+                            # Only consider it an existing link if ID is not None AND it exists in our map
+                            if link.id is not None and link.id in existing_links:
+                                db_link = existing_links[link.id]
+                                link_data = link.dict(exclude={'id'}, exclude_unset=True)
+                                # Convert URL fields to strings
+                                if 'url' in link_data:
+                                    link_data['url'] = str(link_data['url'])
+                                for key, value in link_data.items():
+                                    setattr(db_link, key, value)
+                                new_links.append(db_link)
+                            else:
+                                # For new link, ignore any provided ID
+                                new_link = UsefulLinkModel(
+                                    title=link.title,
+                                    url=str(link.url),
+                                    isLatest=link.isLatest,
+                                    dataset_id=db_dataset.id
+                                )
+                                db.add(new_link) # Add to session to ensure it gets a new ID assigned
+                                await db.flush()
+                                new_links.append(new_link)
+                        
+                        # Replace the links collection only if we have new links
+                        if new_links:
+                            db_dataset.usefulLinks = new_links
+                    
+                    updated_datasets.append(db_dataset)
+                else:
+                    # Create new dataset, ignore any provided ID
+                    new_dataset = DatasetModel(
+                        provider_id=db_provider.id,
+                        source=dataset.source,
+                        title=dataset.title,
+                        landingPageUrl=str(dataset.landingPageUrl) if dataset.landingPageUrl else None
+                    )
+                    
+                    # Add XML archives if they exist, ignoring any client-provided IDs
+                    if dataset.xmlArchives and len(dataset.xmlArchives) > 0:
+                        for archive in dataset.xmlArchives:
+                            new_dataset.xmlArchives.append(
+                                XmlArchiveModel(
+                                    url=str(archive.url),
+                                    isLatest=archive.isLatest
+                                )
+                            )
+                    
+                    # Add useful links if they exist, ignoring any client-provided IDs
+                    if dataset.usefulLinks and len(dataset.usefulLinks) > 0:
+                        for link in dataset.usefulLinks:
+                            new_dataset.usefulLinks.append(
+                                UsefulLinkModel(
+                                    title=link.title,
+                                    url=str(link.url),
+                                    isLatest=link.isLatest
+                                )
+                            )
+                    
+                    updated_datasets.append(new_dataset)
+            
+            # Replace datasets collection
+            db_provider.datasets = updated_datasets
     
-    # Explicitly load the datasets relationship
+    await db.commit()
+    
+    # Reload with fresh data
     result = await db.execute(
         select(DataProviderModel)
-        .options(selectinload(DataProviderModel.datasets))
+        .options(
+            selectinload(DataProviderModel.datasets)
+            .selectinload(DatasetModel.xmlArchives),
+            selectinload(DataProviderModel.datasets)
+            .selectinload(DatasetModel.usefulLinks)
+        )
         .where(DataProviderModel.id == provider_id)
     )
     return result.scalar_one()
@@ -572,11 +868,35 @@ async def create_dataset(
     if not provider:
         raise HTTPException(status_code=404, detail="Provider not found")
     
+    # Explicitly exclude id fields from all levels
     dataset_data = dataset.dict(exclude={'id', 'xmlArchives', 'usefulLinks'}, exclude_unset=True)
+    # Convert AnyUrl fields to strings
     if dataset_data.get('landingPageUrl'):
         dataset_data['landingPageUrl'] = str(dataset_data['landingPageUrl'])
     
     dataset_obj = DatasetModel(**dataset_data, provider_id=provider_id)
+    
+    # Add XML archives if they exist, ignoring any client-provided IDs
+    if dataset.xmlArchives:
+        for archive in dataset.xmlArchives:
+            dataset_obj.xmlArchives.append(
+                XmlArchiveModel(
+                    url=str(archive.url),
+                    isLatest=archive.isLatest
+                )
+            )
+    
+    # Add useful links if they exist, ignoring any client-provided IDs
+    if dataset.usefulLinks:
+        for link in dataset.usefulLinks:
+            dataset_obj.usefulLinks.append(
+                UsefulLinkModel(
+                    title=link.title,
+                    url=str(link.url),
+                    isLatest=link.isLatest
+                )
+            )
+    
     db.add(dataset_obj)
     await db.commit()
     await db.refresh(dataset_obj)
@@ -593,11 +913,22 @@ async def create_dataset(
     return result.scalar_one()
 
 @app.put("/providers/{provider_id}/datasets/{dataset_id}", response_model=Dataset)
-async def update_dataset(provider_id: int, dataset_id: int, dataset: Dataset, current_user: UserModel = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def update_dataset(
+    provider_id: int, 
+    dataset_id: int, 
+    dataset: Dataset, 
+    current_user: UserModel = Depends(get_current_user), 
+    db: AsyncSession = Depends(get_db)
+):
     check_provider_permission(provider_id, current_user, "write")
     
+    # Load the dataset with all nested resources
     result = await db.execute(
         select(DatasetModel)
+        .options(
+            selectinload(DatasetModel.xmlArchives),
+            selectinload(DatasetModel.usefulLinks)
+        )
         .where(
             and_(
                 DatasetModel.provider_id == provider_id,
@@ -609,17 +940,83 @@ async def update_dataset(provider_id: int, dataset_id: int, dataset: Dataset, cu
     if not db_dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
     
+    # Update dataset basic fields
     dataset_data = dataset.dict(exclude={'id', 'xmlArchives', 'usefulLinks'}, exclude_unset=True)
+    # Convert AnyUrl fields to strings
     if dataset_data.get('landingPageUrl'):
         dataset_data['landingPageUrl'] = str(dataset_data['landingPageUrl'])
     
     for key, value in dataset_data.items():
         setattr(db_dataset, key, value)
     
-    await db.commit()
-    await db.refresh(db_dataset)
+    # Update XML archives if provided and not empty
+    if dataset.xmlArchives is not None and len(dataset.xmlArchives) > 0:
+        # Create a map of existing archives with valid IDs
+        existing_archives = {arch.id: arch for arch in db_dataset.xmlArchives if arch.id is not None}
+        new_archives = []
+        
+        for archive in dataset.xmlArchives:
+            # Only consider it an existing archive if ID is not None AND it exists in our map
+            if archive.id is not None and archive.id in existing_archives:
+                db_archive = existing_archives[archive.id]
+                archive_data = archive.dict(exclude={'id'}, exclude_unset=True)
+                # Convert URL fields to strings
+                if 'url' in archive_data:
+                    archive_data['url'] = str(archive_data['url'])
+                for key, value in archive_data.items():
+                    setattr(db_archive, key, value)
+                new_archives.append(db_archive)
+            else:
+                # For new archive, ignore any provided ID
+                new_archive = XmlArchiveModel(
+                    url=str(archive.url),
+                    isLatest=archive.isLatest,
+                    dataset_id=db_dataset.id
+                )
+                db.add(new_archive) # Add to session to ensure it gets a new ID assigned
+                await db.flush()
+                new_archives.append(new_archive)
+        
+        # Replace the archives collection only if we have new archives
+        if new_archives:
+            db_dataset.xmlArchives = new_archives
     
-    # Explicitly load relationships
+    # Update useful links if provided and not empty
+    if dataset.usefulLinks is not None and len(dataset.usefulLinks) > 0:
+        # Create a map of existing links with valid IDs
+        existing_links = {link.id: link for link in db_dataset.usefulLinks if link.id is not None}
+        new_links = []
+        
+        for link in dataset.usefulLinks:
+            # Only consider it an existing link if ID is not None AND it exists in our map
+            if link.id is not None and link.id in existing_links:
+                db_link = existing_links[link.id]
+                link_data = link.dict(exclude={'id'}, exclude_unset=True)
+                # Convert URL fields to strings
+                if 'url' in link_data:
+                    link_data['url'] = str(link_data['url'])
+                for key, value in link_data.items():
+                    setattr(db_link, key, value)
+                new_links.append(db_link)
+            else:
+                # For new link, ignore any provided ID
+                new_link = UsefulLinkModel(
+                    title=link.title,
+                    url=str(link.url),
+                    isLatest=link.isLatest,
+                    dataset_id=db_dataset.id
+                )
+                db.add(new_link) # Add to session to ensure it gets a new ID assigned
+                await db.flush()
+                new_links.append(new_link)
+        
+        # Replace the links collection only if we have new links
+        if new_links:
+            db_dataset.usefulLinks = new_links
+    
+    await db.commit()
+    
+    # Reload with fresh data
     result = await db.execute(
         select(DatasetModel)
         .options(
@@ -684,6 +1081,7 @@ async def create_xml_archive(
         raise HTTPException(status_code=404, detail="Dataset not found")
     
     xml_data = xml_archive.dict(exclude={'id', 'datasetId'}, exclude_unset=True)
+    # Convert URL fields to strings
     if xml_data.get('url'):
         xml_data['url'] = str(xml_data['url'])
     
@@ -734,6 +1132,7 @@ async def create_useful_link(
         raise HTTPException(status_code=404, detail="Dataset not found")
     
     link_data = useful_link.dict(exclude={'id', 'datasetId'}, exclude_unset=True)
+    # Convert URL fields to strings
     if link_data.get('url'):
         link_data['url'] = str(link_data['url'])
     
@@ -742,6 +1141,16 @@ async def create_useful_link(
     await db.commit()
     await db.refresh(link_obj)
     return link_obj
+
+# ------------------- Health Check Endpoint -------------------
+@app.get("/health", status_code=200)
+async def health_check(db: AsyncSession = Depends(get_db)):
+    try:
+        # Check database connection
+        await db.execute(text("SELECT 1"))
+        return {"status": "healthy", "database": "connected"}
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Service unhealthy: {str(e)}")
 
 # ------------------- Legacy Harvesting Endpoint -------------------
 @app.get("/harvest/datasets", response_model=List[LegacyDataset])
@@ -755,12 +1164,20 @@ async def harvest_datasets(db: AsyncSession = Depends(get_db)):
             selectinload(DataProviderModel.datasets)
             .selectinload(DatasetModel.usefulLinks)
         )
+        .order_by(DataProviderModel.id)  # Sort providers by ID
     )
     providers = result.scalars().all()
     
     legacy_list = []
     for provider in providers:
-        for ds in provider.datasets:
+        # Sort datasets by ID
+        sorted_datasets = sorted(provider.datasets, key=lambda ds: ds.id)
+        
+        for ds in sorted_datasets:
+            # Sort xmlArchives and usefulLinks by their IDs
+            sorted_xml_archives = sorted(ds.xmlArchives, key=lambda xml: xml.id)
+            sorted_useful_links = sorted(ds.usefulLinks, key=lambda link: link.id)
+            
             legacy_ds = LegacyDataset(
                 dataset_id=ds.id,
                 datasource=ds.source,
@@ -772,14 +1189,15 @@ async def harvest_datasets(db: AsyncSession = Depends(get_db)):
                         archive_id=xml.id,
                         xml_archive=xml.url,
                         latest=xml.isLatest
-                    ) for xml in ds.xmlArchives
+                    ) for xml in sorted_xml_archives
                 ],
                 useful_links=[
                     LegacyUsefulLink(
                         link_id=link.id,
-                        useful_link=link.url,
-                        latest=link.isLatest
-                    ) for link in ds.usefulLinks
+                        title=link.title,
+                        url=link.url,
+                        is_latest=link.isLatest
+                    ) for link in sorted_useful_links
                 ],
                 provider_datacenter=provider.datacenter,
                 provider_shortname=provider.shortName,
@@ -788,4 +1206,8 @@ async def harvest_datasets(db: AsyncSession = Depends(get_db)):
                 biocase_url=provider.biocaseUrl
             )
             legacy_list.append(legacy_ds)
+    
+    # Finally, sort the entire legacy_list by dataset_id
+    legacy_list.sort(key=lambda legacy_ds: legacy_ds.dataset_id)
+    
     return legacy_list
