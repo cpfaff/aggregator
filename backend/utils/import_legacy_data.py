@@ -2,12 +2,18 @@ import json
 import asyncio
 import logging
 import bcrypt
+import sys
+import os
+from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.future import select
 from sqlalchemy import text
 from dotenv import load_dotenv
-import os
+
+# Add the parent directory to sys.path to allow importing from the backend directory
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from main import DataProviderModel, DatasetModel, XmlArchiveModel, UsefulLinkModel, UserModel, Base
 
 # Set up logging
@@ -15,17 +21,40 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('import.log'),
+        logging.FileHandler(Path(__file__).parent.parent / 'data' / 'import.log'),
         logging.StreamHandler()
     ]
 )
 logger = logging.getLogger(__name__)
 
 # Load environment variables
-load_dotenv('config.env')
+# Try to load from backend/.env first, then from root .env
+env_paths = [
+    Path(__file__).parent.parent / '.env',  # backend/.env
+    Path(__file__).parent.parent.parent / '.env'  # root .env
+]
+
+for env_path in env_paths:
+    if env_path.exists():
+        load_dotenv(env_path)
+        logger.info(f"Loaded environment from {env_path}")
+        break
+else:
+    logger.warning("No .env file found, using environment variables directly")
 
 # Database configuration
 DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    logger.error("DATABASE_URL environment variable not set")
+    sys.exit(1)
+
+# Check if we're trying to connect to 'db' host which is the Docker service name
+# If running locally, we should use 'localhost' instead
+if 'db:' in DATABASE_URL and not os.path.exists('/.dockerenv'):
+    logger.info("Detected Docker database URL but running locally, adjusting to localhost")
+    DATABASE_URL = DATABASE_URL.replace('db:', 'localhost:')
+
+logger.info(f"Using database URL: {DATABASE_URL}")
 
 # Create async engine
 engine = create_async_engine(DATABASE_URL, echo=True)
@@ -217,41 +246,49 @@ async def reset_sequences(session: AsyncSession):
         raise
 
 async def import_all_data():
-    """Import all data from the legacy database"""
-    async with async_session() as session:
-        try:
-            logger.info("Starting data import from legacy database")
+    try:
+        # Load provider data from JSON file
+        data_file = Path(__file__).parent.parent / 'data' / 'providers.json'
+        
+        if not data_file.exists():
+            logger.error(f"Data file not found: {data_file}")
+            return
             
-            # First clear existing data if any
-            await clear_existing_data(session)
-            
-            # Read the JSON file from data directory
-            json_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'providers.json')
-            with open(json_path, 'r') as f:
-                data = json.load(f)
+        logger.info(f"Loading data from {data_file}")
+        with open(data_file, 'r') as f:
+            providers_data = json.load(f)
 
-            # Import providers and their nested resources
-            for provider_data in data:
-                provider = await import_provider(session, provider_data)
+        async with async_session() as session:
+            async with session.begin():
+                # Clear existing data
+                await clear_existing_data(session)
                 
-                for dataset_data in provider_data.get('datasets', []):
-                    dataset = await import_dataset(session, dataset_data, provider.id)
+                # Create admin user
+                await create_admin_user(session)
+                
+                # Import providers and their datasets
+                for provider_data in providers_data:
+                    provider = await import_provider(session, provider_data)
                     
-                    if dataset_data.get('xmlArchives'):
-                        await import_xml_archives(session, dataset_data['xmlArchives'], dataset.id)
-                    
-                    if dataset_data.get('usefulLinks'):
-                        await import_useful_links(session, dataset_data['usefulLinks'], dataset.id)
-            
-            # After import, reset sequences to be after the highest IDs
-            await reset_sequences(session)
-            
-            logger.info("Data import completed successfully")
-            
-        except Exception as e:
-            await session.rollback()
-            logger.error(f"Error during import: {str(e)}")
-            raise
+                    # Import datasets for this provider
+                    for dataset_data in provider_data.get('datasets', []):
+                        dataset = await import_dataset(session, dataset_data, provider.id)
+                        
+                        # Import XML archives for this dataset
+                        if 'xmlArchives' in dataset_data:
+                            await import_xml_archives(session, dataset_data['xmlArchives'], dataset.id)
+                        
+                        # Import useful links for this dataset
+                        if 'usefulLinks' in dataset_data:
+                            await import_useful_links(session, dataset_data['usefulLinks'], dataset.id)
+                
+                # Reset sequences
+                await reset_sequences(session)
+                
+                logger.info("Data import completed successfully")
+    except Exception as e:
+        logger.error(f"Error during data import: {str(e)}")
+        raise
 
 if __name__ == "__main__":
     asyncio.run(import_all_data())
