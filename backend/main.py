@@ -1,3 +1,4 @@
+# Dependency to get DB session per request
 from fastapi import FastAPI, HTTPException, Depends, status, Body
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel, AnyUrl
@@ -30,7 +31,18 @@ from sqlalchemy import Column, Integer, String, Boolean, JSON, ForeignKey, selec
 
 # ------------------- Configuration & Database Setup -------------------
 DATABASE_URL = os.getenv("DATABASE_URL")
-SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key")
+
+# Validate SECRET_KEY - critical for security
+def get_secret_key():
+    key = os.getenv("SECRET_KEY")
+    if not key:
+        raise RuntimeError(
+            "SECRET_KEY environment variable is not set. "
+            "This is required for application security."
+        )
+    return key
+
+SECRET_KEY = get_secret_key()
 
 engine = create_async_engine(DATABASE_URL, echo=True)
 async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -100,8 +112,9 @@ class User(BaseModel):
     provider_roles: Dict[str, str]  # storing keys as strings for JSON compatibility
     is_global_admin: bool = False
 
-    class Config:
-        orm_mode = True
+    model_config = {
+        "from_attributes": True
+    }
 
 class UserCreate(BaseModel):
     username: str
@@ -119,8 +132,9 @@ class UserPermissions(BaseModel):
     is_global_admin: bool
     provider_roles: Dict[str, str]
 
-    class Config:
-        orm_mode = True
+    model_config = {
+        "from_attributes": True
+    }
 
 # Data Provider and nested resource models
 class XmlArchive(BaseModel):
@@ -128,12 +142,13 @@ class XmlArchive(BaseModel):
     url: AnyUrl
     isLatest: bool
 
-    class Config:
-        from_attributes = True
-        populate_by_name = True
-        json_encoders = {
+    model_config = {
+        "from_attributes": True,
+        "populate_by_name": True,
+        "json_encoders": {
             AnyUrl: str
         }
+    }
 
 class UsefulLink(BaseModel):
     id: Optional[int] = None  # Keep id for responses
@@ -141,12 +156,13 @@ class UsefulLink(BaseModel):
     url: AnyUrl
     isLatest: bool
 
-    class Config:
-        from_attributes = True
-        populate_by_name = True
-        json_encoders = {
+    model_config = {
+        "from_attributes": True,
+        "populate_by_name": True,
+        "json_encoders": {
             AnyUrl: str
         }
+    }
 
 class Dataset(BaseModel):
     id: Optional[int] = None
@@ -156,21 +172,22 @@ class Dataset(BaseModel):
     xmlArchives: List[XmlArchive] = []
     usefulLinks: List[UsefulLink] = []
 
-    def dict(self, *args, **kwargs):
-        # Override dict to exclude empty lists
-        data = super().dict(*args, **kwargs)
+    def model_dump(self, *args, **kwargs):
+        # Override model_dump to exclude empty lists
+        data = super().model_dump(*args, **kwargs)
         if not data.get('xmlArchives'):
             data.pop('xmlArchives', None)
         if not data.get('usefulLinks'):
             data.pop('usefulLinks', None)
         return data
 
-    class Config:
-        from_attributes = True
-        populate_by_name = True
-        json_encoders = {
+    model_config = {
+        "from_attributes": True,
+        "populate_by_name": True,
+        "json_encoders": {
             AnyUrl: str
         }
+    }
 
 class DataProvider(BaseModel):
     id: Optional[int] = None
@@ -181,24 +198,37 @@ class DataProvider(BaseModel):
     biocaseUrl: Optional[AnyUrl] = None
     datasets: List[Dataset] = []
 
-    class Config:
-        from_attributes = True
-        populate_by_name = True
-        json_encoders = {
+    model_config = {
+        "from_attributes": True,
+        "populate_by_name": True,
+        "json_encoders": {
             AnyUrl: str
         }
+    }
 
 # Legacy harvesting models
 class LegacyXmlArchive(BaseModel):
     archive_id: int
     xml_archive: AnyUrl
     latest: bool
+    
+    model_config = {
+        "json_encoders": {
+            AnyUrl: str
+        }
+    }
 
 class LegacyUsefulLink(BaseModel):
     link_id: int
     title: str
     url: AnyUrl
     is_latest: bool
+    
+    model_config = {
+        "json_encoders": {
+            AnyUrl: str
+        }
+    }
 
 class LegacyDataset(BaseModel):
     dataset_id: int
@@ -213,6 +243,12 @@ class LegacyDataset(BaseModel):
     provider_name: str
     provider_url: Optional[AnyUrl]
     biocase_url: Optional[AnyUrl]
+    
+    model_config = {
+        "json_encoders": {
+            AnyUrl: str
+        }
+    }
 
 # Provider Association for users
 class ProviderAssociation(BaseModel):
@@ -231,7 +267,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth-token")
 
 # Create tables at startup
 @app.on_event("startup")
@@ -343,7 +379,7 @@ def check_provider_permission(provider_id: int, current_user: UserModel, operati
             raise HTTPException(status_code=403, detail="Delete operation requires provider admin privileges")
 
 # ------------------- Authentication Endpoint -------------------
-@app.post("/token")
+@app.post("/auth-token")
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
     user = await authenticate_user(form_data.username, form_data.password, db)
     if not user:
@@ -468,7 +504,7 @@ async def delete_user(username: str, current_user: UserModel = Depends(get_curre
     return
 
 # Provider association endpoints
-@app.post("/users/{username}/providers", response_model=User)
+@app.post("/users/{username}/data-providers", response_model=User)
 async def add_provider_association(username: str, association: ProviderAssociation, current_user: UserModel = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     check_global_admin(current_user)
     user_obj = await get_user_model(username, db)
@@ -482,7 +518,7 @@ async def add_provider_association(username: str, association: ProviderAssociati
     await db.refresh(user_obj)
     return user_obj
 
-@app.put("/users/{username}/providers/{provider_id}", response_model=User)
+@app.put("/users/{username}/data-providers/{provider_id}", response_model=User)
 async def update_provider_association(username: str, provider_id: int, association: ProviderAssociation, current_user: UserModel = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     check_global_admin(current_user)
     user_obj = await get_user_model(username, db)
@@ -496,7 +532,7 @@ async def update_provider_association(username: str, provider_id: int, associati
     await db.refresh(user_obj)
     return user_obj
 
-@app.delete("/users/{username}/providers/{provider_id}", response_model=User)
+@app.delete("/users/{username}/data-providers/{provider_id}", response_model=User)
 async def remove_provider_association(username: str, provider_id: int, current_user: UserModel = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     check_global_admin(current_user)
     user_obj = await get_user_model(username, db)
@@ -511,7 +547,7 @@ async def remove_provider_association(username: str, provider_id: int, current_u
     return user_obj
 
 # ------------------- Data Provider & Nested Resources Endpoints -------------------
-@app.get("/providers", response_model=List[DataProvider])
+@app.get("/data-providers", response_model=List[DataProvider])
 async def get_providers(current_user: UserModel = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if current_user.is_global_admin:
         result = await db.execute(
@@ -549,7 +585,7 @@ async def get_providers(current_user: UserModel = Depends(get_current_user), db:
     )
     return result.scalars().all()
 
-@app.get("/providers/{provider_id}", response_model=DataProvider)
+@app.get("/data-providers/{provider_id}", response_model=DataProvider)
 async def get_provider(provider_id: int, current_user: UserModel = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     check_provider_permission(provider_id, current_user)
     
@@ -570,12 +606,12 @@ async def get_provider(provider_id: int, current_user: UserModel = Depends(get_c
     
     return provider
 
-@app.post("/providers", response_model=DataProvider, status_code=201)
+@app.post("/data-providers", response_model=DataProvider, status_code=201)
 async def create_provider(provider: DataProvider, current_user: UserModel = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     check_global_admin(current_user)
     
     # Create provider without datasets first
-    provider_data = provider.dict(exclude={'datasets', 'id'}, exclude_unset=True)
+    provider_data = provider.model_dump(exclude={'datasets', 'id'}, exclude_unset=True)
     # Convert AnyUrl fields to strings
     if provider_data.get('url'):
         provider_data['url'] = str(provider_data['url'])
@@ -587,7 +623,7 @@ async def create_provider(provider: DataProvider, current_user: UserModel = Depe
     # Create and attach datasets if present
     if provider.datasets:
         for dataset in provider.datasets:
-            dataset_data = dataset.dict(exclude={'id', 'xmlArchives', 'usefulLinks'}, exclude_unset=True)
+            dataset_data = dataset.model_dump(exclude={'id', 'xmlArchives', 'usefulLinks'}, exclude_unset=True)
             if dataset_data.get('landingPageUrl'):
                 dataset_data['landingPageUrl'] = str(dataset_data['landingPageUrl'])
             
@@ -633,7 +669,7 @@ async def create_provider(provider: DataProvider, current_user: UserModel = Depe
     )
     return result.scalar_one()
 
-@app.put("/providers/{provider_id}", response_model=DataProvider)
+@app.put("/data-providers/{provider_id}", response_model=DataProvider)
 async def update_provider(provider_id: int, provider: DataProvider, current_user: UserModel = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     # Allow admins or curators of this provider to update it
     check_provider_permission(provider_id, current_user, "write")
@@ -655,7 +691,7 @@ async def update_provider(provider_id: int, provider: DataProvider, current_user
         raise HTTPException(status_code=404, detail="Provider not found")
 
     # Update provider fields
-    provider_data = provider.dict(exclude={'datasets', 'id'}, exclude_unset=True)
+    provider_data = provider.model_dump(exclude={'datasets', 'id'}, exclude_unset=True)
     if provider_data.get('url'):
         provider_data['url'] = str(provider_data['url'])
     if provider_data.get('biocaseUrl'):
@@ -682,7 +718,7 @@ async def update_provider(provider_id: int, provider: DataProvider, current_user
                     db_dataset = existing_datasets[dataset.id]
                     processed_dataset_ids.add(dataset.id)
                     
-                    dataset_data = dataset.dict(exclude={'id', 'xmlArchives', 'usefulLinks'}, exclude_unset=True)
+                    dataset_data = dataset.model_dump(exclude={'id', 'xmlArchives', 'usefulLinks'}, exclude_unset=True)
                     # Convert AnyUrl fields to strings
                     if 'landingPageUrl' in dataset_data:
                         dataset_data['landingPageUrl'] = str(dataset_data['landingPageUrl']) if dataset_data['landingPageUrl'] else None
@@ -700,7 +736,7 @@ async def update_provider(provider_id: int, provider: DataProvider, current_user
                             # Only consider it an existing archive if ID is not None AND it exists in our map
                             if archive.id is not None and archive.id in existing_archives:
                                 db_archive = existing_archives[archive.id]
-                                archive_data = archive.dict(exclude={'id'}, exclude_unset=True)
+                                archive_data = archive.model_dump(exclude={'id'}, exclude_unset=True)
                                 # Convert URL fields to strings
                                 if 'url' in archive_data:
                                     archive_data['url'] = str(archive_data['url'])
@@ -732,7 +768,7 @@ async def update_provider(provider_id: int, provider: DataProvider, current_user
                             # Only consider it an existing link if ID is not None AND it exists in our map
                             if link.id is not None and link.id in existing_links:
                                 db_link = existing_links[link.id]
-                                link_data = link.dict(exclude={'id'}, exclude_unset=True)
+                                link_data = link.model_dump(exclude={'id'}, exclude_unset=True)
                                 # Convert URL fields to strings
                                 if 'url' in link_data:
                                     link_data['url'] = str(link_data['url'])
@@ -806,7 +842,7 @@ async def update_provider(provider_id: int, provider: DataProvider, current_user
     )
     return result.scalar_one()
 
-@app.delete("/providers/{provider_id}", status_code=204)
+@app.delete("/data-providers/{provider_id}", status_code=204)
 async def delete_provider(provider_id: int, current_user: UserModel = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     check_global_admin(current_user)
     result = await db.execute(select(DataProviderModel).where(DataProviderModel.id == provider_id))
@@ -817,7 +853,7 @@ async def delete_provider(provider_id: int, current_user: UserModel = Depends(ge
     return
 
 # Dataset endpoints
-@app.get("/providers/{provider_id}/datasets", response_model=List[Dataset])
+@app.get("/data-providers/{provider_id}/data-sets", response_model=List[Dataset])
 async def get_datasets(provider_id: int, current_user: UserModel = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     check_provider_permission(provider_id, current_user, "read")
     result = await db.execute(
@@ -830,7 +866,7 @@ async def get_datasets(provider_id: int, current_user: UserModel = Depends(get_c
     )
     return result.scalars().all()
 
-@app.get("/providers/{provider_id}/datasets/{dataset_id}", response_model=Dataset)
+@app.get("/data-providers/{provider_id}/data-sets/{dataset_id}", response_model=Dataset)
 async def get_dataset(provider_id: int, dataset_id: int, current_user: UserModel = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     check_provider_permission(provider_id, current_user, "read")
     result = await db.execute(
@@ -851,7 +887,7 @@ async def get_dataset(provider_id: int, dataset_id: int, current_user: UserModel
         raise HTTPException(status_code=404, detail="Dataset not found")
     return dataset
 
-@app.post("/providers/{provider_id}/datasets", response_model=Dataset, status_code=201)
+@app.post("/data-providers/{provider_id}/data-sets", response_model=Dataset, status_code=201)
 async def create_dataset(
     provider_id: int,
     dataset: Dataset,
@@ -869,7 +905,7 @@ async def create_dataset(
         raise HTTPException(status_code=404, detail="Provider not found")
     
     # Explicitly exclude id fields from all levels
-    dataset_data = dataset.dict(exclude={'id', 'xmlArchives', 'usefulLinks'}, exclude_unset=True)
+    dataset_data = dataset.model_dump(exclude={'id', 'xmlArchives', 'usefulLinks'}, exclude_unset=True)
     # Convert AnyUrl fields to strings
     if dataset_data.get('landingPageUrl'):
         dataset_data['landingPageUrl'] = str(dataset_data['landingPageUrl'])
@@ -912,7 +948,7 @@ async def create_dataset(
     )
     return result.scalar_one()
 
-@app.put("/providers/{provider_id}/datasets/{dataset_id}", response_model=Dataset)
+@app.put("/data-providers/{provider_id}/data-sets/{dataset_id}", response_model=Dataset)
 async def update_dataset(
     provider_id: int, 
     dataset_id: int, 
@@ -941,7 +977,7 @@ async def update_dataset(
         raise HTTPException(status_code=404, detail="Dataset not found")
     
     # Update dataset basic fields
-    dataset_data = dataset.dict(exclude={'id', 'xmlArchives', 'usefulLinks'}, exclude_unset=True)
+    dataset_data = dataset.model_dump(exclude={'id', 'xmlArchives', 'usefulLinks'}, exclude_unset=True)
     # Convert AnyUrl fields to strings
     if dataset_data.get('landingPageUrl'):
         dataset_data['landingPageUrl'] = str(dataset_data['landingPageUrl'])
@@ -959,7 +995,7 @@ async def update_dataset(
             # Only consider it an existing archive if ID is not None AND it exists in our map
             if archive.id is not None and archive.id in existing_archives:
                 db_archive = existing_archives[archive.id]
-                archive_data = archive.dict(exclude={'id'}, exclude_unset=True)
+                archive_data = archive.model_dump(exclude={'id'}, exclude_unset=True)
                 # Convert URL fields to strings
                 if 'url' in archive_data:
                     archive_data['url'] = str(archive_data['url'])
@@ -991,7 +1027,7 @@ async def update_dataset(
             # Only consider it an existing link if ID is not None AND it exists in our map
             if link.id is not None and link.id in existing_links:
                 db_link = existing_links[link.id]
-                link_data = link.dict(exclude={'id'}, exclude_unset=True)
+                link_data = link.model_dump(exclude={'id'}, exclude_unset=True)
                 # Convert URL fields to strings
                 if 'url' in link_data:
                     link_data['url'] = str(link_data['url'])
@@ -1027,7 +1063,7 @@ async def update_dataset(
     )
     return result.scalar_one()
 
-@app.delete("/providers/{provider_id}/datasets/{dataset_id}", status_code=204)
+@app.delete("/data-providers/{provider_id}/data-sets/{dataset_id}", status_code=204)
 async def delete_dataset(provider_id: int, dataset_id: int, current_user: UserModel = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     check_provider_permission(provider_id, current_user, "delete")
     result = await db.execute(
@@ -1041,7 +1077,7 @@ async def delete_dataset(provider_id: int, dataset_id: int, current_user: UserMo
     return
 
 # XML Archive endpoints
-@app.get("/providers/{provider_id}/datasets/{dataset_id}/xml-archives", response_model=List[XmlArchive])
+@app.get("/data-providers/{provider_id}/data-sets/{dataset_id}/xml-archives", response_model=List[XmlArchive])
 async def get_xml_archives(provider_id: int, dataset_id: int, current_user: UserModel = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     check_provider_permission(provider_id, current_user, "read")
     result = await db.execute(
@@ -1056,7 +1092,7 @@ async def get_xml_archives(provider_id: int, dataset_id: int, current_user: User
     )
     return result.scalars().all()
 
-@app.post("/providers/{provider_id}/datasets/{dataset_id}/xml-archives", response_model=XmlArchive, status_code=201)
+@app.post("/data-providers/{provider_id}/data-sets/{dataset_id}/xml-archives", response_model=XmlArchive, status_code=201)
 async def create_xml_archive(
     provider_id: int,
     dataset_id: int,
@@ -1080,7 +1116,7 @@ async def create_xml_archive(
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
     
-    xml_data = xml_archive.dict(exclude={'id', 'datasetId'}, exclude_unset=True)
+    xml_data = xml_archive.model_dump(exclude={'id', 'datasetId'}, exclude_unset=True)
     # Convert URL fields to strings
     if xml_data.get('url'):
         xml_data['url'] = str(xml_data['url'])
@@ -1092,7 +1128,7 @@ async def create_xml_archive(
     return xml_obj
 
 # Useful Link endpoints
-@app.get("/providers/{provider_id}/datasets/{dataset_id}/useful-links", response_model=List[UsefulLink])
+@app.get("/data-providers/{provider_id}/data-sets/{dataset_id}/useful-links", response_model=List[UsefulLink])
 async def get_useful_links(provider_id: int, dataset_id: int, current_user: UserModel = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     check_provider_permission(provider_id, current_user, "read")
     result = await db.execute(
@@ -1107,7 +1143,7 @@ async def get_useful_links(provider_id: int, dataset_id: int, current_user: User
     )
     return result.scalars().all()
 
-@app.post("/providers/{provider_id}/datasets/{dataset_id}/useful-links", response_model=UsefulLink, status_code=201)
+@app.post("/data-providers/{provider_id}/data-sets/{dataset_id}/useful-links", response_model=UsefulLink, status_code=201)
 async def create_useful_link(
     provider_id: int,
     dataset_id: int,
@@ -1131,7 +1167,7 @@ async def create_useful_link(
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
     
-    link_data = useful_link.dict(exclude={'id', 'datasetId'}, exclude_unset=True)
+    link_data = useful_link.model_dump(exclude={'id', 'datasetId'}, exclude_unset=True)
     # Convert URL fields to strings
     if link_data.get('url'):
         link_data['url'] = str(link_data['url'])
@@ -1143,7 +1179,7 @@ async def create_useful_link(
     return link_obj
 
 # ------------------- Health Check Endpoint -------------------
-@app.get("/health", status_code=200)
+@app.get("/health-check", status_code=200)
 async def health_check(db: AsyncSession = Depends(get_db)):
     try:
         # Check database connection
@@ -1153,7 +1189,7 @@ async def health_check(db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=503, detail=f"Service unhealthy: {str(e)}")
 
 # ------------------- Legacy Harvesting Endpoint -------------------
-@app.get("/harvest/datasets", response_model=List[LegacyDataset])
+@app.get("/legacy-data-sets", response_model=List[LegacyDataset])
 async def harvest_datasets(db: AsyncSession = Depends(get_db)):
     # Get all providers with their relationships loaded
     result = await db.execute(
@@ -1208,6 +1244,6 @@ async def harvest_datasets(db: AsyncSession = Depends(get_db)):
             legacy_list.append(legacy_ds)
     
     # Finally, sort the entire legacy_list by dataset_id
-    legacy_list.sort(key=lambda legacy_ds: legacy_ds.dataset_id)
+    # legacy_list.sort(key=lambda legacy_ds: legacy_ds.dataset_id)
     
     return legacy_list

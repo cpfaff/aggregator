@@ -27,7 +27,8 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://${DB_USER:-user}:${DB_PASSWORD:-password}@db:5432/${DB_NAME:-dbname}
       - SYNC_DATABASE_URL=postgresql://${DB_USER:-user}:${DB_PASSWORD:-password}@db:5432/${DB_NAME:-dbname}
-      - SECRET_KEY=${SECRET_KEY:-your-secret-key-for-production}
+      - SECRET_KEY=${SECRET_KEY}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
     networks:
       - app-network
     ports:

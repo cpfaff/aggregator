@@ -18,8 +18,8 @@ export const fetchWithTokenExpiration = async (url, options = {}, onTokenExpired
     const response = await fetch(url, options);
     
     // Only trigger token expiration for 401 responses from authenticated endpoints
-    // Exclude POST /token endpoint which naturally returns 401 for invalid credentials
-    if (response.status === 401 && !url.endsWith('/token')) {
+    // Exclude POST /auth-token endpoint which naturally returns 401 for invalid credentials
+    if (response.status === 401 && !url.endsWith('/auth-token')) {
       // Call the token expired callback
       if (onTokenExpired && typeof onTokenExpired === 'function') {
         onTokenExpired();

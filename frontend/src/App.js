@@ -471,7 +471,7 @@ function Login({ setToken, setCurrentUser, sessionExpired, setSessionExpired }) 
     
     try {
       // We don't use apiRequest here because we're getting the token
-      const res = await fetch(`${API_BASE}/token`, {
+      const res = await fetch(`${API_BASE}/auth-token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({ username, password }),
@@ -664,7 +664,7 @@ function Dashboard({ token, currentUser, onTokenExpired }) {
     setError('');
     
     try {
-      const res = await apiRequest('/providers', {}, onTokenExpired);
+      const res = await apiRequest('/data-providers', {}, onTokenExpired);
       
       if (!res.ok) {
         if (res.status === 403) {
@@ -694,7 +694,7 @@ function Dashboard({ token, currentUser, onTokenExpired }) {
     setError('');
     
     try {
-      const res = await apiRequest(`/providers/${id}`, {
+      const res = await apiRequest(`/data-providers/${id}`, {
         method: 'DELETE'
       }, onTokenExpired);
       
@@ -1210,13 +1210,13 @@ function ProviderForm({ token, provider, onClose, onTokenExpired }) {
       
       let res;
       if (isEditing) {
-        res = await apiRequest(`/providers/${provider.id}`, {
+        res = await apiRequest(`/data-providers/${provider.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(sanitizedFormData)
         }, onTokenExpired);
       } else {
-        res = await apiRequest('/providers', {
+        res = await apiRequest('/data-providers', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(sanitizedFormData)
@@ -2005,7 +2005,7 @@ function UserManagement({ token, onTokenExpired }) {
 
   const fetchProviders = async () => {
     try {
-      const res = await apiRequest('/providers', {}, onTokenExpired);
+      const res = await apiRequest('/data-providers', {}, onTokenExpired);
       
       if (!res.ok) {
         console.error('Failed to fetch providers:', res.status);

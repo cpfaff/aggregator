@@ -1,0 +1,3499 @@
+[
+  {
+    "dataset_id": 1,
+    "datasource": "GFBio_ColiFauna",
+    "dataset": "Coleoptera observations in orchards of South Western Germany",
+    "custom_landingpage": "https://data.bgbm.org/dataset/gfbio/0002/",
+    "provider_id": 1,
+    "xml_archives": [
+      {
+        "archive_id": 1,
+        "xml_archive": "https://ww3.bgbm.org/biocase/downloads/GFBio_ColiFauna/Coleoptera%20observations%20in%20orchards%20of%20South%20Western%20Germany.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center BGBM",
+    "provider_shortname": "BGBM",
+    "provider_name": "Botanic Garden and Botanical Museum Berlin, Freie Universität Berlin",
+    "provider_url": "https://bo.berlin/",
+    "biocase_url": "https://ww3.bgbm.org/biocase/"
+  },
+  {
+    "dataset_id": 2,
+    "datasource": "GFBio_eXist-db",
+    "dataset": "Habitat use and population dynamics of small mammals in the grasslands of the Queen Elizabeth National Park, Uganda.",
+    "custom_landingpage": "https://data.bgbm.org/dataset/gfbio/0003/",
+    "provider_id": 1,
+    "xml_archives": [
+      {
+        "archive_id": 3,
+        "xml_archive": "https://data-rebind.bgbm.org/rest/db/gfbio/public/GFBioHoffmannDissertation/archive/HoffmannDissertationV2.xml.zip",
+        "latest": true
+      },
+      {
+        "archive_id": 2,
+        "xml_archive": "https://data-rebind.bgbm.org/rest/db/gfbio/public/GFBioHoffmannDissertation/archive/HoffmannDissertation.xml.zip",
+        "latest": false
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center BGBM",
+    "provider_shortname": "BGBM",
+    "provider_name": "Botanic Garden and Botanical Museum Berlin, Freie Universität Berlin",
+    "provider_url": "https://bo.berlin/",
+    "biocase_url": "https://ww3.bgbm.org/biocase/"
+  },
+  {
+    "dataset_id": 3,
+    "datasource": "GFBio_eXist-db",
+    "dataset": "Plants at Crater Road of Queen Elizabeth National Park, Uganda.",
+    "custom_landingpage": "https://data.bgbm.org/dataset/gfbio/0004/",
+    "provider_id": 1,
+    "xml_archives": [
+      {
+        "archive_id": 6,
+        "xml_archive": "https://data-rebind.bgbm.org/rest//db/gfbio/public/GFBioHoffmannPlants/archive/HoffmannPlantsV3.xml.zip",
+        "latest": true
+      },
+      {
+        "archive_id": 4,
+        "xml_archive": "https://data-rebind.bgbm.org/rest//db/gfbio/public/GFBioHoffmannPlants/archive/HoffmannPlants.xml.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 5,
+        "xml_archive": "https://data-rebind.bgbm.org/rest//db/gfbio/public/GFBioHoffmannPlants/archive/HoffmannPlantsV2.xml.zip",
+        "latest": false
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center BGBM",
+    "provider_shortname": "BGBM",
+    "provider_name": "Botanic Garden and Botanical Museum Berlin, Freie Universität Berlin",
+    "provider_url": "https://bo.berlin/",
+    "biocase_url": "https://ww3.bgbm.org/biocase/"
+  },
+  {
+    "dataset_id": 4,
+    "datasource": "GFBio_eXist-db",
+    "dataset": "Digitisation / Cataloguing of non-textual objects: Development of a subject indexing system for collections of the north hemispherical flowering plant genus Campanula (DNA Sample Dataset)",
+    "custom_landingpage": "https://data.bgbm.org/dataset/gfbio/0019/",
+    "provider_id": 1,
+    "xml_archives": [
+      {
+        "archive_id": 7,
+        "xml_archive": "https://data-rebind.bgbm.org/rest//db/gfbio/public/Campanula_DNA/archive/CampanulaDNA.xml.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center BGBM",
+    "provider_shortname": "BGBM",
+    "provider_name": "Botanic Garden and Botanical Museum Berlin, Freie Universität Berlin",
+    "provider_url": "https://bo.berlin/",
+    "biocase_url": "https://ww3.bgbm.org/biocase/"
+  },
+  {
+    "dataset_id": 5,
+    "datasource": "GFBio_eXist-db",
+    "dataset": "Digitisation / Cataloguing of non-textual objects: Development of a subject indexing system for collections of the north hemispherical flowering plant genus Campanula (Herbarium Specimens Dataset)",
+    "custom_landingpage": "https://data.bgbm.org/dataset/gfbio/0020/",
+    "provider_id": 1,
+    "xml_archives": [
+      {
+        "archive_id": 8,
+        "xml_archive": "https://data-rebind.bgbm.org/rest//db/gfbio/public/CampanulaSpecimen/archive/CampanulaSpecimen.xml.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center BGBM",
+    "provider_shortname": "BGBM",
+    "provider_name": "Botanic Garden and Botanical Museum Berlin, Freie Universität Berlin",
+    "provider_url": "https://bo.berlin/",
+    "biocase_url": "https://ww3.bgbm.org/biocase/"
+  },
+  {
+    "dataset_id": 6,
+    "datasource": "Herbar_GFBio_Asteraceae",
+    "dataset": "Herbarium Berolinense Asteraceae",
+    "custom_landingpage": "https://data.bgbm.org/dataset/gfbio/0001",
+    "provider_id": 1,
+    "xml_archives": [
+      {
+        "archive_id": 9,
+        "xml_archive": "https://ww3.bgbm.org/biocase/downloads/Herbar_GFBio_Asteraceae/Herbarium%20Berolinense%20Asteraceae.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center BGBM",
+    "provider_shortname": "BGBM",
+    "provider_name": "Botanic Garden and Botanical Museum Berlin, Freie Universität Berlin",
+    "provider_url": "https://bo.berlin/",
+    "biocase_url": "https://ww3.bgbm.org/biocase/"
+  },
+  {
+    "dataset_id": 7,
+    "datasource": "BacDive",
+    "dataset": "The Bacterial Diversity Metadatabase",
+    "custom_landingpage": "https://bacdive.dsmz.de/",
+    "provider_id": 2,
+    "xml_archives": [
+      {
+        "archive_id": 10,
+        "xml_archive": "http://biocase.dsmz.de/wrappers/biocase//downloads/BacDive/The%20Bacterial%20Diversity%20Metadatabase.ABCD_2.06_2017-05-02.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 11,
+        "xml_archive": "http://biocase.dsmz.de/wrappers/biocase//downloads/BacDive/The%20Bacterial%20Diversity%20Metadatabase.ABCD_2.06.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 12,
+        "xml_archive": "https://biocase.dsmz.de/biocase/downloads/BacDive/The%20Bacterial%20Diversity%20Metadatabase.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center DSMZ",
+    "provider_shortname": "DSMZ",
+    "provider_name": "Leibniz Institute DSMZ – German Collection of Microorganisms and Cell Cultures, Braunschweig",
+    "provider_url": "https://www.dsmz.de/",
+    "biocase_url": "https://biocase.dsmz.de/biocase/"
+  },
+  {
+    "dataset_id": 8,
+    "datasource": "DSMZ_fungi",
+    "dataset": "DSMZ Collection of Filamentous Fungi and Yeasts",
+    "custom_landingpage": null,
+    "provider_id": 2,
+    "xml_archives": [
+      {
+        "archive_id": 13,
+        "xml_archive": "http://biocase.dsmz.de/wrappers/biocase//downloads/DSMZ_fungi/DSMZ%20Collection%20of%20Filamentous%20Fungi%20and%20Yeasts.ABCD_2.06.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 14,
+        "xml_archive": "https://biocase.dsmz.de/biocase/downloads/DSMZ_fungi/DSMZ%20Collection%20of%20Filamentous%20Fungi%20and%20Yeasts.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center DSMZ",
+    "provider_shortname": "DSMZ",
+    "provider_name": "Leibniz Institute DSMZ – German Collection of Microorganisms and Cell Cultures, Braunschweig",
+    "provider_url": "https://www.dsmz.de/",
+    "biocase_url": "https://biocase.dsmz.de/biocase/"
+  },
+  {
+    "dataset_id": 9,
+    "datasource": "DSMZ_human_animal_cell_lines",
+    "dataset": "DSMZ Collection on human and animal cell cultures",
+    "custom_landingpage": "https://www.dsmz.de/catalogues/catalogue-human-and-animal-cell-lines.html",
+    "provider_id": 2,
+    "xml_archives": [
+      {
+        "archive_id": 15,
+        "xml_archive": "http://biocase.dsmz.de/wrappers/biocase//downloads/DSMZ_human_animal_cell_lines/DSMZ%20Collection%20on%20human%20and%20animal%20cell%20cultures.ABCD_2.06.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 16,
+        "xml_archive": "https://biocase.dsmz.de/biocase/downloads/DSMZ_human_animal_cell_lines/DSMZ%20Collection%20on%20human%20and%20animal%20cell%20cultures.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center DSMZ",
+    "provider_shortname": "DSMZ",
+    "provider_name": "Leibniz Institute DSMZ – German Collection of Microorganisms and Cell Cultures, Braunschweig",
+    "provider_url": "https://www.dsmz.de/",
+    "biocase_url": "https://biocase.dsmz.de/biocase/"
+  },
+  {
+    "dataset_id": 10,
+    "datasource": "GBF_myxococcales",
+    "dataset": "HZI (GBF) Reichenbach Collection of Myxobacteria",
+    "custom_landingpage": null,
+    "provider_id": 2,
+    "xml_archives": [
+      {
+        "archive_id": 17,
+        "xml_archive": "http://biocase.dsmz.de/wrappers/biocase//downloads/GBF_myxococcales/ABCD_2.1_2017-08-30.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 18,
+        "xml_archive": "http://biocase.dsmz.de/wrappers/biocase//downloads/GBF_myxococcales/ABCD_2.1.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 19,
+        "xml_archive": "https://biocase.dsmz.de/biocase/downloads/GBF_myxococcales/HZI%20%28GBF%29%20Reichenbach%20Collection%20of%20Myxobacteria.ABCD_2.1.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 1,
+        "title": "GBIF",
+        "url": "http://www.gbif.org/dataset/6d837ace-1934-492b-bbfa-b3ef4a01f007",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "Data Center DSMZ",
+    "provider_shortname": "DSMZ",
+    "provider_name": "Leibniz Institute DSMZ – German Collection of Microorganisms and Cell Cultures, Braunschweig",
+    "provider_url": "https://www.dsmz.de/",
+    "biocase_url": "https://biocase.dsmz.de/biocase/"
+  },
+  {
+    "dataset_id": 12,
+    "datasource": "gfifish",
+    "dataset": "GfI-Fischartenatlas",
+    "custom_landingpage": null,
+    "provider_id": 4,
+    "xml_archives": [
+      {
+        "archive_id": 23,
+        "xml_archive": "https://biocase.biodiv-atlas.de/biocase/downloads/gfifish/GfI-Fischartenatlas.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center GfI",
+    "provider_shortname": "GfI",
+    "provider_name": "Gesellschaft für Ichthyologie e.V.",
+    "provider_url": "https://www.ichthyologie.de/",
+    "biocase_url": "https://biocase.biodiv-atlas.de/biocase"
+  },
+  {
+    "dataset_id": 13,
+    "datasource": "EDIT_ATBI",
+    "dataset": "EDIT - ATBI in Spreewald (Germany)",
+    "custom_landingpage": null,
+    "provider_id": 5,
+    "xml_archives": [
+      {
+        "archive_id": 24,
+        "xml_archive": "http://biocase.naturkundemuseum-berlin.de/GFBioArchives/EDIT_ATBI/EDIT%20-%20ATBI%20in%20Spreewald%20(Germany).ABCD_2.06_2015-05-27.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 2,
+        "title": "GBIF",
+        "url": "http://www.gbif.org/dataset/7d4f1a7c-f762-11e1-a439-00145eb45e9a",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "Data Center MfN",
+    "provider_shortname": "MfN",
+    "provider_name": "Museum für Naturkunde Berlin – Leibniz Institute for Research on Evolution and Biodiversity, Berlin",
+    "provider_url": "https://www.naturkundemuseum.berlin/",
+    "biocase_url": "https://biocase.naturkundemuseum.berlin/current"
+  },
+  {
+    "dataset_id": 14,
+    "datasource": "mfn_Ehrenberg_D",
+    "dataset": "Ehrenberg Drawings",
+    "custom_landingpage": "http://coll.mfn-berlin.de/c/MB_ED",
+    "provider_id": 5,
+    "xml_archives": [
+      {
+        "archive_id": 25,
+        "xml_archive": "http://biocase.naturkundemuseum-berlin.de/GFBioArchives/Ehrenberg_Drawings/Ehrenberg%20Drawings.ABCD_2.06_2013-06-03.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center MfN",
+    "provider_shortname": "MfN",
+    "provider_name": "Museum für Naturkunde Berlin – Leibniz Institute for Research on Evolution and Biodiversity, Berlin",
+    "provider_url": "https://www.naturkundemuseum.berlin/",
+    "biocase_url": "https://biocase.naturkundemuseum.berlin/current"
+  },
+  {
+    "dataset_id": 15,
+    "datasource": "mfn_Mammalia",
+    "dataset": "Mammals (recent)",
+    "custom_landingpage": "http://coll.mfn-berlin.de/portal/Mammalia/",
+    "provider_id": 5,
+    "xml_archives": [
+      {
+        "archive_id": 26,
+        "xml_archive": "http://biocase.naturkundemuseum-berlin.de/GFBioArchives/mfn_Mammalia/Mammals%20(recent).ABCD_2.06_2017-05-19.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center MfN",
+    "provider_shortname": "MfN",
+    "provider_name": "Museum für Naturkunde Berlin – Leibniz Institute for Research on Evolution and Biodiversity, Berlin",
+    "provider_url": "https://www.naturkundemuseum.berlin/",
+    "biocase_url": "https://biocase.naturkundemuseum.berlin/current"
+  },
+  {
+    "dataset_id": 16,
+    "datasource": "mfn_PAL",
+    "dataset": "MfN - Fossil vertebrates V",
+    "custom_landingpage": null,
+    "provider_id": 5,
+    "xml_archives": [
+      {
+        "archive_id": 27,
+        "xml_archive": "http://biocase.naturkundemuseum-berlin.de/GFBioArchives/mfn_PAL/MfN%20-%20Fossil%20vertebrates%20V.ABCDEFG_2.06_2015-03-10.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center MfN",
+    "provider_shortname": "MfN",
+    "provider_name": "Museum für Naturkunde Berlin – Leibniz Institute for Research on Evolution and Biodiversity, Berlin",
+    "provider_url": "https://www.naturkundemuseum.berlin/",
+    "biocase_url": "https://biocase.naturkundemuseum.berlin/current"
+  },
+  {
+    "dataset_id": 17,
+    "datasource": "mfn_PAL",
+    "dataset": "MfN - Fossil invertebrates Ia",
+    "custom_landingpage": null,
+    "provider_id": 5,
+    "xml_archives": [
+      {
+        "archive_id": 28,
+        "xml_archive": "http://biocase.naturkundemuseum-berlin.de/GFBioArchives/mfn_PAL/MfN%20-%20Fossil%20invertebrates%20Ia.ABCDEFG_2.06_2017-05-19.zip",
+        "latest": true
+      },
+      {
+        "archive_id": 29,
+        "xml_archive": "http://biocase.naturkundemuseum-berlin.de/GFBioArchives/mfn_PAL/MfN%20-%20Fossil%20invertebrates%20Ia.ABCDEFG_2.06_2015-03-10.zip",
+        "latest": false
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 3,
+        "title": "GBIF",
+        "url": "http://gbif.org/dataset/71eba376-f762-11e1-a439-00145eb45e9a",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "Data Center MfN",
+    "provider_shortname": "MfN",
+    "provider_name": "Museum für Naturkunde Berlin – Leibniz Institute for Research on Evolution and Biodiversity, Berlin",
+    "provider_url": "https://www.naturkundemuseum.berlin/",
+    "biocase_url": "https://biocase.naturkundemuseum.berlin/current"
+  },
+  {
+    "dataset_id": 18,
+    "datasource": "mfn_PAL",
+    "dataset": "MfN - Trace fossils",
+    "custom_landingpage": null,
+    "provider_id": 5,
+    "xml_archives": [
+      {
+        "archive_id": 30,
+        "xml_archive": "http://biocase.naturkundemuseum-berlin.de/GFBioArchives/mfn_PAL/MfN%20-%20Trace%20fossils.ABCDEFG_2.06_2017-05-19.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 31,
+        "xml_archive": "http://biocase.naturkundemuseum-berlin.de/GFBioArchives/mfn_PAL/MfN%20-%20Trace%20fossils.ABCDEFG_2.06_2015-03-10.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 4,
+        "title": "GBIF",
+        "url": "http://www.gbif.org/dataset/71f03224-f762-11e1-a439-00145eb45e9a",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "Data Center MfN",
+    "provider_shortname": "MfN",
+    "provider_name": "Museum für Naturkunde Berlin – Leibniz Institute for Research on Evolution and Biodiversity, Berlin",
+    "provider_url": "https://www.naturkundemuseum.berlin/",
+    "biocase_url": "https://biocase.naturkundemuseum.berlin/current"
+  },
+  {
+    "dataset_id": 20,
+    "datasource": "mfn_datapublications",
+    "dataset": "Mounted Specimens of the Historical Bird Collection at the Museum für Naturkunde Berlin",
+    "custom_landingpage": null,
+    "provider_id": 5,
+    "xml_archives": [
+      {
+        "archive_id": 32,
+        "xml_archive": "https://media.naturkundemuseum.berlin/eas/partitions/5/3/3457000/3457680/aab7ae16fa7fac12288c205b44217f557fbded99/application/zip/Mounted%20Specimens%20of%20the%20Historical%20Bird%20Collection%20at%20the%20Museum%20f%c3%bcr%20Naturkunde%20Berlin.ABCD_2.06_2023_09_16.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center MfN",
+    "provider_shortname": "MfN",
+    "provider_name": "Museum für Naturkunde Berlin – Leibniz Institute for Research on Evolution and Biodiversity, Berlin",
+    "provider_url": "https://www.naturkundemuseum.berlin/",
+    "biocase_url": "https://biocase.naturkundemuseum.berlin/current"
+  },
+  {
+    "dataset_id": 21,
+    "datasource": "mfn_datapublications",
+    "dataset": "Parental care in Goliath Frogs",
+    "custom_landingpage": "https://doi.org/10.7479/ca64-eq96",
+    "provider_id": 5,
+    "xml_archives": [
+      {
+        "archive_id": 33,
+        "xml_archive": "http://coll.mfn-berlin.de/raw/10.7479/ca64-eq96/Parental_care_in_Goliath_Frogs.ABCD_2.06.2018-03-13.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center MfN",
+    "provider_shortname": "MfN",
+    "provider_name": "Museum für Naturkunde Berlin – Leibniz Institute for Research on Evolution and Biodiversity, Berlin",
+    "provider_url": "https://www.naturkundemuseum.berlin/",
+    "biocase_url": "https://biocase.naturkundemuseum.berlin/current"
+  },
+  {
+    "dataset_id": 22,
+    "datasource": "mfn_datapublications",
+    "dataset": "Life-history and ecological traits of tropical forest frogs",
+    "custom_landingpage": "https://doi.org/10.7479/dtjm-ww03",
+    "provider_id": 5,
+    "xml_archives": [
+      {
+        "archive_id": 34,
+        "xml_archive": "https://media.naturkundemuseum.berlin/eas/partitions/1/0/642000/642326/2b8d39d91f922f9295093523c4d4dc39e1986e20/application/zip/Life-history_ecological_traits_tropical_forest_frogs.ABCD_2.06_2021-05-17.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 35,
+        "xml_archive": "https://media.naturkundemuseum.berlin/eas/partitions/3/1/1225000/1225427/33bbe444a885c96d16d7b32f4c4e50c9678f7aa5/application/zip/2022_10_10_Life-history%20and%20ecological%20traits%20of%20tropical%20forest%20frogs.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center MfN",
+    "provider_shortname": "MfN",
+    "provider_name": "Museum für Naturkunde Berlin – Leibniz Institute for Research on Evolution and Biodiversity, Berlin",
+    "provider_url": "https://www.naturkundemuseum.berlin/",
+    "biocase_url": "https://biocase.naturkundemuseum.berlin/current"
+  },
+  {
+    "dataset_id": 23,
+    "datasource": "mfn_datapublications",
+    "dataset": "MB.R.999 Synchrotron and Neutron raw scan data",
+    "custom_landingpage": "https://doi.org/10.7479/qm1s-wzpf",
+    "provider_id": 5,
+    "xml_archives": [
+      {
+        "archive_id": 36,
+        "xml_archive": "http://biocase.naturkundemuseum-berlin.de/GFBioArchives/mfn_datapublications/MB.R.999%20Synchrotron%20and%20Neutron%20scan%20data.ABCD_2.06_2018-03-26.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center MfN",
+    "provider_shortname": "MfN",
+    "provider_name": "Museum für Naturkunde Berlin – Leibniz Institute for Research on Evolution and Biodiversity, Berlin",
+    "provider_url": "https://www.naturkundemuseum.berlin/",
+    "biocase_url": "https://biocase.naturkundemuseum.berlin/current"
+  },
+  {
+    "dataset_id": 24,
+    "datasource": "mfn_datapublications",
+    "dataset": "Ontogeny of Hemidactylus",
+    "custom_landingpage": "https://doi.org/10.7479/qs1j-mnjp",
+    "provider_id": 5,
+    "xml_archives": [
+      {
+        "archive_id": 37,
+        "xml_archive": "http://biocase.naturkundemuseum-berlin.de/GFBioArchives/mfn_datapublications/Ontogeny%20of%20Hemidactylus.ABCD_2.06_2018-05-01.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center MfN",
+    "provider_shortname": "MfN",
+    "provider_name": "Museum für Naturkunde Berlin – Leibniz Institute for Research on Evolution and Biodiversity, Berlin",
+    "provider_url": "https://www.naturkundemuseum.berlin/",
+    "biocase_url": "https://biocase.naturkundemuseum.berlin/current"
+  },
+  {
+    "dataset_id": 25,
+    "datasource": "mfn_datapublications",
+    "dataset": "Vocalizations of Laterallus crakes",
+    "custom_landingpage": "https://doi.org/10.7479/v1cx-nr21",
+    "provider_id": 5,
+    "xml_archives": [
+      {
+        "archive_id": 38,
+        "xml_archive": "http://coll.mfn-berlin.de/raw/10.7479/v1cx-nr21/Vocalizations_of_Laterallus_crakes.ABCD_2.06.2019-11-05.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center MfN",
+    "provider_shortname": "MfN",
+    "provider_name": "Museum für Naturkunde Berlin – Leibniz Institute for Research on Evolution and Biodiversity, Berlin",
+    "provider_url": "https://www.naturkundemuseum.berlin/",
+    "biocase_url": "https://biocase.naturkundemuseum.berlin/current"
+  },
+  {
+    "dataset_id": 26,
+    "datasource": "tierstimmenarchiv",
+    "dataset": "Animal Sound Archive",
+    "custom_landingpage": null,
+    "provider_id": 5,
+    "xml_archives": [
+      {
+        "archive_id": 39,
+        "xml_archive": "http://biocase.naturkundemuseum-berlin.de/GFBioArchives/tierstimmenarchiv/Animal%20Sound%20Archive.ABCD_2.06_2017-05-19.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 40,
+        "xml_archive": "http://biocase.naturkundemuseum-berlin.de/GFBioArchives/tierstimmenarchiv/Animal%20Sound%20Archive.ABCD_2.06_2017-06-15.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 41,
+        "xml_archive": "http://biocase.naturkundemuseum-berlin.de/GFBioArchives/tierstimmenarchiv/Animal%20Sound%20Archive.ABCD_2.06_2020-05-07.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center MfN",
+    "provider_shortname": "MfN",
+    "provider_name": "Museum für Naturkunde Berlin – Leibniz Institute for Research on Evolution and Biodiversity, Berlin",
+    "provider_url": "https://www.naturkundemuseum.berlin/",
+    "biocase_url": "https://biocase.naturkundemuseum.berlin/current"
+  },
+  {
+    "dataset_id": 27,
+    "datasource": "coll_Federn_1",
+    "dataset": "Digitized feather mounts of the Senckenberg collection Ornithology - SNSD",
+    "custom_landingpage": null,
+    "provider_id": 6,
+    "xml_archives": [
+      {
+        "archive_id": 42,
+        "xml_archive": "http://biocase.senckenberg.de//downloads/coll_Federn_1/Digitized%20feather%20mounts%20of%20the%20Senckenberg%20collection%20Ornithology%20-%20SNSD.ABCD_2.06.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 43,
+        "xml_archive": "http://biocase.senckenberg.de//downloads/coll_Federn_1/Digitized%20feather%20mounts%20of%20the%20Senckenberg%20collection%20Ornithology%20-%20SNSD.ABCD_2.06.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 44,
+        "xml_archive": "http://biocase.senckenberg.de//downloads/coll_Federn_1/Digitized%20feather%20mounts%20of%20the%20Senckenberg%20collection%20Ornithology%20-%20SNSD.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center SGN",
+    "provider_shortname": "SGN",
+    "provider_name": "Senckenberg Gesellschaft für Naturforschung – Leibniz Institute, Frankfurt",
+    "provider_url": "https://www.senckenberg.de/de/",
+    "biocase_url": "http://biocase.senckenberg.de"
+  },
+  {
+    "dataset_id": 148,
+    "datasource": "naturportal",
+    "dataset": "SMNS Naturportal Südwest - Insects and spiders: Observation data from citizen scientists",
+    "custom_landingpage": "https://naturportal-suedwest.de/de/insekten-spinnen/",
+    "provider_id": 7,
+    "xml_archives": [
+      {
+        "archive_id": 228,
+        "xml_archive": "https://biocase.smns-bw.org/downloads/naturportal/SMNS%20Naturportal%20Sudwest%20-%20Insects%20and%20spiders_%20Observation%20data%20from%20citizen%20scientists.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 197,
+        "title": "DOI",
+        "url": "https://doi.org/10.35069/smns-coll.naturportal",
+        "is_latest": true
+      }
+    ],
+    "provider_datacenter": "Data Center SMNS",
+    "provider_shortname": "SMNS",
+    "provider_name": "State Museum of Natural History, Stuttgart",
+    "provider_url": "https://www.naturkundemuseum-bw.de/",
+    "biocase_url": "https://biocase.smns-bw.org"
+  },
+  {
+    "dataset_id": 153,
+    "datasource": "dbird_mhb",
+    "dataset": "Monitoring of common breeding birds mhb",
+    "custom_landingpage": "https://www.dda-web.de/monitoring/mhb/programm",
+    "provider_id": 3,
+    "xml_archives": [
+      {
+        "archive_id": 229,
+        "xml_archive": "https://biocase.dda-web.de/biocase/downloads/dbird_mhb/ornitho.de%20Common%20breeding%20bird%20monitoring%20observations%20data.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center Dachverband Deutscher Avifaunisten e.V.",
+    "provider_shortname": "DDA",
+    "provider_name": "Dachverband Deutscher Avifaunisten e.V.",
+    "provider_url": "https://www.dda-web.de/",
+    "biocase_url": "https://biocase.dda-web.de/biocase"
+  },
+  {
+    "dataset_id": 28,
+    "datasource": "coll_amphibia_SMF",
+    "dataset": "Collection Amphibia SMF",
+    "custom_landingpage": null,
+    "provider_id": 6,
+    "xml_archives": [
+      {
+        "archive_id": 45,
+        "xml_archive": "http://biocase.senckenberg.de//downloads/coll_amphibia_SMF/Collection%20Amphibia%20SMF.ABCD_2.06.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 46,
+        "xml_archive": "http://biocase.senckenberg.de//downloads/coll_amphibia_SMF/Collection%20Amphibia%20SMF.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center SGN",
+    "provider_shortname": "SGN",
+    "provider_name": "Senckenberg Gesellschaft für Naturforschung – Leibniz Institute, Frankfurt",
+    "provider_url": "https://www.senckenberg.de/de/",
+    "biocase_url": "http://biocase.senckenberg.de"
+  },
+  {
+    "dataset_id": 29,
+    "datasource": "coll_orib_SMF",
+    "dataset": "Collection Oribatida SMF",
+    "custom_landingpage": null,
+    "provider_id": 6,
+    "xml_archives": [
+      {
+        "archive_id": 47,
+        "xml_archive": "http://biocase.senckenberg.de//downloads/coll_orib_SMF/Collection%20Oribatida%20SMF.ABCD_2.06.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 48,
+        "xml_archive": "http://biocase.senckenberg.de//downloads/coll_orib_SMF/Collection%20Oribatida%20SMF.ABCD_2.06_20200916.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 49,
+        "xml_archive": "http://biocase.senckenberg.de//downloads/coll_orib_SMF/Collection%20Oribatida%20SMF.ABCD_2.06_20171004.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center SGN",
+    "provider_shortname": "SGN",
+    "provider_name": "Senckenberg Gesellschaft für Naturforschung – Leibniz Institute, Frankfurt",
+    "provider_url": "https://www.senckenberg.de/de/",
+    "biocase_url": "http://biocase.senckenberg.de"
+  },
+  {
+    "dataset_id": 30,
+    "datasource": "coll_thys_SMF",
+    "dataset": "Collection Thysanoptera SMF",
+    "custom_landingpage": null,
+    "provider_id": 6,
+    "xml_archives": [
+      {
+        "archive_id": 50,
+        "xml_archive": "http://biocase.senckenberg.de//downloads/coll_thys_SMF/Collection%20Thysanoptera%20SMF.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center SGN",
+    "provider_shortname": "SGN",
+    "provider_name": "Senckenberg Gesellschaft für Naturforschung – Leibniz Institute, Frankfurt",
+    "provider_url": "https://www.senckenberg.de/de/",
+    "biocase_url": "http://biocase.senckenberg.de"
+  },
+  {
+    "dataset_id": 31,
+    "datasource": "coll_trich_SMF",
+    "dataset": "Collection Trichoptera SMF",
+    "custom_landingpage": null,
+    "provider_id": 6,
+    "xml_archives": [
+      {
+        "archive_id": 51,
+        "xml_archive": "http://biocase.senckenberg.de//downloads/coll_trich_SMF/Collection%20Trichoptera%20SMF.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center SGN",
+    "provider_shortname": "SGN",
+    "provider_name": "Senckenberg Gesellschaft für Naturforschung – Leibniz Institute, Frankfurt",
+    "provider_url": "https://www.senckenberg.de/de/",
+    "biocase_url": "http://biocase.senckenberg.de"
+  },
+  {
+    "dataset_id": 32,
+    "datasource": "coll_voigt_bryozoa",
+    "dataset": "Sammlung Voigt (Bryozoa SMF)",
+    "custom_landingpage": null,
+    "provider_id": 6,
+    "xml_archives": [
+      {
+        "archive_id": 52,
+        "xml_archive": "http://biocase.senckenberg.de//downloads/coll_bryo_SMF/Collection%20Bryozoa%20SMF.ABCD_2.06.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 53,
+        "xml_archive": "http://biocase.senckenberg.de//downloads/coll_voigt_bryozoa/Sammlung%20Voigt%20(Bryozoa%20SMF).ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 5,
+        "title": "GBIF",
+        "url": "https://www.gbif.org/dataset/966c9070-f762-11e1-a439-00145eb45e9a",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "Data Center SGN",
+    "provider_shortname": "SGN",
+    "provider_name": "Senckenberg Gesellschaft für Naturforschung – Leibniz Institute, Frankfurt",
+    "provider_url": "https://www.senckenberg.de/de/",
+    "biocase_url": "http://biocase.senckenberg.de"
+  },
+  {
+    "dataset_id": 33,
+    "datasource": "sgn_africanplants",
+    "dataset": "African Plants - a photo guide",
+    "custom_landingpage": "http://www.africanplants.senckenberg.de",
+    "provider_id": 6,
+    "xml_archives": [
+      {
+        "archive_id": 54,
+        "xml_archive": "http://biocase.senckenberg.de//downloads/sgn_africanplants/African%20Plants%20-%20a%20photo%20guide.ABCD_2.06.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 55,
+        "xml_archive": "http://biocase.senckenberg.de//downloads/sgn_africanplants/African%20Plants%20-%20a%20photo%20guide.ABCD_2.06__20191101.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 56,
+        "xml_archive": "http://biocase.senckenberg.de//downloads/sgn_africanplants/African%20Plants%20-%20a%20photo%20guide.ABCD_2.06__20171004.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 57,
+        "xml_archive": "http://biocase.senckenberg.de//downloads/sgn_africanplants/African%20Plants%20-%20a%20photo%20guide.ABCD_2.06__20200625.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center SGN",
+    "provider_shortname": "SGN",
+    "provider_name": "Senckenberg Gesellschaft für Naturforschung – Leibniz Institute, Frankfurt",
+    "provider_url": "https://www.senckenberg.de/de/",
+    "biocase_url": "http://biocase.senckenberg.de"
+  },
+  {
+    "dataset_id": 34,
+    "datasource": "sgn_bestikri",
+    "dataset": "Help to better understand determination-critical taxa of the German flora.",
+    "custom_landingpage": "https://webapp.senckenberg.de/bestikri/",
+    "provider_id": 6,
+    "xml_archives": [
+      {
+        "archive_id": 58,
+        "xml_archive": "http://biocase.senckenberg.de//downloads/sgn_bestikri/Help%20to%20better%20understand%20determination-critical%20taxa%20of%20the%20German%20flora..ABCDEFG_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center SGN",
+    "provider_shortname": "SGN",
+    "provider_name": "Senckenberg Gesellschaft für Naturforschung – Leibniz Institute, Frankfurt",
+    "provider_url": "https://www.senckenberg.de/de/",
+    "biocase_url": "http://biocase.senckenberg.de"
+  },
+  {
+    "dataset_id": 36,
+    "datasource": "sgn_digi_rhoen_flad",
+    "dataset": "Digitization of plant specimens from Rhoen and Vogelsberg (FLAD)",
+    "custom_landingpage": null,
+    "provider_id": 6,
+    "xml_archives": [
+      {
+        "archive_id": 59,
+        "xml_archive": "http://biocase.senckenberg.de//downloads/sgn_digi_rhoen_flad/Digitization%20of%20plant%20specimens%20from%20Rhoen%20and%20Vogelsberg%20(FLAD).ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 6,
+        "title": "GBIF",
+        "url": "https://www.gbif.org/dataset/28a69e1c-0f2a-40f0-a0df-a646fbc57343",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "Data Center SGN",
+    "provider_shortname": "SGN",
+    "provider_name": "Senckenberg Gesellschaft für Naturforschung – Leibniz Institute, Frankfurt",
+    "provider_url": "https://www.senckenberg.de/de/",
+    "biocase_url": "http://biocase.senckenberg.de"
+  },
+  {
+    "dataset_id": 37,
+    "datasource": "sgn_digi_rhoen_fr",
+    "dataset": "Digitization of plant specimens from Rhoen and Vogelsberg (FR)",
+    "custom_landingpage": null,
+    "provider_id": 6,
+    "xml_archives": [
+      {
+        "archive_id": 60,
+        "xml_archive": "http://biocase.senckenberg.de//downloads/sgn_digi_rhoen_fr/Digitization%20of%20plant%20specimens%20from%20Rhoen%20and%20Vogelsberg%20(FR).ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center SGN",
+    "provider_shortname": "SGN",
+    "provider_name": "Senckenberg Gesellschaft für Naturforschung – Leibniz Institute, Frankfurt",
+    "provider_url": "https://www.senckenberg.de/de/",
+    "biocase_url": "http://biocase.senckenberg.de"
+  },
+  {
+    "dataset_id": 38,
+    "datasource": "sgn_digi_rhoen_fuld",
+    "dataset": "Digitization of plant specimens from Rhoen and Vogelsberg (FULD)",
+    "custom_landingpage": null,
+    "provider_id": 6,
+    "xml_archives": [
+      {
+        "archive_id": 61,
+        "xml_archive": "http://biocase.senckenberg.de//downloads/sgn_digi_rhoen_fuld/Digitization%20of%20plant%20specimens%20from%20Rhoen%20and%20Vogelsberg%20(FULD).ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 7,
+        "title": "GBIF",
+        "url": "https://www.gbif.org/dataset/e37d0298-8e57-449c-8069-c5d73391e061",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "Data Center SGN",
+    "provider_shortname": "SGN",
+    "provider_name": "Senckenberg Gesellschaft für Naturforschung – Leibniz Institute, Frankfurt",
+    "provider_url": "https://www.senckenberg.de/de/",
+    "biocase_url": "http://biocase.senckenberg.de"
+  },
+  {
+    "dataset_id": 39,
+    "datasource": "sgn_digi_unionida",
+    "dataset": "Digitalisierung und taxonomische Überarbeitung der Unionida-Sammlung (Collection Mollusca SMF)",
+    "custom_landingpage": null,
+    "provider_id": 6,
+    "xml_archives": [
+      {
+        "archive_id": 62,
+        "xml_archive": "http://biocase.senckenberg.de//downloads/sgn_digi_unionida/Digitalisierung%20und%20taxonomische%20%C3%9Cberarbeitung%20der%20Unionida-Sammlung%20(Collection%20Mollusca%20SMF).ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center SGN",
+    "provider_shortname": "SGN",
+    "provider_name": "Senckenberg Gesellschaft für Naturforschung – Leibniz Institute, Frankfurt",
+    "provider_url": "https://www.senckenberg.de/de/",
+    "biocase_url": "http://biocase.senckenberg.de"
+  },
+  {
+    "dataset_id": 40,
+    "datasource": "GFBIOichthyologycoll",
+    "dataset": "The Ichthyology Collection at the Staatliches Museum für Naturkunde Stuttgart",
+    "custom_landingpage": "https://col.smns-bw.org/SMNS-Z-ichthyologycoll/About.html",
+    "provider_id": 7,
+    "xml_archives": [
+      {
+        "archive_id": 63,
+        "xml_archive": "https://biocase.smns-bw.org/downloads/GFBIOichthyologycoll/The%20Ichthyology%20Collection%20at%20the%20Staatliches%20Museum%20fur%20Naturkunde%20Stuttgart.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 8,
+        "title": "GBIF",
+        "url": "https://www.gbif.org/dataset/d150dd98-855c-4828-a2ff-148036b00c92",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "Data Center SMNS",
+    "provider_shortname": "SMNS",
+    "provider_name": "State Museum of Natural History, Stuttgart",
+    "provider_url": "https://www.naturkundemuseum-bw.de/",
+    "biocase_url": "https://biocase.smns-bw.org"
+  },
+  {
+    "dataset_id": 42,
+    "datasource": "aramob",
+    "dataset": "The ARAMOB Collection at the Staatliches Museum für Naturkunde Stuttgart",
+    "custom_landingpage": "https://col.smns-bw.org/SMNS-E-AraMob/About.html",
+    "provider_id": 7,
+    "xml_archives": [
+      {
+        "archive_id": 65,
+        "xml_archive": "https://biocase.smns-bw.org/downloads/aramob/The%20ARAMOB%20Collection%20at%20the%20Staatliches%20Museum%20fur%20Naturkunde%20Stuttgart.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 10,
+        "title": "GBIF",
+        "url": "https://www.gbif.org/dataset/ce47cb9e-ecc5-4ed9-b5e8-9aa4d45fd456",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "Data Center SMNS",
+    "provider_shortname": "SMNS",
+    "provider_name": "State Museum of Natural History, Stuttgart",
+    "provider_url": "https://www.naturkundemuseum-bw.de/",
+    "biocase_url": "https://biocase.smns-bw.org"
+  },
+  {
+    "dataset_id": 43,
+    "datasource": "ecuadorianliverwortscoll",
+    "dataset": "Collection tropical liverworts serving as vectors for symbiotic fungi at the Staatliches Museum für Naturkunde Stuttgart",
+    "custom_landingpage": "https://col.smns-bw.org/SMNS-B-ecuadorianliverwortscoll/About.html",
+    "provider_id": 7,
+    "xml_archives": [
+      {
+        "archive_id": 66,
+        "xml_archive": "https://biocase.smns-bw.org/downloads/ecuadorianliverwortscoll/Collection%20tropical%20liverworts%20serving%20as%20vectors%20for%20symbiotic%20fungi%20at%20the%20Staatliches%20Museum%20fur%20Naturkunde%20Stuttgart.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 11,
+        "title": "GBIF",
+        "url": "https://www.gbif.org/dataset/0668c2cd-87a2-44e7-b6d5-18023fc6a83e",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "Data Center SMNS",
+    "provider_shortname": "SMNS",
+    "provider_name": "State Museum of Natural History, Stuttgart",
+    "provider_url": "https://www.naturkundemuseum-bw.de/",
+    "biocase_url": "https://biocase.smns-bw.org"
+  },
+  {
+    "dataset_id": 44,
+    "datasource": "goldenwaspscoll",
+    "dataset": "The Golden wasps collection (Chrysididae) at the Staatliches Museum für Naturkunde Stuttgart",
+    "custom_landingpage": "https://col.smns-bw.org/SMNS-E-goldenwaspscoll/About.html",
+    "provider_id": 7,
+    "xml_archives": [
+      {
+        "archive_id": 67,
+        "xml_archive": "https://biocase.smns-bw.org/downloads/goldenwaspscoll/The%20Golden%20wasps%20collection%20%28Chrysididae%29%20at%20the%20Staatliches%20Museum%20fur%20Naturkunde%20Stuttgart.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 12,
+        "title": "GBIF",
+        "url": "https://www.gbif.org/dataset/f2c88ec8-50fc-472f-8b90-ae548d04b09e",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "Data Center SMNS",
+    "provider_shortname": "SMNS",
+    "provider_name": "State Museum of Natural History, Stuttgart",
+    "provider_url": "https://www.naturkundemuseum-bw.de/",
+    "biocase_url": "https://biocase.smns-bw.org"
+  },
+  {
+    "dataset_id": 45,
+    "datasource": "TUBvplantscoll",
+    "dataset": "The Vascular Plant Collection at the Herbarium Tubingense",
+    "custom_landingpage": "http://www.diversityworkbench.de/DatabaseClients/TUBvplantscoll/About.html",
+    "provider_id": 8,
+    "xml_archives": [
+      {
+        "archive_id": 68,
+        "xml_archive": "http://biocase.snsb.info/wrapper/downloads/TUBvplantscoll/The%20Vascular%20Plant%20Collection%20at%20the%20Herbarium%20Tubingense.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 13,
+        "title": "GBIF",
+        "url": "https://www.gbif.org/dataset/ab1de8e9-8a18-4ffe-b2c6-e13ffbec3e7e",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "Data Center SNSB",
+    "provider_shortname": "SNSB",
+    "provider_name": "Staatliche Naturwissenschaftliche Sammlungen Bayerns – SNSB IT Center, München",
+    "provider_url": "https://www.snsb.info/",
+    "biocase_url": "http://biocase.snsb.info/wrapper"
+  },
+  {
+    "dataset_id": 46,
+    "datasource": "GLMcoll",
+    "dataset": "Mycology",
+    "custom_landingpage": "http://www.gbif-mycology.de/DatabaseClients/GLMcoll/About.cfm",
+    "provider_id": 8,
+    "xml_archives": [
+      {
+        "archive_id": 69,
+        "xml_archive": "http://biocase.snsb.info/wrapper/downloads/GLMcoll/The%20Fungal%20Collection%20at%20the%20Senckenberg%20Museum%20fur%20Naturkunde%20Gorlitz.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center SNSB",
+    "provider_shortname": "SNSB",
+    "provider_name": "Staatliche Naturwissenschaftliche Sammlungen Bayerns – SNSB IT Center, München",
+    "provider_url": "https://www.snsb.info/",
+    "biocase_url": "http://biocase.snsb.info/wrapper"
+  },
+  {
+    "dataset_id": 47,
+    "datasource": "BFLportal01coll",
+    "dataset": "Occurrence Data of Vascular Plants collected or compiled for the Flora of Bavaria",
+    "custom_landingpage": "http://wiki.bayernflora.de/web/Flora_of_Bavaria_%E2%94%80_occurrence_data_online",
+    "provider_id": 8,
+    "xml_archives": [
+      {
+        "archive_id": 70,
+        "xml_archive": "http://biocase.snsb.info/wrapper/downloads/BFLportal01coll/Occurrence%20Data%20of%20Vascular%20Plants%20collected%20or%20compiled%20for%20the%20Flora%20of%20Bavaria.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center SNSB",
+    "provider_shortname": "SNSB",
+    "provider_name": "Staatliche Naturwissenschaftliche Sammlungen Bayerns – SNSB IT Center, München",
+    "provider_url": "https://www.snsb.info/",
+    "biocase_url": "http://biocase.snsb.info/wrapper"
+  },
+  {
+    "dataset_id": 48,
+    "datasource": "BFLportal04coll",
+    "dataset": "Floristic records from survey studies of the Bayerisches Landesamt für Umwelt",
+    "custom_landingpage": "http://wiki.bayernflora.de/web/Floristic_records_from_survey_studies_of_the_Bayerisches_Landesamt_f%C3%BCr_Umwelt",
+    "provider_id": 8,
+    "xml_archives": [
+      {
+        "archive_id": 71,
+        "xml_archive": "http://biocase.snsb.info/wrapper/downloads/BFLportal04coll/Floristic%20records%20from%20survey%20studies%20of%20the%20Bayerisches%20Landesamt%20fur%20Umwelt.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 14,
+        "title": "GBIF",
+        "url": "https://www.gbif.org/dataset/8ea4250e-0ff0-44f8-812e-bffc3b9ba2a4",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "Data Center SNSB",
+    "provider_shortname": "SNSB",
+    "provider_name": "Staatliche Naturwissenschaftliche Sammlungen Bayerns – SNSB IT Center, München",
+    "provider_url": "https://www.snsb.info/",
+    "biocase_url": "http://biocase.snsb.info/wrapper"
+  },
+  {
+    "dataset_id": 49,
+    "datasource": "BIOTAlichencoll",
+    "dataset": "BIOTA Southern Africa - The Collection of Lichens at the Botanische Staatssammlung München",
+    "custom_landingpage": "http://www.botanischestaatssammlung.de/DatabaseClients/BIOTAlichencoll/About.html",
+    "provider_id": 8,
+    "xml_archives": [
+      {
+        "archive_id": 72,
+        "xml_archive": "http://biocase.snsb.info/wrapper/downloads/BIOTAlichencoll/BIOTA%20Southern%20Africa%20-%20The%20Collection%20of%20Lichens%20at%20the%20Botanische%20Staatssammlung%20Munchen.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 15,
+        "title": "GBIF",
+        "url": "http://www.gbif.org/dataset/7ba47d0c-f762-11e1-a439-00145eb45e9a",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "Data Center SNSB",
+    "provider_shortname": "SNSB",
+    "provider_name": "Staatliche Naturwissenschaftliche Sammlungen Bayerns – SNSB IT Center, München",
+    "provider_url": "https://www.snsb.info/",
+    "biocase_url": "http://biocase.snsb.info/wrapper"
+  },
+  {
+    "dataset_id": 50,
+    "datasource": "BSMeryscoll",
+    "dataset": "The Erysiphales Collection at the Botanische Staatssammlung München",
+    "custom_landingpage": "http://www.botanischestaatssammlung.de/DatabaseClients/BSMeryscoll/About.cfm",
+    "provider_id": 8,
+    "xml_archives": [
+      {
+        "archive_id": 73,
+        "xml_archive": "http://biocase.snsb.info/wrapper/downloads/BSMeryscoll/The%20Erysiphales%20Collection%20at%20the%20Botanische%20Staatssammlung%20Munchen.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 16,
+        "title": "GBIF",
+        "url": "http://www.gbif.org/dataset/858d51e0-f762-11e1-a439-00145eb45e9a",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "Data Center SNSB",
+    "provider_shortname": "SNSB",
+    "provider_name": "Staatliche Naturwissenschaftliche Sammlungen Bayerns – SNSB IT Center, München",
+    "provider_url": "https://www.snsb.info/",
+    "biocase_url": "http://biocase.snsb.info/wrapper"
+  },
+  {
+    "dataset_id": 51,
+    "datasource": "BSMfungicoll",
+    "dataset": "The Fungal Collection at the Botanische Staatssammlung München",
+    "custom_landingpage": "http://www.botanischestaatssammlung.de/DatabaseClients/BSMfungicoll/About.html",
+    "provider_id": 8,
+    "xml_archives": [
+      {
+        "archive_id": 74,
+        "xml_archive": "http://biocase.snsb.info/wrapper/downloads/BSMfungicoll/The%20Fungal%20Collection%20at%20the%20Botanische%20Staatssammlung%20Munchen.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center SNSB",
+    "provider_shortname": "SNSB",
+    "provider_name": "Staatliche Naturwissenschaftliche Sammlungen Bayerns – SNSB IT Center, München",
+    "provider_url": "https://www.snsb.info/",
+    "biocase_url": "http://biocase.snsb.info/wrapper"
+  },
+  {
+    "dataset_id": 52,
+    "datasource": "BSMlichenscoll",
+    "dataset": "The Lichens Collection at the Botanische Staatssammlung München",
+    "custom_landingpage": "http://www.botanischestaatssammlung.de/DatabaseClients/BSMlichenscoll/About.html",
+    "provider_id": 8,
+    "xml_archives": [
+      {
+        "archive_id": 75,
+        "xml_archive": "http://biocase.snsb.info/wrapper/downloads/BSMlichenscoll/The%20Lichens%20Collection%20at%20the%20Botanische%20Staatssammlung%20Munchen.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 17,
+        "title": "GBIF",
+        "url": "https://www.gbif.org/dataset/7ba21c92-f762-11e1-a439-00145eb45e9a",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "Data Center SNSB",
+    "provider_shortname": "SNSB",
+    "provider_name": "Staatliche Naturwissenschaftliche Sammlungen Bayerns – SNSB IT Center, München",
+    "provider_url": "https://www.snsb.info/",
+    "biocase_url": "http://biocase.snsb.info/wrapper"
+  },
+  {
+    "dataset_id": 53,
+    "datasource": "BSMmyxmaincoll",
+    "dataset": "The Myxomycetes Collections at the Botanische Staatssammlung München - Main Collection",
+    "custom_landingpage": "http://www.botanischestaatssammlung.de/DatabaseClients/BSMmyxcoll/About.cfm",
+    "provider_id": 8,
+    "xml_archives": [
+      {
+        "archive_id": 76,
+        "xml_archive": "http://biocase.snsb.info/wrapper/downloads/BSMmyxmaincoll/The%20Myxomycetes%20Collections%20at%20the%20Botanische%20Staatssammlung%20Munchen%20-%20Main%20Collection.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center SNSB",
+    "provider_shortname": "SNSB",
+    "provider_name": "Staatliche Naturwissenschaftliche Sammlungen Bayerns – SNSB IT Center, München",
+    "provider_url": "https://www.snsb.info/",
+    "biocase_url": "http://biocase.snsb.info/wrapper"
+  },
+  {
+    "dataset_id": 54,
+    "datasource": "BSMneubert",
+    "dataset": "The Myxomycetes Collections at the Botanische Staatssammlung München - Collection of Hermann Neubert",
+    "custom_landingpage": "http://www.botanischestaatssammlung.de/DatabaseClients/BSMmyxcoll/About.cfm",
+    "provider_id": 8,
+    "xml_archives": [
+      {
+        "archive_id": 77,
+        "xml_archive": "http://biocase.snsb.info/wrapper/downloads/BSMneubert/The%20Myxomycetes%20Collections%20at%20the%20Botanische%20Staatssammlung%20Munchen%20-%20Collection%20of%20Hermann%20Neubert.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 18,
+        "title": "GBIF",
+        "url": "https://www.gbif.org/dataset/858fa2ec-f762-11e1-a439-00145eb45e9a",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "Data Center SNSB",
+    "provider_shortname": "SNSB",
+    "provider_name": "Staatliche Naturwissenschaftliche Sammlungen Bayerns – SNSB IT Center, München",
+    "provider_url": "https://www.snsb.info/",
+    "biocase_url": "http://biocase.snsb.info/wrapper"
+  },
+  {
+    "dataset_id": 55,
+    "datasource": "BSMvplantscoll",
+    "dataset": "The Vascular Plant Collection at the Botanische Staatssammlung München",
+    "custom_landingpage": "http://www.botanischestaatssammlung.de/DatabaseClients/BSMvplantscoll/About.html",
+    "provider_id": 8,
+    "xml_archives": [
+      {
+        "archive_id": 78,
+        "xml_archive": "http://biocase.snsb.info/wrapper/downloads/BSMvplantscoll/The%20Vascular%20Plant%20Collection%20at%20the%20Botanische%20Staatssammlung%20Munchen.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 19,
+        "title": "GBIF",
+        "url": "https://www.gbif.org/dataset/7b9a08ea-f762-11e1-a439-00145eb45e9a",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "Data Center SNSB",
+    "provider_shortname": "SNSB",
+    "provider_name": "Staatliche Naturwissenschaftliche Sammlungen Bayerns – SNSB IT Center, München",
+    "provider_url": "https://www.snsb.info/",
+    "biocase_url": "http://biocase.snsb.info/wrapper"
+  },
+  {
+    "dataset_id": 56,
+    "datasource": "BSPGpiscescoll",
+    "dataset": "The Fossil Fish Collection at the Bayerische Staatssammlung für Paläontologie und Geologie",
+    "custom_landingpage": "http://www.snsb.info/DatabaseClients/BSPGpiscescoll/About.html",
+    "provider_id": 8,
+    "xml_archives": [
+      {
+        "archive_id": 79,
+        "xml_archive": "http://biocase.snsb.info/wrapper/downloads/BSPGpiscescoll/The%20Fossil%20Fish%20Collection%20at%20the%20Bayerische%20Staatssammlung%20fur%20Palaontologie%20und%20Geologie.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center SNSB",
+    "provider_shortname": "SNSB",
+    "provider_name": "Staatliche Naturwissenschaftliche Sammlungen Bayerns – SNSB IT Center, München",
+    "provider_url": "https://www.snsb.info/",
+    "biocase_url": "http://biocase.snsb.info/wrapper"
+  },
+  {
+    "dataset_id": 57,
+    "datasource": "GFBio201900216SNSB",
+    "dataset": "A detailed morphological dataset outlining the diversity of the Genus Mimophis (Serpentes: Psammophiinae)",
+    "custom_landingpage": null,
+    "provider_id": 8,
+    "xml_archives": [
+      {
+        "archive_id": 80,
+        "xml_archive": "http://biocase.snsb.info/wrapper/downloads/GFBio201900216SNSB/A%20detailed%20morphological%20dataset%20outlining%20the%20diversity%20of%20the%20genus%20Mimophis%20%28Serpentes_%20Psammophiinae%29.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 20,
+        "title": "GBIF",
+        "url": "https://www.gbif.org/dataset/c7979ea4-1a59-42e3-bd57-3abc9c263e8c",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "Data Center SNSB",
+    "provider_shortname": "SNSB",
+    "provider_name": "Staatliche Naturwissenschaftliche Sammlungen Bayerns – SNSB IT Center, München",
+    "provider_url": "https://www.snsb.info/",
+    "biocase_url": "http://biocase.snsb.info/wrapper"
+  },
+  {
+    "dataset_id": 58,
+    "datasource": "GFBio201900230SNSB",
+    "dataset": "Anatomical studies of leaflets of species from the plant subfamily Tribuloideae (Zygophyllaceae)",
+    "custom_landingpage": null,
+    "provider_id": 8,
+    "xml_archives": [
+      {
+        "archive_id": 81,
+        "xml_archive": "http://biocase.snsb.info/wrapper/downloads/GFBio201900230SNSB/Anatomical%20studies%20of%20leaflets%20of%20species%20from%20the%20plant%20subfamily%20Tribuloideae%20%28Zygophyllaceae%29.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 21,
+        "title": "GBIF",
+        "url": "https://www.gbif.org/dataset/aa5184cc-8410-406b-afe1-ad801975557e",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "Data Center SNSB",
+    "provider_shortname": "SNSB",
+    "provider_name": "Staatliche Naturwissenschaftliche Sammlungen Bayerns – SNSB IT Center, München",
+    "provider_url": "https://www.snsb.info/",
+    "biocase_url": "http://biocase.snsb.info/wrapper"
+  },
+  {
+    "dataset_id": 59,
+    "datasource": "GFBio201900288SNSB",
+    "dataset": "A taxonomic revision of the African genus Desplatsia Bocq. (Malvaceae - Grewioideae)",
+    "custom_landingpage": null,
+    "provider_id": 8,
+    "xml_archives": [
+      {
+        "archive_id": 82,
+        "xml_archive": "http://biocase.snsb.info/wrapper/downloads/GFBio201900288SNSB/A%20taxonomic%20revision%20of%20the%20African%20genus%20Desplatsia%20Bocq.%20%28Malvaceae%20-%20Grewioideae%29.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 22,
+        "title": "GBIF",
+        "url": "https://www.gbif.org/dataset/b3e12b33-b3ff-4b6d-91f7-01603762b8f8",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "Data Center SNSB",
+    "provider_shortname": "SNSB",
+    "provider_name": "Staatliche Naturwissenschaftliche Sammlungen Bayerns – SNSB IT Center, München",
+    "provider_url": "https://www.snsb.info/",
+    "biocase_url": "http://biocase.snsb.info/wrapper"
+  },
+  {
+    "dataset_id": 60,
+    "datasource": "GOETvplantscoll",
+    "dataset": "The Vascular Plants Collection of the University of Goettingen",
+    "custom_landingpage": "http://www.snsb.info/DatabaseClients/GOETvplantscoll/About.html",
+    "provider_id": 8,
+    "xml_archives": [
+      {
+        "archive_id": 83,
+        "xml_archive": "http://biocase.snsb.info/wrapper/downloads/GOETvplantscoll/The%20Vascular%20Plants%20Collection%20of%20the%20University%20of%20Goettingen.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center SNSB",
+    "provider_shortname": "SNSB",
+    "provider_name": "Staatliche Naturwissenschaftliche Sammlungen Bayerns – SNSB IT Center, München",
+    "provider_url": "https://www.snsb.info/",
+    "biocase_url": "http://biocase.snsb.info/wrapper"
+  },
+  {
+    "dataset_id": 61,
+    "datasource": "IBFfungicoll",
+    "dataset": "IBF Monitoring of Fungi",
+    "custom_landingpage": "http://www.diversitymobile.net/wiki/IBFfungicoll_About",
+    "provider_id": 8,
+    "xml_archives": [
+      {
+        "archive_id": 84,
+        "xml_archive": "http://biocase.snsb.info/wrapper/downloads/IBFfungicoll/IBF%20Monitoring%20of%20Fungi.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center SNSB",
+    "provider_shortname": "SNSB",
+    "provider_name": "Staatliche Naturwissenschaftliche Sammlungen Bayerns – SNSB IT Center, München",
+    "provider_url": "https://www.snsb.info/",
+    "biocase_url": "http://biocase.snsb.info/wrapper"
+  },
+  {
+    "dataset_id": 62,
+    "datasource": "IBFlichenscoll",
+    "dataset": "IBF Monitoring of Lichens",
+    "custom_landingpage": "http://www.diversitymobile.net/wiki/IBFlichenscoll_About",
+    "provider_id": 8,
+    "xml_archives": [
+      {
+        "archive_id": 85,
+        "xml_archive": "http://biocase.snsb.info/wrapper/downloads/IBFlichenscoll/IBF%20Monitoring%20of%20Lichens.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 23,
+        "title": "GBIF",
+        "url": "https://www.gbif.org/dataset/7b9d7214-f762-11e1-a439-00145eb45e9a",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "Data Center SNSB",
+    "provider_shortname": "SNSB",
+    "provider_name": "Staatliche Naturwissenschaftliche Sammlungen Bayerns – SNSB IT Center, München",
+    "provider_url": "https://www.snsb.info/",
+    "biocase_url": "http://biocase.snsb.info/wrapper"
+  },
+  {
+    "dataset_id": 63,
+    "datasource": "IBForthopteracoll",
+    "dataset": "IBF Monitoring of Orthoptera",
+    "custom_landingpage": "http://www.diversitymobile.net/wiki/IBForthopteracoll_About",
+    "provider_id": 8,
+    "xml_archives": [
+      {
+        "archive_id": 86,
+        "xml_archive": "http://biocase.snsb.info/wrapper/downloads/IBForthopteracoll/IBF%20Monitoring%20of%20Orthoptera.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 24,
+        "title": "GBIF",
+        "url": "http://www.gbif.org/dataset/6454fdd4-b62f-11e2-afcb-00145eb45e9a",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "Data Center SNSB",
+    "provider_shortname": "SNSB",
+    "provider_name": "Staatliche Naturwissenschaftliche Sammlungen Bayerns – SNSB IT Center, München",
+    "provider_url": "https://www.snsb.info/",
+    "biocase_url": "http://biocase.snsb.info/wrapper"
+  },
+  {
+    "dataset_id": 64,
+    "datasource": "IBFplantscoll",
+    "dataset": "IBF Monitoring of Vascular Plants",
+    "custom_landingpage": "http://www.diversitymobile.net/wiki/IBFplantscoll_About",
+    "provider_id": 8,
+    "xml_archives": [
+      {
+        "archive_id": 87,
+        "xml_archive": "http://biocase.snsb.info/wrapper/downloads/IBFplantscoll/IBF%20Monitoring%20of%20Vascular%20Plants.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center SNSB",
+    "provider_shortname": "SNSB",
+    "provider_name": "Staatliche Naturwissenschaftliche Sammlungen Bayerns – SNSB IT Center, München",
+    "provider_url": "https://www.snsb.info/",
+    "biocase_url": "http://biocase.snsb.info/wrapper"
+  },
+  {
+    "dataset_id": 65,
+    "datasource": "JMEpiscescoll",
+    "dataset": "The Fossil Fish Collection at the Jura-Museum Eichstätt",
+    "custom_landingpage": "http://www.snsb.info/DatabaseClients/JMEpiscescoll/About.html",
+    "provider_id": 8,
+    "xml_archives": [
+      {
+        "archive_id": 88,
+        "xml_archive": "http://biocase.snsb.info/wrapper/downloads/JMEpiscescoll/The%20Fossil%20Fish%20Collection%20at%20the%20Jura-Museum%20Eichstatt.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center SNSB",
+    "provider_shortname": "SNSB",
+    "provider_name": "Staatliche Naturwissenschaftliche Sammlungen Bayerns – SNSB IT Center, München",
+    "provider_url": "https://www.snsb.info/",
+    "biocase_url": "http://biocase.snsb.info/wrapper"
+  },
+  {
+    "dataset_id": 66,
+    "datasource": "MBcoll",
+    "dataset": "The Fungal, Lichen and Plant Collections at the Herbarium Marburgense",
+    "custom_landingpage": "http://www.gbif-mycology.de/DatabaseClients/MBcoll/About.html",
+    "provider_id": 8,
+    "xml_archives": [
+      {
+        "archive_id": 89,
+        "xml_archive": "http://biocase.snsb.info/wrapper/downloads/MBcoll/The%20Fungal%2C%20Lichen%20and%20Plant%20Collections%20at%20the%20Herbarium%20Marburgense.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 25,
+        "title": "GBIF",
+        "url": "https://www.gbif.org/dataset/c711c16e-8db5-4f66-aa06-03d9e472fbbc",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "Data Center SNSB",
+    "provider_shortname": "SNSB",
+    "provider_name": "Staatliche Naturwissenschaftliche Sammlungen Bayerns – SNSB IT Center, München",
+    "provider_url": "https://www.snsb.info/",
+    "biocase_url": "http://biocase.snsb.info/wrapper"
+  },
+  {
+    "dataset_id": 67,
+    "datasource": "MSBvplantscoll",
+    "dataset": "The Vascular Plant Collection at the Herbarium MSB, Universität München",
+    "custom_landingpage": "http://www.snsb.info/DatabaseClients/MSBvplantscoll/About.html",
+    "provider_id": 8,
+    "xml_archives": [
+      {
+        "archive_id": 90,
+        "xml_archive": "http://biocase.snsb.info/wrapper/downloads/MSBvplantscoll/The%20Vascular%20Plant%20Collection%20at%20the%20Herbarium%20MSB%2C%20Universitat%20Munchen.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 26,
+        "title": "GBIF",
+        "url": "https://www.gbif.org/dataset/7b9c52da-f762-11e1-a439-00145eb45e9a",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "Data Center SNSB",
+    "provider_shortname": "SNSB",
+    "provider_name": "Staatliche Naturwissenschaftliche Sammlungen Bayerns – SNSB IT Center, München",
+    "provider_url": "https://www.snsb.info/",
+    "biocase_url": "http://biocase.snsb.info/wrapper"
+  },
+  {
+    "dataset_id": 68,
+    "datasource": "SAPMmammaliacoll",
+    "dataset": "The Mammalia Collection at the Staatssammlung für Anthropologie und Paläoanatomie München",
+    "custom_landingpage": "http://www.snsb.info/DatabaseClients/SAPMmammaliacoll/about.jsp",
+    "provider_id": 8,
+    "xml_archives": [
+      {
+        "archive_id": 91,
+        "xml_archive": "http://biocase.snsb.info/wrapper/downloads/SAPMmammaliacoll/The%20Mammalia%20Collection%20at%20the%20Staatssammlung%20fur%20Anthropologie%20und%20Palaoanatomie%20Munchen.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 27,
+        "title": "GBIF",
+        "url": "https://www.gbif.org/dataset/7b9e97de-f762-11e1-a439-00145eb45e9a",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "Data Center SNSB",
+    "provider_shortname": "SNSB",
+    "provider_name": "Staatliche Naturwissenschaftliche Sammlungen Bayerns – SNSB IT Center, München",
+    "provider_url": "https://www.snsb.info/",
+    "biocase_url": "http://biocase.snsb.info/wrapper"
+  },
+  {
+    "dataset_id": 69,
+    "datasource": "SAPMpiscescoll",
+    "dataset": "The Pisces Collection at the Staatssammlung für Anthropologie und Paläoanatomie München",
+    "custom_landingpage": "http://www.snsb.info/DatabaseClients/SAPMpiscescoll/About.html",
+    "provider_id": 8,
+    "xml_archives": [
+      {
+        "archive_id": 92,
+        "xml_archive": "http://biocase.snsb.info/wrapper/downloads/SAPMpiscescoll/The%20Pisces%20Collection%20at%20the%20Staatssammlung%20fur%20Anthropologie%20und%20Palaoanatomie%20Munchen.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center SNSB",
+    "provider_shortname": "SNSB",
+    "provider_name": "Staatliche Naturwissenschaftliche Sammlungen Bayerns – SNSB IT Center, München",
+    "provider_url": "https://www.snsb.info/",
+    "biocase_url": "http://biocase.snsb.info/wrapper"
+  },
+  {
+    "dataset_id": 70,
+    "datasource": "SMNKspidercoll",
+    "dataset": "The Spider Collection at the Staatliches Museum für Naturkunde Karlsruhe",
+    "custom_landingpage": "http://www.diversityworkbench.de/DatabaseClients/SMNKspidercoll/About.html",
+    "provider_id": 8,
+    "xml_archives": [
+      {
+        "archive_id": 93,
+        "xml_archive": "http://biocase.snsb.info/wrapper/downloads/SMNKspidercoll/The%20Spider%20Collection%20at%20the%20Staatliches%20Museum%20f%c3%bcr%20Naturkunde%20Karlsruhe.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 28,
+        "title": "GBIF",
+        "url": "https://www.gbif.org/dataset/8277b324-f762-11e1-a439-00145eb45e9a",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "Data Center SNSB",
+    "provider_shortname": "SNSB",
+    "provider_name": "Staatliche Naturwissenschaftliche Sammlungen Bayerns – SNSB IT Center, München",
+    "provider_url": "https://www.snsb.info/",
+    "biocase_url": "http://biocase.snsb.info/wrapper"
+  },
+  {
+    "dataset_id": 71,
+    "datasource": "SMNKspiderstudcoll",
+    "dataset": "The Environmental Sample Collection of Spiders at the Staatliches Museum für Naturkunde Karlsruhe",
+    "custom_landingpage": "http://www.diversityworkbench.de/DatabaseClients/SMNKspiderstudcoll/About.html",
+    "provider_id": 8,
+    "xml_archives": [
+      {
+        "archive_id": 94,
+        "xml_archive": "http://biocase.snsb.info/wrapper/downloads/SMNKspiderstudcoll/The%20Environmental%20Sample%20Collection%20of%20Spiders%20at%20the%20Staatliches%20Museum%20fur%20Naturkunde%20Karlsruhe.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 29,
+        "title": "GBIF",
+        "url": "https://www.gbif.org/dataset/70906b9c-9594-42e4-84fb-8cf0ee66d22f",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "Data Center SNSB",
+    "provider_shortname": "SNSB",
+    "provider_name": "Staatliche Naturwissenschaftliche Sammlungen Bayerns – SNSB IT Center, München",
+    "provider_url": "https://www.snsb.info/",
+    "biocase_url": "http://biocase.snsb.info/wrapper"
+  },
+  {
+    "dataset_id": 72,
+    "datasource": "SMNS-E-araneaecoll",
+    "dataset": "The Spider Collection at the Staatliches Museum für Naturkunde Stuttgart",
+    "custom_landingpage": "http://www.diversityworkbench.de/DatabaseClients/SMNS-E-araneaecoll/About.html",
+    "provider_id": 8,
+    "xml_archives": [
+      {
+        "archive_id": 95,
+        "xml_archive": "http://biocase.snsb.info/wrapper/downloads/SMNS-E-araneaecoll/The%20Spider%20Collection%20at%20the%20Staatliches%20Museum%20fur%20Naturkunde%20Stuttgart.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center SNSB",
+    "provider_shortname": "SNSB",
+    "provider_name": "Staatliche Naturwissenschaftliche Sammlungen Bayerns – SNSB IT Center, München",
+    "provider_url": "https://www.snsb.info/",
+    "biocase_url": "http://biocase.snsb.info/wrapper"
+  },
+  {
+    "dataset_id": 73,
+    "datasource": "SMNS-Z-herpcoll",
+    "dataset": "The Herpetology Collection at the Staatliches Museum für Naturkunde Stuttgart",
+    "custom_landingpage": "http://www.diversityworkbench.de/DatabaseClients/SMNS-Z-herpcoll/About.html",
+    "provider_id": 8,
+    "xml_archives": [
+      {
+        "archive_id": 96,
+        "xml_archive": "http://biocase.snsb.info/wrapper/downloads/SMNS-Z-herpcoll/The%20Herpetology%20Collection%20at%20the%20Staatliches%20Museum%20fur%20Naturkunde%20Stuttgart.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center SNSB",
+    "provider_shortname": "SNSB",
+    "provider_name": "Staatliche Naturwissenschaftliche Sammlungen Bayerns – SNSB IT Center, München",
+    "provider_url": "https://www.snsb.info/",
+    "biocase_url": "http://biocase.snsb.info/wrapper"
+  },
+  {
+    "dataset_id": 74,
+    "datasource": "ZSMarthrovariacoll",
+    "dataset": "The Arthropoda Varia Collection at the Zoologische Staatssammlung München",
+    "custom_landingpage": "http://www.snsb.info/DatabaseClients/ZSMarthrovariacoll/About.html",
+    "provider_id": 8,
+    "xml_archives": [
+      {
+        "archive_id": 97,
+        "xml_archive": "http://biocase.snsb.info/wrapper/downloads/ZSMarthrovariacoll/The%20Arthropoda%20Varia%20Collection%20at%20the%20Zoologische%20Staatssammlung%20Munchen.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 30,
+        "title": "GBIF",
+        "url": "http://www.gbif.org/dataset/afaa80a2-6167-47e1-baae-5450206d07dd",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "Data Center SNSB",
+    "provider_shortname": "SNSB",
+    "provider_name": "Staatliche Naturwissenschaftliche Sammlungen Bayerns – SNSB IT Center, München",
+    "provider_url": "https://www.snsb.info/",
+    "biocase_url": "http://biocase.snsb.info/wrapper"
+  },
+  {
+    "dataset_id": 75,
+    "datasource": "ZSMbfbcoll",
+    "dataset": "The Barcoding Fauna Bavarica Project at the Zoologische Staatssammlung München",
+    "custom_landingpage": "http://www.barcoding-zsm.de/bfb",
+    "provider_id": 8,
+    "xml_archives": [
+      {
+        "archive_id": 98,
+        "xml_archive": "http://biocase.snsb.info/wrapper/downloads/ZSMbfbcoll/The%20Barcoding%20Fauna%20Bavarica%20Project%20at%20the%20Zoologische%20Staatssammlung%20Munchen.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center SNSB",
+    "provider_shortname": "SNSB",
+    "provider_name": "Staatliche Naturwissenschaftliche Sammlungen Bayerns – SNSB IT Center, München",
+    "provider_url": "https://www.snsb.info/",
+    "biocase_url": "http://biocase.snsb.info/wrapper"
+  },
+  {
+    "dataset_id": 76,
+    "datasource": "ZSMpiscescoll",
+    "dataset": "The Pisces Collection at the Zoologische Staatssammlung München",
+    "custom_landingpage": "http://www.snsb.info/DatabaseClients/ZSMpiscescoll/About.html",
+    "provider_id": 8,
+    "xml_archives": [
+      {
+        "archive_id": 99,
+        "xml_archive": "http://biocase.snsb.info/wrapper/downloads/ZSMpiscescoll/The%20Pisces%20Collection%20at%20the%20Zoologische%20Staatssammlung%20Munchen.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center SNSB",
+    "provider_shortname": "SNSB",
+    "provider_name": "Staatliche Naturwissenschaftliche Sammlungen Bayerns – SNSB IT Center, München",
+    "provider_url": "https://www.snsb.info/",
+    "biocase_url": "http://biocase.snsb.info/wrapper"
+  },
+  {
+    "dataset_id": 77,
+    "datasource": "GFBio-v2",
+    "dataset": "Collection specimens used for phylogenetic analysis in Dipterans (Animalia)",
+    "custom_landingpage": "http://gepris.dfg.de/gepris/projekt/164998788",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 103,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/GFBio-v2/Collection%20specimens%20used%20for%20phylogenetic%20analysis%20in%20Dipterans%20%28Animalia%29.ABCD_GGBN.zip",
+        "latest": true
+      },
+      {
+        "archive_id": 100,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/GFBio-v2/Collection%20specimens%20used%20for%20phylogenetic%20analysis%20in%20Dipterans%20%28Animalia%29.ABCD_2.06.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 101,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/GFBio-v2/Collection%20specimens%20used%20for%20phylogenetic%20analysis%20in%20Dipterans%20%28Animalia%29.ABCD_GGBN.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 102,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/GFBio-v2/Collection%20specimens%20used%20for%20phylogenetic%20analysis%20in%20Dipterans%20%28Animalia%29.ABCD_GGBN.zip",
+        "latest": false
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 31,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363//UJDIP.PHYLCOLL.ALL.V1",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 78,
+    "datasource": "GFBio-v2",
+    "dataset": "Southeast Asian pholcid spiders: diversity and phylogenetic relationships and multiple convergent shifts among microhabitats",
+    "custom_landingpage": "http://gepris.dfg.de/gepris/projekt/239564099",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 105,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/GFBio-v2/Southeast%20Asian%20pholcid%20spiders_%20diversity%20and%20phylogenetic%20relationships%20and%20multiple%20convergent%20shifts%20among%20microhabitats.ABCD_GGBN.zip",
+        "latest": true
+      },
+      {
+        "archive_id": 104,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/GFBio-v2/Southeast%20Asian%20pholcid%20spiders_%20diversity%20and%20phylogenetic%20relationships%20and%20multiple%20convergent%20shifts%20among%20microhabitats.ABCD_2.06.zip",
+        "latest": false
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 32,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/ZFMK-Coll.Araneae-prj-1.1",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 79,
+    "datasource": "GFBio-v2",
+    "dataset": "Media and additional measurements belonging to the description of Cophyla fortuna (Microhylidae, Cophylinae)",
+    "custom_landingpage": "https://media.zfmk.de/detail/120609",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 108,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/GFBio-v2/Media%20and%20additional%20measurements%20belonging%20to%20the%20description%20of%20Cophyla%20fortuna%20%28Microhylidae%2C%20Cophylinae%29.ABCD_GGBN.zip",
+        "latest": true
+      },
+      {
+        "archive_id": 106,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/GFBio-v2/Media%20and%20additional%20measurements%20belonging%20to%20the%20description%20of%20Cophyla%20fortuna%20%28Microhylidae%2C%20Cophylinae%29.ABCD_2.06.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 107,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/GFBio-v2/Media%20and%20additional%20measurements%20belonging%20to%20the%20description%20of%20Cophyla%20fortuna%20%28Microhylidae%2C%20Cophylinae%29.ABCD_2.06.zip",
+        "latest": false
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 33,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/media-cophyla-fortuna-1.0",
+        "is_latest": true
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 80,
+    "datasource": "GFBio-v2",
+    "dataset": "Media belonging to description of Chimaeradasys oligotubulatus and Chimaeradasys polytubulatus",
+    "custom_landingpage": "https://media.zfmk.de/detail/161903",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 110,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/GFBio-v2/Media%20belonging%20to%20description%20of%20Chimaeradasys%20oligotubulatus%20and%20Chimaeradasys%20polytubulatus.ABCD_GGBN.zip",
+        "latest": true
+      },
+      {
+        "archive_id": 109,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/GFBio-v2/Media%20belonging%20to%20description%20of%20Chimaeradasys%20oligotubulatus%20and%20Chimaeradasys%20polytubulatus.ABCD_GGBN.zip",
+        "latest": false
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 34,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/media-chimaeradasys-1.0",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 81,
+    "datasource": "GFBio-v2",
+    "dataset": "Marine Heterobranchia (Gastropoda, Mollusca) in Bunaken National Park, North Sulawesi, Indonesia—A Follow-Up Diversity Study",
+    "custom_landingpage": "https://media.zfmk.de/detail/177228",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 112,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/GFBio-v2/Marine%20Heterobranchia%20%28Gastropoda%2C%20Mollusca%29%20in%20Bunaken%20National%20Park%2C%20North%20Sulawesi%2C%20Indonesia%E2%80%94A%20Follow-Up%20Diversity%20Study.ABCD_GGBN.zip",
+        "latest": true
+      },
+      {
+        "archive_id": 111,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/GFBio-v2/Marine%20Heterobranchia%20%28Gastropoda%2C%20Mollusca%29%20in%20Bunaken%20National%20Park%2C%20North%20Sulawesi%2C%20Indonesia%E2%80%94A%20Follow-Up%20Diversity%20Study.ABCD_GGBN.zip",
+        "latest": false
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 35,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/heterobranchia-bunaken-prj-2.2",
+        "is_latest": true
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 82,
+    "datasource": "GFBio-v2",
+    "dataset": "First Study on Marine Heterobranchia (Gastropoda, Mollusca) in Bangka Archipelago, North Sulawesi, Indonesia",
+    "custom_landingpage": "https://media.zfmk.de/detail/177225",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 114,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/GFBio-v2/First%20Study%20on%20Marine%20Heterobranchia%20%28Gastropoda%2C%20Mollusca%29%20in%20Bangka%20Archipelago%2C%20North%20Sulawesi%2C%20Indonesia.ABCD_GGBN.zip",
+        "latest": true
+      },
+      {
+        "archive_id": 113,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/GFBio-v2/First%20Study%20on%20Marine%20Heterobranchia%20%28Gastropoda%2C%20Mollusca%29%20in%20Bangka%20Archipelago%2C%20North%20Sulawesi%2C%20Indonesia.ABCD_GGBN.zip",
+        "latest": false
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 36,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/heterobranchia-bangka-prj-1.1",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 89,
+    "datasource": "ZFMK-Collections-v2",
+    "dataset": "ZFMK Araneae collection",
+    "custom_landingpage": "https://bonn.leibniz-lib.de/en/research/collections/basal-arthropods",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 132,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Araneae%20collection.ABCD_GGBN.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 133,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Araneae%20collection.ABCD_GGBN.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 134,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Araneae%20collection.ABCD_GGBN.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 135,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Araneae%20collection.ABCD_GGBN.zip",
+        "latest": true
+      },
+      {
+        "archive_id": 130,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Araneae%20collection.ABCD_2.06.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 131,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Araneae%20collection.ABCD_GGBN.zip",
+        "latest": false
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 167,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.araneae-2024-06",
+        "is_latest": false
+      },
+      {
+        "link_id": 43,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.araneae-2021-04",
+        "is_latest": false
+      },
+      {
+        "link_id": 42,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/ZFMK-COLL.ARANEAE-2018-03",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 90,
+    "datasource": "ZFMK-Collections-v2",
+    "dataset": "ZFMK Crustacea collection",
+    "custom_landingpage": "https://bonn.leibniz-lib.de/en/research/collections/basal-arthropods",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 136,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Crustacea%20collection.ABCD_GGBN.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 137,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Crustacea%20collection.ABCD_GGBN.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 138,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Crustacea%20collection.ABCD_GGBN.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 168,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.crustacea-2024-06",
+        "is_latest": true
+      },
+      {
+        "link_id": 44,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.crustacea-2018-11",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 83,
+    "datasource": "GFBio-v2",
+    "dataset": "First Survey of Heterobranch Sea Slugs (Mollusca, Gastropoda) from the Island Sangihe, North Sulawesi, Indonesia",
+    "custom_landingpage": "https://media.zfmk.de/detail/177226",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 118,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/GFBio-v2/First%20Survey%20of%20Heterobranch%20Sea%20Slugs%20%28Mollusca%2C%20Gastropoda%29%20from%20the%20Island%20Sangihe%2C%20North%20Sulawesi%2C%20Indonesia.ABCD_GGBN.zip",
+        "latest": true
+      },
+      {
+        "archive_id": 117,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/GFBio-v2/First%20Survey%20of%20Heterobranch%20Sea%20Slugs%20%28Mollusca%2C%20Gastropoda%29%20from%20the%20Island%20Sangihe%2C%20North%20Sulawesi%2C%20Indonesia.ABCD_GGBN.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 115,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/GFBio-v2/First%20Survey%20of%20Heterobranch%20Sea%20Slugs%20%28Mollusca%2C%20Gastropoda%29%20from%20the%20Island%20Sangihe%2C%20North%20Sulawesi%2C%20Indonesia.ABCD_GGBN.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 116,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/GFBio-v2/First%20Survey%20of%20Heterobranch%20Sea%20Slugs%20%28Mollusca%2C%20Gastropoda%29%20from%20the%20Island%20Sangihe%2C%20North%20Sulawesi%2C%20Indonesia.ABCD_GGBN.zip",
+        "latest": false
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 37,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/heterobranchia-sangihe-prj-1.2",
+        "is_latest": true
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 84,
+    "datasource": "GFBio-v2",
+    "dataset": "Second survey of heterobranch sea slugs (Mollusca, Gastropoda, Heterobranchia) from Bunaken National Park, North Sulawesi, Indonesia - how much do we know after 12 years",
+    "custom_landingpage": "https://media.zfmk.de/detail/177227",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 120,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/GFBio-v2/Second%20survey%20of%20heterobranch%20sea%20slugs%20%28Mollusca%2C%20Gastropoda%2C%20Heterobranchia%29%20from%20Bunaken%20National%20Park%2C%20North%20Sulawesi%2C%20Indonesia%20-%20how%20much%20do%20we%20know%20after%2012%20years.ABCD_GGBN.zip",
+        "latest": true
+      },
+      {
+        "archive_id": 119,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/GFBio-v2/Second%20survey%20of%20heterobranch%20sea%20slugs%20%28Mollusca%2C%20Gastropoda%2C%20Heterobranchia%29%20from%20Bunaken%20National%20Park%2C%20North%20Sulawesi%2C%20Indonesia%20-%20how%20much%20do%20we%20know%20after%2012%20years.ABCD_GGBN.zip",
+        "latest": false
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 38,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/heterobranchia-bunaken-prj-1.2",
+        "is_latest": true
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 85,
+    "datasource": "GFBio-v2",
+    "dataset": "Images belonging to Evaluating Species Delimitation Methods in Radiations - The Land Snail Albinaria cretensis complex on Crete",
+    "custom_landingpage": "https://media.zfmk.de/detail/169287",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 123,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/GFBio-v2/Images%20belonging%20to%20Evaluating%20Species%20Delimitation%20Methods%20in%20Radiations%20-%20The%20Land%20Snail%20Albinaria%20cretensis%20complex%20on%20Crete.ABCD_GGBN.zip",
+        "latest": true
+      },
+      {
+        "archive_id": 121,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/GFBio-v2/Images%20belonging%20to%20Evaluating%20Species%20Delimitation%20Methods%20in%20Radiations%20-%20The%20Land%20Snail%20Albinaria%20cretensis%20complex%20on%20Crete.ABCD_GGBN.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 122,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/GFBio-v2/Images%20belonging%20to%20Evaluating%20Species%20Delimitation%20Methods%20in%20Radiations%20-%20The%20Land%20Snail%20Albinaria%20cretensis%20complex%20on%20Crete.ABCD_GGBN.zip",
+        "latest": false
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 39,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/images-albinaria-crete-1.0",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 86,
+    "datasource": "ZFMK-Amibio",
+    "dataset": "Automatic acoustic Monitoring and Inventoring of BIODiversity",
+    "custom_landingpage": "https://media.zfmk.de/detail/119944",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 124,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Amibio/Automatic%20acoustic%20Monitoring%20and%20Inventoring%20of%20BIODiversity.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 88,
+    "datasource": "ZFMK-Collections-v2",
+    "dataset": "ZFMK Acari collection",
+    "custom_landingpage": "https://bonn.leibniz-lib.de/en/research/collections/basal-arthropods",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 129,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Acari%20collection.ABCD_GGBN.zip",
+        "latest": true
+      },
+      {
+        "archive_id": 127,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Acari%20collection.ABCD_GGBN.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 128,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/Acari.ABCD_GGBN.zip",
+        "latest": false
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 41,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.acari-2024-06",
+        "is_latest": true
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 147,
+    "datasource": "ZFMK-Collections-v2",
+    "dataset": "ZFMK Ornithology collection",
+    "custom_landingpage": "https://bonn.leibniz-lib.de/en/research/collections/ornithology",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 227,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Ornithology%20collection.ABCD_GGBN.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 196,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.ornithology-2023-02",
+        "is_latest": true
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 91,
+    "datasource": "ZFMK-Collections-v2",
+    "dataset": "ZFMK Odonata collection",
+    "custom_landingpage": "https://bonn.leibniz-lib.de/en/research/collections/basal-arthropods",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 139,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Odonata%20collection.ABCD_GGBN.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 169,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.odonata-2024-06",
+        "is_latest": true
+      },
+      {
+        "link_id": 45,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.odonata-2018-11",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 87,
+    "datasource": "ZFMK-Collections-v2",
+    "dataset": "ZFMK Coleoptera Rhineland-Collection",
+    "custom_landingpage": "https://bonn.leibniz-lib.de/en/research/collections/rheinlandsammlung",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 125,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Coleoptera%20Rhineland-Collection.ABCD_GGBN.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 126,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Coleoptera%20Rhineland-Collection.ABCD_GGBN.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 166,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.coleoptera-rhineland-2023-02",
+        "is_latest": true
+      },
+      {
+        "link_id": 40,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.coleoptera-rhineland-2019-03",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 92,
+    "datasource": "ZFMK-Collections-v2",
+    "dataset": "ZFMK Opiliones collection",
+    "custom_landingpage": "https://bonn.leibniz-lib.de/en/research/collections/basal-arthropods",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 143,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Opiliones%20collection.ABCD_GGBN.zip",
+        "latest": true
+      },
+      {
+        "archive_id": 140,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Opiliones%20collection.ABCD_GGBN.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 141,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Opiliones%20collection.ABCD_GGBN.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 142,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Opiliones%20collection.ABCD_GGBN.zip",
+        "latest": false
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 170,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.opiliones-2024-06",
+        "is_latest": true
+      },
+      {
+        "link_id": 47,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.opiliones-2021-04",
+        "is_latest": false
+      },
+      {
+        "link_id": 46,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/ZFMK-COLL.OPILIONES-2018-11",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 93,
+    "datasource": "ZFMK-Collections-v2",
+    "dataset": "ZFMK Pantopoda collection",
+    "custom_landingpage": "https://bonn.leibniz-lib.de/en/research/collections/basal-arthropods",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 146,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Pantopoda%20collection.ABCD_GGBN.zip",
+        "latest": true
+      },
+      {
+        "archive_id": 144,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Pantopoda%20collection.ABCD_GGBN.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 145,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Pantopoda%20collection.ABCD_GGBN.zip",
+        "latest": false
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 171,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.pantopoda-2023-02",
+        "is_latest": true
+      },
+      {
+        "link_id": 48,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/ZFMK-COLL.PANTOPODA-2018-11",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 94,
+    "datasource": "ZFMK-Collections-v2",
+    "dataset": "ZFMK Pseudoscorpiones collection",
+    "custom_landingpage": "https://bonn.leibniz-lib.de/en/research/collections/basal-arthropods",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 150,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Pseudoscorpiones%20collection.ABCD_GGBN.zip",
+        "latest": true
+      },
+      {
+        "archive_id": 147,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Pseudoscorpiones%20collection.ABCD_GGBN.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 148,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Pseudoscorpiones%20collection.ABCD_GGBN.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 149,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Pseudoscorpiones%20collection.ABCD_GGBN.zip",
+        "latest": false
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 172,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.pseudoscorpiones-2023-02",
+        "is_latest": true
+      },
+      {
+        "link_id": 50,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.pseudoscorpiones-2021-04",
+        "is_latest": false
+      },
+      {
+        "link_id": 49,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/ZFMK-COLL.PSEUDOSCORPIONES-2018-11",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 95,
+    "datasource": "ZFMK-Collections-v2",
+    "dataset": "ZFMK Scorpiones collection",
+    "custom_landingpage": "https://bonn.leibniz-lib.de/en/research/collections/basal-arthropods",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 153,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Scorpiones%20collection.ABCD_GGBN.zip",
+        "latest": true
+      },
+      {
+        "archive_id": 151,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Scorpiones%20collection.ABCD_GGBN.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 152,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Scorpiones%20collection.ABCD_GGBN.zip",
+        "latest": false
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 173,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.scorpiones-2023-02",
+        "is_latest": true
+      },
+      {
+        "link_id": 51,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/ZFMK-COLL.SCORPIONES-2018-11",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 96,
+    "datasource": "ZFMK-Collections-v2",
+    "dataset": "ZFMK Coleoptera Oberthuer collection",
+    "custom_landingpage": "https://bonn.leibniz-lib.de/en/research/collections/coleoptera",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 157,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Coleoptera%20Oberthuer%20collection.ABCD_GGBN.zip",
+        "latest": true
+      },
+      {
+        "archive_id": 154,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Coleoptera%20Oberthuer%20collection.ABCD_2.06.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 155,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Coleoptera%20Oberthuer%20collection.ABCD_GGBN.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 156,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Coleoptera%20Oberthuer%20collection.ABCD_GGBN.zip",
+        "latest": false
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 174,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.oberthuer-20123-02",
+        "is_latest": true
+      },
+      {
+        "link_id": 52,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/ZFMK-Coll.Oberthuer-2018-03",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 97,
+    "datasource": "ZFMK-Collections-v2",
+    "dataset": "ZFMK Diptera collection",
+    "custom_landingpage": "https://bonn.leibniz-lib.de/en/research/collections/diptera-flies-mosquitoes-and-midges",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 159,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Diptera%20Collection.ABCD_GGBN.zip",
+        "latest": true
+      },
+      {
+        "archive_id": 158,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Diptera%20collection.ABCD_2.06.zip",
+        "latest": false
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 175,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.diptera-2023-02",
+        "is_latest": true
+      },
+      {
+        "link_id": 53,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.diptera-2020-11",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 98,
+    "datasource": "ZFMK-Collections-v2",
+    "dataset": "ZFMK Herpetology collection",
+    "custom_landingpage": "https://bonn.leibniz-lib.de/en/research/collections/herpetology",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 161,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Herpetology%20collection.ABCD_GGBN.zip",
+        "latest": true
+      },
+      {
+        "archive_id": 160,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Herpetology%20collection.ABCD_GGBN.zip",
+        "latest": false
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 176,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.herpetology-2023-02",
+        "is_latest": true
+      },
+      {
+        "link_id": 54,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.herpetology-2019-03",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 99,
+    "datasource": "ZFMK-Collections-v2",
+    "dataset": "ZFMK Blattodea collection",
+    "custom_landingpage": "https://bonn.leibniz-lib.de/en/research/collections/hymenoptera",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 165,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Blattodea%20collection.ABCD_GGBN.zip",
+        "latest": true
+      },
+      {
+        "archive_id": 162,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Blattodea%20collection.ABCD_GGBN.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 163,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Blattodea%20collection.ABCD_GGBN.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 164,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Blattodea%20collection.ABCD_GGBN.zip",
+        "latest": false
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 177,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.blattodea-2023-02",
+        "is_latest": true
+      },
+      {
+        "link_id": 55,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.blattodea-2018-11",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 100,
+    "datasource": "ZFMK-Collections-v2",
+    "dataset": "ZFMK Dermaptera collection",
+    "custom_landingpage": "https://bonn.leibniz-lib.de/en/research/collections/hymenoptera",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 169,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Dermaptera%20collection.ABCD_GGBN.zip",
+        "latest": true
+      },
+      {
+        "archive_id": 166,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Dermaptera%20collection.ABCD_GGBN.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 167,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Dermaptera%20collection.ABCD_GGBN.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 168,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Dermaptera%20collection.ABCD_GGBN.zip",
+        "latest": false
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 178,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.dermaptera-2023-02",
+        "is_latest": true
+      },
+      {
+        "link_id": 56,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.dermaptera-2018-11",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 101,
+    "datasource": "ZFMK-Collections-v2",
+    "dataset": "ZFMK Hymenoptera collection",
+    "custom_landingpage": "https://bonn.leibniz-lib.de/en/research/collections/hymenoptera",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 170,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Hymenoptera%20collection.ABCD_GGBN.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 179,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.hymenoptera-2023-02",
+        "is_latest": true
+      },
+      {
+        "link_id": 57,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.hymenoptera-2018-11",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 11,
+    "datasource": "dbird",
+    "dataset": "ornitho.de checklist data occurence of chaffinch",
+    "custom_landingpage": "https://www.dda-web.de/ornitho/info",
+    "provider_id": 3,
+    "xml_archives": [
+      {
+        "archive_id": 21,
+        "xml_archive": "https://biocase.dda-web.de/biocase/downloads/dbird/ornitho.de%20checklist%20data%20occurence%20of%20chaffinch.ABCD_2.06.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 22,
+        "xml_archive": "https://biocase.dda-web.de/biocase/downloads/dbird/ornitho.de%20checklist%20data%20occurence%20of%20chaffinch.ABCD_2.06.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 20,
+        "xml_archive": "https://biocase.dda-web.de/biocase/downloads/dbird/ornitho.de%20checklist%20data%20occurence%20of%20chafffinch.ABCD_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [],
+    "provider_datacenter": "Data Center Dachverband Deutscher Avifaunisten e.V.",
+    "provider_shortname": "DDA",
+    "provider_name": "Dachverband Deutscher Avifaunisten e.V.",
+    "provider_url": "https://www.dda-web.de/",
+    "biocase_url": "https://biocase.dda-web.de/biocase"
+  },
+  {
+    "dataset_id": 102,
+    "datasource": "ZFMK-Collections-v2",
+    "dataset": "ZFMK Mantodea collection",
+    "custom_landingpage": "https://bonn.leibniz-lib.de/en/research/collections/hymenoptera",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 174,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Mantodea%20collection.ABCD_GGBN.zip",
+        "latest": true
+      },
+      {
+        "archive_id": 171,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Mantodea%20collection.ABCD_GGBN.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 172,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Mantodea%20collection.ABCD_GGBN.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 173,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Mantodea%20collection.ABCD_GGBN.zip",
+        "latest": false
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 180,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.mantodea-2023-02",
+        "is_latest": true
+      },
+      {
+        "link_id": 58,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/ZFMK-COLL.MANTODEA-2018-11",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 103,
+    "datasource": "ZFMK-Collections-v2",
+    "dataset": "ZFMK Phasmatodea collection",
+    "custom_landingpage": "https://bonn.leibniz-lib.de/en/research/collections/hymenoptera",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 178,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Phasmatodea%20collection.ABCD_GGBN.zip",
+        "latest": true
+      },
+      {
+        "archive_id": 175,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Phasmatodea%20collection.ABCD_GGBN.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 176,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Phasmatodea%20collection.ABCD_GGBN.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 177,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Phasmatodea%20collection.ABCD_GGBN.zip",
+        "latest": false
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 181,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.phasmatodea-2023-02",
+        "is_latest": true
+      },
+      {
+        "link_id": 59,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/ZFMK-COLL.PHASMATODEA-2018-11",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 104,
+    "datasource": "ZFMK-Collections-v2",
+    "dataset": "ZFMK Ichthyology collection",
+    "custom_landingpage": "https://bonn.leibniz-lib.de/en/research/collections/ichthyology",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 183,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Ichthyology%20collection.ABCD_GGBN.zip",
+        "latest": true
+      },
+      {
+        "archive_id": 179,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Ichthyology%20collection.ABCD_2.06.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 180,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Ichthyology%20collection.ABCD_GGBN.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 181,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Ichthyology%20collection.ABCD_GGBN.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 182,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Ichthyology%20collection.ABCD_GGBN.zip",
+        "latest": false
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 182,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.ichthyology-2024-06",
+        "is_latest": true
+      },
+      {
+        "link_id": 62,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/ZFMK-Coll.Ichthyology-2023-02",
+        "is_latest": false
+      },
+      {
+        "link_id": 61,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/ZFMK-Coll.Ichthyology-2021-04",
+        "is_latest": false
+      },
+      {
+        "link_id": 60,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/ZFMK-Coll.Ichthyology-2018-03",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 105,
+    "datasource": "ZFMK-Collections-v2",
+    "dataset": "ZFMK Lepidoptera collection",
+    "custom_landingpage": "https://bonn.leibniz-lib.de/en/research/collections/lepidoptera",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 186,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Lepidoptera%20collection.ABCD_GGBN.zip",
+        "latest": true
+      },
+      {
+        "archive_id": 184,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Lepidoptera%20collection.ABCD_GGBN.zip",
+        "latest": false
+      },
+      {
+        "archive_id": 185,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Lepidoptera%20collection.ABCD_GGBN.zip",
+        "latest": false
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 183,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.lepidoptera-2023-02",
+        "is_latest": true
+      },
+      {
+        "link_id": 63,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.lepidoptera-2018-11",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 106,
+    "datasource": "ZFMK-Collections-v2",
+    "dataset": "ZFMK Mammalia collection",
+    "custom_landingpage": "https://bonn.leibniz-lib.de/en/research/collections/mammalogy",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 187,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Mammalia%20collection.ABCD_GGBN.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 184,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.mammalia-2024-06",
+        "is_latest": true
+      },
+      {
+        "link_id": 64,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.mammalia-2020-11",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 41,
+    "datasource": "GFBIOlowervertebratescoll",
+    "dataset": "The Fossil Lower Vertebrates Collection at the Staatliches Museum für Naturkunde Stuttgart",
+    "custom_landingpage": "https://col.smns-bw.org/SMNS-P-GFBIOlowervertebratescoll/About.html",
+    "provider_id": 7,
+    "xml_archives": [
+      {
+        "archive_id": 64,
+        "xml_archive": "https://biocase.smns-bw.org/downloads/GFBIOlowervertebratescoll/The%20Fossil%20Lower%20Vertebrates%20Collection%20at%20the%20Staatliches%20Museum%20fur%20Naturkunde%20Stuttgart.ABCDEFG_2.06.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 9,
+        "title": "GBIF",
+        "url": "https://www.gbif.org/dataset/94acdc4f-95c1-4009-8612-656ae99d0943",
+        "is_latest": false
+      }
+    ],
+    "provider_datacenter": "Data Center SMNS",
+    "provider_shortname": "SMNS",
+    "provider_name": "State Museum of Natural History, Stuttgart",
+    "provider_url": "https://www.naturkundemuseum-bw.de/",
+    "biocase_url": "https://biocase.smns-bw.org"
+  },
+  {
+    "dataset_id": 107,
+    "datasource": "GFBio-v2",
+    "dataset": "Fauna in Phoenix palm trees results from a full year monitoring in southern Spain",
+    "custom_landingpage": "https://media.zfmk.de/detail/216925",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 188,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/GFBio-v2/Fauna%20in%20Phoenix%20palm%20trees%20%20results%20from%20a%20full%20year%20monitoring%20in%20southern%20Spain.ABCD_2.06.zip",
+        "latest": true
+      },
+      {
+        "archive_id": 189,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/GFBio-v2/Fauna%20in%20Phoenix%20palm%20trees%20%20results%20from%20a%20full%20year%20monitoring%20in%20southern%20Spain.ABCD_GGBN.zip",
+        "latest": false
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 65,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/rif511-1.0",
+        "is_latest": true
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 136,
+    "datasource": "ZFMK-Collections-v2",
+    "dataset": "ZFMK Heteroptera collection",
+    "custom_landingpage": "https://bonn.leibniz-lib.de/en/research/collections/hymenoptera",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 216,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Heteroptera%20collection.ABCD_GGBN.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 185,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.heteroptera-2023-02",
+        "is_latest": true
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 137,
+    "datasource": "ZFMK-Collections-v2",
+    "dataset": "ZFMK Homoptera collection",
+    "custom_landingpage": "https://bonn.leibniz-lib.de/en/research/collections/hymenoptera",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 217,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Homoptera%20collection.ABCD_GGBN.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 186,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.homoptera-2023-02",
+        "is_latest": true
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 138,
+    "datasource": "ZFMK-Collections-v2",
+    "dataset": "ZFMK Myriapoda collection",
+    "custom_landingpage": "https://bonn.leibniz-lib.de/en/research/collections/myriapoda",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 218,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Myriapoda%20collection.ABCD_GGBN.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 187,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.myriapoda-2023-02",
+        "is_latest": true
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 139,
+    "datasource": "ZFMK-Collections-v2",
+    "dataset": "ZFMK Orthoptera collection",
+    "custom_landingpage": "https://bonn.leibniz-lib.de/en/research/collections/hymenoptera",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 219,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Orthoptera%20collection.ABCD_GGBN.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 188,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.orthoptera-2023-02",
+        "is_latest": true
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 140,
+    "datasource": "ZFMK-Collections-v2",
+    "dataset": "ZFMK Phtiraptera collection",
+    "custom_landingpage": "https://bonn.leibniz-lib.de/en/research/collections/hymenoptera",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 220,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Phtiraptera%20collection.ABCD_GGBN.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 189,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.phtiraptera-2023-02",
+        "is_latest": true
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 141,
+    "datasource": "ZFMK-Collections-v2",
+    "dataset": "ZFMK Plecoptera collection",
+    "custom_landingpage": "https://bonn.leibniz-lib.de/en/research/collections/basal-arthropods",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 221,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Plecoptera%20collection.ABCD_GGBN.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 190,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.plecoptera-2023-02",
+        "is_latest": true
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 142,
+    "datasource": "ZFMK-Collections-v2",
+    "dataset": "ZFMK Siphonaptera collection",
+    "custom_landingpage": "https://bonn.leibniz-lib.de/en/research/collections/hymenoptera",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 222,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Siphonaptera%20collection.ABCD_GGBN.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 191,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.siphonaptera-2023-02",
+        "is_latest": true
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 143,
+    "datasource": "ZMH-Collections-v2",
+    "dataset": "ZMH Arachnology collection",
+    "custom_landingpage": "https://hamburg.leibniz-lib.de/en/sammlungen/zoologie/arachnologie.html",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 223,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZMH-Collections-v2/ZMH%20Arachnology%20collection.ABCD_GGBN.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 192,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zmh-coll.arachnology-2024-02",
+        "is_latest": true
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 144,
+    "datasource": "ZMH-Collections-v2",
+    "dataset": "ZMH Ichthyology collection",
+    "custom_landingpage": "https://hamburg.leibniz-lib.de/en/sammlungen/zoologie/ichthyologie.html",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 224,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZMH-Collections-v2/ZMH%20Ichthyology%20collection.ABCD_GGBN.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 193,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zmh-coll.ichthyology-2023-10",
+        "is_latest": true
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 145,
+    "datasource": "ZMH-Collections-v2",
+    "dataset": "ZMH Mammalia collection",
+    "custom_landingpage": "https://hamburg.leibniz-lib.de/en/sammlungen/zoologie/mammalogie.html",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 225,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZMH-Collections-v2/ZMH%20Mammalia%20collection.ABCD_GGBN.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 194,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zmh-coll.mammalogy-2023-10",
+        "is_latest": true
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 146,
+    "datasource": "ZFMK-Collections-v2",
+    "dataset": "ZFMK Coleoptera collection",
+    "custom_landingpage": "https://bonn.leibniz-lib.de/en/research/collections/coleoptera",
+    "provider_id": 9,
+    "xml_archives": [
+      {
+        "archive_id": 226,
+        "xml_archive": "https://biocase.zfmk.de/biocase/downloads/ZFMK-Collections-v2/ZFMK%20Coleoptera%20collection.ABCD_GGBN.zip",
+        "latest": true
+      }
+    ],
+    "useful_links": [
+      {
+        "link_id": 195,
+        "title": "DOI",
+        "url": "https://doi.org/10.20363/zfmk-coll.coleoptera-2023-02",
+        "is_latest": true
+      }
+    ],
+    "provider_datacenter": "LIB",
+    "provider_shortname": "LIB",
+    "provider_name": "Leibniz Institute for the Analysis of Biodiversity Change",
+    "provider_url": "https://leibniz-lib.de/",
+    "biocase_url": "https://biocase.zfmk.de/biocase"
+  },
+  {
+    "dataset_id": 151,
+    "datasource": "Example Source",
+    "dataset": "Example Dataset Title",
+    "custom_landingpage": "https://example.com/dataset",
+    "provider_id": 1,
+    "xml_archives": [],
+    "useful_links": [],
+    "provider_datacenter": "Data Center BGBM",
+    "provider_shortname": "BGBM",
+    "provider_name": "Botanic Garden and Botanical Museum Berlin, Freie Universität Berlin",
+    "provider_url": "https://bo.berlin/",
+    "biocase_url": "https://ww3.bgbm.org/biocase/"
+  },
+  {
+    "dataset_id": 19,
+    "datasource": "mfn_datapublications",
+    "dataset": "Mfn datapublications",
+    "custom_landingpage": null,
+    "provider_id": 5,
+    "xml_archives": [],
+    "useful_links": [],
+    "provider_datacenter": "Data Center MfN",
+    "provider_shortname": "MfN",
+    "provider_name": "Museum für Naturkunde Berlin – Leibniz Institute for Research on Evolution and Biodiversity, Berlin",
+    "provider_url": "https://www.naturkundemuseum.berlin/",
+    "biocase_url": "https://biocase.naturkundemuseum.berlin/current"
+  },
+  {
+    "dataset_id": 35,
+    "datasource": "sgn_digi_blattnerv",
+    "dataset": "Senckenberg leaf venation images",
+    "custom_landingpage": "http://www.clearedleavesdb.org/content/senckenberg-herbarium-senckenbergianum-fr-and-glm",
+    "provider_id": 6,
+    "xml_archives": [],
+    "useful_links": [],
+    "provider_datacenter": "Data Center SGN",
+    "provider_shortname": "SGN",
+    "provider_name": "Senckenberg Gesellschaft für Naturforschung – Leibniz Institute, Frankfurt",
+    "provider_url": "https://www.senckenberg.de/de/",
+    "biocase_url": "http://biocase.senckenberg.de"
+  }
+]
