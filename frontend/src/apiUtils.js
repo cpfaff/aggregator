@@ -43,6 +43,72 @@ export const getCsrfToken = async () => {
 };
 
 /**
+ * Updates authentication tokens and dispatches an event for AuthContext
+ * @param {string} access_token - The new access token
+ * @param {string} refresh_token - The new refresh token
+ * @param {number} expires_in - Expiry time in seconds
+ * @returns {boolean} - Whether the update was successful
+ */
+export const updateTokens = (access_token, refresh_token, expires_in) => {
+  localStorage.setItem('token', access_token);
+  localStorage.setItem('refreshToken', refresh_token);
+  localStorage.setItem('tokenExpiry', Date.now() + (expires_in * 1000));
+  
+  // Dispatch a custom event that AuthContext can listen for
+  window.dispatchEvent(new CustomEvent('auth:tokens-updated', {
+    detail: { access_token, refresh_token, expires_in }
+  }));
+  
+  return true;
+};
+
+/**
+ * Attempts to refresh the access token using the refresh token
+ * @returns {Promise<boolean>} - Whether the refresh was successful
+ */
+export const refreshAccessToken = async () => {
+  try {
+    // Get stored refresh token
+    const refreshToken = localStorage.getItem('refreshToken');
+    
+    if (!refreshToken) {
+      return false;
+    }
+    
+    // Get CSRF token for the request
+    let csrfToken;
+    try {
+      csrfToken = await getCsrfToken();
+    } catch (error) {
+      console.error('Failed to get CSRF token for refresh:', error);
+      return false;
+    }
+    
+    // Call refresh endpoint
+    const response = await fetch(`${API_BASE}${API_VERSION}/refresh-token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken
+      },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+      credentials: 'include'
+    });
+    
+    if (!response.ok) {
+      return false;
+    }
+    
+    // Parse response and update stored tokens using the updateTokens function
+    const data = await response.json();
+    return updateTokens(data.access_token, data.refresh_token, data.expires_in);
+  } catch (error) {
+    console.error('Token refresh failed:', error);
+    return false;
+  }
+};
+
+/**
  * Custom fetch function that handles token expiration
  * @param {string} url - The URL to fetch
  * @param {Object} options - Fetch options
@@ -51,14 +117,45 @@ export const getCsrfToken = async () => {
  */
 export const fetchWithTokenExpiration = async (url, options = {}, onTokenExpired) => {
   try {
+    // Check if token is about to expire (30 seconds buffer)
+    const tokenExpiry = localStorage.getItem('tokenExpiry');
+    if (tokenExpiry && Date.now() > (parseInt(tokenExpiry) - 30000)) {
+      // Proactively refresh token before it expires
+      const refreshSuccess = await refreshAccessToken();
+      if (!refreshSuccess) {
+        // If refresh fails, trigger expiration callback
+        if (onTokenExpired && typeof onTokenExpired === 'function') {
+          onTokenExpired();
+          throw new Error('Session expired. Please login again.');
+        }
+      }
+      
+      // Update Authorization header with new token
+      if (options.headers && options.headers.Authorization) {
+        options.headers.Authorization = `Bearer ${localStorage.getItem('token')}`;
+      }
+    }
+    
+    // Make the API request
     const response = await fetch(url, options);
     
-    // Only trigger token expiration for 401 responses from authenticated endpoints
-    // Exclude POST /auth-token endpoint which naturally returns 401 for invalid credentials
+    // Handle 401 Unauthorized errors
     if (response.status === 401 && !url.endsWith(`${API_VERSION}/auth-token`)) {
-      // Call the token expired callback
-      if (onTokenExpired && typeof onTokenExpired === 'function') {
-        onTokenExpired();
+      // Try to refresh the token
+      const refreshSuccess = await refreshAccessToken();
+      
+      if (refreshSuccess) {
+        // If refresh succeeded, retry the original request with new token
+        const newOptions = { ...options };
+        if (newOptions.headers && newOptions.headers.Authorization) {
+          newOptions.headers.Authorization = `Bearer ${localStorage.getItem('token')}`;
+        }
+        return fetch(url, newOptions);
+      } else {
+        // If refresh failed, trigger expiration callback
+        if (onTokenExpired && typeof onTokenExpired === 'function') {
+          onTokenExpired();
+        }
       }
     }
     
@@ -134,5 +231,7 @@ export default {
   fetchWithTokenExpiration,
   apiRequest,
   getCsrfToken,
+  refreshAccessToken,
+  updateTokens,
   initCsrfProtection
 };

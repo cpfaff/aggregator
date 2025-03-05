@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Header = ({ currentUser, activeView, setView, logout, isDarkTheme, toggleTheme }) => {
+const Header = ({ currentUser, activeView, setActiveView, logout, isDarkTheme, toggleTheme }) => {
   return (
     <header style={{
       backgroundColor: 'var(--card-bg)',
@@ -33,7 +33,7 @@ const Header = ({ currentUser, activeView, setView, logout, isDarkTheme, toggleT
         }}>
           <a 
             href="#" 
-            onClick={(e) => { e.preventDefault(); setView('dashboard'); }}
+            onClick={(e) => { e.preventDefault(); setActiveView('dashboard'); }}
             style={{
               padding: '0.5rem 0',
               position: 'relative',
@@ -60,7 +60,7 @@ const Header = ({ currentUser, activeView, setView, logout, isDarkTheme, toggleT
           {currentUser?.is_global_admin && (
             <a 
               href="#" 
-              onClick={(e) => { e.preventDefault(); setView('userManagement'); }}
+              onClick={(e) => { e.preventDefault(); setActiveView('userManagement'); }}
               style={{
                 padding: '0.5rem 0',
                 position: 'relative',

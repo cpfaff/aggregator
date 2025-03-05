@@ -4,6 +4,7 @@ import ProviderCard from './ProviderCard';
 import Header from './Header';
 import Footer from './Footer';
 import { API_BASE, API_VERSION, apiRequest, initCsrfProtection } from './apiUtils';
+import { useAuth } from './AuthContext';
 
 // Theme variables using CSS variables approach (from Design Playground)
 const themeVariables = {
@@ -114,17 +115,12 @@ function Alert({ type = 'error', children }) {
 }
 
 function App() {
-  const [token, setToken] = useState(() => localStorage.getItem('token'));
-  const [currentUser, setCurrentUser] = useState(() => {
-    const savedUser = localStorage.getItem('currentUser');
-    return savedUser ? JSON.parse(savedUser) : null;
-  });
+  const { token, currentUser, logout, sessionExpired, handleTokenExpiration } = useAuth();
   const [activeView, setActiveView] = useState('dashboard'); // 'dashboard' or 'userManagement'
   const [isDarkTheme, setIsDarkTheme] = useState(() => {
     const savedTheme = localStorage.getItem('isDarkTheme');
     return savedTheme ? JSON.parse(savedTheme) : false;
   });
-  const [sessionExpired, setSessionExpired] = useState(false);
   
   // Toggle theme function
   const toggleTheme = () => {
@@ -160,77 +156,46 @@ function App() {
     initCsrf();
   }, []);
 
-  // Check token validity on mount and after token changes
-  useEffect(() => {
-    const validateToken = async () => {
-      if (!token) return;
-      
-      try {
-        const response = await apiRequest('/me/permissions', {}, () => {
-          // This callback will be called if token is expired
-          logout();
-          setSessionExpired(true);
-        });
-        
-        if (!response.ok) {
-          // Token is invalid for some other reason
-          logout();
-          return;
-        }
-        
-        const userData = await response.json();
-        setCurrentUser(userData);
-        localStorage.setItem('currentUser', JSON.stringify(userData));
-      } catch (error) {
-        console.error('Failed to validate token:', error);
-        // Don't logout here as the error might be temporary
-        // The apiRequest will handle token expiration
-      }
-    };
-
-    validateToken();
-  }, [token]);
-
-  const logout = () => {
-    setToken(null);
-    setCurrentUser(null);
-    setActiveView('dashboard');
-    localStorage.removeItem('token');
-    localStorage.removeItem('currentUser');
-  };
-
   return (
-    <div style={{
-      fontFamily: 'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    <div style={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      minHeight: '100vh',
       backgroundColor: 'var(--background)',
       color: 'var(--text)',
-      minHeight: '100vh',
-      display: 'flex',
-      flexDirection: 'column',
-      lineHeight: 1.5,
       transition: 'background-color 0.3s, color 0.3s',
     }}>
       {token && currentUser && (
         <Header 
           currentUser={currentUser} 
           activeView={activeView}
-          setView={setActiveView} 
+          setActiveView={setActiveView} 
           logout={logout}
           isDarkTheme={isDarkTheme}
           toggleTheme={toggleTheme}
         />
       )}
-      
-      {!token ? (
-        <Login setToken={setToken} setCurrentUser={setCurrentUser} sessionExpired={sessionExpired} setSessionExpired={setSessionExpired} />
-      ) : (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-          {activeView === 'dashboard' && <Dashboard token={token} currentUser={currentUser} onTokenExpired={() => { logout(); setSessionExpired(true); }} />}
-          {activeView === 'userManagement' && currentUser.is_global_admin && <UserManagement token={token} onTokenExpired={() => { logout(); setSessionExpired(true); }} />}
-          
-          <Footer />
-        </div>
-      )}
+
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        {!token ? (
+          <Login sessionExpired={sessionExpired} />
+        ) : (
+          <>
+            {activeView === 'dashboard' && (
+              <Dashboard 
+                currentUser={currentUser} 
+              />
+            )}
+            
+            {activeView === 'userManagement' && currentUser.is_global_admin && (
+              <UserManagement 
+              />
+            )}
+          </>
+        )}
+      </div>
+
+      {token && currentUser && <Footer />}
     </div>
   );
 }
@@ -465,18 +430,19 @@ function Button({ children, onClick, variant = 'primary', isLoading, disabled, s
 }
 
 // Login component
-function Login({ setToken, setCurrentUser, sessionExpired, setSessionExpired }) {
+function Login({ sessionExpired }) {
+  const { login, isLoading, setIsLoading, sessionExpired: authSessionExpired, setSessionExpired } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
   // Clear session expired message when user starts typing
   useEffect(() => {
-    if (sessionExpired && (username || password)) {
+    if ((sessionExpired || authSessionExpired) && (username || password)) {
+      setError('');
       setSessionExpired(false);
     }
-  }, [username, password, sessionExpired, setSessionExpired]);
+  }, [username, password, sessionExpired, authSessionExpired, setSessionExpired]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -505,37 +471,14 @@ function Login({ setToken, setCurrentUser, sessionExpired, setSessionExpired }) 
       }
       
       const data = await res.json();
-      localStorage.setItem('token', data.access_token);
-      setToken(data.access_token);
       
-      // Now we have a token, we can use apiRequest
-      const permRes = await apiRequest('/me/permissions', {}, () => {
-        // This callback will only be called if token is expired
-        logout();
-        setSessionExpired(true);
-      });
-      
-      if (!permRes.ok) {
-        setError('Failed to fetch user permissions');
-        setIsLoading(false);
-        return;
-      }
-      
-      const permData = await permRes.json();
-      localStorage.setItem('currentUser', JSON.stringify(permData));
-      setCurrentUser(permData);
+      // Use the context's login function
+      await login(data.access_token, data.refresh_token, data.expires_in);
       setIsLoading(false);
     } catch (err) {
       setError('Network error. Please check your connection');
       setIsLoading(false);
     }
-  };
-
-  const logout = () => {
-    setToken(null);
-    setCurrentUser(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('currentUser');
   };
 
   return (
@@ -568,7 +511,7 @@ function Login({ setToken, setCurrentUser, sessionExpired, setSessionExpired }) 
         </h1>
         
         {error && <Alert type="error">{error}</Alert>}
-        {sessionExpired && <Alert type="error">Your session has expired. Please sign in again.</Alert>}
+        {(sessionExpired || authSessionExpired) && <Alert type="error">Your session has expired. Please sign in again.</Alert>}
         
         <form onSubmit={handleLogin}>
           <div style={{ marginBottom: '1rem' }}>
@@ -677,7 +620,8 @@ function Login({ setToken, setCurrentUser, sessionExpired, setSessionExpired }) 
 }
 
 // Dashboard component with improved nested form integration
-function Dashboard({ token, currentUser, onTokenExpired }) {
+function Dashboard({ currentUser }) {
+  const { handleTokenExpiration } = useAuth();
   const [providers, setProviders] = useState([]);
   const [editingProvider, setEditingProvider] = useState(null);
   const [addingProvider, setAddingProvider] = useState(false);
@@ -690,7 +634,7 @@ function Dashboard({ token, currentUser, onTokenExpired }) {
     setError('');
     
     try {
-      const res = await apiRequest('/data-providers', {}, onTokenExpired);
+      const res = await apiRequest('/data-providers', {}, handleTokenExpiration);
       
       if (!res.ok) {
         if (res.status === 403) {
@@ -713,7 +657,7 @@ function Dashboard({ token, currentUser, onTokenExpired }) {
 
   useEffect(() => {
     fetchProviders();
-  }, [token]);
+  }, []);
 
   const deleteProvider = async (id) => {
     setIsLoading(true);
@@ -722,7 +666,7 @@ function Dashboard({ token, currentUser, onTokenExpired }) {
     try {
       const res = await apiRequest(`/data-providers/${id}`, {
         method: 'DELETE'
-      }, onTokenExpired);
+      }, handleTokenExpiration);
       
       if (!res.ok) {
         let errorMessage = 'Failed to delete provider';
@@ -884,10 +828,9 @@ function Dashboard({ token, currentUser, onTokenExpired }) {
         title={editingProvider ? `Edit Provider: ${editingProvider.name}` : 'Add Provider'}
       >
         <ProviderForm
-          token={token}
           provider={editingProvider}
           onClose={handleProviderUpdate}
-          onTokenExpired={onTokenExpired}
+          onTokenExpired={handleTokenExpiration}
         />
       </Modal>
     </div>
@@ -895,7 +838,7 @@ function Dashboard({ token, currentUser, onTokenExpired }) {
 }
 
 // Enhanced ProviderForm component with fixed delete confirmation for all items
-function ProviderForm({ token, provider, onClose, onTokenExpired }) {
+function ProviderForm({ provider, onClose, onTokenExpired }) {
   const isEditing = provider != null;
   const [formState, setFormState] = useState({
     name: provider ? provider.name : '',
@@ -1296,182 +1239,164 @@ function ProviderForm({ token, provider, onClose, onTokenExpired }) {
       {error && <Alert type="error">{error}</Alert>}
       
       <form onSubmit={handleSubmit}>
-        <div style={{
-          backgroundColor: 'var(--card-bg)',
-          borderRadius: '0.5rem',
-          padding: '1.5rem',
-          marginBottom: '1.5rem',
-          border: '1px solid var(--border)',
-        }}>
-          <h3 style={{ 
-            fontSize: '1.125rem', 
-            fontWeight: 600, 
-            marginTop: 0, 
-            marginBottom: '1.5rem',
+        <div style={{ marginBottom: '1rem' }}>
+          <label style={{ 
+            display: 'block', 
+            fontSize: '0.875rem', 
+            fontWeight: 500, 
+            marginBottom: '0.5rem', 
             color: 'var(--text)',
           }}>
-            Provider Details
-          </h3>
-          
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ 
-              display: 'block', 
-              fontSize: '0.875rem', 
-              fontWeight: 500, 
-              marginBottom: '0.5rem', 
+            Datacenter
+          </label>
+          <input
+            type="text"
+            value={formState.datacenter || ''}
+            onChange={(e) => updateFormField('datacenter', e.target.value)}
+            required
+            placeholder="Enter datacenter name"
+            style={{
+              display: 'block',
+              width: '100%',
+              padding: '0.625rem 0.75rem',
+              fontSize: '0.875rem',
+              borderRadius: '0.5rem',
+              border: `1px solid ${validationErrors.datacenter ? 'var(--error)' : 'var(--border)'}`,
+              backgroundColor: 'var(--card-bg)',
               color: 'var(--text)',
-            }}>
-              Datacenter
-            </label>
-            <input
-              type="text"
-              value={formState.datacenter || ''}
-              onChange={(e) => updateFormField('datacenter', e.target.value)}
-              required
-              placeholder="Enter datacenter name"
-              style={{
-                display: 'block',
-                width: '100%',
-                padding: '0.625rem 0.75rem',
-                fontSize: '0.875rem',
-                borderRadius: '0.5rem',
-                border: `1px solid ${validationErrors.datacenter ? 'var(--error)' : 'var(--border)'}`,
-                backgroundColor: 'var(--card-bg)',
-                color: 'var(--text)',
-                transition: 'border-color 0.2s',
-              }}
-            />
-            {getFieldErrorMessage('datacenter')}
-          </div>
-          
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ 
-              display: 'block', 
-              fontSize: '0.875rem', 
-              fontWeight: 500, 
-              marginBottom: '0.5rem', 
+              transition: 'border-color 0.2s',
+            }}
+          />
+          {getFieldErrorMessage('datacenter')}
+        </div>
+        
+        <div style={{ marginBottom: '1rem' }}>
+          <label style={{ 
+            display: 'block', 
+            fontSize: '0.875rem', 
+            fontWeight: 500, 
+            marginBottom: '0.5rem', 
+            color: 'var(--text)',
+          }}>
+            Short Name
+          </label>
+          <input
+            type="text"
+            value={formState.shortName || ''}
+            onChange={(e) => updateFormField('shortName', e.target.value)}
+            required
+            placeholder="Enter short name"
+            style={{
+              display: 'block',
+              width: '100%',
+              padding: '0.625rem 0.75rem',
+              fontSize: '0.875rem',
+              borderRadius: '0.5rem',
+              border: `1px solid ${validationErrors.shortName ? 'var(--error)' : 'var(--border)'}`,
+              backgroundColor: 'var(--card-bg)',
               color: 'var(--text)',
-            }}>
-              Short Name
-            </label>
-            <input
-              type="text"
-              value={formState.shortName || ''}
-              onChange={(e) => updateFormField('shortName', e.target.value)}
-              required
-              placeholder="Enter short name"
-              style={{
-                display: 'block',
-                width: '100%',
-                padding: '0.625rem 0.75rem',
-                fontSize: '0.875rem',
-                borderRadius: '0.5rem',
-                border: `1px solid ${validationErrors.shortName ? 'var(--error)' : 'var(--border)'}`,
-                backgroundColor: 'var(--card-bg)',
-                color: 'var(--text)',
-                transition: 'border-color 0.2s',
-              }}
-            />
-            {getFieldErrorMessage('shortName')}
-            <div style={{
-              fontSize: '0.75rem',
-              color: 'var(--text-light)',
-              marginTop: '0.25rem',
-            }}>
-              A brief identifier for this provider
-            </div>
+              transition: 'border-color 0.2s',
+            }}
+          />
+          {getFieldErrorMessage('shortName')}
+          <div style={{
+            fontSize: '0.75rem',
+            color: 'var(--text-light)',
+            marginTop: '0.25rem',
+          }}>
+            A brief identifier for this provider
           </div>
-          
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ 
-              display: 'block', 
-              fontSize: '0.875rem', 
-              fontWeight: 500, 
-              marginBottom: '0.5rem', 
+        </div>
+        
+        <div style={{ marginBottom: '1rem' }}>
+          <label style={{ 
+            display: 'block', 
+            fontSize: '0.875rem', 
+            fontWeight: 500, 
+            marginBottom: '0.5rem', 
+            color: 'var(--text)',
+          }}>
+            Full Name
+          </label>
+          <input
+            type="text"
+            value={formState.name || ''}
+            onChange={(e) => updateFormField('name', e.target.value)}
+            required
+            placeholder="Enter full provider name"
+            style={{
+              display: 'block',
+              width: '100%',
+              padding: '0.625rem 0.75rem',
+              fontSize: '0.875rem',
+              borderRadius: '0.5rem',
+              border: `1px solid ${validationErrors.name ? 'var(--error)' : 'var(--border)'}`,
+              backgroundColor: 'var(--card-bg)',
               color: 'var(--text)',
-            }}>
-              Full Name
-            </label>
-            <input
-              type="text"
-              value={formState.name || ''}
-              onChange={(e) => updateFormField('name', e.target.value)}
-              required
-              placeholder="Enter full provider name"
-              style={{
-                display: 'block',
-                width: '100%',
-                padding: '0.625rem 0.75rem',
-                fontSize: '0.875rem',
-                borderRadius: '0.5rem',
-                border: `1px solid ${validationErrors.name ? 'var(--error)' : 'var(--border)'}`,
-                backgroundColor: 'var(--card-bg)',
-                color: 'var(--text)',
-                transition: 'border-color 0.2s',
-              }}
-            />
-            {getFieldErrorMessage('name')}
-          </div>
-          
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ 
-              display: 'block', 
-              fontSize: '0.875rem', 
-              fontWeight: 500, 
-              marginBottom: '0.5rem', 
+              transition: 'border-color 0.2s',
+            }}
+          />
+          {getFieldErrorMessage('name')}
+        </div>
+        
+        <div style={{ marginBottom: '1rem' }}>
+          <label style={{ 
+            display: 'block', 
+            fontSize: '0.875rem', 
+            fontWeight: 500, 
+            marginBottom: '0.5rem', 
+            color: 'var(--text)',
+          }}>
+            URL
+          </label>
+          <input
+            type="url"
+            value={formState.url || ''}
+            onChange={(e) => updateFormField('url', e.target.value)}
+            placeholder="https://example.com"
+            style={{
+              display: 'block',
+              width: '100%',
+              padding: '0.625rem 0.75rem',
+              fontSize: '0.875rem',
+              borderRadius: '0.5rem',
+              border: `1px solid ${validationErrors.url ? 'var(--error)' : 'var(--border)'}`,
+              backgroundColor: 'var(--card-bg)',
               color: 'var(--text)',
-            }}>
-              URL
-            </label>
-            <input
-              type="url"
-              value={formState.url || ''}
-              onChange={(e) => updateFormField('url', e.target.value)}
-              placeholder="https://example.com"
-              style={{
-                display: 'block',
-                width: '100%',
-                padding: '0.625rem 0.75rem',
-                fontSize: '0.875rem',
-                borderRadius: '0.5rem',
-                border: `1px solid ${validationErrors.url ? 'var(--error)' : 'var(--border)'}`,
-                backgroundColor: 'var(--card-bg)',
-                color: 'var(--text)',
-                transition: 'border-color 0.2s',
-              }}
-            />
-            {getFieldErrorMessage('url')}
-          </div>
-          
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ 
-              display: 'block', 
-              fontSize: '0.875rem', 
-              fontWeight: 500, 
-              marginBottom: '0.5rem', 
+              transition: 'border-color 0.2s',
+            }}
+          />
+          {getFieldErrorMessage('url')}
+        </div>
+        
+        <div style={{ marginBottom: '1rem' }}>
+          <label style={{ 
+            display: 'block', 
+            fontSize: '0.875rem', 
+            fontWeight: 500, 
+            marginBottom: '0.5rem', 
+            color: 'var(--text)',
+          }}>
+            Biocase URL
+          </label>
+          <input
+            type="url"
+            value={formState.biocaseUrl || ''}
+            onChange={(e) => updateFormField('biocaseUrl', e.target.value)}
+            placeholder="https://biocase.example.com"
+            style={{
+              display: 'block',
+              width: '100%',
+              padding: '0.625rem 0.75rem',
+              fontSize: '0.875rem',
+              borderRadius: '0.5rem',
+              border: `1px solid ${validationErrors.biocaseUrl ? 'var(--error)' : 'var(--border)'}`,
+              backgroundColor: 'var(--card-bg)',
               color: 'var(--text)',
-            }}>
-              Biocase URL
-            </label>
-            <input
-              type="url"
-              value={formState.biocaseUrl || ''}
-              onChange={(e) => updateFormField('biocaseUrl', e.target.value)}
-              placeholder="https://biocase.example.com"
-              style={{
-                display: 'block',
-                width: '100%',
-                padding: '0.625rem 0.75rem',
-                fontSize: '0.875rem',
-                borderRadius: '0.5rem',
-                border: `1px solid ${validationErrors.biocaseUrl ? 'var(--error)' : 'var(--border)'}`,
-                backgroundColor: 'var(--card-bg)',
-                color: 'var(--text)',
-                transition: 'border-color 0.2s',
-              }}
-            />
-            {getFieldErrorMessage('biocaseUrl')}
-          </div>
+              transition: 'border-color 0.2s',
+            }}
+          />
+          {getFieldErrorMessage('biocaseUrl')}
         </div>
         
         <h3 style={{ 
@@ -2017,21 +1942,22 @@ function ProviderForm({ token, provider, onClose, onTokenExpired }) {
 }
 
 // UserManagement component
-function UserManagement({ token, onTokenExpired }) {
+function UserManagement() {
+  const { handleTokenExpiration } = useAuth();
   const [users, setUsers] = useState([]);
   const [editingUser, setEditingUser] = useState(null);
   const [addingUser, setAddingUser] = useState(false);
-  const [formData, setFormData] = useState({ username: '', password: '', is_global_admin: false, provider_roles: {} });
-  const [confirmDeleteUser, setConfirmDeleteUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [providers, setProviders] = useState([]);
   const [selectedProvider, setSelectedProvider] = useState('');
-  const [selectedRole, setSelectedRole] = useState('admin');
+  const [selectedRole, setSelectedRole] = useState('');
+  const [formData, setFormData] = useState({ username: '', password: '', is_global_admin: false, provider_roles: {} });
+  const [confirmDeleteUser, setConfirmDeleteUser] = useState(null);
 
   const fetchProviders = async () => {
     try {
-      const res = await apiRequest('/data-providers', {}, onTokenExpired);
+      const res = await apiRequest('/data-providers', {}, handleTokenExpiration);
       
       if (!res.ok) {
         console.error('Failed to fetch providers:', res.status);
@@ -2048,7 +1974,7 @@ function UserManagement({ token, onTokenExpired }) {
   useEffect(() => {
     fetchUsers();
     fetchProviders();
-  }, [token]);
+  }, []);
 
   const handleAddProviderRole = () => {
     if (selectedProvider && selectedRole) {
@@ -2079,7 +2005,7 @@ function UserManagement({ token, onTokenExpired }) {
     setError('');
     
     try {
-      const res = await apiRequest('/users', {}, onTokenExpired);
+      const res = await apiRequest('/users', {}, handleTokenExpiration);
       
       if (!res.ok) {
         setError('Failed to fetch users');
@@ -2098,7 +2024,7 @@ function UserManagement({ token, onTokenExpired }) {
 
   useEffect(() => {
     fetchUsers();
-  }, [token]);
+  }, []);
 
   const handleSaveUser = async (formData) => {
     setIsLoading(true);
@@ -2110,14 +2036,14 @@ function UserManagement({ token, onTokenExpired }) {
         res = await apiRequest(`/users/${editingUser.username}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user: formData })
-        }, onTokenExpired);
+          body: JSON.stringify(formData)
+        }, handleTokenExpiration);
       } else {
         res = await apiRequest('/users', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData)
-        }, onTokenExpired);
+        }, handleTokenExpiration);
       }
       
       if (!res.ok) {
@@ -2154,7 +2080,7 @@ function UserManagement({ token, onTokenExpired }) {
     try {
       const res = await apiRequest(`/users/${username}`, {
         method: 'DELETE'
-      }, onTokenExpired);
+      }, handleTokenExpiration);
       
       if (!res.ok) {
         let errorMessage = 'Failed to delete user';
@@ -2677,7 +2603,6 @@ function UserManagement({ token, onTokenExpired }) {
                       color: 'white',
                       border: 'none',
                       borderRadius: '0.5rem',
-                      cursor: selectedProvider ? 'pointer' : 'not-allowed',
                       fontSize: '0.875rem',
                     }}
                   >
