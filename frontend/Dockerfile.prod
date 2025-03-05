@@ -10,7 +10,7 @@ COPY package*.json ./
 ENV NODE_OPTIONS=--max_old_space_size=4096
 # Set production environment for React build
 ENV NODE_ENV=production
-ENV REACT_APP_API_URL=/api
+# API URL will be loaded from .env file via Docker Compose
 
 RUN npm ci
 

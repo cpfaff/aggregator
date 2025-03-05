@@ -3,7 +3,7 @@ import { Database, Globe, Server, Edit, Trash2 } from 'lucide-react';
 import ProviderCard from './ProviderCard';
 import Header from './Header';
 import Footer from './Footer';
-import { API_BASE, apiRequest } from './apiUtils';
+import { API_BASE, API_VERSION, apiRequest, initCsrfProtection } from './apiUtils';
 
 // Theme variables using CSS variables approach (from Design Playground)
 const themeVariables = {
@@ -144,6 +144,20 @@ function App() {
   // Add global styles on first render
   useEffect(() => {
     addGlobalStyles();
+  }, []);
+  
+  // Initialize CSRF protection on first render
+  useEffect(() => {
+    const initCsrf = async () => {
+      try {
+        await initCsrfProtection();
+        console.log('CSRF protection initialized');
+      } catch (error) {
+        console.error('Failed to initialize CSRF protection:', error);
+      }
+    };
+    
+    initCsrf();
   }, []);
 
   // Check token validity on mount and after token changes
@@ -470,11 +484,18 @@ function Login({ setToken, setCurrentUser, sessionExpired, setSessionExpired }) 
     setIsLoading(true);
     
     try {
+      // Get CSRF token first
+      await initCsrfProtection();
+      
       // We don't use apiRequest here because we're getting the token
-      const res = await fetch(`${API_BASE}/auth-token`, {
+      const res = await fetch(`${API_BASE}${API_VERSION}/auth-token`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        headers: { 
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'X-CSRF-Token': localStorage.getItem('csrfToken')
+        },
         body: new URLSearchParams({ username, password }),
+        credentials: 'include', // Important for CSRF cookies
       });
       
       if (!res.ok) {
@@ -490,10 +511,8 @@ function Login({ setToken, setCurrentUser, sessionExpired, setSessionExpired }) 
       // Now we have a token, we can use apiRequest
       const permRes = await apiRequest('/me/permissions', {}, () => {
         // This callback will only be called if token is expired
-        setError('Failed to authenticate. Please try again.');
-        setIsLoading(false);
-        localStorage.removeItem('token');
-        setToken(null);
+        logout();
+        setSessionExpired(true);
       });
       
       if (!permRes.ok) {
@@ -510,6 +529,13 @@ function Login({ setToken, setCurrentUser, sessionExpired, setSessionExpired }) 
       setError('Network error. Please check your connection');
       setIsLoading(false);
     }
+  };
+
+  const logout = () => {
+    setToken(null);
+    setCurrentUser(null);
+    localStorage.removeItem('token');
+    localStorage.removeItem('currentUser');
   };
 
   return (
@@ -1505,14 +1531,14 @@ function ProviderForm({ token, provider, onClose, onTokenExpired }) {
                   style={{
                     width: '36px',
                     height: '36px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                     backgroundColor: 'var(--subtle-bg)',
                     color: 'var(--error)',
                     border: 'none',
                     borderRadius: '0.375rem',
                     cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
                     transition: 'all 0.2s',
                     padding: 0
                   }}
@@ -2084,7 +2110,7 @@ function UserManagement({ token, onTokenExpired }) {
         res = await apiRequest(`/users/${editingUser.username}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData)
+          body: JSON.stringify({ user: formData })
         }, onTokenExpired);
       } else {
         res = await apiRequest('/users', {
@@ -2389,12 +2415,13 @@ function UserManagement({ token, onTokenExpired }) {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    backgroundColor: '--var(subtle-bg)',
+                    backgroundColor: 'var(--subtle-bg)',
                     color: 'var(--text-light)',
-                    border: '1px solid var(--border)',
+                    border: 'none',
                     borderRadius: '0.375rem',
                     cursor: 'pointer',
                     transition: 'all 0.2s',
+                    padding: 0
                   }}
                 >
                   <Edit size={16} />
@@ -2407,12 +2434,13 @@ function UserManagement({ token, onTokenExpired }) {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    backgroundColor: '--var(subtle-bg)',
+                    backgroundColor: 'var(--subtle-bg)',
                     color: 'var(--error)',
-                    border: '1px solid var(--border)',
+                    border: 'none',
                     borderRadius: '0.375rem',
                     cursor: 'pointer',
                     transition: 'all 0.2s',
+                    padding: 0
                   }}
                 >
                   <Trash2 size={16} />
