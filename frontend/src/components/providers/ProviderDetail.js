@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from './AuthContext';
-import { apiRequest } from './apiUtils';
+import { useAuth } from '../auth/AuthContext';
+import { apiRequest } from '../../utils/apiUtils';
 import { Globe, Server, Plus, Search, ArrowLeft, Database, ExternalLink, Edit, Trash2 } from 'lucide-react';
-import Alert from './components/ui/Alert';
-import Modal from './components/ui/Modal';
-import Breadcrumbs from './components/ui/Breadcrumbs';
-import ActionMenu from './components/ui/ActionMenu';
-import DatasetCard from './DatasetCard';
-import DatasetForm from './DatasetForm';
+import Alert from '../ui/Alert';
+import Modal from '../ui/Modal';
+import Breadcrumbs from '../ui/Breadcrumbs';
+import ActionMenu from '../ui/ActionMenu';
+import DatasetCard from '../datasets/DatasetCard';
+import DatasetForm from '../datasets/DatasetForm';
 import ProviderForm from './ProviderForm';
-import ConfirmModal from './components/ui/ConfirmModal';
+import ConfirmModal from '../ui/ConfirmModal';
 
 const ProviderDetail = ({ provider, onBack, currentUser }) => {
   const { handleTokenExpiration } = useAuth();

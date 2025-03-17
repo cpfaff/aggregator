@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../AuthContext';
-import { API_BASE, API_VERSION, initCsrfProtection } from '../../apiUtils';
+import { useAuth } from './AuthContext';
+import { API_BASE, API_VERSION, initCsrfProtection } from '../../utils/apiUtils';
 import Alert from '../ui/Alert';
 
 // Login component

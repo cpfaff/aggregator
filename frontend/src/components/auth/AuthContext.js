@@ -1,6 +1,6 @@
-// src/AuthContext.js
+// src/components/auth/AuthContext.js
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { refreshAccessToken, apiRequest } from './apiUtils';
+import { refreshAccessToken, apiRequest } from '../../utils/apiUtils';
 
 const AuthContext = createContext(null);
 

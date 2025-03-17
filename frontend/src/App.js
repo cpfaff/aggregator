@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import ProviderDetail from './ProviderDetail';
-import Header from './Header';
-import Footer from './Footer';
-import { API_BASE, API_VERSION, apiRequest, initCsrfProtection } from './apiUtils';
-import { useAuth } from './AuthContext';
+import ProviderDetail from './components/providers/ProviderDetail';
+import Header from './components/layout/Header';
+import Footer from './components/layout/Footer';
+import { API_BASE, API_VERSION, apiRequest, initCsrfProtection } from './utils/apiUtils';
+import { useAuth } from './components/auth/AuthContext';
 import { applyTheme } from './styles/theme';
 import { addGlobalStyles } from './styles/globalStyles';
 import Login from './components/auth/Login';

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { apiRequest } from './apiUtils';
-import Button from './components/ui/Button';
-import Alert from './components/ui/Alert';
+import { apiRequest } from '../../utils/apiUtils';
+import Button from '../ui/Button';
+import Alert from '../ui/Alert';
 
 // Simplified ProviderForm component focused only on core provider information
 function ProviderForm({ provider, onClose, onTokenExpired }) {

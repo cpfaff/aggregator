@@ -1,5 +1,5 @@
 import React from 'react';
-import { Database, Globe, Server, Edit, Trash2 } from 'lucide-react';
+import { Database, Globe, Server, Edit, Trash2, ExternalLink } from 'lucide-react';
 
 const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }) => {
   // Handler for card click
@@ -9,6 +9,12 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
       return;
     }
     onViewDetails(provider);
+  };
+
+  // Handle delete click
+  const handleDeleteClick = (e) => {
+    e.stopPropagation();
+    onDelete(provider);
   };
 
   return (
@@ -54,7 +60,7 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
             color: 'var(--text-light)',
             display: 'inline-block',
           }}>
-            Provider: {provider.shortName || ''}
+            Provider
           </span>
         </div>
         
@@ -122,157 +128,233 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
           flexDirection: 'column',
           gap: '1.25rem',
         }}>
-          {/* Stats section with improved styling */}
-          <div>
-            <h4 style={{ 
-              fontSize: '0.75rem', 
-              textTransform: 'uppercase', 
-              fontWeight: 500, 
-              color: 'var(--text-light)',
-              marginBottom: '0.5rem',
-              letterSpacing: '0.025em',
-              paddingLeft: '0.25rem',
-            }}>
-              Stats
-            </h4>
+          {/* Stats section with flatter design */}
+          <div style={{ position: 'relative' }}>
+            {/* Vertical border for the section */}
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              bottom: 0,
+              left: '0.25rem',
+              width: '1.5px',
+              backgroundColor: 'var(--text-light)',
+              opacity: 0.4,
+              zIndex: 0
+            }}></div>
             
             <div style={{ 
+              fontSize: '0.8125rem', 
+              textTransform: 'uppercase', 
+              fontWeight: 600, 
+              color: 'var(--text-light)',
+              marginBottom: '0.75rem',
+              letterSpacing: '0.025em',
               display: 'flex',
               alignItems: 'center',
-              backgroundColor: 'var(--subtle-bg)',
-              padding: '0.5rem 0.75rem',
-              borderRadius: '0.375rem',
+              paddingLeft: '0.75rem',
+              position: 'relative',
+              zIndex: 1
             }}>
-              <Database size={16} style={{ color: 'var(--text-light)', marginRight: '0.5rem' }} />
-              <span style={{ fontSize: '0.875rem', color: 'var(--text-light)' }}>
-                <span style={{ fontWeight: 600, color: 'var(--text)' }}>
-                  {provider.datasets ? provider.datasets.length : 0}
-                </span> datasets
-              </span>
+              Stats
+            </div>
+            
+            <div style={{ 
+              paddingLeft: '1.5rem',
+              position: 'relative',
+              zIndex: 1
+            }}>
+              {/* Datasets */}
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center'
+              }}>
+                <Database 
+                  size={15} 
+                  style={{ 
+                    color: (provider.datasets && provider.datasets.length > 0) ? 'var(--primary)' : 'var(--text-light)', 
+                    marginRight: '0.75rem', 
+                    flexShrink: 0 
+                  }} 
+                />
+                <span style={{ 
+                  fontSize: '0.8125rem', 
+                  color: 'var(--text)',
+                  display: 'flex',
+                  alignItems: 'center',
+                }}>
+                  <span style={{ 
+                    fontWeight: 600, 
+                    color: (provider.datasets && provider.datasets.length > 0) ? 'var(--text)' : 'var(--text-light)',
+                    marginRight: '0.375rem'
+                  }}>
+                    {provider.datasets ? provider.datasets.length : 0}
+                  </span> 
+                  {(provider.datasets && provider.datasets.length === 1) ? 'dataset' : 'datasets'}
+                </span>
+              </div>
             </div>
           </div>
           
-          {/* Links section with improved styling */}
-          <div>
-            <h4 style={{ 
-              fontSize: '0.75rem', 
-              textTransform: 'uppercase', 
-              fontWeight: 500, 
-              color: 'var(--text-light)',
-              marginBottom: '0.5rem',
-              letterSpacing: '0.025em',
-              paddingLeft: '0.25rem',
-            }}>
-              Links
-            </h4>
+          {/* Links section with flatter design */}
+          <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '1rem', position: 'relative' }}>
+            {/* Vertical border for the section */}
+            <div style={{
+              position: 'absolute',
+              top: '1rem', /* Account for the padding-top */
+              bottom: 0,
+              left: '0.25rem',
+              width: '1.5px',
+              backgroundColor: 'var(--text-light)',
+              opacity: 0.4,
+              zIndex: 0
+            }}></div>
             
             <div style={{ 
-              display: 'flex', 
-              flexWrap: 'wrap', 
-              gap: '0.75rem', 
-              backgroundColor: 'var(--subtle-bg)',
-              padding: '0.75rem',
-              borderRadius: '0.375rem',
+              fontSize: '0.8125rem', 
+              textTransform: 'uppercase', 
+              fontWeight: 600, 
+              color: 'var(--text-light)',
+              marginBottom: '0.75rem',
+              letterSpacing: '0.025em',
+              display: 'flex',
+              alignItems: 'center',
+              paddingLeft: '0.75rem',
+              position: 'relative',
+              zIndex: 1
             }}>
+              Links
+            </div>
+            
+            <div style={{ 
+              paddingLeft: '1.5rem',
+              position: 'relative',
+              zIndex: 1
+            }}>
+              {/* Website */}
               {provider.url && (
                 <a 
                   href={provider.url}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{ 
-                    display: 'flex', 
+                    display: 'flex',
                     alignItems: 'center', 
-                    fontSize: '0.875rem',
+                    fontSize: '0.8125rem',
                     color: 'var(--primary)',
                     textDecoration: 'none',
                     fontWeight: 500,
+                    marginBottom: provider.biocaseUrl ? '0.75rem' : 0
                   }}
                   onClick={(e) => e.stopPropagation()} // Prevent card click
                 >
-                  <Globe size={16} style={{ marginRight: '0.5rem' }} />
+                  <Globe 
+                    size={15} 
+                    style={{ 
+                      marginRight: '0.75rem', 
+                      flexShrink: 0 
+                    }} 
+                  />
                   Website
+                  <ExternalLink size={11} style={{ marginLeft: '0.25rem' }} />
                 </a>
               )}
               
+              {/* BioCASe URL */}
               {provider.biocaseUrl && (
                 <a 
                   href={provider.biocaseUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{ 
-                    display: 'flex', 
+                    display: 'flex',
                     alignItems: 'center', 
-                    fontSize: '0.875rem',
+                    fontSize: '0.8125rem',
                     color: 'var(--primary)',
                     textDecoration: 'none',
                     fontWeight: 500,
                   }}
                   onClick={(e) => e.stopPropagation()} // Prevent card click
                 >
-                  <Server size={16} style={{ marginRight: '0.5rem' }} />
+                  <Server 
+                    size={15} 
+                    style={{ 
+                      marginRight: '0.75rem', 
+                      flexShrink: 0 
+                    }} 
+                  />
                   BioCASe
+                  <ExternalLink size={11} style={{ marginLeft: '0.25rem' }} />
                 </a>
               )}
               
               {/* Show placeholder if no links are available */}
               {!provider.url && !provider.biocaseUrl && (
-                <span style={{ 
-                  fontSize: '0.875rem',
+                <div style={{ 
+                  display: 'flex',
+                  alignItems: 'center', 
+                  fontSize: '0.8125rem',
                   color: 'var(--text-light)',
-                  fontStyle: 'italic'
                 }}>
-                  No links available
-                </span>
+                  <Globe 
+                    size={15} 
+                    style={{ 
+                      marginRight: '0.75rem', 
+                      flexShrink: 0 
+                    }} 
+                  />
+                  <span style={{ fontStyle: 'italic' }}>
+                    No links available
+                  </span>
+                </div>
               )}
             </div>
           </div>
         </div>
       </div>
       
-      {/* FOOTER with action buttons only for admins */}
-      {currentUser?.is_global_admin && (
-        <div style={{ 
-          borderTop: '1px solid var(--border)',
-          display: 'flex',
-          justifyContent: 'flex-end',
-          alignItems: 'center',
-          padding: '0.75rem 1.25rem',
-          gap: '0.5rem',
-          backgroundColor: 'var(--card-bg)',
-          minHeight: '52px',
-          height: 'auto',
-          flexShrink: 0,
-          boxSizing: 'border-box'
-        }}>
+      {/* ACTIONS AREA */}
+      <div style={{ 
+        display: 'flex',
+        padding: '0.75rem 1.25rem',
+        gap: '0.625rem',
+        borderTop: '1px solid var(--border)',
+        justifyContent: 'flex-end',
+        backgroundColor: 'var(--card-bg)',
+        minHeight: '52px',
+        height: 'auto',
+        flexShrink: 0,
+        boxSizing: 'border-box'
+      }}>
+        {/* Edit Button - visible to global admins and provider curators */}
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit(provider);
+          }}
+          style={{
+            width: '36px',
+            height: '36px',
+            backgroundColor: 'var(--subtle-bg)',
+            color: 'var(--text-light)',
+            border: 'none',
+            borderRadius: '0.375rem',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'all 0.2s',
+            padding: 0
+          }}
+          aria-label={`Edit provider: ${provider.name}`}
+          title="Edit provider"
+        >
+          <Edit size={18} />
+        </button>
+        
+        {/* Delete Button - only visible to global admins */}
+        {currentUser?.is_global_admin && (
           <button 
-            onClick={(e) => {
-              e.stopPropagation(); // Prevent card click
-              onEdit(provider);
-            }}
-            style={{
-              width: '36px',
-              height: '36px',
-              backgroundColor: 'var(--subtle-bg)',
-              color: 'var(--text-light)',
-              border: 'none',
-              borderRadius: '0.375rem',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'all 0.2s',
-              padding: 0
-            }}
-            aria-label="Edit provider"
-          >
-            <Edit size={18} />
-          </button>
-          
-          <button 
-            onClick={(e) => {
-              e.stopPropagation(); // Prevent card click
-              onDelete(provider);
-            }}
+            onClick={handleDeleteClick}
             style={{
               width: '36px',
               height: '36px',
@@ -287,12 +369,13 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
               transition: 'all 0.2s',
               padding: 0
             }}
-            aria-label="Delete provider"
+            aria-label={`Delete provider: ${provider.name}`}
+            title="Delete provider"
           >
             <Trash2 size={18} />
           </button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Trash2 } from 'lucide-react';
-import { apiRequest } from './apiUtils';
-import ConfirmModal from './components/ui/ConfirmModal';
+import { apiRequest } from '../../utils/apiUtils';
+import ConfirmModal from '../../components/ui/ConfirmModal';
 
 // Re-using the Alert and Button components from your project structure
 function Alert({ type = 'error', children }) {

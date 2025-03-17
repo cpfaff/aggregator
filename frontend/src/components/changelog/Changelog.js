@@ -12,7 +12,8 @@ const Changelog = () => {
         'Fixed issues with provider overview not immediately reflecting new datasets',
         'Enhanced data synchronization between related entities (providers, datasets, XML archives, and useful links)',
         'Optimized backend performance with more efficient cache management',
-        'Fixed UI inconsistencies when creating or updating related entities'
+        'Fixed UI inconsistencies when creating or updating related entities',
+        'Refactored frontend codebase with improved component organization and structure'
       ]
     },
     {

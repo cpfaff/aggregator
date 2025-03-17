@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Edit, Trash2, Plus } from 'lucide-react';
-import { useAuth } from '../../AuthContext';
-import { apiRequest } from '../../apiUtils';
+import { useAuth } from '../auth/AuthContext';
+import { apiRequest } from '../../utils/apiUtils';
 import Alert from '../ui/Alert';
 import Button from '../ui/Button';
 import Modal from '../ui/Modal';

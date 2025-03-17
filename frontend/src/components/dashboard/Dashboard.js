@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../AuthContext';
-import { apiRequest } from '../../apiUtils';
+import { useAuth } from '../auth/AuthContext';
+import { apiRequest } from '../../utils/apiUtils';
 import Alert from '../ui/Alert';
 import Button from '../ui/Button';
 import Modal from '../ui/Modal';
 import ConfirmModal from '../ui/ConfirmModal';
 import Breadcrumbs from '../ui/Breadcrumbs';
 import ActionMenu from '../ui/ActionMenu';
-import ProviderCard from '../../ProviderCard';
-import ProviderForm from '../../ProviderForm';
+import ProviderCard from '../providers/ProviderCard';
+import ProviderForm from '../providers/ProviderForm';
 import { Plus } from 'lucide-react';
 
 // Dashboard component with improved nested form integration
