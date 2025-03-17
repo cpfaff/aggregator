@@ -19,6 +19,7 @@ easy deployment.
 - [Development Workflow](#development-workflow)
 - [Production Deployment](#production-deployment)
 - [API Documentation](#api-documentation)
+- [Traefik Integration](#traefik-integration)
 - [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
 - [License](#license)
@@ -122,12 +123,40 @@ As a developer working with the Dataset Management Platform:
 
 ## Architecture
 
-The application follows a modern architecture:
+The Dataset Management Platform follows a modern microservices architecture:
 
-- **Backend**: FastAPI (Python) with PostgreSQL database
-- **Frontend**: React.js with component-based UI
-- **Deployment**: Docker containers orchestrated with Docker Compose
-- **Proxy**: Nginx for serving static content and API routing in production
+- **Backend**: FastAPI application providing RESTful API endpoints
+- **Frontend**: React single-page application for the user interface
+- **Database**: PostgreSQL database for persistent storage
+- **Reverse Proxy**: Traefik for routing, load balancing, and service discovery
+
+### Traefik Integration
+
+The application uses Traefik as a modern reverse proxy and load balancer:
+
+- **Automatic Service Discovery**: Traefik automatically discovers services through Docker labels
+- **Path-Based Routing**: 
+  - `/api/*` routes are directed to the backend service
+  - All other routes are directed to the frontend service
+- **Network Isolation**: Services are connected through a dedicated Docker network (`app-network`)
+- **Security**:
+  - Only containers explicitly enabled with `traefik.enable=true` label are exposed
+  - SSL/TLS configuration (commented out but ready for production use)
+  - API dashboard is disabled by default for security
+
+To add a new service to Traefik:
+
+1. Connect the service to the `app-network` in docker-compose
+2. Add the following labels to your service:
+   ```yaml
+   labels:
+     - "traefik.enable=true"
+     - "traefik.http.routers.[service-name].rule=PathPrefix(`/your-path`)"
+     - "traefik.http.routers.[service-name].entrypoints=web"
+     - "traefik.http.services.[service-name].loadbalancer.server.port=[internal-port]"
+   ```
+
+For production deployments, uncomment and configure the HTTPS sections in `traefik/traefik.yml` and update the `acme.json` file permissions to 600.
 
 ## Environment Setup
 
@@ -219,6 +248,12 @@ Once the application is running, you can access:
    - Run `docker-compose down` and then `docker-compose up` to rebuild
    - Check Docker logs with `docker-compose logs`
    - Verify Docker and Docker Compose versions
+
+5. **Traefik Routing Issues**:
+   - Verify container labels are correctly configured
+   - Check Traefik logs with `docker-compose logs traefik`
+   - Ensure your service is connected to the `app-network`
+   - Check that the container has `traefik.enable=true` label
 
 ## Contributing
 
