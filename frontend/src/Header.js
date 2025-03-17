@@ -57,6 +57,7 @@ const Header = ({ currentUser, activeView, setActiveView, logout, isDarkTheme, t
               transition: 'transform 0.2s ease',
             }}></span>
           </a>
+          
           {currentUser?.is_global_admin && (
             <a 
               href="#" 
@@ -85,6 +86,33 @@ const Header = ({ currentUser, activeView, setActiveView, logout, isDarkTheme, t
               }}></span>
             </a>
           )}
+          
+          <a 
+            href="#" 
+            onClick={(e) => { e.preventDefault(); setActiveView('changelog'); }}
+            style={{
+              padding: '0.5rem 0',
+              position: 'relative',
+              color: activeView === 'changelog' ? 'var(--primary)' : 'var(--text-light)',
+              textDecoration: 'none',
+              fontWeight: 500,
+              transition: 'all 0.2s ease',
+            }}
+          >
+            Changelog
+            <span style={{
+              content: '""',
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              width: '100%',
+              height: '2px',
+              backgroundColor: 'var(--primary)',
+              transform: activeView === 'changelog' ? 'scaleX(1)' : 'scaleX(0)',
+              transformOrigin: 'left',
+              transition: 'transform 0.2s ease',
+            }}></span>
+          </a>
         </nav>
       </div>
       

@@ -1,20 +1,34 @@
 import React from 'react';
-import { Database, Globe, Server, Edit, Trash2, ExternalLink } from 'lucide-react';
+import { Database, ExternalLink, FileText, Globe, Edit, Trash2, Archive } from 'lucide-react';
+import { useAuth } from './AuthContext';
 
-const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }) => {
-  // Handler for card click
-  const handleCardClick = (e) => {
-    // Don't trigger navigation if clicking on edit or delete buttons
-    if (e.target.closest('button')) {
-      return;
-    }
-    onViewDetails(provider);
-  };
+const DatasetCard = ({ dataset, onEdit, onDelete }) => {
+  const { currentUser } = useAuth();
+
+  // Debug logging
+  console.log('Dataset Provider ID:', dataset.provider_id);
+  console.log('Current User Roles:', currentUser?.provider_roles);
+  console.log('Is Global Admin:', currentUser?.is_global_admin);
+
+  // Check if user is global admin or provider admin
+  // Convert provider_id to string for comparison since IDs from API might be numbers
+  const canDelete = currentUser?.is_global_admin || 
+                   (currentUser?.provider_roles && 
+                    currentUser.provider_roles[String(dataset.provider_id)] === 'admin');
+
+  // Debug the result
+  console.log('Can Delete:', canDelete);
 
   // Handle delete click
   const handleDeleteClick = (e) => {
     e.stopPropagation();
-    onDelete(provider);
+    onDelete(dataset);
+  };
+
+  // Handle edit click
+  const handleEditClick = (e) => {
+    e.stopPropagation();
+    onEdit(dataset);
   };
 
   return (
@@ -29,17 +43,18 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
-        cursor: 'pointer',
+        position: 'relative',
+        cursor: 'default',
       }}
-      onClick={handleCardClick}
+      className="dataset-card"
       onMouseEnter={(e) => {
         e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1)';
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.05)';
       }}
-      role="button"
-      aria-label={`View details for ${provider.name}`}
+      role="article"
+      aria-label={`Dataset: ${dataset.title}`}
     >
       {/* HEADER AREA */}
       <div style={{ 
@@ -49,7 +64,7 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
         justifyContent: 'space-between',
         alignItems: 'center',
       }}>
-        {/* Provider badge */}
+        {/* Dataset badge */}
         <div>
           <span style={{ 
             backgroundColor: 'var(--subtle-bg)',
@@ -60,12 +75,12 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
             color: 'var(--text-light)',
             display: 'inline-block',
           }}>
-            Provider
+            Dataset
           </span>
         </div>
         
-        {/* Provider ID badge if available */}
-        {provider.id && (
+        {/* Dataset ID badge if available */}
+        {dataset.id && (
           <span style={{
             backgroundColor: 'var(--subtle-bg)',
             padding: '0.25rem 0.625rem',
@@ -75,21 +90,21 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
             color: 'var(--text-light)',
             display: 'inline-block',
           }}
-          aria-label={`Provider ID: ${provider.id}`}
+          aria-label={`Dataset ID: ${dataset.id}`}
           >
-            #{provider.id}
+            #{dataset.id}
           </span>
         )}
       </div>
-
-      {/* CONTENT AREA */}
+      
+      {/* BODY CONTENT */}
       <div style={{ 
-        padding: '1.25rem', 
+        padding: '0.75rem 1.25rem 1.25rem', 
         flexGrow: 1,
         display: 'flex',
         flexDirection: 'column',
       }}>
-        {/* Provider name with better prominence */}
+        {/* Title with better prominence */}
         <h3 style={{ 
           fontSize: '1.125rem', 
           fontWeight: 600, 
@@ -97,32 +112,21 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
           paddingLeft: '0.25rem',
           color: 'var(--text)',
           lineHeight: '1.4',
+          display: '-webkit-box',
+          WebkitLineClamp: '3',
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
         }}
-        title={provider.name}
+        title={dataset.title} // Adds tooltip on hover for long titles
         >
-          {provider.name}
+          {dataset.title}
         </h3>
         
-        {/* Datacenter location displayed prominently */}
-        {provider.datacenter && (
-          <div style={{ 
-            display: 'flex',
-            marginBottom: '1.25rem',
-            paddingLeft: '0.25rem',
-          }}>
-            <span style={{ 
-              color: 'var(--text-light)', 
-              fontSize: '0.875rem',
-            }}>
-              {provider.datacenter}
-            </span>
-          </div>
-        )}
-                
         {/* Flexible spacer */}
-        <div style={{ flexGrow: 1 }}></div>
+        <div style={{ flexGrow: 1, minHeight: '0.5rem' }}></div>
         
-        {/* Information sections with clear labels */}
+        {/* Main content sections */}
         <div style={{ 
           display: 'flex',
           flexDirection: 'column',
@@ -159,19 +163,22 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
             </div>
             
             <div style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: '0.75rem',
               paddingLeft: '1.5rem',
               position: 'relative',
               zIndex: 1
             }}>
-              {/* Datasets */}
+              {/* Archives */}
               <div style={{ 
                 display: 'flex', 
-                alignItems: 'center'
+                alignItems: 'center',
               }}>
-                <Database 
+                <FileText 
                   size={15} 
                   style={{ 
-                    color: (provider.datasets && provider.datasets.length > 0) ? 'var(--primary)' : 'var(--text-light)', 
+                    color: (Array.isArray(dataset.xmlArchives) && dataset.xmlArchives.length > 0) ? 'var(--primary)' : 'var(--text-light)', 
                     marginRight: '0.75rem', 
                     flexShrink: 0 
                   }} 
@@ -184,17 +191,79 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
                 }}>
                   <span style={{ 
                     fontWeight: 600, 
-                    color: (provider.datasets && provider.datasets.length > 0) ? 'var(--text)' : 'var(--text-light)',
+                    color: (Array.isArray(dataset.xmlArchives) && dataset.xmlArchives.length > 0) ? 'var(--text)' : 'var(--text-light)',
                     marginRight: '0.375rem'
                   }}>
-                    {provider.datasets ? provider.datasets.length : 0}
+                    {Array.isArray(dataset.xmlArchives) ? dataset.xmlArchives.length : 0}
                   </span> 
-                  {(provider.datasets && provider.datasets.length === 1) ? 'dataset' : 'datasets'}
+                  {(Array.isArray(dataset.xmlArchives) && dataset.xmlArchives.length === 1) ? 'archive' : 'archives'}
                 </span>
               </div>
+              
+              {/* Useful Links */}
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center',
+              }}>
+                <Globe 
+                  size={15} 
+                  style={{ 
+                    color: (Array.isArray(dataset.usefulLinks) && dataset.usefulLinks.length > 0) ? 'var(--primary)' : 'var(--text-light)', 
+                    marginRight: '0.75rem', 
+                    flexShrink: 0 
+                  }} 
+                />
+                <span style={{ 
+                  fontSize: '0.8125rem', 
+                  color: 'var(--text)',
+                  display: 'flex',
+                  alignItems: 'center',
+                }}>
+                  <span style={{ 
+                    fontWeight: 600, 
+                    color: (Array.isArray(dataset.usefulLinks) && dataset.usefulLinks.length > 0) ? 'var(--text)' : 'var(--text-light)',
+                    marginRight: '0.375rem'
+                  }}>
+                    {Array.isArray(dataset.usefulLinks) ? dataset.usefulLinks.length : 0}
+                  </span> 
+                  {(Array.isArray(dataset.usefulLinks) && dataset.usefulLinks.length === 1) ? 'useful link' : 'useful links'}
+                </span>
+              </div>
+              
+              {/* Sample count (if exists in the data) */}
+              {dataset.sampleCount !== undefined && (
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center',
+                }}>
+                  <Database 
+                    size={15} 
+                    style={{ 
+                      color: dataset.sampleCount > 0 ? 'var(--primary)' : 'var(--text-light)', 
+                      marginRight: '0.75rem', 
+                      flexShrink: 0 
+                    }} 
+                  />
+                  <span style={{ 
+                    fontSize: '0.8125rem', 
+                    color: 'var(--text)',
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}>
+                    <span style={{ 
+                      fontWeight: 600, 
+                      color: dataset.sampleCount > 0 ? 'var(--text)' : 'var(--text-light)',
+                      marginRight: '0.375rem'
+                    }}>
+                      {dataset.sampleCount?.toLocaleString() || 0}
+                    </span> 
+                    samples
+                  </span>
+                </div>
+              )}
             </div>
           </div>
-          
+
           {/* Links section with flatter design */}
           <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '1rem', position: 'relative' }}>
             {/* Vertical border for the section */}
@@ -230,10 +299,10 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
               position: 'relative',
               zIndex: 1
             }}>
-              {/* Website */}
-              {provider.url && (
+              {/* Landing Page */}
+              {dataset.landingPageUrl ? (
                 <a 
-                  href={provider.url}
+                  href={dataset.landingPageUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{ 
@@ -243,7 +312,6 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
                     color: 'var(--primary)',
                     textDecoration: 'none',
                     fontWeight: 500,
-                    marginBottom: provider.biocaseUrl ? '0.75rem' : 0
                   }}
                   onClick={(e) => e.stopPropagation()} // Prevent card click
                 >
@@ -254,41 +322,10 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
                       flexShrink: 0 
                     }} 
                   />
-                  Website
+                  Landing page
                   <ExternalLink size={11} style={{ marginLeft: '0.25rem' }} />
                 </a>
-              )}
-              
-              {/* BioCASe URL */}
-              {provider.biocaseUrl && (
-                <a 
-                  href={provider.biocaseUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ 
-                    display: 'flex',
-                    alignItems: 'center', 
-                    fontSize: '0.8125rem',
-                    color: 'var(--primary)',
-                    textDecoration: 'none',
-                    fontWeight: 500,
-                  }}
-                  onClick={(e) => e.stopPropagation()} // Prevent card click
-                >
-                  <Server 
-                    size={15} 
-                    style={{ 
-                      marginRight: '0.75rem', 
-                      flexShrink: 0 
-                    }} 
-                  />
-                  BioCASe
-                  <ExternalLink size={11} style={{ marginLeft: '0.25rem' }} />
-                </a>
-              )}
-              
-              {/* Show placeholder if no links are available */}
-              {!provider.url && !provider.biocaseUrl && (
+              ) : (
                 <div style={{ 
                   display: 'flex',
                   alignItems: 'center', 
@@ -303,7 +340,7 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
                     }} 
                   />
                   <span style={{ fontStyle: 'italic' }}>
-                    No links available
+                    No landing page available
                   </span>
                 </div>
               )}
@@ -317,49 +354,23 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
         display: 'flex',
         padding: '0.75rem 1.25rem',
         gap: '0.625rem',
-        borderTop: '1px solid var(--border)',
-        justifyContent: 'flex-end',
-        backgroundColor: 'var(--card-bg)',
-        minHeight: '52px',
         height: 'auto',
+        minHeight: '52px',
         flexShrink: 0,
-        boxSizing: 'border-box'
+        boxSizing: 'border-box',
+        borderTop: '1px solid var(--border)',
+        backgroundColor: 'var(--card-bg)',
+        justifyContent: 'flex-end',
       }}>
-        {/* Edit Button - visible to global admins and provider curators */}
-        <button 
-          onClick={(e) => {
-            e.stopPropagation();
-            onEdit(provider);
-          }}
-          style={{
-            width: '36px',
-            height: '36px',
-            backgroundColor: 'var(--subtle-bg)',
-            color: 'var(--text-light)',
-            border: 'none',
-            borderRadius: '0.375rem',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'all 0.2s',
-            padding: 0
-          }}
-          aria-label={`Edit provider: ${provider.name}`}
-          title="Edit provider"
-        >
-          <Edit size={18} />
-        </button>
-        
-        {/* Delete Button - only visible to global admins */}
-        {currentUser?.is_global_admin && (
+        {/* Secondary actions */}
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button 
-            onClick={handleDeleteClick}
+            onClick={handleEditClick}
             style={{
               width: '36px',
               height: '36px',
               backgroundColor: 'var(--subtle-bg)',
-              color: 'var(--error)',
+              color: 'var(--text-light)',
               border: 'none',
               borderRadius: '0.375rem',
               cursor: 'pointer',
@@ -369,15 +380,64 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
               transition: 'all 0.2s',
               padding: 0
             }}
-            aria-label={`Delete provider: ${provider.name}`}
-            title="Delete provider"
+            aria-label={`Edit dataset: ${dataset.title}`}
+            title="Edit dataset"
           >
-            <Trash2 size={18} />
+            <Edit size={18} />
           </button>
-        )}
+          
+          {canDelete && (
+            <button 
+              onClick={handleDeleteClick}
+              style={{
+                width: '36px',
+                height: '36px',
+                backgroundColor: 'var(--subtle-bg)',
+                color: 'var(--error)',
+                border: 'none',
+                borderRadius: '0.375rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s',
+                padding: 0
+              }}
+              aria-label="Delete dataset"
+              title="Delete dataset"
+            >
+              <Trash2 size={18} />
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
 };
 
-export default ProviderCard;
+// Add CSS styles to the document for more complex hover effects
+const injectDatasetCardStyles = () => {
+  if (!document.getElementById('dataset-card-styles')) {
+    const styleEl = document.createElement('style');
+    styleEl.id = 'dataset-card-styles';
+    styleEl.innerHTML = `
+      .dataset-card:focus-within {
+        outline: 2px solid var(--primary);
+        outline-offset: 2px;
+      }
+      
+      .dataset-card button:focus, .dataset-card a:focus {
+        outline: 2px solid var(--primary);
+        outline-offset: 1px;
+      }
+    `;
+    document.head.appendChild(styleEl);
+  }
+};
+
+// Inject the styles when the component is used
+if (typeof window !== 'undefined') {
+  injectDatasetCardStyles();
+}
+
+export default DatasetCard;

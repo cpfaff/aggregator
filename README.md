@@ -1,6 +1,8 @@
 # Dataset Management Platform
 
-A full-stack application for managing scientific datasets and their providers. Built with FastAPI backend and React frontend, containerized with Docker for easy deployment.
+A full-stack application for managing scientific datasets and their providers.
+Built with FastAPI backend and React frontend, containerized with Docker for
+easy deployment.
 
 ![Dataset Management Platform](https://via.placeholder.com/800x400?text=Dataset+Management+Platform)
 
@@ -23,7 +25,10 @@ A full-stack application for managing scientific datasets and their providers. B
 
 ## Overview
 
-The Dataset Management Platform is designed to catalog and manage scientific datasets and their providers. It allows users to browse datasets, administrators to manage user access, and provides a comprehensive API for integration with other systems.
+The Dataset Management Platform is designed to catalog and manage scientific
+datasets and their providers. It allows users to browse datasets,
+administrators to manage user access, and provides a comprehensive API for
+integration with other systems.
 
 ## Features
 
