@@ -1,5 +1,5 @@
 import React from 'react';
-import { Database, Globe, Server, Edit, Trash2, ExternalLink } from 'lucide-react';
+import { Database, Globe, Server, Edit, Trash2, ExternalLink, Clock } from 'lucide-react';
 
 const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }) => {
   // Handler for card click
@@ -89,16 +89,21 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
         display: 'flex',
         flexDirection: 'column',
       }}>
-        {/* Provider name with better prominence */}
+        {/* Title with better prominence */}
         <h3 style={{ 
           fontSize: '1.125rem', 
           fontWeight: 600, 
-          margin: '0 0 1rem 0',
+          margin: '0 0 0.5rem 0',
           paddingLeft: '0.25rem',
           color: 'var(--text)',
           lineHeight: '1.4',
+          display: '-webkit-box',
+          WebkitLineClamp: '3',
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
         }}
-        title={provider.name}
+        title={provider.name} // Adds tooltip on hover for long titles
         >
           {provider.name}
         </h3>
@@ -106,21 +111,41 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
         {/* Datacenter location displayed prominently */}
         {provider.datacenter && (
           <div style={{ 
-            display: 'flex',
-            marginBottom: '1.25rem',
             paddingLeft: '0.25rem',
+            marginBottom: '0.5rem',
           }}>
             <span style={{ 
-              color: 'var(--text-light)', 
-              fontSize: '0.875rem',
+              fontSize: '0.875rem', 
+              color: 'var(--text)',
+              fontWeight: 500
             }}>
               {provider.datacenter}
             </span>
           </div>
         )}
+        
+        {/* Last Updated timestamp - subtle styling below datacenter */}
+        {provider.updated_at && (
+          <div style={{ 
+            paddingLeft: '0.25rem',
+            marginBottom: '1rem',
+          }}>
+            <span style={{ 
+              fontSize: '0.75rem', 
+              color: 'var(--text-light)',
+              opacity: 0.7,
+            }}>
+              Last updated: {new Date(provider.updated_at).toLocaleDateString(undefined, {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+              })}
+            </span>
+          </div>
+        )}
                 
         {/* Flexible spacer */}
-        <div style={{ flexGrow: 1 }}></div>
+        <div style={{ flexGrow: 1, minHeight: '0.5rem' }}></div>
         
         {/* Information sections with clear labels */}
         <div style={{ 

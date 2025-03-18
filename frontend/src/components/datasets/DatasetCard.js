@@ -108,7 +108,7 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
         <h3 style={{ 
           fontSize: '1.125rem', 
           fontWeight: 600, 
-          margin: '0 0 1rem 0',
+          margin: '0 0 0.5rem 0',
           paddingLeft: '0.25rem',
           color: 'var(--text)',
           lineHeight: '1.4',
@@ -122,6 +122,26 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
         >
           {dataset.title}
         </h3>
+        
+        {/* Last Updated timestamp - subtle styling below title */}
+        {dataset.updated_at && (
+          <div style={{ 
+            paddingLeft: '0.25rem',
+            marginBottom: '1rem',
+          }}>
+            <span style={{ 
+              fontSize: '0.75rem', 
+              color: 'var(--text-light)',
+              opacity: 0.7,
+            }}>
+              Last updated: {new Date(dataset.updated_at).toLocaleDateString(undefined, {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+              })}
+            </span>
+          </div>
+        )}
         
         {/* Flexible spacer */}
         <div style={{ flexGrow: 1, minHeight: '0.5rem' }}></div>
@@ -226,7 +246,7 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
                   }}>
                     {Array.isArray(dataset.usefulLinks) ? dataset.usefulLinks.length : 0}
                   </span> 
-                  {(Array.isArray(dataset.usefulLinks) && dataset.usefulLinks.length === 1) ? 'useful link' : 'useful links'}
+                  {(Array.isArray(dataset.usefulLinks) && dataset.usefulLinks.length === 1) ? 'link' : 'links'}
                 </span>
               </div>
               

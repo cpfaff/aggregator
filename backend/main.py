@@ -36,6 +36,7 @@ from sqlalchemy import (
     and_,
     Index,
     func,
+    DateTime,
 )
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, relationship, declarative_base, selectinload
@@ -211,6 +212,12 @@ def invalidate_cache(prefix):
 
 
 # ------------------- ORM Models -------------------
+class TimestampMixin:
+    """Mixin class that adds created_at and updated_at timestamp fields to models."""
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+
 class UserModel(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
@@ -220,7 +227,7 @@ class UserModel(Base):
     is_global_admin = Column(Boolean, default=False)
 
 
-class DataProviderModel(Base):
+class DataProviderModel(Base, TimestampMixin):
     __tablename__ = "data_providers"
     id = Column(Integer, primary_key=True, index=True)
     datacenter = Column(String)
@@ -233,7 +240,7 @@ class DataProviderModel(Base):
     )
 
 
-class DatasetModel(Base):
+class DatasetModel(Base, TimestampMixin):
     __tablename__ = "datasets"
     id = Column(Integer, primary_key=True, index=True)
     provider_id = Column(Integer, ForeignKey("data_providers.id"))
@@ -382,6 +389,8 @@ class Dataset(BaseModel):
     landingPageUrl: Optional[AnyUrl] = None
     xmlArchives: List[XmlArchive] = []
     usefulLinks: List[UsefulLink] = []
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     @field_validator("source", "title")
     @classmethod
@@ -416,6 +425,8 @@ class DataProvider(BaseModel):
     url: Optional[AnyUrl] = None
     biocaseUrl: Optional[AnyUrl] = None
     datasets: List[Dataset] = []
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     @field_validator("datacenter", "shortName", "name")
     @classmethod

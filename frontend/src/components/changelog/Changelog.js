@@ -5,6 +5,16 @@ const Changelog = () => {
   // Changelog entries based on actual project development
   const changelogEntries = [
     {
+      version: '1.5.1',
+      date: 'March 18, 2025',
+      changes: [
+        'Added timestamp tracking for providers and datasets with created_at and updated_at fields',
+        'Implemented "Last updated" information display on provider and dataset cards',
+        'Added database migration to support timestamp fields',
+        'Improved UI with subtle timestamp display that maintains visual hierarchy'
+      ]
+    },
+    {
       version: '1.5.0',
       date: 'March 17, 2025',
       changes: [
