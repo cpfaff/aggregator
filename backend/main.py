@@ -2262,9 +2262,9 @@ app.include_router(v1_router)
 # ------------------- Startup Event -------------------
 @app.on_event("startup")
 async def on_startup():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    logger.info("Database tables created")
+    # We now use Alembic for all database migrations and initialization
+    # No need to create tables here as they are managed by migrations
+    logger.info("Application started - database managed by Alembic migrations")
 
 
 # ------------------- Main Entry Point -------------------
