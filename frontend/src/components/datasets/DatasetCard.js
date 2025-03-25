@@ -1,9 +1,15 @@
-import React from 'react';
-import { Database, ExternalLink, FileText, Globe, Edit, Trash2, Archive } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Database, ExternalLink, FileText, Globe, Edit, Trash2, Archive, CheckCircle, XCircle, AlertCircle, RefreshCw, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
+import axios from 'axios';
+import ValidationResultsModal from './ValidationResultsModal';
 
 const DatasetCard = ({ dataset, onEdit, onDelete }) => {
   const { currentUser } = useAuth();
+  const [validationStatus, setValidationStatus] = useState(null);
+  const [isValidating, setIsValidating] = useState(false);
+  const [showValidationModal, setShowValidationModal] = useState(false);
+  const [pollingInterval, setPollingInterval] = useState(null);
 
   // Debug logging
   console.log('Dataset Provider ID:', dataset.provider_id);
@@ -18,6 +24,107 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
 
   // Debug the result
   console.log('Can Delete:', canDelete);
+  
+  // Fetch validation status when component mounts
+  useEffect(() => {
+    if (dataset && dataset.id) {
+      fetchValidationStatus();
+    }
+    
+    // Clear any existing polling interval when component unmounts
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+    };
+  }, [dataset]);
+  
+  // Function to fetch validation status
+  const fetchValidationStatus = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        `${process.env.REACT_APP_API_BASE_URL || ''}/api/v1/validators/datasets/${dataset.id}/validation-status`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      
+      const newStatus = response.data;
+      setValidationStatus(newStatus);
+      
+      // If the status is no longer running or pending, ensure we're not in validating state
+      if (newStatus.validation_status !== 'running' && newStatus.validation_status !== 'pending') {
+        if (pollingInterval) {
+          clearInterval(pollingInterval);
+          setPollingInterval(null);
+        }
+        setIsValidating(false);
+      }
+    } catch (error) {
+      console.error('Error fetching validation status:', error);
+      
+      // If there's an error, stop polling and validating
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+        setPollingInterval(null);
+      }
+      setIsValidating(false);
+    }
+  };
+  
+  // Update the useEffect to also react to validation status changes
+  useEffect(() => {
+    // If validation status changes and is not running/pending, make sure isValidating is false
+    if (validationStatus && 
+        validationStatus.validation_status !== 'running' && 
+        validationStatus.validation_status !== 'pending') {
+      setIsValidating(false);
+    }
+  }, [validationStatus]);
+
+  // Function to trigger validation
+  const triggerValidation = async (e) => {
+    e.stopPropagation();
+    setIsValidating(true);
+    
+    // Clear any existing polling
+    if (pollingInterval) {
+      clearInterval(pollingInterval);
+      setPollingInterval(null);
+    }
+    
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(
+        `${process.env.REACT_APP_API_BASE_URL || ''}/api/v1/validators/datasets/${dataset.id}/validate`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      
+      // Immediately fetch status to update UI
+      await fetchValidationStatus();
+      
+      // Set up polling to check status every 3 seconds
+      const interval = setInterval(fetchValidationStatus, 3000);
+      setPollingInterval(interval);
+    } catch (error) {
+      console.error('Error triggering validation:', error);
+      setIsValidating(false);
+    }
+  };
+  
+  // Function to open validation modal
+  const openValidationModal = (e) => {
+    e.stopPropagation();
+    setShowValidationModal(true);
+  };
 
   // Handle delete click
   const handleDeleteClick = (e) => {
@@ -281,6 +388,97 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
                   </span>
                 </div>
               )}
+              
+              {/* Validation Status (New) */}
+              {validationStatus && validationStatus.has_latest_archive && (
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center',
+                }}>
+                  {validationStatus.validation_status === 'completed' ? (
+                    validationStatus.is_valid ? (
+                      <CheckCircle 
+                        size={15} 
+                        style={{ 
+                          color: 'var(--success)', 
+                          marginRight: '0.75rem', 
+                          flexShrink: 0 
+                        }} 
+                      />
+                    ) : (
+                      <XCircle 
+                        size={15} 
+                        style={{ 
+                          color: 'var(--error)', 
+                          marginRight: '0.75rem', 
+                          flexShrink: 0 
+                        }} 
+                      />
+                    )
+                  ) : validationStatus.validation_status === 'pending' || validationStatus.validation_status === 'running' ? (
+                    <RefreshCw 
+                      size={15} 
+                      style={{ 
+                        color: 'var(--primary)', 
+                        marginRight: '0.75rem', 
+                        flexShrink: 0,
+                        animation: 'spin 2s linear infinite'
+                      }} 
+                    />
+                  ) : (
+                    <AlertCircle 
+                      size={15} 
+                      style={{ 
+                        color: 'var(--text-light)', 
+                        marginRight: '0.75rem', 
+                        flexShrink: 0 
+                      }} 
+                    />
+                  )}
+                  <span style={{ 
+                    fontSize: '0.8125rem', 
+                    color: 'var(--text)',
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}>
+                    <span style={{ 
+                      fontWeight: 600, 
+                      marginRight: '0.375rem',
+                      color: validationStatus.validation_status === 'completed' 
+                        ? (validationStatus.is_valid ? 'var(--success)' : 'var(--error)') 
+                        : validationStatus.validation_status === 'pending' || validationStatus.validation_status === 'running'
+                          ? 'var(--primary)' 
+                          : 'var(--text-light)',
+                    }}>
+                      {validationStatus.validation_status === 'completed' 
+                        ? (validationStatus.is_valid 
+                          ? `Valid (${validationStatus.quality_score?.toFixed(1)}%)` 
+                          : 'Invalid') 
+                        : validationStatus.validation_status === 'pending' 
+                          ? 'Pending' 
+                          : validationStatus.validation_status === 'running'
+                            ? 'Running'
+                            : 'Not validated'}
+                    </span>
+                    {validationStatus.validation_status === 'completed' && (
+                      <button
+                        onClick={openValidationModal}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: 'var(--primary)',
+                          cursor: 'pointer',
+                          padding: '0 0 0 0.5rem',
+                          fontSize: '0.75rem',
+                          textDecoration: 'underline'
+                        }}
+                      >
+                        Details
+                      </button>
+                    )}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -380,9 +578,47 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
         boxSizing: 'border-box',
         borderTop: '1px solid var(--border)',
         backgroundColor: 'var(--card-bg)',
-        justifyContent: 'flex-end',
+        justifyContent: 'space-between',
       }}>
-        {/* Secondary actions */}
+        {/* Secondary actions on the left */}
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          {validationStatus && validationStatus.has_latest_archive && (
+            <button
+              onClick={triggerValidation}
+              disabled={isValidating || validationStatus.validation_status === 'pending' || validationStatus.validation_status === 'running'}
+              style={{
+                width: '36px',
+                height: '36px',
+                backgroundColor: 'var(--subtle-bg)',
+                color: 'var(--primary)',
+                border: 'none',
+                borderRadius: '0.375rem',
+                cursor: (isValidating || validationStatus.validation_status === 'pending' || validationStatus.validation_status === 'running') ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s',
+                padding: 0,
+                opacity: (isValidating || validationStatus.validation_status === 'pending' || validationStatus.validation_status === 'running') ? 0.7 : 1
+              }}
+              aria-label={isValidating ? 'Validating dataset...' : 'Validate dataset'}
+              title={isValidating ? 'Validating dataset...' : 'Validate dataset'}
+            >
+              {(isValidating || validationStatus.validation_status === 'pending' || validationStatus.validation_status === 'running') ? (
+                <RefreshCw 
+                  size={18} 
+                  style={{ 
+                    animation: 'spin 2s linear infinite'
+                  }} 
+                />
+              ) : (
+                <ShieldCheck size={18} />
+              )}
+            </button>
+          )}
+        </div>
+        
+        {/* Secondary actions on the right */}
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button 
             onClick={handleEditClick}
@@ -423,7 +659,7 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
                 transition: 'all 0.2s',
                 padding: 0
               }}
-              aria-label="Delete dataset"
+              aria-label={`Delete dataset: ${dataset.title}`}
               title="Delete dataset"
             >
               <Trash2 size={18} />
@@ -431,6 +667,15 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
           )}
         </div>
       </div>
+      
+      {/* Validation Results Modal */}
+      {showValidationModal && validationStatus && (
+        <ValidationResultsModal
+          isOpen={showValidationModal}
+          onClose={() => setShowValidationModal(false)}
+          validationResults={validationStatus}
+        />
+      )}
     </div>
   );
 };
@@ -449,6 +694,11 @@ const injectDatasetCardStyles = () => {
       .dataset-card button:focus, .dataset-card a:focus {
         outline: 2px solid var(--primary);
         outline-offset: 1px;
+      }
+      
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
       }
     `;
     document.head.appendChild(styleEl);

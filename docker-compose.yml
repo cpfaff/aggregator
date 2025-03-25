@@ -38,20 +38,40 @@ services:
       retries: 5
       start_period: 10s
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
   backend:
     build: ./backend
     volumes:
       - ./backend:/app
+      - ./validator:/validator
     ports:
       - "8000:8000"
     depends_on:
       - db
+      - redis
     env_file:
       - ./backend/.env
     environment:
       - DATABASE_URL=postgresql+asyncpg://${DB_USER:-user}:${DB_PASSWORD:-password}@db:5432/${DB_NAME:-dbname}
       - SYNC_DATABASE_URL=postgresql://${DB_USER:-user}:${DB_PASSWORD:-password}@db:5432/${DB_NAME:-dbname}
       - ENVIRONMENT=${ENVIRONMENT:-development}
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
     networks:
       - app-network
     healthcheck:
@@ -67,7 +87,76 @@ services:
       - "traefik.http.routers.backend.entrypoints=web"
       - "traefik.http.services.backend.loadbalancer.server.port=8000"
       # No middleware needed as we're not stripping prefixes anymore
+    command: >
+      bash -c "
+        cd /app && 
+        pip install -e /validator &&
+        uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+      "
 
+  celery-worker:
+    build:
+      context: ./backend
+    volumes:
+      - ./backend:/app
+      - ./validator:/validator
+    depends_on:
+      - db
+      - redis
+    env_file:
+      - ./backend/.env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${DB_USER:-user}:${DB_PASSWORD:-password}@db:5432/${DB_NAME:-dbname}
+      - SYNC_DATABASE_URL=postgresql://${DB_USER:-user}:${DB_PASSWORD:-password}@db:5432/${DB_NAME:-dbname}
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.core.celery_app inspect ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    command: >
+      bash -c "
+        cd /app && 
+        pip install -e /validator &&
+        celery -A app.core.celery_app worker --concurrency=1 --pool=solo --loglevel=info
+      "
+
+  celery-beat:
+    build:
+      context: ./backend
+    volumes:
+      - ./backend:/app
+      - ./validator:/validator
+    depends_on:
+      - redis
+      - celery-worker
+    env_file:
+      - ./backend/.env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${DB_USER:-user}:${DB_PASSWORD:-password}@db:5432/${DB_NAME:-dbname}
+      - SYNC_DATABASE_URL=postgresql://${DB_USER:-user}:${DB_PASSWORD:-password}@db:5432/${DB_NAME:-dbname}
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "celery", "-A", "app.core.celery_app", "inspect", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    command: >
+      bash -c "
+        cd /app && 
+        pip install -e /validator &&
+        celery -A app.core.celery_app beat --loglevel=info
+      "
   frontend:
     build: ./frontend
     volumes:
@@ -96,6 +185,7 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:
 
 networks:
   app-network:

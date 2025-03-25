@@ -1,3 +1,5 @@
+import os
+import json
 import time
 import uuid
 import logging
@@ -38,19 +40,61 @@ from sqlalchemy import (
     func,
     DateTime,
 )
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker, relationship, declarative_base, selectinload
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import relationship, selectinload
 from pythonjsonlogger import jsonlogger
 from fastapi_csrf_protect import CsrfProtect
+
+# Import application components
+from app.core.config import Settings, settings
+from app.core.utils import apply_entity_updates
+from app.core.cache import cache, cache_response, invalidate_cache
+from app.models import (
+    Base,
+    UserModel,
+    DataProviderModel,
+    DatasetModel,
+    XmlArchiveModel,
+    UsefulLinkModel,
+)
+from app.db import async_session, engine, get_db
+from app.schemas import (
+    User, 
+    UserCreate, 
+    UserUpdate, 
+    UserPermissions,
+    DataProvider, 
+    ProviderAssociation,
+    Dataset, 
+    XmlArchive, 
+    UsefulLink,
+    LegacyDataset, 
+    LegacyXmlArchive, 
+    LegacyUsefulLink,
+    PaginatedResponse,
+    TokenResponse,
+    PaginatedProviders,
+    PaginatedDatasets
+)
+from app.security import (
+    get_password_hash,
+    verify_password,
+    create_access_token,
+    create_refresh_token,
+    get_current_user,
+    authenticate_user,
+    check_provider_permission,
+    get_user_model,
+    normalize_provider_roles,
+    check_global_admin
+)
+from app.security.token import oauth2_scheme
 
 # Import slowapi components for rate limiting
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from starlette.middleware.base import BaseHTTPMiddleware
-
-T = TypeVar("T")
-
 
 # ------------------- Configuration Management -------------------
 class Settings(BaseSettings):
@@ -124,638 +168,19 @@ logger.addHandler(log_handler)
 logger.setLevel(getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO))
 
 # ------------------- Database Setup -------------------
-engine = create_async_engine(
-    settings.DATABASE_URL,
-    echo=False,
-    pool_size=settings.DB_POOL_SIZE,
-    max_overflow=settings.DB_MAX_OVERFLOW,
-    pool_recycle=settings.DB_POOL_RECYCLE,
-)
-async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-Base = declarative_base()
-
-
-# ------------------- Simple Cache System -------------------
-class SimpleCache:
-    def __init__(self, ttl_seconds=300):
-        self.cache = {}
-        self.ttl_seconds = ttl_seconds
-
-    def get(self, key):
-        if key in self.cache:
-            value, expires_at = self.cache[key]
-            if expires_at > datetime.utcnow():
-                return value
-            else:
-                del self.cache[key]
-        return None
-
-    def set(self, key, value, ttl_seconds=None):
-        ttl = ttl_seconds or self.ttl_seconds
-        expires_at = datetime.utcnow() + timedelta(seconds=ttl)
-        self.cache[key] = (value, expires_at)
-
-    def invalidate(self, prefix=None):
-        if prefix:
-            keys_to_remove = [
-                key for key in self.cache.keys() if key.startswith(prefix)
-            ]
-            for key in keys_to_remove:
-                del self.cache[key]
-        else:
-            self.cache.clear()
-
-
-cache = SimpleCache(ttl_seconds=settings.CACHE_EXPIRE_SECONDS)
-
-
-def cache_response(prefix, ttl_seconds=None):
-    """Decorator to cache function responses with prefix for key generation"""
-
-    def decorator(func):
-        @wraps(func)
-        async def wrapper(*args, **kwargs):
-            if not settings.CACHE_ENABLED:
-                return await func(*args, **kwargs)
-
-            # Generate a cache key based on function name, args, and kwargs
-            key_parts = [prefix, func.__name__]
-            key_parts.extend(
-                [
-                    str(arg)
-                    for arg in args
-                    if not isinstance(arg, Request)
-                    and not isinstance(arg, AsyncSession)
-                ]
-            )
-            for k, v in sorted(kwargs.items()):
-                if k not in ["db", "request", "current_user"]:
-                    key_parts.append(f"{k}:{v}")
-            cache_key = ":".join(key_parts)
-
-            cached_result = cache.get(cache_key)
-            if cached_result is not None:
-                return cached_result
-
-            result = await func(*args, **kwargs)
-            cache.set(cache_key, result, ttl_seconds)
-            return result
-
-        return wrapper
-
-    return decorator
-
-
-def invalidate_cache(prefix):
-    """Invalidate cache entries with specified prefix"""
-    cache.invalidate(prefix)
-
-
-# ------------------- ORM Models -------------------
-class TimestampMixin:
-    """Mixin class that adds created_at and updated_at timestamp fields to models."""
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
-
-
-class UserModel(Base):
-    __tablename__ = "users"
-    id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True, index=True, nullable=False)
-    hashed_password = Column(String, nullable=False)
-    provider_roles = Column(JSON, default={})
-    is_global_admin = Column(Boolean, default=False)
-
-
-class DataProviderModel(Base, TimestampMixin):
-    __tablename__ = "data_providers"
-    id = Column(Integer, primary_key=True, index=True)
-    datacenter = Column(String)
-    shortName = Column(String)
-    name = Column(String)
-    url = Column(String, nullable=True)
-    biocaseUrl = Column(String, nullable=True)
-    datasets = relationship(
-        "DatasetModel", back_populates="provider", cascade="all, delete-orphan"
-    )
-
-
-class DatasetModel(Base, TimestampMixin):
-    __tablename__ = "datasets"
-    id = Column(Integer, primary_key=True, index=True)
-    provider_id = Column(Integer, ForeignKey("data_providers.id"))
-    source = Column(String)
-    title = Column(String)
-    landingPageUrl = Column(String, nullable=True)
-    provider = relationship("DataProviderModel", back_populates="datasets")
-    xmlArchives = relationship(
-        "XmlArchiveModel", back_populates="dataset", cascade="all, delete-orphan"
-    )
-    usefulLinks = relationship(
-        "UsefulLinkModel", back_populates="dataset", cascade="all, delete-orphan"
-    )
-
-    __table_args__ = (Index("idx_dataset_provider", "provider_id"),)
-
-
-class XmlArchiveModel(Base):
-    __tablename__ = "xml_archives"
-    id = Column(Integer, primary_key=True, index=True)
-    dataset_id = Column(Integer, ForeignKey("datasets.id"))
-    url = Column(String)
-    isLatest = Column(Boolean)
-    dataset = relationship("DatasetModel", back_populates="xmlArchives")
-
-    __table_args__ = (Index("idx_xml_archive_dataset", "dataset_id"),)
-
-
-class UsefulLinkModel(Base):
-    __tablename__ = "useful_links"
-    id = Column(Integer, primary_key=True, index=True)
-    dataset_id = Column(Integer, ForeignKey("datasets.id"))
-    title = Column(String)
-    url = Column(String)
-    isLatest = Column(Boolean)
-    dataset = relationship("DatasetModel", back_populates="usefulLinks")
-
-    __table_args__ = (Index("idx_useful_link_dataset", "dataset_id"),)
-
-
-# ------------------- Pydantic Models -------------------
-class User(BaseModel):
-    username: str
-    provider_roles: Dict[str, str]
-    is_global_admin: bool = False
-
-    @field_validator("username")
-    @classmethod
-    def trim_whitespace(cls, v: str) -> str:
-        return v.strip()
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class UserCreate(BaseModel):
-    username: str
-    password: str
-    provider_roles: Optional[Dict[str, str]] = {}
-    is_global_admin: bool = False
-
-    @field_validator("username", "password")
-    @classmethod
-    def trim_whitespace(cls, v: str) -> str:
-        return v.strip()
-
-    @field_validator("password")
-    @classmethod
-    def validate_password_strength(cls, v: str) -> str:
-        min_length = settings.MIN_PASSWORD_LENGTH
-        if len(v) < min_length:
-            raise ValueError(f"Password must be at least {min_length} characters long")
-        return v
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class UserUpdate(BaseModel):
-    password: Optional[str] = None
-    provider_roles: Optional[Dict[str, str]] = None
-    is_global_admin: Optional[bool] = None
-
-    @field_validator("password")
-    @classmethod
-    def trim_whitespace(cls, v: Optional[str]) -> Optional[str]:
-        if v is None:
-            return v
-        return v.strip()
-
-    @field_validator("password")
-    @classmethod
-    def validate_password_strength(cls, v: Optional[str]) -> Optional[str]:
-        if v is not None:
-            min_length = settings.MIN_PASSWORD_LENGTH
-            if len(v) < min_length:
-                raise ValueError(
-                    f"Password must be at least {min_length} characters long"
-                )
-        return v
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class UserPermissions(BaseModel):
-    username: str
-    is_global_admin: bool
-    provider_roles: Dict[str, str]
-
-    @field_validator("username")
-    @classmethod
-    def trim_whitespace(cls, v: str) -> str:
-        return v.strip()
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class XmlArchive(BaseModel):
-    id: Optional[int] = None
-    url: AnyUrl
-    isLatest: bool
-
-    model_config = ConfigDict(
-        from_attributes=True, json_encoders={AnyUrl: str}, populate_by_name=True
-    )
-
-
-class UsefulLink(BaseModel):
-    id: Optional[int] = None
-    title: str
-    url: AnyUrl
-    isLatest: bool
-
-    @field_validator("title")
-    @classmethod
-    def trim_whitespace(cls, v: str) -> str:
-        return v.strip()
-
-    model_config = ConfigDict(
-        from_attributes=True, json_encoders={AnyUrl: str}, populate_by_name=True
-    )
-
-
-class Dataset(BaseModel):
-    id: Optional[int] = None
-    source: str
-    title: str
-    landingPageUrl: Optional[AnyUrl] = None
-    xmlArchives: List[XmlArchive] = []
-    usefulLinks: List[UsefulLink] = []
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-
-    @field_validator("source", "title")
-    @classmethod
-    def trim_whitespace(cls, v: str) -> str:
-        return v.strip()
-
-    @field_validator("landingPageUrl", mode="before")
-    @classmethod
-    def empty_str_to_none(cls, v: Any) -> Any:
-        if v == "":
-            return None
-        return v
-
-    def model_dump(self, *args, **kwargs):
-        data = super().model_dump(*args, **kwargs)
-        if not data.get("xmlArchives"):
-            data.pop("xmlArchives", None)
-        if not data.get("usefulLinks"):
-            data.pop("usefulLinks", None)
-        return data
-
-    model_config = ConfigDict(
-        from_attributes=True, json_encoders={AnyUrl: str}, populate_by_name=True
-    )
-
-
-class DataProvider(BaseModel):
-    id: Optional[int] = None
-    datacenter: str
-    shortName: str
-    name: str
-    url: Optional[AnyUrl] = None
-    biocaseUrl: Optional[AnyUrl] = None
-    datasets: List[Dataset] = []
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-
-    @field_validator("datacenter", "shortName", "name")
-    @classmethod
-    def trim_whitespace(cls, v: str) -> str:
-        return v.strip()
-
-    model_config = ConfigDict(
-        from_attributes=True, json_encoders={AnyUrl: str}, populate_by_name=True
-    )
-
-
-class LegacyXmlArchive(BaseModel):
-    archive_id: int
-    xml_archive: AnyUrl
-    latest: bool
-
-    model_config = ConfigDict(from_attributes=True, json_encoders={AnyUrl: str})
-
-
-class LegacyUsefulLink(BaseModel):
-    link_id: int
-    title: str
-    url: AnyUrl
-    is_latest: bool
-
-    @field_validator("title")
-    @classmethod
-    def trim_whitespace(cls, v: str) -> str:
-        return v.strip()
-
-    model_config = ConfigDict(from_attributes=True, json_encoders={AnyUrl: str})
-
-
-class LegacyDataset(BaseModel):
-    dataset_id: int
-    datasource: str
-    dataset: str
-    custom_landingpage: Optional[AnyUrl]
-    provider_id: int
-    xml_archives: List[LegacyXmlArchive]
-    useful_links: List[LegacyUsefulLink]
-    provider_datacenter: str
-    provider_shortname: str
-    provider_name: str
-    provider_url: Optional[AnyUrl]
-    biocase_url: Optional[AnyUrl]
-
-    @field_validator(
-        "datasource",
-        "dataset",
-        "provider_datacenter",
-        "provider_shortname",
-        "provider_name",
-    )
-    @classmethod
-    def trim_whitespace(cls, v: str) -> str:
-        return v.strip()
-
-    model_config = ConfigDict(from_attributes=True, json_encoders={AnyUrl: str})
-
-
-class ProviderAssociation(BaseModel):
-    provider_id: int
-    role: str  # Expected values: "admin" or "curator"
-
-    @field_validator("role")
-    @classmethod
-    def trim_whitespace(cls, v: str) -> str:
-        return v.strip()
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class PaginatedResponse(GenericModel, Generic[T]):
-    """Generic paginated response model"""
-
-    items: List[T]
-    total: int
-    page: int
-    size: int
-
-    @classmethod
-    def create(cls, items: List[T], total: int, page: int, size: int):
-        return cls(items=items, total=total, page=page, size=size)
-
-
-class TokenResponse(BaseModel):
-    access_token: str
-    refresh_token: str
-    token_type: str = "bearer"
-    expires_in: int
-
-
-# Create paginated response models for each entity
-PaginatedProviders = PaginatedResponse[DataProvider]
-PaginatedDatasets = PaginatedResponse[Dataset]
-PaginatedUsers = PaginatedResponse[User]
-
+# Database configuration moved to app.db module
+# - Engine configuration in app.db.base
+# - Session management in app.db.session
 
 # ------------------- Helper Functions -------------------
-def trim_string(value: str) -> str:
+def trim_string(value: str):
     """Remove leading and trailing whitespace from a string."""
-    if isinstance(value, str):
-        return value.strip()
-    return value
-
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a plain password against its hashed version."""
-    try:
-        pwd_bytes = plain_password.encode("utf-8")
-        hash_bytes = hashed_password.encode("utf-8")
-        return bcrypt.checkpw(pwd_bytes, hash_bytes)
-    except Exception as e:
-        logger.error(f"Error verifying password: {e}")
-        return False
-
-
-def hash_password(password: str) -> str:
-    """Hash a password using bcrypt."""
-    if not password:
-        return ""
-    password_bytes = password.encode("utf-8")
-    salt = bcrypt.gensalt()
-    hashed = bcrypt.hashpw(password_bytes, salt)
-    return hashed.decode("utf-8")
-
-
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
-    """Create a JWT access token with an expiration time and additional security claims."""
-    to_encode = data.copy()
-    expire = datetime.utcnow() + (
-        expires_delta
-        if expires_delta
-        else timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    )
-    to_encode.update(
-        {
-            "exp": expire,
-            "aud": settings.TOKEN_AUDIENCE,
-            "jti": str(uuid.uuid4()),  # Add JWT ID for token revocation capability
-            "iat": datetime.utcnow(),
-        }
-    )
-    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
-
-
-def create_refresh_token(data: dict):
-    """Create a JWT refresh token with longer expiration."""
-    to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-    to_encode.update(
-        {
-            "exp": expire,
-            "aud": f"{settings.TOKEN_AUDIENCE}:refresh",
-            "jti": str(uuid.uuid4()),
-            "iat": datetime.utcnow(),
-        }
-    )
-    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
-
-
-def normalize_provider_roles(roles: Any) -> Dict[str, str]:
-    """Normalize provider roles to a dictionary."""
-    if roles is None:
-        return {}
-    return dict(roles)
-
-
-async def get_user_model(username: str, db: AsyncSession) -> Optional[UserModel]:
-    """Retrieve a user from the database by username."""
-    result = await db.execute(select(UserModel).where(UserModel.username == username))
-    return result.scalar_one_or_none()
-
-
-async def authenticate_user(username: str, password: str, db: AsyncSession):
-    """Authenticate a user with username and password."""
-    logger.info(f"Authenticating user: {username}")
-    user_model = await get_user_model(username, db)
-    if not user_model:
-        logger.info("User not found")
+    if value is None:
         return None
-    if not verify_password(password, user_model.hashed_password):
-        logger.info("Invalid password")
-        return None
-    return user_model
-
-
-def check_global_admin(current_user: UserModel):
-    """Check if the current user has global admin privileges."""
-    if not current_user.is_global_admin:
-        raise HTTPException(
-            status_code=403, detail="Operation requires global admin privileges"
-        )
-
-
-def check_provider_permission(
-    provider_id: int, current_user: UserModel, operation: str = "read"
-):
-    """Check if the current user has permission for a provider operation."""
-    if current_user.is_global_admin:
-        return
-    roles = normalize_provider_roles(current_user.provider_roles)
-    role = roles.get(str(provider_id))
-    if role is None:
-        raise HTTPException(
-            status_code=403, detail="Operation not permitted for this provider"
-        )
-    if operation == "write" and role not in ["admin", "curator"]:
-        raise HTTPException(
-            status_code=403,
-            detail="Write operation requires provider admin or curator privileges",
-        )
-    if operation == "delete" and role != "admin":
-        raise HTTPException(
-            status_code=403,
-            detail="Delete operation requires provider admin privileges",
-        )
-
-
-async def apply_entity_updates(
-    db: AsyncSession,
-    entity_list,
-    new_entities,
-    entity_class,
-    dataset_id,
-    entity_field="dataset_id",
-):
-    """
-    Generic function to update relationships (XML archives, useful links, etc.)
-    
-    Args:
-        db: Database session
-        entity_list: Current list of entities
-        new_entities: New entities from request
-        entity_class: Model class of entity
-        dataset_id: ID of parent dataset
-        entity_field: Name of field referencing dataset ID
-    
-    Returns:
-        List of updated entities
-    """
-    # Fetch the dataset to get provider_id for cache invalidation
-    result = await db.execute(
-        select(DatasetModel).where(DatasetModel.id == dataset_id)
-    )
-    dataset = result.scalar_one_or_none()
-    provider_id = dataset.provider_id if dataset else None
-    
-    # Map existing entities by ID
-    existing_entities = {entity.id: entity for entity in entity_list if entity.id is not None}
-    
-    # Process entities with IDs
-    processed_ids = set()
-    updated_entities = []
-    
-    for new_entity in new_entities:
-        if new_entity.id is not None and new_entity.id in existing_entities:
-            entity = existing_entities[new_entity.id]
-            processed_ids.add(new_entity.id)
-            
-            # Extract data from new entity
-            entity_data = new_entity.model_dump(exclude={"id"}, exclude_unset=True)
-            
-            # Handle URL fields conversion
-            for field, value in entity_data.items():
-                if isinstance(value, AnyUrl):
-                    entity_data[field] = str(value)
-            
-            # Update fields
-            for key, value in entity_data.items():
-                setattr(entity, key, value)
-            
-            updated_entities.append(entity)
-        else:
-            # Create new entity
-            entity_data = new_entity.model_dump(exclude={"id"}, exclude_unset=True)
-            
-            # Handle URL fields conversion
-            for field, value in entity_data.items():
-                if isinstance(value, AnyUrl):
-                    entity_data[field] = str(value)
-            
-            # Create and add new entity
-            kwargs = {entity_field: dataset_id, **entity_data}
-            new_entity_obj = entity_class(**kwargs)
-            db.add(new_entity_obj)
-            updated_entities.append(new_entity_obj)
-    
-    # Delete entities not in the update
-    for entity_id, entity in existing_entities.items():
-        if entity_id not in processed_ids:
-            await db.delete(entity)
-    
-    await db.flush()
-    
-    # Invalidate related caches
-    entity_type = entity_class.__tablename__.replace("_", "-")
-    invalidate_cache(f"{entity_type}")
-    invalidate_cache(f"dataset:{dataset_id}")
-    invalidate_cache("datasets")
-    if provider_id:
-        invalidate_cache(f"provider:{provider_id}")
-        invalidate_cache("providers")
-    
-    return updated_entities
-
-
-async def get_paginated_results(query, skip: int, limit: int, db: AsyncSession):
-    """Generic function to get paginated results from SQLAlchemy query."""
-    # Get total count with same filters but without pagination
-    count_query = query.with_only_columns(func.count().label("count")).order_by(None)
-    count_result = await db.execute(count_query)
-    total = count_result.scalar()
-
-    # Apply pagination
-    query = query.offset(skip).limit(limit)
-    result = await db.execute(query)
-    items = result.scalars().all()
-
-    return items, total
-
+    return value.strip()
 
 # ------------------- Dependencies -------------------
-async def get_db():
-    """Provide a database session dependency."""
-    async with async_session() as session:
-        yield session
-
+# Database dependency moved to app.db.session
 
 def provider_permission(operation: str = "read"):
     """Dependency factory for provider permission checking."""
@@ -767,7 +192,6 @@ def provider_permission(operation: str = "read"):
         return current_user
 
     return dependency
-
 
 # ------------------- Create FastAPI app and routers -------------------
 app = FastAPI(
@@ -955,37 +379,6 @@ async def general_exception_handler(request: Request, exc: Exception):
             "timestamp": datetime.utcnow().isoformat(),
         },
     )
-
-
-# ------------------- Authentication Dependency -------------------
-async def get_current_user(
-    token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)
-) -> UserModel:
-    """Retrieve the current authenticated user from a JWT token."""
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(
-            token,
-            settings.SECRET_KEY,
-            algorithms=[settings.ALGORITHM],
-            audience=settings.TOKEN_AUDIENCE,  # Verify audience claim
-        )
-        username: str = payload.get("sub")
-        if username is None:
-            raise credentials_exception
-    except jwt.PyJWTError as e:
-        logger.warning(f"JWT token validation failed: {str(e)}")
-        raise credentials_exception
-    user = await get_user_model(username, db)
-    if user is None:
-        logger.warning(f"User from token not found: {username}")
-        raise credentials_exception
-    return user
-
 
 # ------------------- Endpoints -------------------
 
@@ -1189,7 +582,7 @@ async def update_user(
                 old_password, user_obj.hashed_password
             ):
                 raise HTTPException(status_code=400, detail="Old password is incorrect")
-        hashed_pw = hash_password(user.password)
+        hashed_pw = get_password_hash(user.password)
         if hashed_pw:
             user_obj.hashed_password = hashed_pw
     if user.provider_roles is not None:
@@ -1226,7 +619,7 @@ async def create_user(
     existing = await get_user_model(user.username, db)
     if existing:
         raise HTTPException(status_code=400, detail="Username already exists")
-    hashed_pw = hash_password(user.password)
+    hashed_pw = get_password_hash(user.password)
     provider_roles = normalize_provider_roles(user.provider_roles)
     user_obj = UserModel(
         username=user.username,
@@ -1503,7 +896,11 @@ async def create_provider(
                 exclude={"id", "xmlArchives", "usefulLinks"}, exclude_unset=True
             )
             if dataset_data.get("landingPageUrl"):
-                dataset_data["landingPageUrl"] = str(dataset_data["landingPageUrl"])
+                dataset_data["landingPageUrl"] = (
+                    str(dataset_data["landingPageUrl"])
+                    if dataset_data["landingPageUrl"]
+                    else None
+                )
             db_dataset = DatasetModel(**dataset_data)
             if dataset.xmlArchives and len(dataset.xmlArchives) > 0:
                 for archive in dataset.xmlArchives:
@@ -2066,6 +1463,10 @@ async def create_xml_archive(
     invalidate_cache("providers")
     invalidate_cache("datasets")
 
+    # Automatically trigger validation task
+    from app.tasks.validator_tasks import validate_archive
+    validate_archive.delay(xml_obj.id)
+
     return xml_obj
 
 
@@ -2258,6 +1659,9 @@ async def harvest_datasets(request: Request, db: AsyncSession = Depends(get_db))
 # Include v1 router in the main app
 app.include_router(v1_router)
 
+# Include the new API router with proper versioning
+from app.api.router import api_router
+app.include_router(api_router, prefix="/api")
 
 # ------------------- Startup Event -------------------
 @app.on_event("startup")

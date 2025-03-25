@@ -77,3 +77,5 @@ docker-volumes/
 
 # windsurf rules
 .windsurfrules
+
+./backlog

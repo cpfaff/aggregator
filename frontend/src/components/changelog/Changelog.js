@@ -5,6 +5,19 @@ const Changelog = () => {
   // Changelog entries based on actual project development
   const changelogEntries = [
     {
+      version: '1.6.0',
+      date: 'March 25, 2025',
+      changes: [
+        'Added XML validation system with support for ABCD schemas (2.06, 2.1, 3.0)',
+        'Implemented validation job model for tracking validation progress and results',
+        'Created API versioning structure for better maintainability',
+        'Added validation results modal to display validation details in frontend',
+        'Implemented asynchronous validation task processing with Celery',
+        'Enhanced database performance with additional indexes on relationship columns',
+        'Updated Docker configuration to support validator microservice'
+      ]
+    },
+    {
       version: '1.5.1',
       date: 'March 18, 2025',
       changes: [

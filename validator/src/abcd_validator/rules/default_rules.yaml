@@ -1,0 +1,311 @@
+---
+rules:
+  # Mandatory Dataset Level Rules
+  - id: dataset_guid
+    name: Dataset GUID Check
+    description: Validates presence of Dataset GUID
+    type: field
+    severity: error
+    field:
+      path: "DataSets/DataSet/DatasetGUID"
+      validation:
+        - type: presence
+        - type: non_empty
+      parent_context:
+        parent: "DataSets/DataSet"
+    message: "Dataset GUID is a critical globally unique identifier required for proper data citation, cross-referencing, and long-term data management. It should be in a persistent identifier format (e.g., URN). This element ensures your dataset can be uniquely identified across all systems and networks. Status: 'missing' - element absent; 'empty' - element exists without content; 'invalid' - incorrect value format."
+    importance: mandatory
+
+  - id: technical_contact_name
+    name: Technical Contact Name Check
+    description: Validates presence of Technical Contact Name
+    type: field
+    severity: error
+    field:
+      path: "DataSets/DataSet/TechnicalContacts/TechnicalContact/Name"
+      validation:
+        - type: presence
+        - type: non_empty
+      parent_context:
+        parent: "DataSets/DataSet"
+    message: "Technical Contact Name is essential for dataset accessibility and maintenance. This person serves as the primary contact for dataset availability, technical access issues, and UDDI registry requirements. Multiple contacts are allowed for redundancy. Status: 'missing' - element absent; 'empty' - element exists without content; 'invalid' - incorrect value format."
+    importance: mandatory
+
+  - id: technical_contact_email
+    name: Technical Contact Email Check
+    description: Validates Technical Contact Email
+    type: field
+    severity: error
+    field:
+      path: "DataSets/DataSet/TechnicalContacts/TechnicalContact/Email"
+      validation:
+        - type: presence
+        - type: non_empty
+        - type: pattern
+          value: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+      parent_context:
+        parent: "DataSets/DataSet"
+    message: "Technical Contact Email is crucial for communication regarding dataset accessibility and technical issues. It must be a valid email format to ensure reliable contact can be established. This contact information is essential for maintaining data accessibility and resolving technical problems. Status: 'missing' - element absent; 'empty' - element exists without content; 'invalid' - incorrect email format."
+    importance: mandatory
+
+  - id: content_contact_name
+    name: Content Contact Name Check
+    description: Validates presence of Content Contact Name
+    type: field
+    severity: error
+    field:
+      path: "DataSets/DataSet/ContentContacts/ContentContact/Name"
+      validation:
+        - type: presence
+        - type: non_empty
+      parent_context:
+        parent: "DataSets/DataSet"
+    message: "Content Contact Name represents the original data supplier or custodian. This person handles questions about data content, interpretation, and usage restrictions. They are the primary contact for scientific inquiries and data usage permissions. Status: 'missing' - element absent; 'empty' - element exists without content; 'invalid' - incorrect value format."
+    importance: mandatory
+
+  - id: description_title
+    name: Description Title Check
+    description: Validates presence of Description Title
+    type: field
+    severity: error
+    field:
+      path: "DataSets/DataSet/Metadata/Description/Representation/Title"
+      validation:
+        - type: presence
+        - type: non_empty
+      parent_context:
+        parent: "DataSets/DataSet"
+    message: "Description Title is a concise, descriptive dataset name that enables resource discovery. It should clearly communicate the nature and scope of your dataset to potential users. This element is critical for data findability and proper citation. Status: 'missing' - element absent; 'empty' - element exists without content; 'invalid' - incorrect value format."
+    importance: mandatory
+
+  - id: description_details
+    name: Description Details Check
+    description: Validates presence of Description Details
+    type: field
+    severity: error
+    field:
+      path: "DataSets/DataSet/Metadata/Description/Representation/Details"
+      validation:
+        - type: presence
+        - type: non_empty
+      parent_context:
+        parent: "DataSets/DataSet"
+    message: "Description Details provide comprehensive documentation of your dataset's content, scope, and coverage. This information is crucial for potential users to understand and evaluate the dataset's relevance to their research needs. Status: 'missing' - element absent; 'empty' - element exists without content; 'invalid' - incorrect value format."
+    importance: mandatory
+
+  - id: description_uri
+    name: Description URI Check
+    description: Validates presence of Description URI
+    type: field
+    severity: error
+    field:
+      path: "DataSets/DataSet/Metadata/Description/Representation/URI"
+      validation:
+        - type: presence
+        - type: non_empty
+        - type: url_format
+      parent_context:
+        parent: "DataSets/DataSet"
+    message: "Description URI provides a web-accessible reference to detailed dataset information. This permanent link ensures long-term access to comprehensive dataset documentation and supports proper data citation and verification. Status: 'missing' - element absent; 'empty' - element exists without content; 'invalid' - incorrect URI format."
+    importance: mandatory
+
+  - id: date_modified
+    name: Date Modified Check
+    description: Validates presence of Last Modified Date
+    type: field
+    severity: error
+    field:
+      path: "DataSets/DataSet/Metadata/RevisionData/DateModified"
+      validation:
+        - type: presence
+        - type: non_empty
+      parent_context:
+        parent: "DataSets/DataSet"
+    message: "Date Modified tracks dataset currency and enables version control. This timestamp is essential for data synchronization and helps users identify the most recent version of your dataset. It should be in standard datetime format. Status: 'missing' - element absent; 'empty' - element exists without content; 'invalid' - incorrect date format."
+    importance: mandatory
+
+  # Mandatory Unit Level Rules
+  - id: source_institution_id
+    name: Source Institution ID Check
+    description: Validates presence of Source Institution ID
+    type: field
+    severity: error
+    field:
+      path: "DataSets/DataSet/Units/Unit/SourceInstitutionID"
+      validation:
+        - type: presence
+        - type: non_empty
+      parent_context:
+        parent: "DataSets/DataSet/Units/Unit"
+    message: "Source Institution ID is required. The validation result indicates the state of this element. Details: 'missing' - element is absent; 'empty' - element exists but has no content; 'invalid' - element exists but its value is incorrect."
+    importance: mandatory
+
+  - id: source_id
+    name: Source ID Check
+    description: Validates presence of Source ID
+    type: field
+    severity: error
+    field:
+      path: "DataSets/DataSet/Units/Unit/SourceID"
+      validation:
+        - type: presence
+        - type: non_empty
+      parent_context:
+        parent: "DataSets/DataSet/Units/Unit"
+    message: "Source ID is required. The validation result indicates the state of this element. Details: 'missing' - element is absent; 'empty' - element exists but has no content; 'invalid' - element exists but its value is incorrect."
+    importance: mandatory
+
+  - id: unit_id
+    name: Unit ID Check
+    description: Validates presence of Unit ID
+    type: field
+    severity: error
+    field:
+      path: "DataSets/DataSet/Units/Unit/UnitID"
+      validation:
+        - type: presence
+        - type: non_empty
+      parent_context:
+        parent: "DataSets/DataSet/Units/Unit"
+    message: "Unit ID is required. The validation result indicates the state of this element. Details: 'missing' - element is absent; 'empty' - element exists but has no content; 'invalid' - element exists but its value is incorrect."
+    importance: mandatory
+
+  - id: record_uri
+    name: Record URI Check
+    description: Validates presence of Record URI
+    type: field
+    severity: error
+    field:
+      path: "DataSets/DataSet/Units/Unit/RecordURI"
+      validation:
+        - type: presence
+        - type: non_empty
+        - type: url_format
+      parent_context:
+        parent: "DataSets/DataSet/Units/Unit"
+    message: "Record URI is required and must be a valid URI format. The validation result indicates the state of this element. Details: 'missing' - element is absent; 'empty' - element exists but has no content; 'invalid' - element exists but its value is incorrect."
+    importance: mandatory
+
+  - id: record_basis
+    name: Record Basis Check
+    description: Validates presence and value of Record Basis
+    type: field
+    severity: error
+    field:
+      path: "DataSets/DataSet/Units/Unit/RecordBasis"
+      validation:
+        - type: presence
+        - type: non_empty
+        - type: pattern
+          value: '^(PreservedSpecimen|LivingSpecimen|FossileSpecimen|FossilSpecimen|MineralSpecimen|OtherSpecimen|MaterialSample|HumanObservation|MachineObservation|DrawingOrPhotograph|MultimediaObject|AbsenceObservation)$'
+      parent_context:
+        parent: "DataSets/DataSet/Units/Unit"
+    message: "Record Basis is required and must contain a valid value. The validation result indicates the state of this element. Details: 'missing' - element is absent; 'empty' - element exists but has no content; 'invalid' - element exists but its value is incorrect."
+    importance: mandatory
+
+  # Recommended Fields
+  - id: license_text
+    name: License Text Check
+    description: Validates presence of License Text
+    type: field
+    severity: warning
+    field:
+      path: "DataSets/DataSet/Metadata/IPRStatements/Licenses/License/Text"
+      validation:
+        - type: presence
+        - type: non_empty
+      parent_context:
+        parent: "DataSets/DataSet"
+    message: "License information clarifies usage permissions and establishes the legal framework for data sharing. A clear license is crucial for enabling proper data reuse while protecting intellectual property rights. Common licenses include CC-BY or CC0. Including a license helps ensure that your dataset can be used and shared by others. Status: 'missing' - element absent; 'empty' - element exists without content; 'invalid' - incorrect format."
+    importance: recommended
+
+  - id: terms_of_use
+    name: Terms of Use Check
+    description: Validates presence of Terms of Use
+    type: field
+    severity: warning
+    field:
+      path: "DataSets/DataSet/Metadata/IPRStatements/TermsOfUseStatements/TermsOfUse/Text"
+      validation:
+        - type: presence
+        - type: non_empty
+      parent_context:
+        parent: "DataSets/DataSet"
+    message: "Terms of Use defines the conditions and restrictions for dataset usage. While not mandatory, this information is highly recommended as it establishes the legal framework for data sharing and protects both data providers and users. It should clearly specify any restrictions and guide proper data use. Providing terms of use helps ensure that your dataset is used responsibly and in compliance with applicable laws and regulations. Status: 'missing' - element absent; 'empty' - element exists without content; 'invalid' - incorrect format."
+    importance: recommended
+
+  - id: citation_text
+    name: Citation Text Check
+    description: Validates presence of Citation Text
+    type: field
+    severity: warning
+    field:
+      path: "DataSets/DataSet/Metadata/IPRStatements/Citations/Citation/Text"
+      validation:
+        - type: presence
+        - type: non_empty
+      parent_context:
+        parent: "DataSets/DataSet"
+    message: "Citations ensure proper attribution and support academic credit for data providers. This information is essential for tracking dataset impact and maintaining scientific integrity. Including how users should cite this dataset in their work helps ensure that your contributions are recognized and acknowledged. Status: 'missing' - element absent; 'empty' - element exists without content; 'invalid' - incorrect format."
+    importance: recommended
+
+  - id: higher_taxon_name
+    name: Higher Taxon Name Check
+    description: Validates presence of Higher Taxon Name
+    type: field
+    severity: warning
+    field:
+      path: "DataSets/DataSet/Units/Unit/Identifications/Identification/Result/TaxonIdentified/HigherTaxa/HigherTaxon/HigherTaxonName"
+      validation:
+        - type: presence
+        - type: non_empty
+      parent_context:
+        parent: "DataSets/DataSet/Units/Unit"
+    message: "Higher Taxon Name provides crucial taxonomic context and enables hierarchical classification. This information facilitates taxonomic searching and is essential for biodiversity studies. It helps place specimens within their broader taxonomic framework. Including higher taxon names helps ensure that your dataset can be integrated with other taxonomic resources and supports more accurate species identification. Status: 'missing' - element absent; 'empty' - element exists without content; 'invalid' - incorrect format."
+    importance: recommended
+
+  - id: scientific_name
+    name: Scientific Name Check
+    description: Validates presence of Full Scientific Name
+    type: field
+    severity: warning
+    field:
+      path: "DataSets/DataSet/Units/Unit/Identifications/Identification/Result/TaxonIdentified/ScientificName/FullScientificNameString"
+      validation:
+        - type: presence
+        - type: non_empty
+      parent_context:
+        parent: "DataSets/DataSet/Units/Unit"
+    message: "Full Scientific Name provides precise taxonomic identification and serves as a scientific reference point. This is critical for scientific accuracy and enables proper taxonomic validation. It should follow standard nomenclatural rules. Including full scientific names helps ensure that your dataset can be used for taxonomic research and supports more accurate species identification. Status: 'missing' - element absent; 'empty' - element exists without content; 'invalid' - incorrect format."
+    importance: recommended
+
+  - id: datetime_begin
+    name: Date/Time Begin Check
+    description: Test pattern that only accepts YYYY-MM-DD format
+    type: field
+    severity: warning
+    field:
+      path: "DataSets/DataSet/Units/Unit/Gathering/DateTime/ISODateTimeBegin"
+      validation:
+        - type: presence
+        - type: non_empty
+      parent_context:
+        parent: "DataSets/DataSet/Units/Unit"
+    message: "Gathering DateTime provides essential temporal context for specimens/observations. This information is valuable for phenological studies and change analysis. Using ISO datetime format ensures consistency and facilitates data integration. Including gathering datetime helps ensure that your dataset can be used for temporal analysis and supports more accurate understanding of species phenology. Status: 'missing' - element absent; 'empty' - element exists without content; 'invalid' - incorrect datetime format."
+    importance: recommended
+
+  - id: multimedia_file_uri
+    name: Multimedia File URI Check
+    description: Check if multimedia objects have valid file URIs
+    type: field
+    importance: recommended
+    severity: warning
+    message: "Multimedia File URI is recommended. Providing a valid file URI ensures that multimedia objects can be accessed and used by others. This helps ensure that your dataset can be used for multimedia analysis and supports more accurate understanding of species morphology. The validation result indicates the state of this element. Details: 'missing' - element is absent; 'empty' - element exists but has no content; 'invalid' - element exists but its value is incorrect."
+    field:
+      path: "DataSets/DataSet/Units/Unit/MultiMediaObjects/MultiMediaObject/FileURI"
+      validation:
+        - type: presence
+        - type: non_empty
+        - type: url_format
+      parent_context:
+        parent: "DataSets/DataSet/Units/Unit"

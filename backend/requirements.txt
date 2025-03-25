@@ -13,3 +13,8 @@ pydantic-settings>=2.8.0
 python-json-logger>=3.2.1
 fastapi-csrf-protect>=1.0.2
 slowapi>=0.1.9
+celery>=5.3.6
+redis>=5.0.1
+flower>=2.0.1
+# Will be installed from the Docker build context in Dockerfile
+# -e ../validator/
