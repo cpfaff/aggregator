@@ -1,0 +1,185 @@
+---
+include:
+  - project: gfbio/cicd
+    file:
+      - '.create_merge_request_v3.yml'
+      - '.tag_release.yml'
+
+image: docker:latest
+
+services:
+  - docker:dind
+
+stages:
+  - create_merge_request
+  - tag_release_check
+  - tag_release
+  - build
+  - deploy
+
+variables:
+  DOCKER_HOST: tcp://docker:2375
+  DOCKER_TLS_CERTDIR: ""
+  DOCKER_DRIVER: overlay2
+  DOCKER_REGISTRY: gitlab-pe.gwdg.de/gfbio/aggregator
+  DOCKER_BUILDKIT: 1
+  PROJECT_NAME: "gfbio-aggregator"
+  MAIN_BRANCH_NAME: "main"
+
+# Cache during the pipeline
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - .cache/
+
+create_merge_request:
+  variables:
+    PROJECT_NAME: ${PROJECT_NAME}
+    APPROVERS: "3832" # Update this with your approver IDs if needed
+  tags:
+    - dev-denbi
+
+tag_release_check:
+  variables:
+    MAIN_BRANCH_NAME: ${MAIN_BRANCH_NAME}
+  tags:
+    - dev-denbi
+
+# Build Backend
+build-backend:
+  stage: build
+  before_script:
+    - mkdir -p .cache
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - echo "Building backend image..."
+    - docker build -t $DOCKER_REGISTRY/backend:$CI_COMMIT_SHORT_SHA -t $DOCKER_REGISTRY/backend:latest -f backend/Dockerfile.prod ./backend
+    - docker push $DOCKER_REGISTRY/backend:$CI_COMMIT_SHORT_SHA
+    - docker push $DOCKER_REGISTRY/backend:latest
+  only:
+    - main
+    - develop
+    - tags
+  tags:
+    - builder
+
+# Build Frontend
+build-frontend:
+  stage: build
+  before_script:
+    - mkdir -p .cache
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - echo "Building frontend image..."
+    - docker build -t $DOCKER_REGISTRY/frontend:$CI_COMMIT_SHORT_SHA -t $DOCKER_REGISTRY/frontend:latest -f frontend/Dockerfile.prod ./frontend
+    - docker push $DOCKER_REGISTRY/frontend:$CI_COMMIT_SHORT_SHA
+    - docker push $DOCKER_REGISTRY/frontend:latest
+  only:
+    - main
+    - develop
+    - tags
+  tags:
+    - builder
+
+# Deploy to production
+deploy-production:
+  stage: deploy
+  image: docker/compose:latest
+  variables:
+    IMAGE_TAG: $CI_COMMIT_SHORT_SHA
+    DOCKER_REGISTRY: $DOCKER_REGISTRY
+    ENVIRONMENT: production
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - echo "Deploying to production..."
+    # Sync environment configs if needed
+    - rsync -a /home/gitlab-runner/.envs ./ || echo "No env files to sync"
+    # Deploy with docker-compose
+    - export IMAGE_TAG=$CI_COMMIT_SHORT_SHA
+    - docker-compose -f docker-compose.prod.registry.yml config
+    - docker-compose -f docker-compose.prod.registry.yml pull
+    - docker-compose -f docker-compose.prod.registry.yml down || true
+    - docker-compose -f docker-compose.prod.registry.yml up -d
+  environment:
+    name: production
+    url: https://aggregator.gfbio.org  # Update with your actual production URL
+  only:
+    - main
+    - tags
+  when: manual
+  tags:
+    - deployer
+
+# Deploy to staging
+deploy-staging:
+  stage: deploy
+  image: docker/compose:latest
+  variables:
+    IMAGE_TAG: $CI_COMMIT_SHORT_SHA
+    DOCKER_REGISTRY: $DOCKER_REGISTRY
+    ENVIRONMENT: staging
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - echo "Deploying to staging..."
+    # Sync environment configs if needed 
+    - rsync -a /home/gitlab-runner/.envs.staging ./.envs || echo "No env files to sync"
+    # Deploy with docker-compose
+    - export IMAGE_TAG=$CI_COMMIT_SHORT_SHA
+    - docker-compose -f docker-compose.prod.registry.yml config
+    - docker-compose -f docker-compose.prod.registry.yml pull
+    - docker-compose -f docker-compose.prod.registry.yml down || true
+    - docker-compose -f docker-compose.prod.registry.yml up -d
+  environment:
+    name: staging
+    url: https://staging.aggregator.gfbio.org  # Update with your actual staging URL
+  only:
+    - develop
+  tags:
+    - deployer
+
+# Development web test (similar to web_test_update from your example)
+web-test-update:
+  stage: deploy
+  image: docker/compose:latest
+  variables:
+    PROJECT_NAME: ${PROJECT_NAME}
+    COMPOSE_FILE: "docker-compose.prod.registry.yml"
+  script:
+    # Get issue ID and test name from branch name
+    - ISSUE_ID=$(awk -F- '{print $2}' <<< ${CI_COMMIT_REF_NAME})
+    - TEST_NAME=$ISSUE_ID-$PROJECT_NAME
+    # Environment preparation
+    - export IMAGE_TAG=$CI_COMMIT_SHORT_SHA
+    # Your custom environment setup
+    - docker-compose -f $COMPOSE_FILE build
+    - docker-compose -f $COMPOSE_FILE up -d
+  environment:
+    name: review/$CI_COMMIT_REF_NAME
+    url: https://$TEST_NAME.test.gfbio.dev  # Update with your actual test URL pattern
+    on_stop: web-test-stop
+  only:
+    - /^feature-.*$/
+  tags:
+    - dev-denbi
+
+# Stop web test environment
+web-test-stop:
+  stage: deploy
+  image: docker/compose:latest
+  variables:
+    PROJECT_NAME: ${PROJECT_NAME}
+    COMPOSE_FILE: "docker-compose.prod.registry.yml"
+  script:
+    - ISSUE_ID=$(awk -F- '{print $2}' <<< ${CI_COMMIT_REF_NAME})
+    - TEST_NAME=$ISSUE_ID-$PROJECT_NAME
+    - docker-compose -f $COMPOSE_FILE down
+  environment:
+    name: review/$CI_COMMIT_REF_NAME
+    action: stop
+  only:
+    - /^feature-.*$/
+  when: manual
+  tags:
+    - dev-denbi

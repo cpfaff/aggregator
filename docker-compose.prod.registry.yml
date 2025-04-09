@@ -1,0 +1,180 @@
+services:
+  traefik:
+    image: traefik:v2.10
+    ports:
+      - "80:80"
+      # - "443:443"  # Commented out as TLS termination is handled by jump host edge router
+      # - "8080:8080"  # Dashboard not needed in production
+    volumes:
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml
+      # - ./traefik/acme.json:/acme.json  # Not needed when TLS termination is handled externally
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - app-network
+    restart: always
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  db:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER:-user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+      POSTGRES_DB: ${DB_NAME:-dbname}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-user} -d ${DB_NAME:-dbname}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  backend:
+    image: ${DOCKER_REGISTRY:-gitlab-pe.gwdg.de/gfbio/aggregator}/backend:${IMAGE_TAG:-latest}
+    restart: always
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./validator:/validator
+    env_file:
+      - ./backend/.env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${DB_USER:-user}:${DB_PASSWORD:-password}@db:5432/${DB_NAME:-dbname}
+      - SYNC_DATABASE_URL=postgresql://${DB_USER:-user}:${DB_PASSWORD:-password}@db:5432/${DB_NAME:-dbname}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    networks:
+      - app-network
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health-check"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    labels:
+      - "traefik.enable=true"
+      # Simplified API router
+      - "traefik.http.routers.backend.rule=PathPrefix(`/api`)"
+      - "traefik.http.routers.backend.entrypoints=web"  # Removed websecure
+      - "traefik.http.services.backend.loadbalancer.server.port=8000"
+      # No middleware needed as we're not stripping prefixes anymore
+      # SSL configuration - commented out as handled by external Traefik
+      # - "traefik.http.routers.backend-secure.rule=PathPrefix(`/api`)"
+      # - "traefik.http.routers.backend-secure.entrypoints=websecure"
+      # - "traefik.http.routers.backend-secure.tls.certresolver=letsencrypt"
+
+  celery-worker:
+    image: ${DOCKER_REGISTRY:-gitlab-pe.gwdg.de/gfbio/aggregator}/backend:${IMAGE_TAG:-latest}
+    restart: always
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./validator:/validator
+    env_file:
+      - ./backend/.env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${DB_USER:-user}:${DB_PASSWORD:-password}@db:5432/${DB_NAME:-dbname}
+      - SYNC_DATABASE_URL=postgresql://${DB_USER:-user}:${DB_PASSWORD:-password}@db:5432/${DB_NAME:-dbname}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.core.celery_app inspect ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    command: >
+      sh -c "pip install -e /validator && celery -A app.core.celery_app worker --concurrency=1 --pool=solo --loglevel=info"
+
+  celery-beat:
+    image: ${DOCKER_REGISTRY:-gitlab-pe.gwdg.de/gfbio/aggregator}/backend:${IMAGE_TAG:-latest}
+    restart: always
+    depends_on:
+      - redis
+      - celery-worker
+    volumes:
+      - ./validator:/validator
+    env_file:
+      - ./backend/.env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${DB_USER:-user}:${DB_PASSWORD:-password}@db:5432/${DB_NAME:-dbname}
+      - SYNC_DATABASE_URL=postgresql://${DB_USER:-user}:${DB_PASSWORD:-password}@db:5432/${DB_NAME:-dbname}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "celery", "-A", "app.core.celery_app", "inspect", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    command: >
+      sh -c "pip install -e /validator && celery -A app.core.celery_app beat --loglevel=info"
+
+  frontend:
+    image: ${DOCKER_REGISTRY:-gitlab-pe.gwdg.de/gfbio/aggregator}/frontend:${IMAGE_TAG:-latest}
+    restart: always
+    # We don't need to expose this port since Traefik will handle it
+    env_file:
+      - ./frontend/.env
+    depends_on:
+      - backend
+    networks:
+      - app-network
+    command: ["nginx", "-g", "daemon off;"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=PathPrefix(`/`) && !PathPrefix(`/api`)"
+      - "traefik.http.routers.frontend.entrypoints=web"  # Removed websecure
+      - "traefik.http.services.frontend.loadbalancer.server.port=80"
+      - "traefik.http.routers.frontend.priority=1"
+      # SSL configuration - commented out as handled by external Traefik
+      # - "traefik.http.routers.frontend-secure.rule=PathPrefix(`/`) && !PathPrefix(`/api`)"
+      # - "traefik.http.routers.frontend-secure.entrypoints=websecure"
+      # - "traefik.http.routers.frontend-secure.tls.certresolver=letsencrypt"
+      # - "traefik.http.routers.frontend-secure.priority=1"
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  app-network:
+    driver: bridge
