@@ -8,7 +8,8 @@ include:
 image: docker:latest
 
 services:
-  - docker:dind
+  - name: docker:dind
+    alias: docker
 
 stages:
   - create_merge_request
@@ -18,7 +19,7 @@ stages:
   - deploy
 
 variables:
-  DOCKER_HOST: tcp://docker:2375
+  # DOCKER_HOST: tcp://docker:2375
   DOCKER_TLS_CERTDIR: ""
   DOCKER_DRIVER: overlay2
   DOCKER_REGISTRY: gitlab-pe.gwdg.de/gfbio/aggregator
