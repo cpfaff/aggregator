@@ -22,7 +22,7 @@ variables:
   # DOCKER_HOST: tcp://docker:2375
   DOCKER_TLS_CERTDIR: ""
   DOCKER_DRIVER: overlay2
-  DOCKER_REGISTRY: gitlab-pe.gwdg.de/gfbio/aggregator
+  DOCKER_REGISTRY: docker.gitlab-pe.gwdg.de/gfbio/aggregator
   DOCKER_BUILDKIT: 1
   PROJECT_NAME: "gfbio-aggregator"
   MAIN_BRANCH_NAME: "master"
@@ -51,7 +51,7 @@ build-backend:
   stage: build
   before_script:
     - mkdir -p .cache
-    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD docker.gitlab-pe.gwdg.de
   script:
     - echo "Building backend image..."
     - docker build -t $DOCKER_REGISTRY/backend:$CI_COMMIT_SHORT_SHA -t $DOCKER_REGISTRY/backend:latest -f backend/Dockerfile.prod ./backend
@@ -69,7 +69,7 @@ build-frontend:
   stage: build
   before_script:
     - mkdir -p .cache
-    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD docker.gitlab-pe.gwdg.de
   script:
     - echo "Building frontend image..."
     - docker build -t $DOCKER_REGISTRY/frontend:$CI_COMMIT_SHORT_SHA -t $DOCKER_REGISTRY/frontend:latest -f frontend/Dockerfile.prod ./frontend
@@ -91,7 +91,7 @@ deploy-production:
     DOCKER_REGISTRY: $DOCKER_REGISTRY
     ENVIRONMENT: production
   before_script:
-    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD docker.gitlab-pe.gwdg.de
   script:
     - echo "Deploying to production..."
     # Sync environment configs if needed
@@ -121,7 +121,7 @@ deploy-staging:
     DOCKER_REGISTRY: $DOCKER_REGISTRY
     ENVIRONMENT: staging
   before_script:
-    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD docker.gitlab-pe.gwdg.de
   script:
     - echo "Deploying to staging..."
     # Sync environment configs if needed 
