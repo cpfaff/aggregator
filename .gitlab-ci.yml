@@ -24,7 +24,7 @@ variables:
   DOCKER_REGISTRY: gitlab-pe.gwdg.de/gfbio/aggregator
   DOCKER_BUILDKIT: 1
   PROJECT_NAME: "gfbio-aggregator"
-  MAIN_BRANCH_NAME: "main"
+  MAIN_BRANCH_NAME: "master"
 
 # Cache during the pipeline
 cache:
@@ -57,7 +57,7 @@ build-backend:
     - docker push $DOCKER_REGISTRY/backend:$CI_COMMIT_SHORT_SHA
     - docker push $DOCKER_REGISTRY/backend:latest
   only:
-    - main
+    - master
     - develop
     - tags
   tags:
@@ -75,7 +75,7 @@ build-frontend:
     - docker push $DOCKER_REGISTRY/frontend:$CI_COMMIT_SHORT_SHA
     - docker push $DOCKER_REGISTRY/frontend:latest
   only:
-    - main
+    - master
     - develop
     - tags
   tags:
@@ -105,7 +105,7 @@ deploy-production:
     name: production
     url: https://aggregator.gfbio.org  # Update with your actual production URL
   only:
-    - main
+    - master
     - tags
   when: manual
   tags:
