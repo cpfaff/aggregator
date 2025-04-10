@@ -1,4 +1,4 @@
-.PHONY: help up down restart logs shell backup restore create-admin migrate test format 
+.PHONY: help up down restart logs shell backup restore create-admin migrate test format maintenance-on maintenance-off 
 
 # Colors for terminal output
 ifeq ($(shell tput colors 2>/dev/null || echo 0),0)
@@ -39,11 +39,14 @@ help:
 	@echo "  ${GREEN}migrate${NC}            Run database migrations"
 	@echo "  ${GREEN}test${NC}               Run tests"
 	@echo "  ${GREEN}format${NC}             Format code according to project standards"
+	@echo "  ${GREEN}maintenance-on${NC}     Enable maintenance mode"
+	@echo "  ${GREEN}maintenance-off${NC}    Disable maintenance mode"
 	@echo ""
 	@echo "${YELLOW}Examples:${NC}"
 	@echo "  make up                  # Start all containers"
 	@echo "  make backup-db           # Create a timestamped database backup"
 	@echo "  make create-admin        # Interactive prompt to create an admin user"
+	@echo "  make maintenance-on      # Enable maintenance mode for production"
 
 # Docker compose commands
 up:
@@ -124,3 +127,29 @@ format:
 	@docker-compose exec backend black .
 	@echo "${GREEN}Formatting frontend code...${NC}"
 	@docker-compose exec frontend npm run format
+
+# Maintenance mode
+maintenance-on:
+	@echo "${YELLOW}Enabling maintenance mode...${NC}"
+	@if [ -f "docker-compose.prod.registry.yml" ]; then \
+		echo "Updating docker-compose.prod.registry.yml for maintenance mode..."; \
+		sed -i 's/traefik.enable=false.*# Disabled by default/traefik.enable=true  # Enabled during maintenance/' docker-compose.prod.registry.yml; \
+		sed -i 's/traefik.enable=true.*# Simplified API router/traefik.enable=false  # Disabled during maintenance/' docker-compose.prod.registry.yml; \
+		sed -i 's/traefik.enable=true.*# We don't need to expose/traefik.enable=false  # Disabled during maintenance/' docker-compose.prod.registry.yml; \
+		echo "${GREEN}Maintenance mode enabled in configuration.${NC}"; \
+		echo "${YELLOW}Note: You'll need to run 'docker-compose -f docker-compose.prod.registry.yml up -d' to apply the changes.${NC}"; \
+	else \
+		echo "${RED}Error: docker-compose.prod.registry.yml not found${NC}"; \
+	fi
+
+maintenance-off:
+	@echo "${YELLOW}Disabling maintenance mode...${NC}"
+	@if [ -f "docker-compose.prod.registry.yml" ]; then \
+		echo "Updating docker-compose.prod.registry.yml to disable maintenance mode..."; \
+		sed -i 's/traefik.enable=true.*# Enabled during maintenance/traefik.enable=false  # Disabled by default/' docker-compose.prod.registry.yml; \
+		sed -i 's/traefik.enable=false.*# Disabled during maintenance/traefik.enable=true/' docker-compose.prod.registry.yml; \
+		echo "${GREEN}Maintenance mode disabled in configuration.${NC}"; \
+		echo "${YELLOW}Note: You'll need to run 'docker-compose -f docker-compose.prod.registry.yml up -d' to apply the changes.${NC}"; \
+	else \
+		echo "${RED}Error: docker-compose.prod.registry.yml not found${NC}"; \
+	fi

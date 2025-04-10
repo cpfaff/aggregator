@@ -20,6 +20,7 @@ easy deployment.
 - [Production Deployment](#production-deployment)
 - [API Documentation](#api-documentation)
 - [Traefik Integration](#traefik-integration)
+- [Maintenance Mode](#maintenance-mode)
 - [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
 - [License](#license)
@@ -157,6 +158,63 @@ To add a new service to Traefik:
    ```
 
 For production deployments, uncomment and configure the HTTPS sections in `traefik/traefik.yml` and update the `acme.json` file permissions to 600.
+
+## Maintenance Mode
+
+The application includes a maintenance mode feature that can be enabled during deployments or updates:
+
+### How Maintenance Mode Works
+
+When enabled, a maintenance page is displayed to users while the application services are being updated. This is implemented using Traefik's dynamic routing rules:
+
+- A dedicated `maintenance` container serves a static maintenance page
+- The container has a higher priority route that intercepts all traffic
+- Backend and frontend services are temporarily disabled in Traefik routing
+
+### Enabling Maintenance Mode
+
+#### Through GitLab CI/CD
+
+1. **Using CI/CD Variables**:
+   - In GitLab, go to Settings > CI/CD > Variables
+   - Add variable `MAINTENANCE_MODE` with value `true`
+   - Run a deployment to enable maintenance mode
+   - Set back to `false` and re-deploy when maintenance is complete
+
+2. **For a Single Deployment**:
+   - When manually triggering a pipeline, set variable `MAINTENANCE_MODE=true`
+   - After completing maintenance, run another deployment with `MAINTENANCE_MODE=false`
+
+#### Manual Override on the Server
+
+You can also directly enable/disable maintenance mode on the server:
+
+```bash
+# Enable maintenance mode
+docker-compose exec traefik traefik service update --label-add "traefik.enable=true" maintenance
+docker-compose exec traefik traefik service update --label-add "traefik.enable=false" backend
+docker-compose exec traefik traefik service update --label-add "traefik.enable=false" frontend
+
+# Disable maintenance mode
+docker-compose exec traefik traefik service update --label-add "traefik.enable=false" maintenance
+docker-compose exec traefik traefik service update --label-add "traefik.enable=true" backend
+docker-compose exec traefik traefik service update --label-add "traefik.enable=true" frontend
+```
+
+### Customizing the Maintenance Page
+
+The maintenance page is located at `/maintenance/index.html` and can be customized:
+
+- **Content**: Modify the HTML to change the maintenance message
+- **Styling**: Update the CSS in the style section
+- **Countdown**: By default, the page shows a 30-minute countdown
+- **Behavior**: The page will automatically refresh after the countdown ends
+
+The maintenance page includes:
+- GFBio branding
+- Informative message about the maintenance
+- Visual countdown timer
+- Automatic refresh to check if the service is back online
 
 ## Environment Setup
 

@@ -171,6 +171,20 @@ services:
       # - "traefik.http.routers.frontend-secure.tls.certresolver=letsencrypt"
       # - "traefik.http.routers.frontend-secure.priority=1"
 
+  maintenance:
+    image: nginx:alpine
+    restart: always
+    networks:
+      - app-network
+    volumes:
+      - ./maintenance:/usr/share/nginx/html
+    labels:
+      - "traefik.enable=false"  # Disabled by default
+      - "traefik.http.routers.maintenance.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.maintenance.entrypoints=web"
+      - "traefik.http.services.maintenance.loadbalancer.server.port=80"
+      - "traefik.http.routers.maintenance.priority=100"  # Higher priority to override other routes
+
 volumes:
   postgres_data:
   redis_data:

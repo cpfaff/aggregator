@@ -90,6 +90,7 @@ deploy-production:
     IMAGE_TAG: $CI_COMMIT_SHORT_SHA
     DOCKER_REGISTRY: $DOCKER_REGISTRY
     ENVIRONMENT: production
+    MAINTENANCE_MODE: ${MAINTENANCE_MODE:-"false"}
   before_script:
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD docker.gitlab-pe.gwdg.de
   script:
@@ -116,6 +117,21 @@ deploy-production:
     - mkdir -p ./frontend
     - echo "# Frontend-specific environment variables" > ./frontend/.env
     - echo "REACT_APP_API_URL=${REACT_APP_API_URL:-https://aggregator.gfbio.org/api}" >> ./frontend/.env
+    
+    # Create maintenance directory if it doesn't exist
+    - mkdir -p ./maintenance
+    
+    # Enable or disable maintenance mode based on MAINTENANCE_MODE variable
+    - if [ "$MAINTENANCE_MODE" = "true" ]; then
+    -   echo "Enabling maintenance mode..."
+    -   sed -i 's/traefik.enable=false/traefik.enable=true/' docker-compose.prod.registry.yml
+    -   sed -i 's/traefik.enable=true.*# Simplified API router/traefik.enable=false  # Disabled during maintenance/' docker-compose.prod.registry.yml
+    -   sed -i 's/traefik.enable=true.*# We don't need to expose/traefik.enable=false  # Disabled during maintenance/' docker-compose.prod.registry.yml
+    - else
+    -   echo "Maintenance mode is disabled."
+    -   sed -i 's/traefik.enable=true.*# Higher priority/traefik.enable=false  # Disabled by default/' docker-compose.prod.registry.yml
+    -   sed -i 's/traefik.enable=false.*# Disabled during maintenance/traefik.enable=true/' docker-compose.prod.registry.yml
+    - fi
     
     # Deploy with docker-compose
     - export IMAGE_TAG=$CI_COMMIT_SHORT_SHA
