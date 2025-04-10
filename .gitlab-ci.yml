@@ -142,6 +142,67 @@ deploy-production:
     - docker-compose -f docker-compose.prod.registry.yml pull
     - docker-compose -f docker-compose.prod.registry.yml down || true
     - docker-compose -f docker-compose.prod.registry.yml up -d
+
+    # Wait for services to be healthy before disabling maintenance mode
+    - |
+      if [ "$MAINTENANCE_MODE" = "true" ]; then
+        echo "Waiting for services to be healthy..."
+        # Set maximum wait time (10 minutes)
+        MAX_WAIT=600
+        WAITED=0
+        SLEEP_TIME=10
+        
+        while [ $WAITED -lt $MAX_WAIT ]; do
+          # Check health status of all services (excluding maintenance)
+          UNHEALTHY=$(docker-compose -f docker-compose.prod.registry.yml ps | grep -v "healthy" | grep -v "maintenance" | wc -l)
+          
+          if [ $UNHEALTHY -eq 0 ]; then
+            echo "All services are healthy! Beginning controlled transition from maintenance mode..."
+            
+            # Step 1: Set environment variables but don't restart containers yet
+            export BACKEND_TRAEFIK_ENABLED=true
+            export FRONTEND_TRAEFIK_ENABLED=true
+            # Keep maintenance enabled during transition
+            export MAINTENANCE_TRAEFIK_ENABLED=true
+            
+            # Step 2: Restart backend and frontend specifically to pick up new Traefik settings
+            echo "Restarting backend and frontend services with new Traefik settings..."
+            docker-compose -f docker-compose.prod.registry.yml up -d backend frontend
+            
+            # Step 3: Wait for backend and frontend to be fully healthy
+            echo "Waiting for backend and frontend to be fully healthy..."
+            BACKEND_FRONTEND_WAIT=120
+            BF_WAITED=0
+            while [ $BF_WAITED -lt $BACKEND_FRONTEND_WAIT ]; do
+              UNHEALTHY_BF=$(docker-compose -f docker-compose.prod.registry.yml ps backend frontend | grep -v "healthy" | wc -l)
+              if [ $UNHEALTHY_BF -eq 0 ]; then
+                echo "Backend and frontend are now healthy!"
+                break
+              fi
+              echo "Waiting for backend and frontend... ($BF_WAITED/$BACKEND_FRONTEND_WAIT seconds)"
+              sleep 5
+              BF_WAITED=$((BF_WAITED + 5))
+            done
+            
+            # Step 4: Now disable maintenance mode and update container
+            echo "Disabling maintenance mode container..."
+            export MAINTENANCE_TRAEFIK_ENABLED=false
+            docker-compose -f docker-compose.prod.registry.yml up -d maintenance
+            
+            echo "Transition complete - system is now in normal operation mode"
+            break
+          fi
+          
+          echo "Waiting for services to be healthy... ($WAITED/$MAX_WAIT seconds)"
+          sleep $SLEEP_TIME
+          WAITED=$((WAITED + SLEEP_TIME))
+        done
+        
+        if [ $WAITED -ge $MAX_WAIT ]; then
+          echo "WARNING: Timeout reached waiting for services to be healthy. Maintenance mode remains enabled."
+          echo "Manual intervention required to disable maintenance mode."
+        fi
+      fi
   environment:
     name: production
     url: https://aggregator.gfbio.org  # Update with your actual production URL
