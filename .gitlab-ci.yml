@@ -154,10 +154,43 @@ deploy-production:
       WAITED=0
       SLEEP_TIME=10
       
+      # Function to check health status
+      check_health() {
+        echo "--- Current service statuses ---"
+        docker-compose -f docker-compose.prod.registry.yml ps
+        
+        # List any containers that are not yet healthy for debugging
+        echo "--- Containers not yet marked healthy ---"
+        UNHEALTHY_LIST=$(docker-compose -f docker-compose.prod.registry.yml ps | grep -v "maintenance" | grep -v "(healthy)" | grep -v "^NAME" | grep -v "Exit 0")
+        echo "$UNHEALTHY_LIST"
+        
+        # Count unhealthy services
+        UNHEALTHY_COUNT=$(echo "$UNHEALTHY_LIST" | wc -l)
+        if [ -z "$UNHEALTHY_LIST" ]; then
+          UNHEALTHY_COUNT=0
+        fi
+        echo "Number of unhealthy services detected: $UNHEALTHY_COUNT"
+        
+        return $UNHEALTHY_COUNT
+      }
+      
+      # Function to ensure maintenance mode on failure
+      ensure_maintenance() {
+        echo "Ensuring maintenance mode is active on failure..."
+        export BACKEND_TRAEFIK_ENABLED=false
+        export FRONTEND_TRAEFIK_ENABLED=false
+        export MAINTENANCE_TRAEFIK_ENABLED=true
+        docker-compose -f docker-compose.prod.registry.yml up -d maintenance --force-recreate
+      }
+      
+      # Main wait loop
       while [ $WAITED -lt $MAX_WAIT ]; do
         echo "Waiting for services to become healthy... ($WAITED/$MAX_WAIT seconds)"
-        UNHEALTHY=$(docker-compose -f docker-compose.prod.registry.yml ps | grep -v "maintenance" | grep -v "healthy" | grep -v "^NAME" | wc -l)
-
+        
+        # Check health status
+        check_health
+        UNHEALTHY=$?
+        
         if [ $UNHEALTHY -eq 0 ]; then
           echo "All services are healthy. Disabling maintenance mode and restoring normal service..."
           export BACKEND_TRAEFIK_ENABLED=true
@@ -172,7 +205,10 @@ deploy-production:
 
           while [ $WAITED -lt $MAX_WAIT ]; do
             echo "Checking if services remain healthy after restoration... ($WAITED/$MAX_WAIT seconds)"
-            UNHEALTHY=$(docker-compose -f docker-compose.prod.registry.yml ps | grep -v "maintenance" | grep -v "healthy" | grep -v "^NAME" | wc -l)
+            
+            # Check health status again
+            check_health
+            UNHEALTHY=$?
             
             if [ $UNHEALTHY -eq 0 ]; then
               echo "All services remain healthy. Putting maintenance back to handle ongoing traffic..."
@@ -186,7 +222,12 @@ deploy-production:
             WAITED=$((WAITED + SLEEP_TIME))
           done
           
-          echo "Timed out waiting for services to stabilize. Please check logs."
+          echo "Timed out waiting for services to stabilize. Ensuring maintenance mode and collecting diagnostic information..."
+          ensure_maintenance
+          
+          # Show logs of unhealthy services for debugging
+          echo "Logs from services that failed to stabilize:"
+          docker-compose -f docker-compose.prod.registry.yml logs --tail=50 backend frontend celery-worker celery-beat
           exit 1
         fi
         
@@ -195,7 +236,12 @@ deploy-production:
         WAITED=$((WAITED + SLEEP_TIME))
       done
       
-      echo "Timed out waiting for services to become healthy. Please check logs."
+      echo "Timed out waiting for services to become healthy. Ensuring maintenance mode and collecting diagnostic information..."
+      ensure_maintenance
+      
+      # Show logs of unhealthy services for debugging
+      echo "Logs from services that failed to become healthy:"
+      docker-compose -f docker-compose.prod.registry.yml logs --tail=50 backend frontend celery-worker celery-beat
       exit 1
     
   environment:
