@@ -24,6 +24,10 @@ RUN pip install --no-cache /wheels/*
 # Copy the application
 COPY . .
 
+# Install validator package from mounted volume without writing to it
+RUN mkdir -p /tmp/validator_pkg
+RUN pip install --no-cache-dir -e /app/validator
+
 # Create a non-root user
 RUN adduser --disabled-password --gecos '' appuser
 RUN chown -R appuser:appuser /app
@@ -32,5 +36,5 @@ USER appuser
 # Expose the port the app runs on
 EXPOSE 8000
 
-# Command to run the application in production - modified to install validator first
-CMD ["sh", "-c", "pip install -e /validator && uvicorn main:app --host 0.0.0.0 --port 8000"]
+# Command to run the application in production - no longer needs to install validator
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
