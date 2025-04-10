@@ -122,18 +122,6 @@ deploy-production:
     - mkdir -p ./maintenance
     
     # Set environment variables for maintenance mode
-    - |
-      if [ "$MAINTENANCE_MODE" = "true" ]; then
-        echo "Enabling maintenance mode..."
-        export BACKEND_TRAEFIK_ENABLED=false
-        export FRONTEND_TRAEFIK_ENABLED=false
-        export MAINTENANCE_TRAEFIK_ENABLED=true
-      else
-        echo "Maintenance mode is disabled."
-        export BACKEND_TRAEFIK_ENABLED=true
-        export FRONTEND_TRAEFIK_ENABLED=true
-        export MAINTENANCE_TRAEFIK_ENABLED=false
-      fi
     
     # Deploy with docker-compose
     - export IMAGE_TAG=$CI_COMMIT_SHORT_SHA
@@ -146,7 +134,7 @@ deploy-production:
     - export BACKEND_TRAEFIK_ENABLED=false
     - export FRONTEND_TRAEFIK_ENABLED=false
     - export MAINTENANCE_TRAEFIK_ENABLED=true
-    - docker-compose -f docker-compose.prod.registry.yml up -d traefik maintenance
+    - docker-compose -f docker-compose.prod.registry.yml up -d maintenance --force-recreate
     
     # Step 2: Wait a bit for the maintenance container to be properly registered with Traefik
     - sleep 5
@@ -160,30 +148,39 @@ deploy-production:
     
     # Step 5: Wait for backend to become healthy
     - |
-      echo "Waiting for backend to become healthy..."
-      health_check_max_retries=10
-      health_check_interval=5
-      health_check_retry=0
-      while [ $health_check_retry -lt $health_check_max_retries ]; do
-        if docker-compose -f docker-compose.prod.registry.yml exec -T backend curl -f http://localhost:8000/api/v1/health-check; then
-          echo "Backend is healthy, proceeding to disable maintenance mode"
-          break
-        fi
-        health_check_retry=$((health_check_retry + 1))
-        echo "Backend health check attempt $health_check_retry of $health_check_max_retries failed. Retrying in $health_check_interval seconds..."
-        sleep $health_check_interval
+      echo "Waiting for services to be healthy..."
+      # Set maximum wait time (10 minutes)
+      MAX_WAIT=600
+      WAITED=0
+      SLEEP_TIME=10
+      
+      while [ $WAITED -lt $MAX_WAIT ]; do
+        UNHEALTHY=$(docker-compose -f docker-compose.prod.registry.yml ps | grep -v "maintenance" | grep -v "healthy" | grep -v "^NAME" | wc -l)
       done
       
-      if [ $health_check_retry -eq $health_check_max_retries ]; then
-        echo "WARNING: Maximum retries reached. Backend may not be healthy, but proceeding to disable maintenance mode anyway."
+      if [ $WAITED -ge $MAX_WAIT ]
+      then
+        echo "WARNING: Timeout reached waiting for services to be healthy. Maintenance mode remains enabled."
+        echo "Manual intervention required to disable maintenance mode."
+        exit 1 
+      else
+        echo "Disabling maintenance mode and restoring normal service..."
+        export BACKEND_TRAEFIK_ENABLED=true
+        export FRONTEND_TRAEFIK_ENABLED=true
+        export MAINTENANCE_TRAEFIK_ENABLED=false
+        docker-compose -f docker-compose.prod.registry.yml up -d db redis backend frontend celery-worker celery-beat
+
+        MAX_WAIT=600
+        WAITED=0
+        SLEEP_TIME=10
+
+        while [ $WAITED -lt $MAX_WAIT ]; do
+          UNHEALTHY=$(docker-compose -f docker-compose.prod.registry.yml ps | grep -v "maintenance" | grep -v "healthy" | grep -v "^NAME" | wc -l)
+        done
+        docker-compose -f docker-compose.prod.registry.yml up -d maintenance --force-recreate
+        exit 0
       fi
     
-    # Step 6: Disable maintenance mode and restore normal service routing
-    - echo "Disabling maintenance mode and restoring normal service..."
-    - export BACKEND_TRAEFIK_ENABLED=true
-    - export FRONTEND_TRAEFIK_ENABLED=true
-    - export MAINTENANCE_TRAEFIK_ENABLED=false
-    - docker-compose -f docker-compose.prod.registry.yml up -d
   environment:
     name: production
     url: https://aggregator.gfbio.org  # Update with your actual production URL
