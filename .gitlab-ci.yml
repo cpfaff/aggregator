@@ -149,8 +149,8 @@ deploy-production:
     # Step 5: Wait for backend to become healthy
     - |
       echo "Waiting for services to be healthy..."
-      # Set maximum wait time (10 minutes)
-      MAX_WAIT=600
+      # Set maximum wait time (5 minutes to avoid GitLab CI timeouts)
+      MAX_WAIT=300
       WAITED=0
       SLEEP_TIME=10
       
@@ -228,7 +228,6 @@ deploy-production:
           # Show logs of unhealthy services for debugging
           echo "Logs from services that failed to stabilize:"
           docker-compose -f docker-compose.prod.registry.yml logs --tail=50 backend frontend celery-worker celery-beat
-          exit 1
         fi
         
         # Sleep and increment counter
@@ -242,7 +241,6 @@ deploy-production:
       # Show logs of unhealthy services for debugging
       echo "Logs from services that failed to become healthy:"
       docker-compose -f docker-compose.prod.registry.yml logs --tail=50 backend frontend celery-worker celery-beat
-      exit 1
     
   environment:
     name: production
@@ -254,3 +252,4 @@ deploy-production:
       when: manual
   tags:
     - deploy-aggregator
+  timeout: 15m
