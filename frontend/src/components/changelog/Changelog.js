@@ -8,7 +8,7 @@ const Changelog = () => {
       version: '1.7.0',
       date: 'April 10, 2025',
       changes: [
-        'x Added maintenance mode feature for smoother service updates and deployments',
+        'Added maintenance mode feature for smoother service updates and deployments',
         'Improved CI/CD pipeline for production deployments with GitLab',
         'Enhanced docker-compose configuration with maintenance container',
         'Added Makefile commands for enabling/disabling maintenance mode',
