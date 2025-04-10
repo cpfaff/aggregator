@@ -231,7 +231,11 @@ deploy-production:
         fi
         
         # Sleep and increment counter
+        echo "Waiting a bit for the next round.... "
+        echo $SLEEP_TIME
+      
         sleep $SLEEP_TIME
+
         WAITED=$((WAITED + SLEEP_TIME))
       done
       
