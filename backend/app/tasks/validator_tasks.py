@@ -3,6 +3,7 @@ Celery tasks for XML validation.
 """
 
 import logging
+import uuid
 from datetime import datetime
 from typing import Dict, Any, Optional
 
@@ -47,22 +48,17 @@ def validate_archive(self, archive_id: int) -> Dict[str, Any]:
         if not archive:
             raise ValueError(f"Archive with ID {archive_id} not found")
             
-        # Create or update job record
-        job = db.query(ValidationJobModel).filter(
-            ValidationJobModel.archive_id == archive_id,
-            ValidationJobModel.task_id == self.request.id
-        ).first()
-        
-        if not job:
-            job = ValidationJobModel(
-                archive_id=archive_id,
-                status="running",
-                task_id=self.request.id
-            )
-            db.add(job)
-        else:
-            job.status = "running"
+        # Generate a unique task_id for this job by combining Celery task ID and a UUID
+        unique_task_id = f"{self.request.id}_{str(uuid.uuid4())}"
             
+        # Create job record with unique task_id
+        job = ValidationJobModel(
+            archive_id=archive_id,
+            status="running",
+            task_id=unique_task_id,
+            started_at=datetime.utcnow()
+        )
+        db.add(job)
         db.commit()
         db.refresh(job)
         

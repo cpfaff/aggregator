@@ -58,6 +58,8 @@ services:
     depends_on:
       - db
       - redis
+    volumes:
+      - ./validator:/validator
     env_file:
       - ./backend/.env
     environment:
@@ -96,6 +98,8 @@ services:
     depends_on:
       - db
       - redis
+    volumes:
+      - ./validator:/validator
     env_file:
       - ./backend/.env
     environment:
@@ -113,7 +117,7 @@ services:
       retries: 3
       start_period: 10s
     command: >
-      celery -A app.core.celery_app worker --concurrency=2 --loglevel=info
+      sh -c "pip install -e /validator && celery -A app.core.celery_app worker --concurrency=1 --pool=solo --loglevel=info"
 
   celery-beat:
     build:
@@ -123,6 +127,8 @@ services:
     depends_on:
       - redis
       - celery-worker
+    volumes:
+      - ./validator:/validator
     env_file:
       - ./backend/.env
     environment:
@@ -140,7 +146,7 @@ services:
       retries: 3
       start_period: 10s
     command: >
-      celery -A app.core.celery_app beat --loglevel=info
+      sh -c "pip install -e /validator && celery -A app.core.celery_app beat --loglevel=info"
 
   frontend:
     build:
@@ -154,6 +160,7 @@ services:
       - backend
     networks:
       - app-network
+    command: ["nginx", "-g", "daemon off;"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:80"]
       interval: 30s

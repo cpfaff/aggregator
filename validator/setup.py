@@ -13,6 +13,7 @@ setup(
         "lxml",
         "requests",
         "psutil",
+        "PyYAML",
     ],
     python_requires=">=3.6",
     classifiers=[

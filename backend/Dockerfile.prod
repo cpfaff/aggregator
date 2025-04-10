@@ -21,7 +21,7 @@ RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /app/wheels /wheels
 RUN pip install --no-cache /wheels/*
 
-# Copy the rest of the application
+# Copy the application
 COPY . .
 
 # Create a non-root user
@@ -32,5 +32,5 @@ USER appuser
 # Expose the port the app runs on
 EXPOSE 8000
 
-# Command to run the application in production
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Command to run the application in production - modified to install validator first
+CMD ["sh", "-c", "pip install -e /validator && uvicorn main:app --host 0.0.0.0 --port 8000"]

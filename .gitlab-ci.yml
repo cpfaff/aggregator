@@ -94,8 +94,29 @@ deploy-production:
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD docker.gitlab-pe.gwdg.de
   script:
     - echo "Deploying to production..."
-    # Sync environment configs if needed
-    - rsync -a /home/gitlab-runner/.envs ./ || echo "No env files to sync"
+    # Create environment files from CI variables
+    
+    # Create global .env file
+    - echo "# Global environment variables for Docker Compose" > ./.env
+    - echo "DB_USER=${DB_USER:-user}" >> ./.env
+    - echo "DB_PASSWORD=${DB_PASSWORD:-password}" >> ./.env
+    - echo "DB_NAME=${DB_NAME:-dbname}" >> ./.env
+    - echo "ENVIRONMENT=${ENVIRONMENT:-production}" >> ./.env
+    - echo "REACT_APP_API_URL=${REACT_APP_API_URL:-https://aggregator.gfbio.org/api}" >> ./.env
+    
+    # Create backend .env file
+    - mkdir -p ./backend
+    - echo "# Backend-specific environment variables" > ./backend/.env
+    - echo "SECRET_KEY=${SECRET_KEY:-defaultsecretkey}" >> ./backend/.env
+    - echo "ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-30}" >> ./backend/.env
+    - echo "LOG_LEVEL=${LOG_LEVEL:-INFO}" >> ./backend/.env
+    - echo "ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://aggregator.gfbio.org}" >> ./backend/.env
+    
+    # Create frontend .env file
+    - mkdir -p ./frontend
+    - echo "# Frontend-specific environment variables" > ./frontend/.env
+    - echo "REACT_APP_API_URL=${REACT_APP_API_URL:-https://aggregator.gfbio.org/api}" >> ./frontend/.env
+    
     # Deploy with docker-compose
     - export IMAGE_TAG=$CI_COMMIT_SHORT_SHA
     - docker-compose -f docker-compose.prod.registry.yml config
@@ -105,82 +126,10 @@ deploy-production:
   environment:
     name: production
     url: https://aggregator.gfbio.org  # Update with your actual production URL
-  only:
-    - master
-    - tags
-  when: manual
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: always
+    - if: $CI_COMMIT_BRANCH == "master"
+      when: manual
   tags:
-    - deployer
-
-# Deploy to staging
-deploy-staging:
-  stage: deploy
-  image: docker/compose:latest
-  variables:
-    IMAGE_TAG: $CI_COMMIT_SHORT_SHA
-    DOCKER_REGISTRY: $DOCKER_REGISTRY
-    ENVIRONMENT: staging
-  before_script:
-    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD docker.gitlab-pe.gwdg.de
-  script:
-    - echo "Deploying to staging..."
-    # Sync environment configs if needed 
-    - rsync -a /home/gitlab-runner/.envs.staging ./.envs || echo "No env files to sync"
-    # Deploy with docker-compose
-    - export IMAGE_TAG=$CI_COMMIT_SHORT_SHA
-    - docker-compose -f docker-compose.prod.registry.yml config
-    - docker-compose -f docker-compose.prod.registry.yml pull
-    - docker-compose -f docker-compose.prod.registry.yml down || true
-    - docker-compose -f docker-compose.prod.registry.yml up -d
-  environment:
-    name: staging
-    url: https://staging.aggregator.gfbio.org  # Update with your actual staging URL
-  only:
-    - develop
-  tags:
-    - deployer
-
-# Development web test (similar to web_test_update from your example)
-web-test-update:
-  stage: deploy
-  image: docker/compose:latest
-  variables:
-    PROJECT_NAME: ${PROJECT_NAME}
-    COMPOSE_FILE: "docker-compose.prod.registry.yml"
-  script:
-    # Get issue ID and test name from branch name
-    - ISSUE_ID=$(awk -F- '{print $2}' <<< ${CI_COMMIT_REF_NAME})
-    - TEST_NAME=$ISSUE_ID-$PROJECT_NAME
-    # Environment preparation
-    - export IMAGE_TAG=$CI_COMMIT_SHORT_SHA
-    # Your custom environment setup
-    - docker-compose -f $COMPOSE_FILE build
-    - docker-compose -f $COMPOSE_FILE up -d
-  environment:
-    name: review/$CI_COMMIT_REF_NAME
-    url: https://$TEST_NAME.test.gfbio.dev  # Update with your actual test URL pattern
-    on_stop: web-test-stop
-  only:
-    - /^feature-.*$/
-  tags:
-    - dev-denbi
-
-# Stop web test environment
-web-test-stop:
-  stage: deploy
-  image: docker/compose:latest
-  variables:
-    PROJECT_NAME: ${PROJECT_NAME}
-    COMPOSE_FILE: "docker-compose.prod.registry.yml"
-  script:
-    - ISSUE_ID=$(awk -F- '{print $2}' <<< ${CI_COMMIT_REF_NAME})
-    - TEST_NAME=$ISSUE_ID-$PROJECT_NAME
-    - docker-compose -f $COMPOSE_FILE down
-  environment:
-    name: review/$CI_COMMIT_REF_NAME
-    action: stop
-  only:
-    - /^feature-.*$/
-  when: manual
-  tags:
-    - dev-denbi
+    - deploy-aggregator
