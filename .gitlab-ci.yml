@@ -125,12 +125,13 @@ deploy-production:
     - if [ "$MAINTENANCE_MODE" = "true" ]; then
     -   echo "Enabling maintenance mode..."
     -   sed -i 's/traefik.enable=false/traefik.enable=true/' docker-compose.prod.registry.yml
-    -   sed -i 's/traefik.enable=true.*# Simplified API router/traefik.enable=false  # Disabled during maintenance/' docker-compose.prod.registry.yml
-    -   sed -i 's/traefik.enable=true.*# We don't need to expose/traefik.enable=false  # Disabled during maintenance/' docker-compose.prod.registry.yml
+    -   sed -i 's/traefik.enable=true.*backend.rule=PathPrefix/traefik.enable=false  # Disabled during maintenance\n      - "traefik.http.routers.backend.rule=PathPrefix/' docker-compose.prod.registry.yml
+    -   sed -i 's/traefik.enable=true.*frontend.rule=PathPrefix/traefik.enable=false  # Disabled during maintenance\n      - "traefik.http.routers.frontend.rule=PathPrefix/' docker-compose.prod.registry.yml
     - else
     -   echo "Maintenance mode is disabled."
-    -   sed -i 's/traefik.enable=true.*# Higher priority/traefik.enable=false  # Disabled by default/' docker-compose.prod.registry.yml
-    -   sed -i 's/traefik.enable=false.*# Disabled during maintenance/traefik.enable=true/' docker-compose.prod.registry.yml
+    -   sed -i 's/traefik.enable=true.*maintenance.rule=PathPrefix/traefik.enable=false  # Disabled by default\n      - "traefik.http.routers.maintenance.rule=PathPrefix/' docker-compose.prod.registry.yml
+    -   sed -i 's/traefik.enable=false.*backend.rule=PathPrefix/traefik.enable=true\n      - "traefik.http.routers.backend.rule=PathPrefix/' docker-compose.prod.registry.yml
+    -   sed -i 's/traefik.enable=false.*frontend.rule=PathPrefix/traefik.enable=true\n      - "traefik.http.routers.frontend.rule=PathPrefix/' docker-compose.prod.registry.yml
     - fi
     
     # Deploy with docker-compose
