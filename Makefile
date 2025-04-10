@@ -136,7 +136,7 @@ maintenance-on:
 		export FRONTEND_TRAEFIK_ENABLED=false; \
 		export MAINTENANCE_TRAEFIK_ENABLED=true; \
 		docker-compose -f docker-compose.prod.registry.yml down; \
-		docker-compose -f docker-compose.prod.registry.yml up -d; \
+		docker-compose -f docker-compose.prod.registry.yml up -d --no-build; \
 		echo "${GREEN}Maintenance mode enabled.${NC}"; \
 	else \
 		echo "${RED}Error: docker-compose.prod.registry.yml not found.${NC}"; \
@@ -150,7 +150,7 @@ maintenance-off:
 		export FRONTEND_TRAEFIK_ENABLED=true; \
 		export MAINTENANCE_TRAEFIK_ENABLED=false; \
 		docker-compose -f docker-compose.prod.registry.yml down; \
-		docker-compose -f docker-compose.prod.registry.yml up -d; \
+		docker-compose -f docker-compose.prod.registry.yml up -d --no-build; \
 		echo "${GREEN}Maintenance mode disabled.${NC}"; \
 	else \
 		echo "${RED}Error: docker-compose.prod.registry.yml not found.${NC}"; \
