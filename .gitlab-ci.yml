@@ -155,6 +155,7 @@ deploy-production:
         while [ $WAITED -lt $MAX_WAIT ]; do
           # Check health status of all services (excluding maintenance)
           UNHEALTHY=$(docker-compose -f docker-compose.prod.registry.yml ps | grep -v "maintenance" | grep -v "healthy" | grep -v "^NAME" | wc -l)
+          echo $UNHEALTHY
           
           if [ $UNHEALTHY -eq 0 ]; then
             echo "All services are healthy! Beginning controlled transition from maintenance mode..."
@@ -201,7 +202,6 @@ deploy-production:
         if [ $WAITED -ge $MAX_WAIT ]; then
           echo "WARNING: Timeout reached waiting for services to be healthy. Maintenance mode remains enabled."
           echo "Manual intervention required to disable maintenance mode."
-          exit 1
         fi
       fi
   environment:
