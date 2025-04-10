@@ -210,6 +210,7 @@ deploy-production:
       MAX_WAIT=300
       WAITED=0
       SLEEP_TIME=10
+      CONTINUE_WAITING=true
       
       # Function to check health status
       check_health() {
@@ -227,6 +228,17 @@ deploy-production:
           UNHEALTHY_COUNT=0
         fi
         echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Number of unhealthy services detected: $UNHEALTHY_COUNT"
+        
+        # Print specific health check failures for each unhealthy service
+        if [ "$UNHEALTHY_COUNT" -gt 0 ]; then
+          echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Health check details ---"
+          for service in backend frontend celery-worker celery-beat; do
+            if echo "$UNHEALTHY_LIST" | grep -q "$service"; then
+              echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] Checking $service health check logs:"
+              docker inspect --format='{{json .State.Health}}' $(docker-compose -f docker-compose.prod.registry.yml ps -q $service) 2>/dev/null | jq . || echo "No health data available"
+            fi
+          done
+        fi
         
         # Get detailed container statistics for each service
         echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Container resource usage ---"
@@ -280,8 +292,8 @@ deploy-production:
         docker info
       }
       
-      # Main wait loop
-      while [ $WAITED -lt $MAX_WAIT ]; do
+      # Main wait loop - fixed loop logic to ensure proper waiting
+      while [ $WAITED -lt $MAX_WAIT ] && [ "$CONTINUE_WAITING" = "true" ]; do
         echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Waiting for services to become healthy... ($WAITED/$MAX_WAIT seconds)"
         
         # Check health status
@@ -296,71 +308,85 @@ deploy-production:
           docker-compose -f docker-compose.prod.registry.yml up -d db redis backend frontend celery-worker celery-beat
           
           echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Waiting for services to stabilize after restoration..."
-          MAX_WAIT=600
-          WAITED=0
-          SLEEP_TIME=10
+          STABILIZE_MAX_WAIT=600
+          STABILIZE_WAITED=0
+          STABILIZE_SLEEP_TIME=10
+          SERVICES_REMAIN_HEALTHY=true
 
-          while [ $WAITED -lt $MAX_WAIT ]; do
-            echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Checking if services remain healthy after restoration... ($WAITED/$MAX_WAIT seconds)"
+          while [ $STABILIZE_WAITED -lt $STABILIZE_MAX_WAIT ] && [ "$SERVICES_REMAIN_HEALTHY" = "true" ]; do
+            echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Checking if services remain healthy after restoration... ($STABILIZE_WAITED/$STABILIZE_MAX_WAIT seconds)"
             
             # Check health status again
             check_health
             UNHEALTHY=$?
             
             if [ $UNHEALTHY -eq 0 ]; then
-              echo "$(date +"$TIMESTAMP_FORMAT") [SUCCESS] All services remain healthy. Putting maintenance back to handle ongoing traffic..."
-              docker-compose -f docker-compose.prod.registry.yml up -d maintenance --force-recreate
-              echo "$(date +"$TIMESTAMP_FORMAT") [SUCCESS] Deployment completed successfully."
-              exit 0
+              echo "$(date +"$TIMESTAMP_FORMAT") [SUCCESS] All services remain healthy."
+              
+              # If we've waited long enough, consider the deployment successful
+              if [ $STABILIZE_WAITED -ge 30 ]; then
+                echo "$(date +"$TIMESTAMP_FORMAT") [SUCCESS] Services have been stable for at least 30 seconds. Deployment completed successfully."
+                CONTINUE_WAITING=false
+                exit 0
+              fi
+            else
+              echo "$(date +"$TIMESTAMP_FORMAT") [WARN] Services became unhealthy during stabilization period"
+              SERVICES_REMAIN_HEALTHY=false
             fi
             
-            # Sleep and increment counter
-            sleep $SLEEP_TIME
-            WAITED=$((WAITED + SLEEP_TIME))
+            # Sleep and increment counter if we're continuing
+            if [ "$SERVICES_REMAIN_HEALTHY" = "true" ]; then
+              sleep $STABILIZE_SLEEP_TIME
+              STABILIZE_WAITED=$((STABILIZE_WAITED + STABILIZE_SLEEP_TIME))
+            fi
           done
           
-          echo "$(date +"$TIMESTAMP_FORMAT") [ERROR] Timed out waiting for services to stabilize. Ensuring maintenance mode and collecting diagnostic information..."
-          ensure_maintenance
-          collect_diagnostics
-          
-          # Show detailed logs for each service
-          echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Backend logs ---"
-          docker-compose -f docker-compose.prod.registry.yml logs --tail=100 backend
-          echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Frontend logs ---"
-          docker-compose -f docker-compose.prod.registry.yml logs --tail=50 frontend
-          echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Celery worker logs ---"
-          docker-compose -f docker-compose.prod.registry.yml logs --tail=50 celery-worker
-          echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Celery beat logs ---"
-          docker-compose -f docker-compose.prod.registry.yml logs --tail=50 celery-beat
-          
-          # Exit with error
-          echo "$(date +"$TIMESTAMP_FORMAT") [ERROR] Deployment failed: Services did not remain stable after restoration"
-          exit 1
+          # If we exited the loop because services failed, handle the failure
+          if [ "$SERVICES_REMAIN_HEALTHY" = "false" ]; then
+            echo "$(date +"$TIMESTAMP_FORMAT") [ERROR] Services did not remain stable during restoration period"
+            ensure_maintenance
+            collect_diagnostics
+            
+            # Show detailed logs for each service
+            echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Backend logs ---"
+            docker-compose -f docker-compose.prod.registry.yml logs --tail=100 backend
+            echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Frontend logs ---"
+            docker-compose -f docker-compose.prod.registry.yml logs --tail=50 frontend
+            echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Celery worker logs ---"
+            docker-compose -f docker-compose.prod.registry.yml logs --tail=50 celery-worker
+            echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Celery beat logs ---"
+            docker-compose -f docker-compose.prod.registry.yml logs --tail=50 celery-beat
+            
+            CONTINUE_WAITING=false
+          fi
+        else
+          # Services are not yet healthy, keep waiting
+          echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Waiting $SLEEP_TIME seconds for the next health check..."
+          sleep $SLEEP_TIME
+          WAITED=$((WAITED + SLEEP_TIME))
         fi
-        
-        # Sleep and increment counter
-        echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Waiting $SLEEP_TIME seconds for the next health check..."
-        sleep $SLEEP_TIME
-        WAITED=$((WAITED + SLEEP_TIME))
       done
       
-      echo "$(date +"$TIMESTAMP_FORMAT") [ERROR] Timed out waiting for services to become healthy. Ensuring maintenance mode and collecting diagnostic information..."
-      ensure_maintenance
-      collect_diagnostics
-      
-      # Show detailed logs for each service
-      echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Backend logs ---"
-      docker-compose -f docker-compose.prod.registry.yml logs --tail=100 backend
-      echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Frontend logs ---"
-      docker-compose -f docker-compose.prod.registry.yml logs --tail=50 frontend
-      echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Celery worker logs ---"
-      docker-compose -f docker-compose.prod.registry.yml logs --tail=50 celery-worker
-      echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Celery beat logs ---"
-      docker-compose -f docker-compose.prod.registry.yml logs --tail=50 celery-beat
-      
-      # Exit with error
-      echo "$(date +"$TIMESTAMP_FORMAT") [ERROR] Deployment failed: Services did not become healthy within the timeout period"
-      exit 1
+      # Only reach here if MAX_WAIT was reached without services becoming healthy
+      if [ $WAITED -ge $MAX_WAIT ]; then
+        echo "$(date +"$TIMESTAMP_FORMAT") [ERROR] Timed out waiting for services to become healthy after $MAX_WAIT seconds."
+        ensure_maintenance
+        collect_diagnostics
+        
+        # Show detailed logs for each service
+        echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Backend logs ---"
+        docker-compose -f docker-compose.prod.registry.yml logs --tail=100 backend
+        echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Frontend logs ---"
+        docker-compose -f docker-compose.prod.registry.yml logs --tail=50 frontend
+        echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Celery worker logs ---"
+        docker-compose -f docker-compose.prod.registry.yml logs --tail=50 celery-worker
+        echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Celery beat logs ---"
+        docker-compose -f docker-compose.prod.registry.yml logs --tail=50 celery-beat
+        
+        # Exit with error if we reach the timeout
+        echo "$(date +"$TIMESTAMP_FORMAT") [ERROR] Deployment failed: Services did not become healthy within the timeout period"
+        exit 1
+      fi
   environment:
     name: production
     url: https://aggregator.gfbio.org  # Update with your actual production URL
