@@ -56,8 +56,6 @@ services:
     depends_on:
       - db
       - redis
-    volumes:
-      - ./validator:/validator:ro
     env_file:
       - ./backend/.env
     environment:
@@ -94,8 +92,6 @@ services:
     depends_on:
       - db
       - redis
-    volumes:
-      - ./validator:/validator:ro
     env_file:
       - ./backend/.env
     environment:
@@ -121,8 +117,6 @@ services:
     depends_on:
       - redis
       - celery-worker
-    volumes:
-      - ./validator:/validator:ro
     env_file:
       - ./backend/.env
     environment:
