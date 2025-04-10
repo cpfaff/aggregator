@@ -57,7 +57,7 @@ services:
       - db
       - redis
     volumes:
-      - ./validator:/validator:ro
+      - ./validator:/validator
     env_file:
       - ./backend/.env
     environment:
@@ -95,7 +95,7 @@ services:
       - db
       - redis
     volumes:
-      - ./validator:/validator:ro
+      - ./validator:/validator
     env_file:
       - ./backend/.env
     environment:
@@ -113,7 +113,7 @@ services:
       retries: 3
       start_period: 10s
     command: >
-      sh -c "pip install /validator && celery -A app.core.celery_app worker --concurrency=1 --pool=solo --loglevel=info"
+      sh -c "pip install -e /validator && celery -A app.core.celery_app worker --concurrency=1 --pool=solo --loglevel=info"
 
   celery-beat:
     image: ${DOCKER_REGISTRY:-gitlab-pe.gwdg.de/gfbio/aggregator}/backend:${IMAGE_TAG:-latest}
@@ -122,7 +122,7 @@ services:
       - redis
       - celery-worker
     volumes:
-      - ./validator:/validator:ro
+      - ./validator:/validator
     env_file:
       - ./backend/.env
     environment:
@@ -140,7 +140,7 @@ services:
       retries: 3
       start_period: 10s
     command: >
-      sh -c "pip install /validator && celery -A app.core.celery_app beat --loglevel=info"
+      sh -c "pip install -e /validator && celery -A app.core.celery_app beat --loglevel=info"
 
   frontend:
     image: ${DOCKER_REGISTRY:-gitlab-pe.gwdg.de/gfbio/aggregator}/frontend:${IMAGE_TAG:-latest}
