@@ -91,11 +91,17 @@ deploy-production:
     DOCKER_REGISTRY: $DOCKER_REGISTRY
     ENVIRONMENT: production
     MAINTENANCE_MODE: ${MAINTENANCE_MODE:-"false"}
+    TIMESTAMP_FORMAT: '%Y-%m-%d %H:%M:%S'
   before_script:
+    - apk add --no-cache curl jq
+    - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Starting production deployment job for commit $CI_COMMIT_SHORT_SHA"
+    - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Environment: $ENVIRONMENT, Maintenance mode: $MAINTENANCE_MODE"
+    - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Authenticating with Docker registry"
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD docker.gitlab-pe.gwdg.de
+    - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Authentication successful"
   script:
-    - echo "Deploying to production..."
-    # Create environment files from CI variables
+    - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Deploying to production environment"
+    - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Setting up environment files"
     
     # Create global .env file
     - echo "# Global environment variables for Docker Compose" > ./.env
@@ -104,6 +110,7 @@ deploy-production:
     - echo "DB_NAME=${DB_NAME:-dbname}" >> ./.env
     - echo "ENVIRONMENT=${ENVIRONMENT:-production}" >> ./.env
     - echo "REACT_APP_API_URL=${REACT_APP_API_URL:-https://aggregator.gfbio.org/api}" >> ./.env
+    - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Global .env file created"
     
     # Create backend .env file
     - mkdir -p ./backend
@@ -112,43 +119,88 @@ deploy-production:
     - echo "ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-30}" >> ./backend/.env
     - echo "LOG_LEVEL=${LOG_LEVEL:-INFO}" >> ./backend/.env
     - echo "ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://aggregator.gfbio.org}" >> ./backend/.env
+    - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Backend .env file created"
     
     # Create frontend .env file
     - mkdir -p ./frontend
     - echo "# Frontend-specific environment variables" > ./frontend/.env
     - echo "REACT_APP_API_URL=${REACT_APP_API_URL:-https://aggregator.gfbio.org/api}" >> ./frontend/.env
+    - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Frontend .env file created"
     
     # Create maintenance directory if it doesn't exist
     - mkdir -p ./maintenance
-    
-    # Set environment variables for maintenance mode
+    - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Maintenance directory created"
     
     # Deploy with docker-compose
     - export IMAGE_TAG=$CI_COMMIT_SHORT_SHA
     - export DOCKER_REGISTRY=docker.gitlab-pe.gwdg.de/gfbio/aggregator
+    - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Using image tag: $IMAGE_TAG"
+    - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Using docker registry: $DOCKER_REGISTRY"
+    - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Validating docker-compose configuration"
     - docker-compose -f docker-compose.prod.registry.yml config
+    - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Pulling latest container images"
     - docker-compose -f docker-compose.prod.registry.yml pull
+    - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Images pulled successfully"
     
-    # Step 1: Enable maintenance mode and start only the maintenance container
-    - echo "Enabling maintenance container..."
+    # Step 1: Enable maintenance mode
+    - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Step 1: Enabling maintenance mode"
     - export BACKEND_TRAEFIK_ENABLED=false
     - export FRONTEND_TRAEFIK_ENABLED=false
     - export MAINTENANCE_TRAEFIK_ENABLED=true
-    - docker-compose -f docker-compose.prod.registry.yml up -d maintenance --force-recreate
+    - docker-compose -f docker-compose.prod.registry.yml up -d maintenance
+    - |
+      # Verify maintenance container is running
+      MAINT_STATUS=$(docker-compose -f docker-compose.prod.registry.yml ps maintenance | grep "Up" | wc -l)
+      if [ "$MAINT_STATUS" -eq "0" ]; then
+        echo "$(date +"$TIMESTAMP_FORMAT") [ERROR] Failed to start maintenance container"
+        docker-compose -f docker-compose.prod.registry.yml logs maintenance
+        exit 1
+      else
+        echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Maintenance mode enabled successfully"
+      fi
     
-    # Step 2: Wait a bit for the maintenance container to be properly registered with Traefik
-    - sleep 5
+    # Step 2: Start the database and redis services
+    - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Step 2: Starting database and redis services"
+    - docker-compose -f docker-compose.prod.registry.yml up -d db redis
+    - |
+      # Check if db and redis started correctly
+      SERVICES_STATUS=$(docker-compose -f docker-compose.prod.registry.yml ps db redis | grep "Up" | wc -l)
+      if [ "$SERVICES_STATUS" -lt "2" ]; then
+        echo "$(date +"$TIMESTAMP_FORMAT") [ERROR] Failed to start db or redis services"
+        echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] Service status:"
+        docker-compose -f docker-compose.prod.registry.yml ps db redis
+        echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] DB logs:"
+        docker-compose -f docker-compose.prod.registry.yml logs db
+        echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] Redis logs:"
+        docker-compose -f docker-compose.prod.registry.yml logs redis
+        exit 1
+      else
+        echo "$(date +"$TIMESTAMP_FORMAT") [INFO] DB and Redis services started successfully"
+      fi
     
-    # Step 3: Stop all services except traefik and maintenance
-    - echo "Restarting application services..."
-    - docker-compose -f docker-compose.prod.registry.yml stop backend frontend celery-worker celery-beat
+    # Step 3: Start traefik
+    - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Step 3: Starting traefik service"
+    - docker-compose -f docker-compose.prod.registry.yml up -d traefik
+    - |
+      # Check if traefik started correctly
+      TRAEFIK_STATUS=$(docker-compose -f docker-compose.prod.registry.yml ps traefik | grep "Up" | wc -l)
+      if [ "$TRAEFIK_STATUS" -eq "0" ]; then
+        echo "$(date +"$TIMESTAMP_FORMAT") [ERROR] Failed to start traefik service"
+        echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] Traefik logs:"
+        docker-compose -f docker-compose.prod.registry.yml logs traefik
+        exit 1
+      else
+        echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Traefik service started successfully"
+      fi
     
     # Step 4: Start all services except maintenance with their latest images
+    - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Step 4: Starting backend services and frontend"
     - docker-compose -f docker-compose.prod.registry.yml up -d db redis backend frontend celery-worker celery-beat
+    - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] All services started, waiting for them to become healthy"
     
     # Step 5: Wait for backend to become healthy
+    - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Step 5: Monitoring service health"
     - |
-      echo "Waiting for services to be healthy..."
       # Set maximum wait time (5 minutes to avoid GitLab CI timeouts)
       MAX_WAIT=300
       WAITED=0
@@ -156,11 +208,11 @@ deploy-production:
       
       # Function to check health status
       check_health() {
-        echo "--- Current service statuses ---"
+        echo "$(date +"$TIMESTAMP_FORMAT") [INFO] --- Current service statuses ---"
         docker-compose -f docker-compose.prod.registry.yml ps
         
         # List any containers that are not yet healthy for debugging
-        echo "--- Containers not yet marked healthy ---"
+        echo "$(date +"$TIMESTAMP_FORMAT") [INFO] --- Containers not yet marked healthy ---"
         UNHEALTHY_LIST=$(docker-compose -f docker-compose.prod.registry.yml ps | grep -v "maintenance" | grep -v "(healthy)" | grep -v "^NAME" | grep -v "Exit 0")
         echo "$UNHEALTHY_LIST"
         
@@ -169,51 +221,91 @@ deploy-production:
         if [ -z "$UNHEALTHY_LIST" ]; then
           UNHEALTHY_COUNT=0
         fi
-        echo "Number of unhealthy services detected: $UNHEALTHY_COUNT"
+        echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Number of unhealthy services detected: $UNHEALTHY_COUNT"
+        
+        # Get detailed container statistics for each service
+        echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Container resource usage ---"
+        for service in db redis backend frontend celery-worker celery-beat traefik; do
+          echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] $service stats:"
+          docker stats --no-stream $(docker-compose -f docker-compose.prod.registry.yml ps -q $service) 2>/dev/null || echo "Not running"
+        done
         
         return $UNHEALTHY_COUNT
       }
       
       # Function to ensure maintenance mode on failure
       ensure_maintenance() {
-        echo "Ensuring maintenance mode is active on failure..."
+        echo "$(date +"$TIMESTAMP_FORMAT") [WARN] Ensuring maintenance mode is active on failure..."
         export BACKEND_TRAEFIK_ENABLED=false
         export FRONTEND_TRAEFIK_ENABLED=false
         export MAINTENANCE_TRAEFIK_ENABLED=true
         docker-compose -f docker-compose.prod.registry.yml up -d maintenance --force-recreate
+        
+        # Verify maintenance is running
+        MAINT_STATUS=$(docker-compose -f docker-compose.prod.registry.yml ps maintenance | grep "Up" | wc -l)
+        if [ "$MAINT_STATUS" -eq "0" ]; then
+          echo "$(date +"$TIMESTAMP_FORMAT") [ERROR] Failed to enable maintenance mode"
+        else
+          echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Maintenance mode successfully enabled"
+        fi
+      }
+      
+      # Function to collect detailed diagnostics on failure
+      collect_diagnostics() {
+        echo "$(date +"$TIMESTAMP_FORMAT") [INFO] --- Collecting detailed diagnostics ---"
+        
+        # Check network connectivity between containers
+        echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Network diagnostics ---"
+        docker network inspect $(docker-compose -f docker-compose.prod.registry.yml network ls -q)
+        
+        # Check disk space
+        echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Disk space ---"
+        df -h
+        
+        # Check memory usage
+        echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Memory usage ---"
+        free -h
+        
+        # Check for any docker warnings/errors
+        echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Docker events (last 5 minutes) ---"
+        docker events --since='5m' --until='0m' || echo "No events found"
+        
+        # Report docker info
+        echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Docker info ---"
+        docker info
       }
       
       # Main wait loop
       while [ $WAITED -lt $MAX_WAIT ]; do
-        echo "Waiting for services to become healthy... ($WAITED/$MAX_WAIT seconds)"
+        echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Waiting for services to become healthy... ($WAITED/$MAX_WAIT seconds)"
         
         # Check health status
         check_health
         UNHEALTHY=$?
         
         if [ $UNHEALTHY -eq 0 ]; then
-          echo "All services are healthy. Disabling maintenance mode and restoring normal service..."
+          echo "$(date +"$TIMESTAMP_FORMAT") [SUCCESS] All services are healthy. Disabling maintenance mode and restoring normal service..."
           export BACKEND_TRAEFIK_ENABLED=true
           export FRONTEND_TRAEFIK_ENABLED=true
           export MAINTENANCE_TRAEFIK_ENABLED=false
           docker-compose -f docker-compose.prod.registry.yml up -d db redis backend frontend celery-worker celery-beat
           
-          echo "Waiting for services to stabilize after restoration..."
+          echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Waiting for services to stabilize after restoration..."
           MAX_WAIT=600
           WAITED=0
           SLEEP_TIME=10
 
           while [ $WAITED -lt $MAX_WAIT ]; do
-            echo "Checking if services remain healthy after restoration... ($WAITED/$MAX_WAIT seconds)"
+            echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Checking if services remain healthy after restoration... ($WAITED/$MAX_WAIT seconds)"
             
             # Check health status again
             check_health
             UNHEALTHY=$?
             
             if [ $UNHEALTHY -eq 0 ]; then
-              echo "All services remain healthy. Putting maintenance back to handle ongoing traffic..."
+              echo "$(date +"$TIMESTAMP_FORMAT") [SUCCESS] All services remain healthy. Putting maintenance back to handle ongoing traffic..."
               docker-compose -f docker-compose.prod.registry.yml up -d maintenance --force-recreate
-              echo "Deployment completed successfully."
+              echo "$(date +"$TIMESTAMP_FORMAT") [SUCCESS] Deployment completed successfully."
               exit 0
             fi
             
@@ -222,30 +314,48 @@ deploy-production:
             WAITED=$((WAITED + SLEEP_TIME))
           done
           
-          echo "Timed out waiting for services to stabilize. Ensuring maintenance mode and collecting diagnostic information..."
+          echo "$(date +"$TIMESTAMP_FORMAT") [ERROR] Timed out waiting for services to stabilize. Ensuring maintenance mode and collecting diagnostic information..."
           ensure_maintenance
+          collect_diagnostics
           
-          # Show logs of unhealthy services for debugging
-          echo "Logs from services that failed to stabilize:"
-          docker-compose -f docker-compose.prod.registry.yml logs --tail=50 backend frontend celery-worker celery-beat
+          # Show detailed logs for each service
+          echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Backend logs ---"
+          docker-compose -f docker-compose.prod.registry.yml logs --tail=100 backend
+          echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Frontend logs ---"
+          docker-compose -f docker-compose.prod.registry.yml logs --tail=50 frontend
+          echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Celery worker logs ---"
+          docker-compose -f docker-compose.prod.registry.yml logs --tail=50 celery-worker
+          echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Celery beat logs ---"
+          docker-compose -f docker-compose.prod.registry.yml logs --tail=50 celery-beat
+          
+          # Exit with error
+          echo "$(date +"$TIMESTAMP_FORMAT") [ERROR] Deployment failed: Services did not remain stable after restoration"
+          exit 1
         fi
         
         # Sleep and increment counter
-        echo "Waiting a bit for the next round.... "
-        echo $SLEEP_TIME
-      
+        echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Waiting $SLEEP_TIME seconds for the next health check..."
         sleep $SLEEP_TIME
-
         WAITED=$((WAITED + SLEEP_TIME))
       done
       
-      echo "Timed out waiting for services to become healthy. Ensuring maintenance mode and collecting diagnostic information..."
+      echo "$(date +"$TIMESTAMP_FORMAT") [ERROR] Timed out waiting for services to become healthy. Ensuring maintenance mode and collecting diagnostic information..."
       ensure_maintenance
+      collect_diagnostics
       
-      # Show logs of unhealthy services for debugging
-      echo "Logs from services that failed to become healthy:"
-      docker-compose -f docker-compose.prod.registry.yml logs --tail=50 backend frontend celery-worker celery-beat
-    
+      # Show detailed logs for each service
+      echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Backend logs ---"
+      docker-compose -f docker-compose.prod.registry.yml logs --tail=100 backend
+      echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Frontend logs ---"
+      docker-compose -f docker-compose.prod.registry.yml logs --tail=50 frontend
+      echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Celery worker logs ---"
+      docker-compose -f docker-compose.prod.registry.yml logs --tail=50 celery-worker
+      echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Celery beat logs ---"
+      docker-compose -f docker-compose.prod.registry.yml logs --tail=50 celery-beat
+      
+      # Exit with error
+      echo "$(date +"$TIMESTAMP_FORMAT") [ERROR] Deployment failed: Services did not become healthy within the timeout period"
+      exit 1
   environment:
     name: production
     url: https://aggregator.gfbio.org  # Update with your actual production URL
@@ -257,3 +367,5 @@ deploy-production:
   tags:
     - deploy-aggregator
   timeout: 15m
+  after_script:
+    - echo "$(date +"${TIMESTAMP_FORMAT:-'%Y-%m-%d %H:%M:%S'}") [INFO] Deployment job finished with status: $CI_JOB_STATUS"
