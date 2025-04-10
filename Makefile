@@ -132,24 +132,27 @@ format:
 maintenance-on:
 	@echo "${YELLOW}Enabling maintenance mode...${NC}"
 	@if [ -f "docker-compose.prod.registry.yml" ]; then \
-		echo "Updating docker-compose.prod.registry.yml for maintenance mode..."; \
-		sed -i 's/traefik.enable=false.*# Disabled by default/traefik.enable=true  # Enabled during maintenance/' docker-compose.prod.registry.yml; \
-		sed -i 's/traefik.enable=true.*# Simplified API router/traefik.enable=false  # Disabled during maintenance/' docker-compose.prod.registry.yml; \
-		sed -i 's/traefik.enable=true.*# We don't need to expose/traefik.enable=false  # Disabled during maintenance/' docker-compose.prod.registry.yml; \
-		echo "${GREEN}Maintenance mode enabled in configuration.${NC}"; \
-		echo "${YELLOW}Note: You'll need to run 'docker-compose -f docker-compose.prod.registry.yml up -d' to apply the changes.${NC}"; \
+		export BACKEND_TRAEFIK_ENABLED=false; \
+		export FRONTEND_TRAEFIK_ENABLED=false; \
+		export MAINTENANCE_TRAEFIK_ENABLED=true; \
+		docker-compose -f docker-compose.prod.registry.yml down; \
+		docker-compose -f docker-compose.prod.registry.yml up -d; \
+		echo "${GREEN}Maintenance mode enabled.${NC}"; \
 	else \
-		echo "${RED}Error: docker-compose.prod.registry.yml not found${NC}"; \
+		echo "${RED}Error: docker-compose.prod.registry.yml not found.${NC}"; \
+		exit 1; \
 	fi
 
 maintenance-off:
 	@echo "${YELLOW}Disabling maintenance mode...${NC}"
 	@if [ -f "docker-compose.prod.registry.yml" ]; then \
-		echo "Updating docker-compose.prod.registry.yml to disable maintenance mode..."; \
-		sed -i 's/traefik.enable=true.*# Enabled during maintenance/traefik.enable=false  # Disabled by default/' docker-compose.prod.registry.yml; \
-		sed -i 's/traefik.enable=false.*# Disabled during maintenance/traefik.enable=true/' docker-compose.prod.registry.yml; \
-		echo "${GREEN}Maintenance mode disabled in configuration.${NC}"; \
-		echo "${YELLOW}Note: You'll need to run 'docker-compose -f docker-compose.prod.registry.yml up -d' to apply the changes.${NC}"; \
+		export BACKEND_TRAEFIK_ENABLED=true; \
+		export FRONTEND_TRAEFIK_ENABLED=true; \
+		export MAINTENANCE_TRAEFIK_ENABLED=false; \
+		docker-compose -f docker-compose.prod.registry.yml down; \
+		docker-compose -f docker-compose.prod.registry.yml up -d; \
+		echo "${GREEN}Maintenance mode disabled.${NC}"; \
 	else \
-		echo "${RED}Error: docker-compose.prod.registry.yml not found${NC}"; \
+		echo "${RED}Error: docker-compose.prod.registry.yml not found.${NC}"; \
+		exit 1; \
 	fi

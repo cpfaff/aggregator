@@ -77,7 +77,7 @@ services:
       retries: 3
       start_period: 10s
     labels:
-      - "traefik.enable=true"
+      - "traefik.enable=${BACKEND_TRAEFIK_ENABLED:-true}"
       # Simplified API router
       - "traefik.http.routers.backend.rule=PathPrefix(`/api`)"
       - "traefik.http.routers.backend.entrypoints=web"  # Removed websecure
@@ -160,7 +160,7 @@ services:
       retries: 3
       start_period: 10s
     labels:
-      - "traefik.enable=true"
+      - "traefik.enable=${FRONTEND_TRAEFIK_ENABLED:-true}"
       - "traefik.http.routers.frontend.rule=PathPrefix(`/`) && !PathPrefix(`/api`)"
       - "traefik.http.routers.frontend.entrypoints=web"  # Removed websecure
       - "traefik.http.services.frontend.loadbalancer.server.port=80"
@@ -179,7 +179,7 @@ services:
     volumes:
       - ./maintenance:/usr/share/nginx/html
     labels:
-      - "traefik.enable=false"  # Disabled by default
+      - "traefik.enable=${MAINTENANCE_TRAEFIK_ENABLED:-false}"  # Disabled by default
       - "traefik.http.routers.maintenance.rule=PathPrefix(`/`)"
       - "traefik.http.routers.maintenance.entrypoints=web"
       - "traefik.http.services.maintenance.loadbalancer.server.port=80"

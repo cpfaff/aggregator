@@ -121,27 +121,18 @@ deploy-production:
     # Create maintenance directory if it doesn't exist
     - mkdir -p ./maintenance
     
-    # Enable or disable maintenance mode based on MAINTENANCE_MODE variable
+    # Set environment variables for maintenance mode
     - |
       if [ "$MAINTENANCE_MODE" = "true" ]; then
         echo "Enabling maintenance mode..."
-        # First enable maintenance container
-        sed -i 's/traefik.enable=false.*Disabled by default/traefik.enable=true/' docker-compose.prod.registry.yml
-        # Then disable backend and frontend
-        sed -i '/backend.rule=PathPrefix/i\      - "traefik.enable=false"  # Disabled during maintenance' docker-compose.prod.registry.yml
-        sed -i '/frontend.rule=PathPrefix/i\      - "traefik.enable=false"  # Disabled during maintenance' docker-compose.prod.registry.yml
-        # Remove the original enable lines
-        sed -i '/backend.entrypoints=web/ { n; /traefik.enable=true/d; }' docker-compose.prod.registry.yml
-        sed -i '/frontend.entrypoints=web/ { n; /traefik.enable=true/d; }' docker-compose.prod.registry.yml
+        echo "BACKEND_TRAEFIK_ENABLED=false" >> ./.env
+        echo "FRONTEND_TRAEFIK_ENABLED=false" >> ./.env
+        echo "MAINTENANCE_TRAEFIK_ENABLED=true" >> ./.env
       else
         echo "Maintenance mode is disabled."
-        # Disable maintenance container
-        sed -i 's/traefik.enable=true/traefik.enable=false  # Disabled by default/' docker-compose.prod.registry.yml
-        # Make sure backend and frontend are enabled
-        sed -i '/backend.rule=PathPrefix/i\      - "traefik.enable=true"' docker-compose.prod.registry.yml
-        sed -i '/frontend.rule=PathPrefix/i\      - "traefik.enable=true"' docker-compose.prod.registry.yml
-        # Remove any disable lines
-        sed -i '/Disabled during maintenance/d' docker-compose.prod.registry.yml
+        echo "BACKEND_TRAEFIK_ENABLED=true" >> ./.env
+        echo "FRONTEND_TRAEFIK_ENABLED=true" >> ./.env
+        echo "MAINTENANCE_TRAEFIK_ENABLED=false" >> ./.env
       fi
     
     # Deploy with docker-compose
