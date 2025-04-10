@@ -125,14 +125,14 @@ deploy-production:
     - |
       if [ "$MAINTENANCE_MODE" = "true" ]; then
         echo "Enabling maintenance mode..."
-        echo "BACKEND_TRAEFIK_ENABLED=false" >> ./.env
-        echo "FRONTEND_TRAEFIK_ENABLED=false" >> ./.env
-        echo "MAINTENANCE_TRAEFIK_ENABLED=true" >> ./.env
+        export BACKEND_TRAEFIK_ENABLED=false
+        export FRONTEND_TRAEFIK_ENABLED=false
+        export MAINTENANCE_TRAEFIK_ENABLED=true
       else
         echo "Maintenance mode is disabled."
-        echo "BACKEND_TRAEFIK_ENABLED=true" >> ./.env
-        echo "FRONTEND_TRAEFIK_ENABLED=true" >> ./.env
-        echo "MAINTENANCE_TRAEFIK_ENABLED=false" >> ./.env
+        export BACKEND_TRAEFIK_ENABLED=true
+        export FRONTEND_TRAEFIK_ENABLED=true
+        export MAINTENANCE_TRAEFIK_ENABLED=false
       fi
     
     # Deploy with docker-compose

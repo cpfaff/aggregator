@@ -1,4 +1,4 @@
-.PHONY: help up down restart logs shell backup restore create-admin migrate test format maintenance-on maintenance-off 
+.PHONY: help up down restart logs shell backup restore create-admin migrate test format maintenance-on maintenance-off prod-up prod-down prod-restart
 
 # Colors for terminal output
 ifeq ($(shell tput colors 2>/dev/null || echo 0),0)
@@ -41,6 +41,9 @@ help:
 	@echo "  ${GREEN}format${NC}             Format code according to project standards"
 	@echo "  ${GREEN}maintenance-on${NC}     Enable maintenance mode"
 	@echo "  ${GREEN}maintenance-off${NC}    Disable maintenance mode"
+	@echo "  ${GREEN}prod-up${NC}            Start production services"
+	@echo "  ${GREEN}prod-down${NC}          Stop production services"
+	@echo "  ${GREEN}prod-restart${NC}       Restart production services"
 	@echo ""
 	@echo "${YELLOW}Examples:${NC}"
 	@echo "  make up                  # Start all containers"
@@ -135,6 +138,8 @@ maintenance-on:
 		export BACKEND_TRAEFIK_ENABLED=false; \
 		export FRONTEND_TRAEFIK_ENABLED=false; \
 		export MAINTENANCE_TRAEFIK_ENABLED=true; \
+		export IMAGE_TAG=$$(docker images docker.gitlab-pe.gwdg.de/gfbio/aggregator/backend --format "{{.Tag}}" | head -1); \
+		echo "${YELLOW}Using image tag: $${IMAGE_TAG}${NC}"; \
 		docker-compose -f docker-compose.prod.registry.yml down; \
 		docker-compose -f docker-compose.prod.registry.yml up -d --no-build; \
 		echo "${GREEN}Maintenance mode enabled.${NC}"; \
@@ -149,9 +154,47 @@ maintenance-off:
 		export BACKEND_TRAEFIK_ENABLED=true; \
 		export FRONTEND_TRAEFIK_ENABLED=true; \
 		export MAINTENANCE_TRAEFIK_ENABLED=false; \
+		export IMAGE_TAG=$$(docker images docker.gitlab-pe.gwdg.de/gfbio/aggregator/backend --format "{{.Tag}}" | head -1); \
+		echo "${YELLOW}Using image tag: $${IMAGE_TAG}${NC}"; \
 		docker-compose -f docker-compose.prod.registry.yml down; \
 		docker-compose -f docker-compose.prod.registry.yml up -d --no-build; \
 		echo "${GREEN}Maintenance mode disabled.${NC}"; \
+	else \
+		echo "${RED}Error: docker-compose.prod.registry.yml not found.${NC}"; \
+		exit 1; \
+	fi
+
+# Production deployment commands
+prod-up:
+	@echo "${YELLOW}Starting production services...${NC}"
+	@if [ -f "docker-compose.prod.registry.yml" ]; then \
+		export IMAGE_TAG=$$(docker images docker.gitlab-pe.gwdg.de/gfbio/aggregator/backend --format "{{.Tag}}" | head -1); \
+		echo "${YELLOW}Using image tag: $${IMAGE_TAG}${NC}"; \
+		docker-compose -f docker-compose.prod.registry.yml up -d --no-build; \
+		echo "${GREEN}Production services started.${NC}"; \
+	else \
+		echo "${RED}Error: docker-compose.prod.registry.yml not found.${NC}"; \
+		exit 1; \
+	fi
+
+prod-down:
+	@echo "${YELLOW}Stopping production services...${NC}"
+	@if [ -f "docker-compose.prod.registry.yml" ]; then \
+		docker-compose -f docker-compose.prod.registry.yml down; \
+		echo "${GREEN}Production services stopped.${NC}"; \
+	else \
+		echo "${RED}Error: docker-compose.prod.registry.yml not found.${NC}"; \
+		exit 1; \
+	fi
+
+prod-restart:
+	@echo "${YELLOW}Restarting production services...${NC}"
+	@if [ -f "docker-compose.prod.registry.yml" ]; then \
+		export IMAGE_TAG=$$(docker images docker.gitlab-pe.gwdg.de/gfbio/aggregator/backend --format "{{.Tag}}" | head -1); \
+		echo "${YELLOW}Using image tag: $${IMAGE_TAG}${NC}"; \
+		docker-compose -f docker-compose.prod.registry.yml down; \
+		docker-compose -f docker-compose.prod.registry.yml up -d --no-build; \
+		echo "${GREEN}Production services restarted.${NC}"; \
 	else \
 		echo "${RED}Error: docker-compose.prod.registry.yml not found.${NC}"; \
 		exit 1; \
