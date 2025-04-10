@@ -188,6 +188,21 @@ deploy-production:
           exit 1
         fi
       }
+
+      # Function to ensure maintenance mode is properly activated
+      ensure_disable_maintenance() {
+        echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Deactivating maintenance mode..."
+        export BACKEND_TRAEFIK_ENABLED=true
+        export FRONTEND_TRAEFIK_ENABLED=true
+        export MAINTENANCE_TRAEFIK_ENABLED=false
+        docker-compose -f docker-compose.prod.registry.yml up -d maintenance --force-recreate
+        
+        # Wait for maintenance container to be healthy
+        if ! wait_for_healthy_container "maintenance" "docker-compose.prod.registry.yml" 300 5; then
+          echo "$(date +"$TIMESTAMP_FORMAT") [ERROR] Failed to deactivate maintenance mode"
+          exit 1
+        fi
+      }
       
       # Function to collect diagnostics information
       collect_diagnostics() {
@@ -305,6 +320,8 @@ deploy-production:
         collect_diagnostics
         exit 1
       fi
+
+      ensure_disable_maintenance
       
       # Deployment successful
       echo "$(date +"$TIMESTAMP_FORMAT") [SUCCESS] Deployment completed successfully!"
