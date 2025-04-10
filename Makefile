@@ -54,7 +54,7 @@ help:
 # Docker compose commands
 up:
 	@echo "${GREEN}Starting development environment...${NC}"
-	docker-compose up -d
+	docker-compose up -d --pull never
 	@echo "${GREEN}Services are now running:${NC}"
 	@echo "  Backend:  http://localhost:8000/api/v1"
 	@echo "  Frontend: http://localhost:3000"
@@ -67,7 +67,7 @@ down:
 restart:
 	@echo "${YELLOW}Restarting development environment...${NC}"
 	docker-compose down
-	docker-compose up -d
+	docker-compose up -d --pull never
 
 # Logs
 logs:
@@ -141,7 +141,7 @@ maintenance-on:
 		export IMAGE_TAG=$$(docker images docker.gitlab-pe.gwdg.de/gfbio/aggregator/backend --format "{{.Tag}}" | head -1); \
 		echo "${YELLOW}Using image tag: $${IMAGE_TAG}${NC}"; \
 		docker-compose -f docker-compose.prod.registry.yml down; \
-		docker-compose -f docker-compose.prod.registry.yml up -d --no-build; \
+		docker-compose -f docker-compose.prod.registry.yml up -d --no-build --pull never; \
 		echo "${GREEN}Maintenance mode enabled.${NC}"; \
 	else \
 		echo "${RED}Error: docker-compose.prod.registry.yml not found.${NC}"; \
@@ -157,7 +157,7 @@ maintenance-off:
 		export IMAGE_TAG=$$(docker images docker.gitlab-pe.gwdg.de/gfbio/aggregator/backend --format "{{.Tag}}" | head -1); \
 		echo "${YELLOW}Using image tag: $${IMAGE_TAG}${NC}"; \
 		docker-compose -f docker-compose.prod.registry.yml down; \
-		docker-compose -f docker-compose.prod.registry.yml up -d --no-build; \
+		docker-compose -f docker-compose.prod.registry.yml up -d --no-build --pull never; \
 		echo "${GREEN}Maintenance mode disabled.${NC}"; \
 	else \
 		echo "${RED}Error: docker-compose.prod.registry.yml not found.${NC}"; \
@@ -170,7 +170,7 @@ prod-up:
 	@if [ -f "docker-compose.prod.registry.yml" ]; then \
 		export IMAGE_TAG=$$(docker images docker.gitlab-pe.gwdg.de/gfbio/aggregator/backend --format "{{.Tag}}" | head -1); \
 		echo "${YELLOW}Using image tag: $${IMAGE_TAG}${NC}"; \
-		docker-compose -f docker-compose.prod.registry.yml up -d --no-build; \
+		docker-compose -f docker-compose.prod.registry.yml up -d --no-build --pull never; \
 		echo "${GREEN}Production services started.${NC}"; \
 	else \
 		echo "${RED}Error: docker-compose.prod.registry.yml not found.${NC}"; \
@@ -193,7 +193,7 @@ prod-restart:
 		export IMAGE_TAG=$$(docker images docker.gitlab-pe.gwdg.de/gfbio/aggregator/backend --format "{{.Tag}}" | head -1); \
 		echo "${YELLOW}Using image tag: $${IMAGE_TAG}${NC}"; \
 		docker-compose -f docker-compose.prod.registry.yml down; \
-		docker-compose -f docker-compose.prod.registry.yml up -d --no-build; \
+		docker-compose -f docker-compose.prod.registry.yml up -d --no-build --pull never; \
 		echo "${GREEN}Production services restarted.${NC}"; \
 	else \
 		echo "${RED}Error: docker-compose.prod.registry.yml not found.${NC}"; \
