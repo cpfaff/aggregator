@@ -94,11 +94,12 @@ deploy-production:
     TIMESTAMP_FORMAT: '%Y-%m-%d %H:%M:%S'
   before_script:
     - apk add --no-cache curl jq
-    - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Starting production deployment job for commit $CI_COMMIT_SHORT_SHA"
-    - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Environment: $ENVIRONMENT, Maintenance mode: $MAINTENANCE_MODE"
-    - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Authenticating with Docker registry"
-    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD docker.gitlab-pe.gwdg.de
-    - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Authentication successful"
+    - |
+      echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Starting production deployment job for commit $CI_COMMIT_SHORT_SHA"
+      echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Environment: $ENVIRONMENT, Maintenance mode: $MAINTENANCE_MODE"
+      echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Authenticating with Docker registry"
+      docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD docker.gitlab-pe.gwdg.de
+      echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Authentication successful"
   script:
     - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Deploying to production environment"
     - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Setting up environment files"
@@ -134,20 +135,22 @@ deploy-production:
     # Deploy with docker-compose
     - export IMAGE_TAG=$CI_COMMIT_SHORT_SHA
     - export DOCKER_REGISTRY=docker.gitlab-pe.gwdg.de/gfbio/aggregator
-    - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Using image tag: $IMAGE_TAG"
-    - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Using docker registry: $DOCKER_REGISTRY"
-    - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Validating docker-compose configuration"
-    - docker-compose -f docker-compose.prod.registry.yml config
-    - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Pulling latest container images"
-    - docker-compose -f docker-compose.prod.registry.yml pull
+    - |
+      echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Using image tag: $IMAGE_TAG"
+      echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Using docker registry: $DOCKER_REGISTRY"
+      echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Validating docker-compose configuration"
+      docker-compose -f docker-compose.prod.registry.yml config
+      echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Pulling latest container images"
+      docker-compose -f docker-compose.prod.registry.yml pull
     - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Images pulled successfully"
     
     # Step 1: Enable maintenance mode
-    - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Step 1: Enabling maintenance mode"
-    - export BACKEND_TRAEFIK_ENABLED=false
-    - export FRONTEND_TRAEFIK_ENABLED=false
-    - export MAINTENANCE_TRAEFIK_ENABLED=true
-    - docker-compose -f docker-compose.prod.registry.yml up -d maintenance
+    - |
+      echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Step 1: Enabling maintenance mode"
+      export BACKEND_TRAEFIK_ENABLED=false
+      export FRONTEND_TRAEFIK_ENABLED=false
+      export MAINTENANCE_TRAEFIK_ENABLED=true
+      docker-compose -f docker-compose.prod.registry.yml up -d maintenance
     - |
       # Verify maintenance container is running
       MAINT_STATUS=$(docker-compose -f docker-compose.prod.registry.yml ps maintenance | grep "Up" | wc -l)
@@ -160,9 +163,10 @@ deploy-production:
       fi
     
     # Step 2: Start the database and redis services
-    - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Step 2: Starting database and redis services"
-    - docker-compose -f docker-compose.prod.registry.yml up -d db redis
     - |
+      echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Step 2: Starting database and redis services"
+      docker-compose -f docker-compose.prod.registry.yml up -d db redis
+      
       # Check if db and redis started correctly
       SERVICES_STATUS=$(docker-compose -f docker-compose.prod.registry.yml ps db redis | grep "Up" | wc -l)
       if [ "$SERVICES_STATUS" -lt "2" ]; then
@@ -179,9 +183,10 @@ deploy-production:
       fi
     
     # Step 3: Start traefik
-    - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Step 3: Starting traefik service"
-    - docker-compose -f docker-compose.prod.registry.yml up -d traefik
     - |
+      echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Step 3: Starting traefik service"
+      docker-compose -f docker-compose.prod.registry.yml up -d traefik
+      
       # Check if traefik started correctly
       TRAEFIK_STATUS=$(docker-compose -f docker-compose.prod.registry.yml ps traefik | grep "Up" | wc -l)
       if [ "$TRAEFIK_STATUS" -eq "0" ]; then
@@ -194,13 +199,14 @@ deploy-production:
       fi
     
     # Step 4: Start all services except maintenance with their latest images
-    - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Step 4: Starting backend services and frontend"
-    - docker-compose -f docker-compose.prod.registry.yml up -d db redis backend frontend celery-worker celery-beat
-    - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] All services started, waiting for them to become healthy"
+    - |
+      echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Step 4: Starting backend services and frontend"
+      docker-compose -f docker-compose.prod.registry.yml up -d db redis backend frontend celery-worker celery-beat
+      echo "$(date +"$TIMESTAMP_FORMAT") [INFO] All services started, waiting for them to become healthy"
     
     # Step 5: Wait for backend to become healthy
-    - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Step 5: Monitoring service health"
     - |
+      echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Step 5: Monitoring service health"
       # Set maximum wait time (5 minutes to avoid GitLab CI timeouts)
       MAX_WAIT=300
       WAITED=0
@@ -368,4 +374,5 @@ deploy-production:
     - deploy-aggregator
   timeout: 15m
   after_script:
-    - echo "$(date +"${TIMESTAMP_FORMAT:-'%Y-%m-%d %H:%M:%S'}") [INFO] Deployment job finished with status: $CI_JOB_STATUS"
+    - |
+      echo "$(date +"${TIMESTAMP_FORMAT:-'%Y-%m-%d %H:%M:%S'}") [INFO] Deployment job finished with status: $CI_JOB_STATUS"
