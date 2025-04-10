@@ -137,6 +137,7 @@ deploy-production:
     
     # Deploy with docker-compose
     - export IMAGE_TAG=$CI_COMMIT_SHORT_SHA
+    - export DOCKER_REGISTRY=docker.gitlab-pe.gwdg.de/gfbio/aggregator
     - docker-compose -f docker-compose.prod.registry.yml config
     - docker-compose -f docker-compose.prod.registry.yml pull
     - docker-compose -f docker-compose.prod.registry.yml down || true
