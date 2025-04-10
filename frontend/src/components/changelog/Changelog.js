@@ -5,6 +5,17 @@ const Changelog = () => {
   // Changelog entries based on actual project development
   const changelogEntries = [
     {
+      version: '1.7.0',
+      date: 'April 10, 2025',
+      changes: [
+        'Added maintenance mode feature for smoother service updates and deployments',
+        'Improved CI/CD pipeline for production deployments with GitLab',
+        'Enhanced docker-compose configuration with maintenance container',
+        'Added Makefile commands for enabling/disabling maintenance mode',
+        'Updated environment variable handling for better deployment flexibility'
+      ]
+    },
+    {
       version: '1.6.0',
       date: 'March 25, 2025',
       changes: [
