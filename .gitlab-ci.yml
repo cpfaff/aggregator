@@ -99,9 +99,8 @@ deploy-production:
       echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Authenticating with Docker registry"
       docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD docker.gitlab-pe.gwdg.de
       echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Authentication successful"
-  script:
-    - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Deploying to production environment"
-    - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Setting up environment files"
+      echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Deploying to production environment"
+      echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Setting up environment files"
     
     # Create global .env file
     - echo "# Global environment variables for Docker Compose" > ./.env
@@ -141,197 +140,174 @@ deploy-production:
       docker-compose -f docker-compose.prod.registry.yml config
       echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Pulling latest container images"
       docker-compose -f docker-compose.prod.registry.yml pull
-    - echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Images pulled successfully"
-    
-    # Step 1: Enable maintenance mode
+      echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Images pulled successfully"
+  script:
+    # Define the wait_for_healthy_container function
     - |
-      echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Step 1: Enabling maintenance mode"
-      export BACKEND_TRAEFIK_ENABLED=false
-      export FRONTEND_TRAEFIK_ENABLED=false
-      export MAINTENANCE_TRAEFIK_ENABLED=true
-      docker-compose -f docker-compose.prod.registry.yml up -d maintenance
-    - |
-      # Verify maintenance container is running
-      MAINT_STATUS=$(docker-compose -f docker-compose.prod.registry.yml ps maintenance | grep "Up" | wc -l)
-      if [ "$MAINT_STATUS" -eq "0" ]; then
-        echo "$(date +"$TIMESTAMP_FORMAT") [ERROR] Failed to start maintenance container"
-        docker-compose -f docker-compose.prod.registry.yml logs maintenance
-        exit 1
-      else
-        echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Maintenance mode enabled successfully"
-      fi
-    
-    # Step 2: Start the database and redis services
-    - |
-      echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Step 2: Starting database and redis services"
-      docker-compose -f docker-compose.prod.registry.yml up -d db redis
-      
-      # Check if db and redis started correctly
-      SERVICES_STATUS=$(docker-compose -f docker-compose.prod.registry.yml ps db redis | grep "Up" | wc -l)
-      if [ "$SERVICES_STATUS" -lt "2" ]; then
-        echo "$(date +"$TIMESTAMP_FORMAT") [ERROR] Failed to start db or redis services"
-        echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] Service status:"
-        docker-compose -f docker-compose.prod.registry.yml ps db redis
-        echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] DB logs:"
-        docker-compose -f docker-compose.prod.registry.yml logs db
-        echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] Redis logs:"
-        docker-compose -f docker-compose.prod.registry.yml logs redis
-        exit 1
-      else
-        echo "$(date +"$TIMESTAMP_FORMAT") [INFO] DB and Redis services started successfully"
-      fi
-    
-    # Step 3: Start traefik
-    - |
-      echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Step 3: Starting traefik service"
-      docker-compose -f docker-compose.prod.registry.yml up -d traefik
-      
-      # Check if traefik started correctly
-      TRAEFIK_STATUS=$(docker-compose -f docker-compose.prod.registry.yml ps traefik | grep "Up" | wc -l)
-      if [ "$TRAEFIK_STATUS" -eq "0" ]; then
-        echo "$(date +"$TIMESTAMP_FORMAT") [ERROR] Failed to start traefik service"
-        echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] Traefik logs:"
-        docker-compose -f docker-compose.prod.registry.yml logs traefik
-        exit 1
-      else
-        echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Traefik service started successfully"
-      fi
-    
-    # Step 4: Start all services except maintenance with their latest images
-    - |
-      echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Step 4: Starting backend services and frontend"
-      docker-compose -f docker-compose.prod.registry.yml up -d db redis backend frontend celery-worker celery-beat
-      echo "$(date +"$TIMESTAMP_FORMAT") [INFO] All services started, waiting for them to become healthy"
-    
-    # Step 5: Wait for backend to become healthy
-    - |
-      echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Step 5: Monitoring service health"
-      # Set maximum wait time (5 minutes to avoid GitLab CI timeouts)
-      MAX_WAIT=300
-      WAITED=0
-      SLEEP_TIME=10
-      CONTINUE_WAITING=true
-      
-      # Function to check health status
-      check_health() {
-        echo "$(date +"$TIMESTAMP_FORMAT") [INFO] --- Current service statuses ---"
-        docker-compose -f docker-compose.prod.registry.yml ps
+      # Function to wait for a container to be up and healthy
+      wait_for_healthy_container() {
+        local SERVICE_NAME=$1
+        local COMPOSE_FILE=$2
+        local MAX_WAIT_SECONDS=${3:-300}  # Default 5 minutes
+        local INTERVAL_SECONDS=${4:-5}    # Default 5 seconds
+        local ELAPSED_SECONDS=0
         
-        # List any containers that are not yet healthy for debugging
-        echo "$(date +"$TIMESTAMP_FORMAT") [INFO] --- Containers not yet marked healthy ---"
-        UNHEALTHY_LIST=$(docker-compose -f docker-compose.prod.registry.yml ps | grep -v "maintenance" | grep -v "(healthy)" | grep -v "^NAME" | grep -v "Exit 0")
-        echo "$UNHEALTHY_LIST"
+        echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Waiting for ${SERVICE_NAME} container to be healthy (timeout: ${MAX_WAIT_SECONDS}s)..."
         
-        # Print specific health check failures for each unhealthy service
-        if [ "$UNHEALTHY_COUNT" -gt 0 ]; then
-          echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Health check details ---"
-          for service in backend frontend celery-worker celery-beat; do
-            if echo "$UNHEALTHY_LIST" | grep -q "$service"; then
-              echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] Checking $service health check logs:"
-              # Use built-in tools (no jq) to check health status
-              docker inspect $(docker-compose -f docker-compose.prod.registry.yml ps -q $service) --format "{{.State.Health.Status}}" 2>/dev/null || echo "No health status available"
-              
-              # Get the most recent health check result
-              echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] Recent health check results for $service:"
-              docker inspect $(docker-compose -f docker-compose.prod.registry.yml ps -q $service) --format "{{if .State.Health}}{{range .State.Health.Log}}Exit Code: {{.ExitCode}}, Output: {{.Output}}{{end}}{{end}}" 2>/dev/null || echo "No health check logs available"
-              
-              # Show relevant logs that might explain health check issues
-              echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] Recent logs for $service:"
-              docker-compose -f docker-compose.prod.registry.yml logs --tail=15 $service | grep -i "health\|error\|fail\|exception\|denied\|refused\|couldn't\|unable\|warn" || echo "No health-related log entries found"
-            fi
-          done
-        fi
+        while [ $ELAPSED_SECONDS -lt $MAX_WAIT_SECONDS ]; do
+          # Look specifically for "Up" and "healthy" status
+          CONTAINER_STATUS=$(docker-compose -f ${COMPOSE_FILE} ps ${SERVICE_NAME} | grep -E "Up.*\(healthy\)" | wc -l)
+          
+          if [ "$CONTAINER_STATUS" -eq "1" ]; then
+            echo "$(date +"$TIMESTAMP_FORMAT") [INFO] ${SERVICE_NAME} container is up and healthy"
+            return 0  # Success
+          else
+            echo "$(date +"$TIMESTAMP_FORMAT") [INFO] ${SERVICE_NAME} container not healthy yet, waiting ${INTERVAL_SECONDS}s... (${ELAPSED_SECONDS}/${MAX_WAIT_SECONDS}s)"
+            sleep $INTERVAL_SECONDS
+            ELAPSED_SECONDS=$((ELAPSED_SECONDS + INTERVAL_SECONDS))
+          fi
+        done
         
-        return $UNHEALTHY_COUNT
+        # If we got here, we timed out
+        echo "$(date +"$TIMESTAMP_FORMAT") [ERROR] Timed out waiting for ${SERVICE_NAME} container to be healthy"
+        docker-compose -f ${COMPOSE_FILE} logs ${SERVICE_NAME}
+        return 1  # Failed
       }
       
-      # Function to ensure maintenance mode on failure
+      # Function to ensure maintenance mode is properly activated
       ensure_maintenance() {
-        echo "$(date +"$TIMESTAMP_FORMAT") [WARN] Ensuring maintenance mode is active on failure..."
+        echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Ensuring maintenance mode is active..."
         export BACKEND_TRAEFIK_ENABLED=false
         export FRONTEND_TRAEFIK_ENABLED=false
         export MAINTENANCE_TRAEFIK_ENABLED=true
         docker-compose -f docker-compose.prod.registry.yml up -d maintenance --force-recreate
         
-        # Verify maintenance is running
-        MAINT_STATUS=$(docker-compose -f docker-compose.prod.registry.yml ps maintenance | grep "Up" | wc -l)
-        if [ "$MAINT_STATUS" -eq "0" ]; then
-          echo "$(date +"$TIMESTAMP_FORMAT") [ERROR] Failed to enable maintenance mode"
-        else
-          echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Maintenance mode successfully enabled"
+        # Wait for maintenance container to be healthy
+        if ! wait_for_healthy_container "maintenance" "docker-compose.prod.registry.yml" 300 5; then
+          echo "$(date +"$TIMESTAMP_FORMAT") [ERROR] Failed to activate maintenance mode"
+          exit 1
         fi
       }
       
-      # Function to collect detailed diagnostics on failure
+      # Function to collect diagnostics information
       collect_diagnostics() {
-        echo "$(date +"$TIMESTAMP_FORMAT") [INFO] --- Collecting detailed diagnostics ---"
+        echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Collecting diagnostic information..."
         
-        # Check network connectivity between containers
+        # Network diagnostics
         echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Network diagnostics ---"
         docker network inspect $(docker-compose -f docker-compose.prod.registry.yml network ls -q)
         
-        # Check disk space
-        echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Disk space ---"
+        # System resources
+        echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- System resources ---"
         df -h
-        
-        # Check memory usage
-        echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Memory usage ---"
         free -h
         
-        # Check for any docker warnings/errors
-        echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Docker events (last 5 minutes) ---"
-        docker events --since='5m' --until='0m' || echo "No events found"
-        
-        # Report docker info
-        echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Docker info ---"
-        docker info
+        # Show detailed logs for each service
+        echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Service logs ---"
+        for service in backend frontend celery-worker celery-beat; do
+          echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- $service logs ---"
+          docker-compose -f docker-compose.prod.registry.yml logs --tail=50 $service
+        done
       }
-      
-      # Main wait loop
-      while [ $WAITED -lt $MAX_WAIT ]; do
-        echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Waiting for services to become healthy... ($WAITED/$MAX_WAIT seconds)"
-        
-        # Check health status
-        check_health
-        UNHEALTHY=$?
-        
-        if [ $UNHEALTHY -eq 0 ]; then
-          echo "$(date +"$TIMESTAMP_FORMAT") [SUCCESS] All services are healthy. Disabling maintenance mode and restoring normal service..."
-          export BACKEND_TRAEFIK_ENABLED=true
-          export FRONTEND_TRAEFIK_ENABLED=true
-          export MAINTENANCE_TRAEFIK_ENABLED=false
-          docker-compose -f docker-compose.prod.registry.yml up -d db redis backend frontend celery-worker celery-beat
-          
-          echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Services are now healthy. Deployment completed successfully."
-          echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Keeping maintenance page active to handle ongoing traffic..."
-          docker-compose -f docker-compose.prod.registry.yml up -d maintenance --force-recreate
-          exit 0
-        else
-          # Services are not healthy yet, sleep and try again
-          echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Waiting $SLEEP_TIME seconds for the next health check..."
-          sleep $SLEEP_TIME
-          WAITED=$((WAITED + SLEEP_TIME))
-        fi
-      done
-      
-      # If we reach this point, the timeout was reached
-      echo "$(date +"$TIMESTAMP_FORMAT") [ERROR] Timed out waiting for services to become healthy after $MAX_WAIT seconds."
+
+    # Step 1: Enable maintenance mode first
+    - |
+      echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Step 1: Enabling maintenance mode"
       ensure_maintenance
-      collect_diagnostics
       
-      # Show detailed logs for each service
-      echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Backend logs ---"
-      docker-compose -f docker-compose.prod.registry.yml logs --tail=100 backend
-      echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Frontend logs ---"
-      docker-compose -f docker-compose.prod.registry.yml logs --tail=50 frontend
-      echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Celery worker logs ---"
-      docker-compose -f docker-compose.prod.registry.yml logs --tail=50 celery-worker
-      echo "$(date +"$TIMESTAMP_FORMAT") [DEBUG] --- Celery beat logs ---"
-      docker-compose -f docker-compose.prod.registry.yml logs --tail=50 celery-beat
+    # Step 2: Start and wait for database and redis
+    - |
+      echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Step 2: Starting database and redis services"
+      docker-compose -f docker-compose.prod.registry.yml up -d db redis
       
-      # Exit with error
-      echo "$(date +"$TIMESTAMP_FORMAT") [ERROR] Deployment failed: Services did not become healthy within the timeout period"
-      exit 1
+      # Wait for DB to be healthy
+      if ! wait_for_healthy_container "db" "docker-compose.prod.registry.yml" 300 10; then
+        echo "$(date +"$TIMESTAMP_FORMAT") [ERROR] Failed to start database"
+        exit 1
+      fi
+      
+      # Wait for Redis to be healthy
+      if ! wait_for_healthy_container "redis" "docker-compose.prod.registry.yml" 180 5; then
+        echo "$(date +"$TIMESTAMP_FORMAT") [ERROR] Failed to start Redis"
+        exit 1
+      fi
+      
+    # Step 3: Start and wait for traefik
+    - |
+      echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Step 3: Starting traefik service"
+      docker-compose -f docker-compose.prod.registry.yml up -d traefik
+      
+      # Wait for traefik to be healthy
+      if ! wait_for_healthy_container "traefik" "docker-compose.prod.registry.yml" 180 5; then
+        echo "$(date +"$TIMESTAMP_FORMAT") [ERROR] Failed to start Traefik"
+        exit 1
+      fi
+      
+    # Step 4: Start all application services
+    - |
+      echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Step 4: Starting application services"
+      docker-compose -f docker-compose.prod.registry.yml up -d backend frontend celery-worker celery-beat
+      
+      # Wait for each service to be healthy with appropriate timeouts
+      echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Waiting for all services to become healthy..."
+      
+      # Backend (longer timeout since it has DB migrations etc.)
+      if ! wait_for_healthy_container "backend" "docker-compose.prod.registry.yml" 600 10; then
+        echo "$(date +"$TIMESTAMP_FORMAT") [ERROR] Failed to start backend API service"
+        collect_diagnostics
+        exit 1
+      fi
+      
+      # Frontend
+      if ! wait_for_healthy_container "frontend" "docker-compose.prod.registry.yml" 300 5; then
+        echo "$(date +"$TIMESTAMP_FORMAT") [ERROR] Failed to start frontend service"
+        collect_diagnostics
+        exit 1
+      fi
+      
+      # Celery worker
+      if ! wait_for_healthy_container "celery-worker" "docker-compose.prod.registry.yml" 300 10; then
+        echo "$(date +"$TIMESTAMP_FORMAT") [ERROR] Failed to start Celery worker"
+        collect_diagnostics
+        exit 1
+      fi
+      
+      # Celery beat
+      if ! wait_for_healthy_container "celery-beat" "docker-compose.prod.registry.yml" 300 10; then
+        echo "$(date +"$TIMESTAMP_FORMAT") [ERROR] Failed to start Celery beat scheduler"
+        collect_diagnostics
+        exit 1
+      fi
+      
+    # Step 5: Disable maintenance mode when all services are healthy
+    - |
+      echo "$(date +"$TIMESTAMP_FORMAT") [SUCCESS] All services are healthy"
+      echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Disabling maintenance mode and restoring normal service..."
+      
+      # Update Traefik labels to route traffic to services
+      export BACKEND_TRAEFIK_ENABLED=true
+      export FRONTEND_TRAEFIK_ENABLED=true
+      export MAINTENANCE_TRAEFIK_ENABLED=false
+      
+      # Recreate services with updated labels
+      docker-compose -f docker-compose.prod.registry.yml up -d db redis backend frontend celery-worker celery-beat
+      
+      # Final check to ensure services remain healthy after traffic is enabled
+      echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Verifying services remain healthy after traffic is enabled..."
+      
+      # Brief pause to allow services to stabilize
+      sleep 10
+      
+      # Check backend health one last time
+      if ! wait_for_healthy_container "backend" "docker-compose.prod.registry.yml" 60 5; then
+        echo "$(date +"$TIMESTAMP_FORMAT") [ERROR] Backend became unhealthy after traffic was enabled"
+        ensure_maintenance
+        collect_diagnostics
+        exit 1
+      fi
+      
+      # Deployment successful
+      echo "$(date +"$TIMESTAMP_FORMAT") [SUCCESS] Deployment completed successfully!"
   environment:
     name: production
     url: https://aggregator.gfbio.org  # Update with your actual production URL
