@@ -5,6 +5,18 @@ const Changelog = () => {
   // Changelog entries based on actual project development
   const changelogEntries = [
     {
+      version: '1.8.0',
+      date: 'April 15, 2025',
+      changes: [
+        'Fixed issue with validation jobs getting stuck in pending state',
+        'Improved handling of Celery task IDs to prevent mismatches',
+        'Added support for force-revalidation of datasets',
+        'Enhanced validation status tracking with obsolete state detection',
+        'Improved validation error messages with better formatting and examples',
+        'Fixed inconsistencies in displayed validation timestamps'
+      ]
+    },
+    {
       version: '1.7.0',
       date: 'April 10, 2025',
       changes: [

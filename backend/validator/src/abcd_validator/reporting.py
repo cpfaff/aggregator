@@ -12,35 +12,35 @@ DEFAULT_BATCH_SIZE = 100
 
 # --- Mapping dictionary for lxml schema error types ---
 ERROR_TYPE_MAPPING = {
-    "SCHEMAV_CVC_PATTERN_VALID": "Invalid format for {element}.",
-    "SCHEMAV_CVC_DATATYPE_VALID_1_2_1": "Invalid datatype for {element}.",
-    "SCHEMAV_CVC_ATTRIBUTE_1": "Invalid attribute value for {element}.",
-    "SCHEMAV_CVC_ATTRIBUTE_2": "Invalid attribute value for {element}.",
-    "SCHEMAV_CVC_ATTRIBUTE_3": "Invalid attribute value for {element}.",
-    "SCHEMAV_CVC_ATTRIBUTE_4": "Invalid attribute value for {element}.",
-    "SCHEMAV_CVC_ELT_1": "Invalid element value for {element}.",
-    "SCHEMAV_CVC_ELT_2": "Invalid element value for {element}.",
-    "SCHEMAV_CVC_ELT_3_1": "Invalid element structure for {element}.",
-    "SCHEMAV_CVC_ELT_3_2_1": "Invalid element structure for {element}.",
-    "SCHEMAV_CVC_ELT_3_2_2": "Invalid element structure for {element}.",
-    "SCHEMAV_CVC_ELT_4_1": "Invalid element content for {element}.",
-    "SCHEMAV_CVC_ELT_4_2": "Invalid element content for {element}.",
-    "SCHEMAV_CVC_ELT_4_3": "Invalid element content for {element}.",
-    "SCHEMAV_CVC_ENUMERATION_VALID": "Invalid enumeration value for {element}.",
-    "SCHEMAV_CVC_FACET_VALID": "Invalid facet constraint for {element}.",
-    "SCHEMAV_CVC_LENGTH_VALID": "Invalid length for {element}.",
-    "SCHEMAV_CVC_MAXEXCLUSIVE_VALID": "Value exceeds the maximum exclusive limit for {element}.",
-    "SCHEMAV_CVC_MAXINCLUSIVE_VALID": "Value exceeds the maximum inclusive limit for {element}.",
-    "SCHEMAV_CVC_MAXLENGTH_VALID": "Value exceeds the maximum length for {element}.",
-    "SCHEMAV_CVC_MINEXCLUSIVE_VALID": "Value is below the minimum exclusive limit for {element}.",
-    "SCHEMAV_CVC_MININCLUSIVE_VALID": "Value is below the minimum inclusive limit for {element}.",
-    "SCHEMAV_CVC_MINLENGTH_VALID": "Value is shorter than the minimum length for {element}.",
-    "SCHEMAV_CVC_TOTALDIGITS_VALID": "Total digits exceed allowed count for {element}.",
-    "SCHEMAV_DOCUMENT_ELEMENT_MISSING": "Document element is missing.",
-    "SCHEMAV_INVALIDATTR": "Invalid attribute on {element}.",
-    "SCHEMAV_INVALIDELEM": "Invalid element encountered.",
-    "SCHEMAV_NOTEMPTY": "{element} must not be empty.",
-    "SCHEMAV_NOTYPE": "Type mismatch in {element}.",
+    "SCHEMAV_CVC_PATTERN_VALID": "Invalid format for {element}. Please check the expected pattern in the schema documentation.",
+    "SCHEMAV_CVC_DATATYPE_VALID_1_2_1": "Invalid datatype for {element}. Please ensure the value conforms to the expected data type.",
+    "SCHEMAV_CVC_ATTRIBUTE_1": "Invalid attribute value for {element}. Verify that the attribute value meets the schema requirements.",
+    "SCHEMAV_CVC_ATTRIBUTE_2": "Invalid attribute value for {element}. Verify that the attribute value meets the schema requirements.",
+    "SCHEMAV_CVC_ATTRIBUTE_3": "Invalid attribute value for {element}. Verify that the attribute value meets the schema requirements.",
+    "SCHEMAV_CVC_ATTRIBUTE_4": "Invalid attribute value for {element}. Verify that the attribute value meets the schema requirements.",
+    "SCHEMAV_CVC_ELT_1": "Invalid element value for {element}. Please check the schema documentation for valid values.",
+    "SCHEMAV_CVC_ELT_2": "Invalid element value for {element}. Please check the schema documentation for valid values.",
+    "SCHEMAV_CVC_ELT_3_1": "Invalid element structure for {element}. Ensure the element structure conforms to the schema.",
+    "SCHEMAV_CVC_ELT_3_2_1": "Invalid element structure for {element}. Ensure the element structure conforms to the schema.",
+    "SCHEMAV_CVC_ELT_3_2_2": "Invalid element structure for {element}. Ensure the element structure conforms to the schema.",
+    "SCHEMAV_CVC_ELT_4_1": "Invalid element content for {element}. Check that the content matches schema expectations.",
+    "SCHEMAV_CVC_ELT_4_2": "Invalid element content for {element}. Check that the content matches schema expectations.",
+    "SCHEMAV_CVC_ELT_4_3": "Invalid element content for {element}. Check that the content matches schema expectations.",
+    "SCHEMAV_CVC_ENUMERATION_VALID": "Invalid enumeration value for {element}. Please check the schema documentation for the list of allowed values.",
+    "SCHEMAV_CVC_FACET_VALID": "Invalid facet constraint for {element}. Check the schema requirements for this element.",
+    "SCHEMAV_CVC_LENGTH_VALID": "Invalid length for {element}. Ensure the length conforms to schema specifications.",
+    "SCHEMAV_CVC_MAXEXCLUSIVE_VALID": "Value exceeds the maximum exclusive limit for {element}. Please use a smaller value that meets the schema constraints.",
+    "SCHEMAV_CVC_MAXINCLUSIVE_VALID": "Value exceeds the maximum inclusive limit for {element}. Please use a smaller value that meets the schema constraints.",
+    "SCHEMAV_CVC_MAXLENGTH_VALID": "Value exceeds the maximum length for {element}. Consider splitting the content into multiple fields or abbreviating it.",
+    "SCHEMAV_CVC_MINEXCLUSIVE_VALID": "Value is below the minimum exclusive limit for {element}. Please use a larger value that meets the schema constraints.",
+    "SCHEMAV_CVC_MININCLUSIVE_VALID": "Value is below the minimum inclusive limit for {element}. Please use a larger value that meets the schema constraints.",
+    "SCHEMAV_CVC_MINLENGTH_VALID": "Value is shorter than the minimum length for {element}. Please provide proper content for this element or consider removing it if not applicable.",
+    "SCHEMAV_CVC_TOTALDIGITS_VALID": "Total digits exceed allowed count for {element}. Ensure the number conforms to the digit limit in the schema.",
+    "SCHEMAV_DOCUMENT_ELEMENT_MISSING": "Document element is missing. Please check the XML document structure.",
+    "SCHEMAV_INVALIDATTR": "Invalid attribute on {element}. Check schema for permitted attributes.",
+    "SCHEMAV_INVALIDELEM": "Invalid element encountered. Verify against the schema documentation.",
+    "SCHEMAV_NOTEMPTY": "{element} must not be empty. Please provide valid content for this element.",
+    "SCHEMAV_NOTYPE": "Type mismatch in {element}. Ensure the element content matches the expected type.",
 }
 
 # Precompiled regex patterns for performance improvements
@@ -50,6 +50,8 @@ VALUE_PATTERNS = [
     re.compile(r"'([^']+)' is not a valid value"),
     re.compile(r"The value '(.+?)' is not accepted"),
     re.compile(r"The value '(.+?)' is not an element"),
+    # Captures length from facet constraint errors
+    re.compile(r"The value has a length of '(\d+)'"),  
 ]
 NORMALIZE_PATH_REGEX = re.compile(r'\[\d+\]')
 
@@ -195,12 +197,55 @@ def finalize_schema_errors(error_groups: Dict[Tuple, Dict[str, Any]]) -> List[Di
     aggregated = []
     for group in error_groups.values():
         message = group['message']
+        element_name = get_local_name(group['element']) if group['element'] else "Unknown"
+        validation_type = group['validation_type']
+        
+        # Extract constraint values from context details when available
+        constraint_value = None
+        if group['context_details']:
+            context = next(iter(group['context_details']))
+            
+            # Extract min/max length constraints
+            if validation_type == "SCHEMAV_CVC_MINLENGTH_VALID":
+                min_match = re.search(r"allowed minimum length of '(\d+)'", context)
+                if min_match:
+                    constraint_value = min_match.group(1)
+                    # Add XML example for minLength violation - using local element name only
+                    # Use proper XML format with abcd21 namespace as commonly used in the files
+                    xml_example = f"&lt;abcd21:{element_name} language=\"de\" /&gt;"
+                    message += f" Required length: at least {constraint_value} characters. Example of problematic format: {xml_example}"
+            
+            elif validation_type == "SCHEMAV_CVC_MAXLENGTH_VALID":
+                max_match = re.search(r"allowed maximum length of '(\d+)'", context)
+                if max_match:
+                    constraint_value = max_match.group(1)
+                    # Add max length information to message
+                    message += f" Maximum allowed length: {constraint_value} characters."
+                    
+                    # If we have a value example that's too long, provide a truncated example
+                    if group['values']:
+                        actual_length = next(iter(group['values']), "unknown")
+                        message += f" Your content length: {actual_length} characters."
+            
+            # Extract enumeration constraints
+            elif validation_type == "SCHEMAV_CVC_ENUMERATION_VALID":
+                # Add XML example for enumeration
+                message += f" Example usage: &lt;abcd21:{element_name}&gt;allowed_value&lt;/abcd21:{element_name}&gt;"
+                
+            # Extract pattern constraints
+            elif validation_type == "SCHEMAV_CVC_PATTERN_VALID":
+                pattern_match = re.search(r"The value '.*?' is not a valid value of the atomic type '.*?' - pattern constraint failed: '(.*?)'", context)
+                if pattern_match:
+                    pattern = pattern_match.group(1)
+                    message += f" Pattern constraint: '{pattern}'"
+        
+        # Optionally add count information but NO examples to message
         if group['values']:
             distinct_count = len(group['values'])
-            examples = sorted(list(group['values']))[:3]
-            message = f"{message} with {distinct_count} distinct invalid value(s) (examples: {', '.join(examples)})"
+            message = f"{message} ({distinct_count} distinct values found)"
+            
         aggregated.append({
-            'heading': f"Schema error for {get_local_name(group['element'])}",
+            'heading': f"Schema error for {element_name}",
             'context': "; ".join(sorted(list(group['context_details']))),
             'message': message,
             'total_errors': group['total_errors'],
@@ -210,7 +255,7 @@ def finalize_schema_errors(error_groups: Dict[Tuple, Dict[str, Any]]) -> List[Di
                 "has_more": len(group['files']) > 5
             },
             'details': {
-                'validation_type': group['validation_type'],
+                'validation_type': validation_type,
                 'domain': group['details']['domain'] if group['details'] else None,
                 'level': group['details']['level'] if group['details'] else None,
                 'sample_paths': sorted(list(group['paths']))[:3],

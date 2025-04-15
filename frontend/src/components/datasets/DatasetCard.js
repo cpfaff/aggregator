@@ -84,10 +84,40 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
       setIsValidating(false);
     }
   }, [validationStatus]);
+  
+  // Add a safety timeout to reset validation state if it gets stuck
+  useEffect(() => {
+    // If we've been validating for more than 45 seconds, force reset state
+    let validationTimeout;
+    
+    if (isValidating) {
+      console.log('Starting validation safety timeout...');
+      validationTimeout = setTimeout(() => {
+        console.log('Validation timeout reached, resetting state');
+        setIsValidating(false);
+        if (pollingInterval) {
+          clearInterval(pollingInterval);
+          setPollingInterval(null);
+        }
+        // Force fetch latest status
+        fetchValidationStatus();
+      }, 45000); // 45 second timeout
+    }
+    
+    return () => {
+      if (validationTimeout) {
+        clearTimeout(validationTimeout);
+      }
+    };
+  }, [isValidating]);
 
   // Function to trigger validation
   const triggerValidation = async (e) => {
     e.stopPropagation();
+    
+    // Prevent multiple clicks
+    if (isValidating) return;
+    
     setIsValidating(true);
     
     // Clear any existing polling
@@ -98,15 +128,22 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
     
     try {
       const token = localStorage.getItem('token');
-      await axios.post(
+      const response = await axios.post(
         `${process.env.REACT_APP_API_BASE_URL || ''}/api/v1/validators/datasets/${dataset.id}/validate`,
-        {},
+        { force: true },
         {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         }
       );
+      
+      // Check if response indicates an immediate error
+      if (response.data && response.data.status === 'error') {
+        console.error('Validation API returned error:', response.data.message);
+        setIsValidating(false);
+        return;
+      }
       
       // Immediately fetch status to update UI
       await fetchValidationStatus();
@@ -117,6 +154,9 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
     } catch (error) {
       console.error('Error triggering validation:', error);
       setIsValidating(false);
+      
+      // Show an alert if there was an error (optional)
+      alert('Error triggering validation. Please try again later.');
     }
   };
   

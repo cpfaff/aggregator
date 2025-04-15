@@ -116,7 +116,7 @@ async def create_validation_job(
     await db.refresh(job)
     
     # Submit the validation task
-    task = validate_archive.delay(request.archive_id)
+    task = validate_archive.delay(request.archive_id, job_id=job.id)
     
     # Update the job with the task ID
     job.task_id = task.id
@@ -283,10 +283,38 @@ async def get_dataset_validation_status(
     # Set archive ID in response
     status_response.archive_id = latest_archive.id
     
-    # Get the latest validation for this archive
+    # First, check for any 'pending' jobs that might be completed in Celery but not in our DB
+    # This handles the task ID mismatch issue where the worker adds a UUID to the task ID
+    pending_validation_result = await db.execute(
+        select(ValidationJobModel)
+        .where(ValidationJobModel.archive_id == latest_archive.id)
+        .where(ValidationJobModel.status == "pending")
+        .order_by(desc(ValidationJobModel.created_at))
+    )
+    pending_validations = pending_validation_result.scalars().all()
+    
+    # If there are pending validations, check if newer completed validations exist with similar task IDs
+    for pending in pending_validations:
+        # Look for completed validation with a task ID starting with the pending task ID
+        completed_result = await db.execute(
+            select(ValidationJobModel)
+            .where(ValidationJobModel.archive_id == latest_archive.id)
+            .where(ValidationJobModel.status == "completed")
+            .where(ValidationJobModel.task_id.startswith(pending.task_id))
+        )
+        completed = completed_result.scalars().first()
+        
+        # If we found a matching completed job, the pending one is obsolete
+        if completed:
+            # Mark pending validation as 'obsolete'
+            pending.status = "obsolete"
+            await db.commit()
+    
+    # Get the latest validation for this archive (excluding obsolete ones)
     latest_validation_result = await db.execute(
         select(ValidationJobModel)
         .where(ValidationJobModel.archive_id == latest_archive.id)
+        .where(ValidationJobModel.status != "obsolete")
         .order_by(desc(ValidationJobModel.created_at))
         .limit(1)
     )
@@ -324,6 +352,7 @@ async def get_dataset_validation_status(
 @router.post("/datasets/{dataset_id}/validate", response_model=ValidateArchiveResponse, status_code=status.HTTP_201_CREATED)
 async def validate_dataset_latest_archive(
     dataset_id: int,
+    force: bool = False,  # New parameter to force validation regardless of status
     current_user: UserModel = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -332,6 +361,7 @@ async def validate_dataset_latest_archive(
     
     Args:
         dataset_id: The ID of the dataset
+        force: If True, will create a new validation job even if one already exists
         current_user: The current authenticated user
         db: Database session
         
@@ -352,24 +382,26 @@ async def validate_dataset_latest_archive(
             detail=f"No latest XML archive found for dataset with ID {dataset_id}"
         )
     
-    # Check if there's already a pending or running validation for this archive
-    existing_validation_result = await db.execute(
-        select(ValidationJobModel)
-        .where(ValidationJobModel.archive_id == latest_archive.id)
-        .where(ValidationJobModel.status.in_(["pending", "running"]))
-        .order_by(desc(ValidationJobModel.created_at))
-        .limit(1)
-    )
-    existing_validation = existing_validation_result.scalars().first()
-    
-    if existing_validation:
-        # Return the existing validation job instead of creating a new one
-        return ValidateArchiveResponse(
-            task_id=existing_validation.task_id,
-            job_id=existing_validation.id,
-            archive_id=latest_archive.id,
-            status=existing_validation.status
+    # If force is True, don't bother checking existing validations
+    if not force:
+        # Check if there's already a pending or running validation for this archive
+        existing_validation_result = await db.execute(
+            select(ValidationJobModel)
+            .where(ValidationJobModel.archive_id == latest_archive.id)
+            .where(ValidationJobModel.status.in_(["pending", "running"]))
+            .order_by(desc(ValidationJobModel.created_at))
+            .limit(1)
         )
+        existing_validation = existing_validation_result.scalars().first()
+        
+        if existing_validation:
+            # Return the existing validation job instead of creating a new one
+            return ValidateArchiveResponse(
+                task_id=existing_validation.task_id,
+                job_id=existing_validation.id,
+                archive_id=latest_archive.id,
+                status=existing_validation.status
+            )
     
     # Create a new validation request
     validation_request = ValidateArchiveRequest(archive_id=latest_archive.id)

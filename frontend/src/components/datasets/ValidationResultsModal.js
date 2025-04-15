@@ -220,6 +220,16 @@ const styles = {
     fontSize: '0.85rem',
     fontStyle: 'italic',
   },
+  messageContent: {
+    fontSize: '0.9rem',
+    color: 'var(--text)',
+    padding: '0.5rem',
+    backgroundColor: 'var(--subtle-bg)',
+    borderRadius: '0.375rem',
+    overflowWrap: 'break-word',
+    wordBreak: 'break-all',
+    border: '1px solid var(--border-light)',
+  },
 };
 
 const ValidationResultsModal = ({ isOpen, onClose, validationResults }) => {
@@ -241,14 +251,31 @@ const ValidationResultsModal = ({ isOpen, onClose, validationResults }) => {
   // Format date
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    
+    try {
+      // Explicitly treat the input date as UTC if it doesn't have timezone info
+      // This addresses the 2-hour difference issue
+      let date;
+      if (dateString.endsWith('Z') || dateString.includes('+')) {
+        // Date already has timezone info
+        date = new Date(dateString);
+      } else {
+        // Assume UTC and convert
+        date = new Date(dateString + 'Z');
+      }
+      
+      return date.toLocaleString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZoneName: 'short' // Show timezone to make it clear
+      });
+    } catch (error) {
+      console.error('Error formatting date:', error, dateString);
+      return 'Invalid Date';
+    }
   };
 
   // Get quality class based on score
@@ -378,26 +405,49 @@ const ValidationResultsModal = ({ isOpen, onClose, validationResults }) => {
                       Found {error.total_errors} occurrences
                       {error.details?.distinct_count ? ` with ${error.details.distinct_count} unique invalid values` : ''}
                     </div>
-                    {error.details?.distinct_values && error.details.distinct_values.length > 0 && (
-                      <div style={styles.ruleExamples}>
-                        <div>
-                          <span style={styles.exampleValueLabel}>✗ Invalid examples:</span>
-                          <ul style={styles.exampleValueList}>
-                            {error.details.distinct_values.map((value, i) => (
-                              <li key={i} style={styles.exampleValueListItem}>
-                                <span style={{
-                                  content: '"•"',
-                                  position: 'absolute',
-                                  left: '-1rem',
-                                  color: 'var(--text-light)',
-                                }}>•</span>
-                                {value}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
+
+                    {/* Display the error message with heading in a prominent way */}
+                    <div style={styles.ruleExamples}>
+                      <div>
+                        <span style={styles.exampleValueLabel}>✗ Message:</span>
+                        <div style={styles.messageContent} dangerouslySetInnerHTML={createMarkup(error.message)} />
                       </div>
-                    )}
+                    </div>
+
+                    {/* Conditionally show examples only for non-length constraint errors */}
+                    {(() => {
+                      // Check if this is a length constraint error
+                      const isLengthConstraint = 
+                        error.details?.validation_type === "SCHEMAV_CVC_MINLENGTH_VALID" || 
+                        error.details?.validation_type === "SCHEMAV_CVC_MAXLENGTH_VALID";
+                      
+                      // Only show examples for non-length constraint errors
+                      if (!isLengthConstraint && error.details?.distinct_values && error.details.distinct_values.length > 0) {
+                        return (
+                          <div style={styles.ruleExamples}>
+                            <div>
+                              <span style={styles.exampleValueLabel}>✗ Invalid examples:</span>
+                              <ul style={styles.exampleValueList}>
+                                {error.details.distinct_values.map((value, i) => (
+                                  <li key={i} style={styles.exampleValueListItem}>
+                                    <span style={{
+                                      content: '"•"',
+                                      position: 'absolute',
+                                      left: '-1rem',
+                                      color: 'var(--text-light)',
+                                    }}>•</span>
+                                    {value}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                        );
+                      }
+                      
+                      return null;
+                    })()}
+
                     {error.affected_files && (
                       <div style={styles.affectedFiles}>
                         Affected files: {formatFileList(error.affected_files)}
