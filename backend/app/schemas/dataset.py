@@ -122,6 +122,7 @@ class LegacyDataset(BaseModel):
     provider_name: str
     provider_url: Optional[AnyUrl]
     biocase_url: Optional[AnyUrl]
+    is_data_center: Optional[bool] = None
 
     @field_validator(
         "datasource",

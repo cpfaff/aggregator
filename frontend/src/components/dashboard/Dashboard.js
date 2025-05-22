@@ -241,6 +241,7 @@ function Dashboard({ currentUser, onViewProviderDetails }) {
           provider={editingProvider}
           onClose={handleProviderUpdate}
           onTokenExpired={handleTokenExpiration}
+          currentUser={currentUser}
         />
       </Modal>
     </div>

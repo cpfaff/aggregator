@@ -17,6 +17,7 @@ class DataProvider(BaseModel):
     name: str
     url: Optional[AnyUrl] = None
     biocaseUrl: Optional[AnyUrl] = None
+    isDataCenter: Optional[bool] = None
     datasets: List[Dataset] = []
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None

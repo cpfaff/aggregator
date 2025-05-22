@@ -717,6 +717,7 @@ const ProviderDetail = ({ provider, onBack, currentUser }) => {
             setEditingProvider(null);
           }}
           onTokenExpired={handleTokenExpiration}
+          currentUser={currentUser}
         />
       </Modal>
     </div>

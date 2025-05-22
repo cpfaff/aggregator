@@ -1,14 +1,22 @@
+# GFBio Search and Harvesting Infrastructure - Development Configuration
+
+# Environment variables used across services:
+# - DB_USER, DB_PASSWORD, DB_NAME: Database connection credentials
+# - ENVIRONMENT: Application environment (development, production)
+# - REDIS_BROKER_DB, REDIS_RESULT_DB: Redis database numbers for Celery
+# - BACKEND_TRAEFIK_ENABLED, FRONTEND_TRAEFIK_ENABLED: Flags to enable/disable Traefik routing for services
+
 services:
   traefik:
     image: traefik:v2.10
     ports:
-      - "80:80"
-      - "443:443"
-      - "8080:8080"  # Dashboard
+      - "80:80"      # Main HTTP port
+      # - "443:443"    # HTTPS port for local development
+      - "8080:8080"  # Dashboard for development
     volumes:
       - ./traefik/traefik.yml:/etc/traefik/traefik.yml
-      - ./traefik/acme.json:/acme.json
       - /var/run/docker.sock:/var/run/docker.sock
+      # - ./traefik/acme.json:/acme.json
     networks:
       - app-network
     restart: always
@@ -70,8 +78,8 @@ services:
       - DATABASE_URL=postgresql+asyncpg://${DB_USER:-user}:${DB_PASSWORD:-password}@db:5432/${DB_NAME:-dbname}
       - SYNC_DATABASE_URL=postgresql://${DB_USER:-user}:${DB_PASSWORD:-password}@db:5432/${DB_NAME:-dbname}
       - ENVIRONMENT=${ENVIRONMENT:-development}
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/${REDIS_BROKER_DB:-0}
+      - CELERY_RESULT_BACKEND=redis://redis:6379/${REDIS_RESULT_DB:-0} 
     networks:
       - app-network
     healthcheck:
@@ -81,7 +89,7 @@ services:
       retries: 3
       start_period: 10s
     labels:
-      - "traefik.enable=true"
+      - "traefik.enable=${BACKEND_TRAEFIK_ENABLED:-true}"
       # Simplified API router
       - "traefik.http.routers.backend.rule=PathPrefix(`/api`)"
       - "traefik.http.routers.backend.entrypoints=web"
@@ -109,8 +117,8 @@ services:
       - DATABASE_URL=postgresql+asyncpg://${DB_USER:-user}:${DB_PASSWORD:-password}@db:5432/${DB_NAME:-dbname}
       - SYNC_DATABASE_URL=postgresql://${DB_USER:-user}:${DB_PASSWORD:-password}@db:5432/${DB_NAME:-dbname}
       - ENVIRONMENT=${ENVIRONMENT:-development}
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/${REDIS_BROKER_DB:-0}
+      - CELERY_RESULT_BACKEND=redis://redis:6379/${REDIS_RESULT_DB:-0}
     networks:
       - app-network
     healthcheck:
@@ -141,8 +149,8 @@ services:
       - DATABASE_URL=postgresql+asyncpg://${DB_USER:-user}:${DB_PASSWORD:-password}@db:5432/${DB_NAME:-dbname}
       - SYNC_DATABASE_URL=postgresql://${DB_USER:-user}:${DB_PASSWORD:-password}@db:5432/${DB_NAME:-dbname}
       - ENVIRONMENT=${ENVIRONMENT:-development}
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/${REDIS_BROKER_DB:-0}
+      - CELERY_RESULT_BACKEND=redis://redis:6379/${REDIS_RESULT_DB:-0}
     networks:
       - app-network
     healthcheck:
@@ -177,11 +185,31 @@ services:
       retries: 3
       start_period: 10s
     labels:
-      - "traefik.enable=true"
+      - "traefik.enable=${FRONTEND_TRAEFIK_ENABLED:-true}"
       - "traefik.http.routers.frontend.rule=PathPrefix(`/`) && !PathPrefix(`/api`)"
       - "traefik.http.routers.frontend.entrypoints=web"
       - "traefik.http.services.frontend.loadbalancer.server.port=3000"
       - "traefik.http.routers.frontend.priority=1"
+
+  # Add maintenance service to development setup (disabled by default)
+  maintenance:
+    image: nginx:alpine
+    networks:
+      - app-network
+    volumes:
+      - ./maintenance:/usr/share/nginx/html
+    labels:
+      - "traefik.enable=${MAINTENANCE_TRAEFIK_ENABLED:-false}"  # Disabled by default
+      - "traefik.http.routers.maintenance.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.maintenance.entrypoints=web"
+      - "traefik.http.services.maintenance.loadbalancer.server.port=80"
+      - "traefik.http.routers.maintenance.priority=100"  # Higher priority to override other routes
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
 volumes:
   postgres_data:

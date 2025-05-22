@@ -1,7 +1,7 @@
 """
 Data Provider model for storing information about data providers.
 """
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, Boolean
 from sqlalchemy.orm import relationship
 
 from app.models.base import Base, TimestampMixin
@@ -17,6 +17,7 @@ class DataProviderModel(Base, TimestampMixin):
     name = Column(String)
     url = Column(String, nullable=True)
     biocaseUrl = Column(String, nullable=True)
+    isDataCenter = Column(Boolean, nullable=True, default=False)
     
     # Relationships
     datasets = relationship(

@@ -882,6 +882,7 @@ async def create_provider(
     - **name**: Full name of the provider
     - **url**: Optional provider URL
     - **biocaseUrl**: Optional BioCASe URL
+    - **isDataCenter**: Optional boolean indicating if the provider is a data center (global admin only)
     - **datasets**: Optional list of datasets
     """
     check_global_admin(current_user)
@@ -953,6 +954,8 @@ async def update_provider(
     """
     Update a data provider. Requires write permissions for the provider.
     - **provider_id**: Must be a positive integer
+    
+    Note: The isDataCenter field can only be modified by global admins.
     """
     if provider_id <= 0:
         raise HTTPException(
@@ -974,7 +977,15 @@ async def update_provider(
     db_provider = result.scalar_one_or_none()
     if not db_provider:
         raise HTTPException(status_code=404, detail="Provider not found")
+    
+    # Check if isDataCenter field is being updated
     provider_data = provider.model_dump(exclude={"datasets", "id"}, exclude_unset=True)
+    
+    # Only allow global admins to modify isDataCenter field
+    if "isDataCenter" in provider_data and not current_user.is_global_admin:
+        # Remove isDataCenter from update if user is not a global admin
+        del provider_data["isDataCenter"]
+    
     if provider_data.get("url"):
         provider_data["url"] = str(provider_data["url"])
     if provider_data.get("biocaseUrl"):
@@ -982,7 +993,8 @@ async def update_provider(
     for key, value in provider_data.items():
         setattr(db_provider, key, value)
     async with db.begin_nested():
-        if provider.datasets is not None:
+        # Only process datasets if they were explicitly included in the request
+        if "datasets" in provider.model_dump(exclude_unset=True) and provider.datasets is not None:
             existing_datasets = {
                 ds.id: ds for ds in db_provider.datasets if ds.id is not None
             }
@@ -1648,6 +1660,7 @@ async def harvest_datasets(request: Request, db: AsyncSession = Depends(get_db))
                     provider_name=provider.name,
                     provider_url=provider.url,
                     biocase_url=provider.biocaseUrl,
+                    is_data_center=provider.isDataCenter,
                 )
                 legacy_datasets.append(legacy_dataset)
 

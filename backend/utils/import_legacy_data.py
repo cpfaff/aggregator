@@ -205,6 +205,8 @@ async def import_useful_links(session: AsyncSession, links_data: list, dataset_i
 async def clear_existing_data(session: AsyncSession):
     try:
         # Delete in reverse order of dependencies
+        # First delete validation_jobs since they reference xml_archives
+        await session.execute(text("DELETE FROM validation_jobs"))
         await session.execute(text("DELETE FROM useful_links"))
         await session.execute(text("DELETE FROM xml_archives"))
         await session.execute(text("DELETE FROM datasets"))

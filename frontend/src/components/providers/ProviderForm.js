@@ -4,7 +4,7 @@ import Button from '../ui/Button';
 import Alert from '../ui/Alert';
 
 // Simplified ProviderForm component focused only on core provider information
-function ProviderForm({ provider, onClose, onTokenExpired }) {
+function ProviderForm({ provider, onClose, onTokenExpired, currentUser }) {
   const isEditing = provider != null;
   const [formState, setFormState] = useState({
     name: provider ? provider.name : '',
@@ -12,6 +12,7 @@ function ProviderForm({ provider, onClose, onTokenExpired }) {
     datacenter: provider ? provider.datacenter : '',
     url: provider ? provider.url : '',
     biocaseUrl: provider ? provider.biocaseUrl : '',
+    isDataCenter: provider ? provider.isDataCenter : false,
   });
   const [validationErrors, setValidationErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
@@ -296,6 +297,47 @@ function ProviderForm({ provider, onClose, onTokenExpired }) {
           />
           {getFieldErrorMessage('biocaseUrl')}
         </div>
+        
+        {/* Data Center Checkbox - only visible to global admins */}
+        {currentUser?.is_global_admin && (
+          <div style={{ marginBottom: '1rem' }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center',
+              marginBottom: '0.5rem' 
+            }}>
+              <input
+                type="checkbox"
+                id="isDataCenter"
+                checked={formState.isDataCenter || false}
+                onChange={(e) => updateFormField('isDataCenter', e.target.checked)}
+                style={{
+                  marginRight: '0.5rem',
+                  cursor: 'pointer',
+                }}
+              />
+              <label 
+                htmlFor="isDataCenter"
+                style={{ 
+                  fontSize: '0.875rem', 
+                  fontWeight: 500, 
+                  color: 'var(--text)',
+                  cursor: 'pointer',
+                }}
+              >
+                Is Data Center
+              </label>
+            </div>
+            <div style={{
+              fontSize: '0.75rem',
+              color: 'var(--text-light)',
+              marginTop: '0.25rem',
+              marginLeft: '1.5rem',
+            }}>
+              Designates this provider as an official data center (global admin only)
+            </div>
+          </div>
+        )}
         
         <div style={{ 
           display: 'flex', 

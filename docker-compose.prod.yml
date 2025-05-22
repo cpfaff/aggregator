@@ -1,6 +1,6 @@
 services:
   traefik:
-    image: traefik:v2.10
+    image: traefik:v3.3
     ports:
       - "80:80"
       # - "443:443"  # Commented out as TLS termination is handled by jump host edge router
@@ -66,12 +66,10 @@ services:
       - DATABASE_URL=postgresql+asyncpg://${DB_USER:-user}:${DB_PASSWORD:-password}@db:5432/${DB_NAME:-dbname}
       - SYNC_DATABASE_URL=postgresql://${DB_USER:-user}:${DB_PASSWORD:-password}@db:5432/${DB_NAME:-dbname}
       - ENVIRONMENT=${ENVIRONMENT:-production}
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/${REDIS_BROKER_DB:-0}
+      - CELERY_RESULT_BACKEND=redis://redis:6379/${REDIS_RESULT_DB:-0}
     networks:
       - app-network
-    ports:
-      - "8000:8000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health-check"]
       interval: 30s
@@ -79,16 +77,10 @@ services:
       retries: 3
       start_period: 10s
     labels:
-      - "traefik.enable=true"
-      # Simplified API router
+      - "traefik.enable=${BACKEND_TRAEFIK_ENABLED:-true}"
       - "traefik.http.routers.backend.rule=PathPrefix(`/api`)"
-      - "traefik.http.routers.backend.entrypoints=web"  # Removed websecure
+      - "traefik.http.routers.backend.entrypoints=web"
       - "traefik.http.services.backend.loadbalancer.server.port=8000"
-      # No middleware needed as we're not stripping prefixes anymore
-      # SSL configuration - commented out as handled by external Traefik
-      # - "traefik.http.routers.backend-secure.rule=PathPrefix(`/api`)"
-      # - "traefik.http.routers.backend-secure.entrypoints=websecure"
-      # - "traefik.http.routers.backend-secure.tls.certresolver=letsencrypt"
 
   celery-worker:
     build:
@@ -106,8 +98,8 @@ services:
       - DATABASE_URL=postgresql+asyncpg://${DB_USER:-user}:${DB_PASSWORD:-password}@db:5432/${DB_NAME:-dbname}
       - SYNC_DATABASE_URL=postgresql://${DB_USER:-user}:${DB_PASSWORD:-password}@db:5432/${DB_NAME:-dbname}
       - ENVIRONMENT=${ENVIRONMENT:-production}
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/${REDIS_BROKER_DB:-0}
+      - CELERY_RESULT_BACKEND=redis://redis:6379/${REDIS_RESULT_DB:-0}
     networks:
       - app-network
     healthcheck:
@@ -135,8 +127,8 @@ services:
       - DATABASE_URL=postgresql+asyncpg://${DB_USER:-user}:${DB_PASSWORD:-password}@db:5432/${DB_NAME:-dbname}
       - SYNC_DATABASE_URL=postgresql://${DB_USER:-user}:${DB_PASSWORD:-password}@db:5432/${DB_NAME:-dbname}
       - ENVIRONMENT=${ENVIRONMENT:-production}
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/${REDIS_BROKER_DB:-0}
+      - CELERY_RESULT_BACKEND=redis://redis:6379/${REDIS_RESULT_DB:-0}
     networks:
       - app-network
     healthcheck:
@@ -153,7 +145,6 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.prod
     restart: always
-    # We don't need to expose this port since Traefik will handle it
     env_file:
       - ./frontend/.env
     depends_on:
@@ -168,16 +159,31 @@ services:
       retries: 3
       start_period: 10s
     labels:
-      - "traefik.enable=true"
+      - "traefik.enable=${FRONTEND_TRAEFIK_ENABLED:-true}"
       - "traefik.http.routers.frontend.rule=PathPrefix(`/`) && !PathPrefix(`/api`)"
-      - "traefik.http.routers.frontend.entrypoints=web"  # Removed websecure
+      - "traefik.http.routers.frontend.entrypoints=web"
       - "traefik.http.services.frontend.loadbalancer.server.port=80"
       - "traefik.http.routers.frontend.priority=1"
-      # SSL configuration - commented out as handled by external Traefik
-      # - "traefik.http.routers.frontend-secure.rule=PathPrefix(`/`) && !PathPrefix(`/api`)"
-      # - "traefik.http.routers.frontend-secure.entrypoints=websecure"
-      # - "traefik.http.routers.frontend-secure.tls.certresolver=letsencrypt"
-      # - "traefik.http.routers.frontend-secure.priority=1"
+
+  maintenance:
+    image: nginx:alpine
+    restart: always
+    networks:
+      - app-network
+    volumes:
+      - ./maintenance:/usr/share/nginx/html
+    labels:
+      - "traefik.enable=${MAINTENANCE_TRAEFIK_ENABLED:-false}"
+      - "traefik.http.routers.maintenance.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.maintenance.entrypoints=web"
+      - "traefik.http.services.maintenance.loadbalancer.server.port=80"
+      - "traefik.http.routers.maintenance.priority=100"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
 volumes:
   postgres_data:
