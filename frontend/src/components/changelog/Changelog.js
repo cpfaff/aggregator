@@ -5,17 +5,6 @@ const Changelog = () => {
   // Changelog entries based on actual project development
   const changelogEntries = [
     {
-      version: '1.8.1',
-      date: 'May 22, 2025',
-      changes: [
-        'Refactored and cleaned up codebase for better maintainability',
-        'Implemented separation between data centers and data providers',
-        'Added ability for admins to designate providers as official GFBio data centers',
-        'Enhanced API to expose data center information for the harvesting process',
-        'Reorganized Docker configuration for better deployment flexibility'
-      ]
-    },
-    {
       version: '1.8.0',
       date: 'April 15, 2025',
       changes: [

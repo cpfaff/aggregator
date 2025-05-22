@@ -79,6 +79,4 @@ docker-volumes/
 .windsurfrules
 
 ./backlog
-./backups
-
-
+backups
