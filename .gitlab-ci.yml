@@ -54,7 +54,7 @@ build-backend:
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD docker.gitlab-pe.gwdg.de
   script:
     - echo "Building backend image..."
-    - docker build -t $DOCKER_REGISTRY/backend:$CI_COMMIT_SHORT_SHA -t $DOCKER_REGISTRY/backend:latest -f backend/Dockerfile.prod ./backend
+    - docker build -t $DOCKER_REGISTRY/backend:$CI_COMMIT_SHORT_SHA -t $DOCKER_REGISTRY/backend:latest -f backend/Dockerfile.production ./backend
     - docker push $DOCKER_REGISTRY/backend:$CI_COMMIT_SHORT_SHA
     - docker push $DOCKER_REGISTRY/backend:latest
   only:
@@ -72,7 +72,7 @@ build-frontend:
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD docker.gitlab-pe.gwdg.de
   script:
     - echo "Building frontend image..."
-    - docker build -t $DOCKER_REGISTRY/frontend:$CI_COMMIT_SHORT_SHA -t $DOCKER_REGISTRY/frontend:latest -f frontend/Dockerfile.prod ./frontend
+    - docker build -t $DOCKER_REGISTRY/frontend:$CI_COMMIT_SHORT_SHA -t $DOCKER_REGISTRY/frontend:latest -f frontend/Dockerfile.production ./frontend
     - docker push $DOCKER_REGISTRY/frontend:$CI_COMMIT_SHORT_SHA
     - docker push $DOCKER_REGISTRY/frontend:latest
   only:
