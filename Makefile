@@ -1,4 +1,4 @@
-.PHONY: help up down restart logs shell backup restore create-admin create-user migrate test format maintenance-on maintenance-off prod-up prod-down prod-restart
+.PHONY: help up down restart logs shell backup restore create-admin create-user migrate test format maintenance-on maintenance-off prod-up prod-down prod-restart clean-for-github
 
 # Colors for terminal output
 ifeq ($(shell tput colors 2>/dev/null || echo 0),0)
@@ -17,7 +17,7 @@ endif
 
 # Help command to list all available commands
 help:
-	@echo "${GREEN}Dataset Management Platform Development Tool${NC}"
+	@echo "${GREEN}Aggregator Development Tool${NC}"
 	@echo ""
 	@echo "${YELLOW}Usage:${NC}"
 	@echo "  make [command]"
@@ -45,6 +45,7 @@ help:
 	@echo "  ${GREEN}prod-up${NC}            Start production services"
 	@echo "  ${GREEN}prod-down${NC}          Stop production services"
 	@echo "  ${GREEN}prod-restart${NC}       Restart production services"
+	@echo "  ${GREEN}clean-for-github${NC}   Remove GitLab-specific files for GitHub publication"
 	@echo ""
 	@echo "${YELLOW}Examples:${NC}"
 	@echo "  make up                  # Start all containers"
@@ -207,3 +208,31 @@ prod-restart:
 		echo "${RED}Error: docker-compose.prod.registry.yml not found.${NC}"; \
 		exit 1; \
 	fi
+
+# GitHub publication cleanup
+clean-for-github:
+	@echo "${YELLOW}Cleaning files for GitHub publication...${NC}"
+	@if git rev-parse --verify github-main >/dev/null 2>&1; then \
+		echo "${YELLOW}Switching to github-main branch...${NC}"; \
+		git checkout github-main; \
+	else \
+		echo "${YELLOW}Creating github-main branch...${NC}"; \
+		git checkout -b github-main; \
+	fi
+	@echo "${YELLOW}Removing GitLab-specific files...${NC}"
+	@FILES_TO_REMOVE=""; \
+	for file in .gitlab-ci.yml docker-compose.prod.registry.yml backend/celerybeat-schedule backend/data/import.log; do \
+		if [ -f "$$file" ]; then \
+			FILES_TO_REMOVE="$$FILES_TO_REMOVE $$file"; \
+		fi; \
+	done; \
+	if [ -n "$$FILES_TO_REMOVE" ]; then \
+		git rm $$FILES_TO_REMOVE 2>/dev/null || echo "Some files already removed"; \
+		echo "${GREEN}Removed:$$FILES_TO_REMOVE${NC}"; \
+	else \
+		echo "${GREEN}All GitLab-specific files already cleaned${NC}"; \
+	fi
+	@echo "${GREEN}GitHub branch prepared. You can now:"
+	@echo "  1. Review changes with: git status"
+	@echo "  2. Commit changes if needed"
+	@echo "  3. Update GitLab mirror to use github-main branch${NC}"
