@@ -1,10 +1,11 @@
-# Dataset Management Platform
+# Aggregator
 
 A full-stack application for managing scientific datasets and their providers.
 Built with FastAPI backend and React frontend, containerized with Docker for
 easy deployment.
 
-![Dataset Management Platform](https://via.placeholder.com/800x400?text=Dataset+Management+Platform)
+<!-- Add a screenshot of your application here -->
+<!-- ![Aggregator](docs/screenshot.png) -->
 
 ## Table of Contents
 
@@ -27,7 +28,7 @@ easy deployment.
 
 ## Overview
 
-The Dataset Management Platform is designed to catalog and manage scientific
+Aggregator is designed to catalog and manage scientific
 datasets and their providers. It allows users to browse datasets,
 administrators to manage user access, and provides a comprehensive API for
 integration with other systems.
@@ -61,7 +62,7 @@ integration with other systems.
 
 ### For Users
 
-As a user of the Dataset Management Platform, you can:
+As a user of Aggregator, you can:
 
 1. **Access the Platform**:
    - Navigate to the application URL in your web browser
@@ -97,21 +98,22 @@ As an administrator, you have additional capabilities:
 
 ### For Developers
 
-As a developer working with the Dataset Management Platform:
+As a developer working with Aggregator:
 
 1. **Local Development Setup**:
    ```bash
    # Clone the repository
    git clone <repository-url>
-   cd fastapi
+   cd aggregator
 
-   # Create environment file in the root directory
-   # Example contents:
-   # DB_USER=user
-   # DB_PASSWORD=password
-   # DB_NAME=dbname
-   # SECRET_KEY=your-secret-key
-   # REACT_APP_API_URL=http://localhost:8000
+   # Copy and configure environment files
+   cp .env.example .env
+   cp backend/.env.example backend/.env
+   cp frontend/.env.example frontend/.env
+   
+   # IMPORTANT: Generate a secure SECRET_KEY for backend/.env:
+   # python -c "import secrets; print(secrets.token_hex(32))"
+   # Replace the default SECRET_KEY with your generated key
    
    # Start development environment
    docker-compose up
@@ -124,7 +126,7 @@ As a developer working with the Dataset Management Platform:
 
 ## Architecture
 
-The Dataset Management Platform follows a modern microservices architecture:
+Aggregator follows a modern microservices architecture:
 
 - **Backend**: FastAPI application providing RESTful API endpoints
 - **Frontend**: React single-page application for the user interface
@@ -323,4 +325,4 @@ Once the application is running, you can access:
 
 ## License
 
-[MIT License](LICENSE) - See LICENSE file for details
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
