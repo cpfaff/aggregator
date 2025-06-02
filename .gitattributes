@@ -1,0 +1,10 @@
+# Exclude GitLab-specific files from GitHub exports
+.gitlab-ci.yml export-ignore
+docker-compose.prod.registry.yml export-ignore
+
+# Exclude development/internal files from exports
+backend/celerybeat-schedule export-ignore
+backend/data/import.log export-ignore
+
+# Exclude any GitLab-specific directories if they exist
+.gitlab/ export-ignore
