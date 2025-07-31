@@ -251,15 +251,19 @@ deploy-production:
     - |
       echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Step 2.5: Creating database backup before migrations"
       
-      # Create timestamped backup
+      # Create timestamped backup in gitlab-runner home directory
       BACKUP_TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
       BACKUP_FILENAME="aggregator_backup_${BACKUP_TIMESTAMP}.sql"
+      BACKUP_PATH="/home/gitlab-runner/db-backups/${BACKUP_FILENAME}"
       
-      echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Creating backup: ${BACKUP_FILENAME}"
-      docker-compose -f docker-compose.prod.registry.yml exec -T db pg_dump -U ${DB_USER:-user} -d ${DB_NAME:-dbname} > ${BACKUP_FILENAME}
+      # Ensure backup directory exists
+      mkdir -p /home/gitlab-runner/db-backups
+      
+      echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Creating backup: ${BACKUP_PATH}"
+      docker-compose -f docker-compose.prod.registry.yml exec -T db pg_dump -U ${DB_USER:-user} -d ${DB_NAME:-dbname} > "${BACKUP_PATH}"
       
       if [ $? -eq 0 ]; then
-        echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Database backup created successfully: ${BACKUP_FILENAME}"
+        echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Database backup created successfully: ${BACKUP_PATH}"
       else
         echo "$(date +"$TIMESTAMP_FORMAT") [ERROR] Failed to create database backup"
         exit 1
@@ -273,7 +277,7 @@ deploy-production:
         echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Database migrations completed successfully"
       else
         echo "$(date +"$TIMESTAMP_FORMAT") [ERROR] Database migrations failed"
-        echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Backup available for restoration: ${BACKUP_FILENAME}"
+        echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Backup available for restoration: ${BACKUP_PATH}"
         exit 1
       fi
       
