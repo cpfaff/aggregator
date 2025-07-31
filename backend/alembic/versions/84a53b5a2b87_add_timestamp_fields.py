@@ -1,6 +1,6 @@
 """Add timestamp fields to providers and datasets
 
-Revision ID: add_timestamp_fields
+Revision ID: 84a53b5a2b87
 Revises: ee08ccb0785a
 Create Date: 2025-03-18 06:52:37.000000
 
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from datetime import datetime
 
 # revision identifiers, used by Alembic.
-revision: str = 'add_timestamp_fields'
+revision: str = '84a53b5a2b87'
 down_revision: Union[str, None] = 'ee08ccb0785a'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None

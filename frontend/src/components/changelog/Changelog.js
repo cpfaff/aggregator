@@ -5,6 +5,18 @@ const Changelog = () => {
   // Changelog entries based on actual project development
   const changelogEntries = [
     {
+      version: '1.9.0',
+      date: 'July 31, 2025',
+      changes: [
+        'Added data center classification system to distinguish between official GFBio data centers and regular data providers',
+        'Portal administrators can now designate providers as official data centers through the admin interface',
+        'Enhanced data provider management with improved categorization for better organization',
+        'Strengthened deployment infrastructure with automated database backup system',
+        'Improved database migration reliability with enhanced error handling and rollback capabilities',
+        'Optimized CI/CD pipeline for more robust and consistent deployments'
+      ]
+    },
+    {
       version: '1.8.0',
       date: 'April 15, 2025',
       changes: [

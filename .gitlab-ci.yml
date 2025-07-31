@@ -247,6 +247,36 @@ deploy-production:
         exit 1
       fi
       
+    # Step 2.5: Database backup and migrations
+    - |
+      echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Step 2.5: Creating database backup before migrations"
+      
+      # Create timestamped backup
+      BACKUP_TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+      BACKUP_FILENAME="aggregator_backup_${BACKUP_TIMESTAMP}.sql"
+      
+      echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Creating backup: ${BACKUP_FILENAME}"
+      docker-compose -f docker-compose.prod.registry.yml exec -T db pg_dump -U ${DB_USER:-user} -d ${DB_NAME:-dbname} > ${BACKUP_FILENAME}
+      
+      if [ $? -eq 0 ]; then
+        echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Database backup created successfully: ${BACKUP_FILENAME}"
+      else
+        echo "$(date +"$TIMESTAMP_FORMAT") [ERROR] Failed to create database backup"
+        exit 1
+      fi
+      
+      # Run database migrations
+      echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Running database migrations"
+      docker-compose -f docker-compose.prod.registry.yml run --rm backend alembic upgrade head
+      
+      if [ $? -eq 0 ]; then
+        echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Database migrations completed successfully"
+      else
+        echo "$(date +"$TIMESTAMP_FORMAT") [ERROR] Database migrations failed"
+        echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Backup available for restoration: ${BACKUP_FILENAME}"
+        exit 1
+      fi
+      
     # Step 3: Start and wait for traefik
     - |
       echo "$(date +"$TIMESTAMP_FORMAT") [INFO] Step 3: Starting traefik service"

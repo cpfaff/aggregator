@@ -197,7 +197,7 @@ def provider_permission(operation: str = "read"):
 # ------------------- Create FastAPI app and routers -------------------
 app = FastAPI(
     title="Dataset Management API",
-    version="1.0.0",
+    version="1.9.0",
     openapi_url="/api/openapi.json",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
@@ -1582,7 +1582,7 @@ async def health_check(db: AsyncSession = Depends(get_db)):
                 "status": "connected",
                 "response_time_ms": round(db_response_time * 1000, 2),
             },
-            "version": "1.0.0",
+            "version": "1.9.0",
             "timestamp": datetime.utcnow().isoformat(),
         }
     except Exception as e:
