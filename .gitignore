@@ -80,3 +80,5 @@ docker-volumes/
 
 ./backlog
 backups
+
+CLAUDE.md
