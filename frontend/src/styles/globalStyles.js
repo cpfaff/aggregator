@@ -10,6 +10,41 @@ export const addGlobalStyles = () => {
       from { opacity: 0; }
       to { opacity: 1; }
     }
+    @keyframes slideInUp {
+      from { 
+        opacity: 0; 
+        transform: translateY(20px); 
+      }
+      to { 
+        opacity: 1; 
+        transform: translateY(0); 
+      }
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    /* Responsive utilities */
+    @media (max-width: 768px) {
+      .stats-grid {
+        grid-template-columns: 1fr !important;
+      }
+      .chart-grid {
+        grid-template-columns: 1fr !important;
+      }
+      .stats-card {
+        min-width: unset !important;
+      }
+    }
+    
+    /* Animation classes for statistics components */
+    .fade-in {
+      animation: fadeIn 0.3s ease-out;
+    }
+    .slide-in-up {
+      animation: slideInUp 0.4s ease-out;
+    }
     html, body { 
       margin: 0; 
       padding: 0;

@@ -77,3 +77,48 @@ def cache_response(prefix, ttl_seconds=None):
 def invalidate_cache(prefix):
     """Invalidate cache entries with specified prefix"""
     cache.invalidate(prefix)
+
+
+# Rate limiting utilities
+class RateLimiter:
+    """Simple in-memory rate limiter for API endpoints."""
+    
+    def __init__(self):
+        self._requests = {}
+    
+    def is_allowed(self, identifier: str, limit: int, window: int) -> bool:
+        """
+        Check if request is allowed under rate limit.
+        
+        Args:
+            identifier: Unique identifier (e.g., IP, user ID)
+            limit: Maximum requests allowed
+            window: Time window in seconds
+            
+        Returns:
+            bool: True if request is allowed
+        """
+        import time
+        current_time = time.time()
+        window_start = current_time - window
+        
+        if identifier not in self._requests:
+            self._requests[identifier] = []
+        
+        # Clean old requests
+        self._requests[identifier] = [
+            req_time for req_time in self._requests[identifier]
+            if req_time > window_start
+        ]
+        
+        # Check if under limit
+        if len(self._requests[identifier]) >= limit:
+            return False
+        
+        # Add current request
+        self._requests[identifier].append(current_time)
+        return True
+
+
+# Global rate limiter instance
+rate_limiter = RateLimiter()

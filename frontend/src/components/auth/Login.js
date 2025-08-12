@@ -4,7 +4,7 @@ import { API_BASE, API_VERSION, initCsrfProtection } from '../../utils/apiUtils'
 import Alert from '../ui/Alert';
 
 // Login component
-function Login({ sessionExpired }) {
+function Login({ sessionExpired, onViewPublicStats }) {
   const { login, isLoading, setIsLoading, sessionExpired: authSessionExpired, setSessionExpired } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');

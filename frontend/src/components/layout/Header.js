@@ -1,4 +1,5 @@
 import React from 'react';
+import { Sun, Moon } from 'lucide-react';
 
 const Header = ({ currentUser, activeView, setActiveView, logout, isDarkTheme, toggleTheme }) => {
   return (
@@ -59,32 +60,61 @@ const Header = ({ currentUser, activeView, setActiveView, logout, isDarkTheme, t
           </a>
           
           {currentUser?.is_global_admin && (
-            <a 
-              href="#" 
-              onClick={(e) => { e.preventDefault(); setActiveView('userManagement'); }}
-              style={{
-                padding: '0.5rem 0',
-                position: 'relative',
-                color: activeView === 'userManagement' ? 'var(--primary)' : 'var(--text-light)',
-                textDecoration: 'none',
-                fontWeight: 500,
-                transition: 'all 0.2s ease',
-              }}
-            >
-              User Management
-              <span style={{
-                content: '""',
-                position: 'absolute',
-                bottom: 0,
-                left: 0,
-                width: '100%',
-                height: '2px',
-                backgroundColor: 'var(--primary)',
-                transform: activeView === 'userManagement' ? 'scaleX(1)' : 'scaleX(0)',
-                transformOrigin: 'left',
-                transition: 'transform 0.2s ease',
-              }}></span>
-            </a>
+            <>
+              <a 
+                href="#" 
+                onClick={(e) => { e.preventDefault(); setActiveView('userManagement'); }}
+                style={{
+                  padding: '0.5rem 0',
+                  position: 'relative',
+                  color: activeView === 'userManagement' ? 'var(--primary)' : 'var(--text-light)',
+                  textDecoration: 'none',
+                  fontWeight: 500,
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                User Management
+                <span style={{
+                  content: '""',
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '2px',
+                  backgroundColor: 'var(--primary)',
+                  transform: activeView === 'userManagement' ? 'scaleX(1)' : 'scaleX(0)',
+                  transformOrigin: 'left',
+                  transition: 'transform 0.2s ease',
+                }}></span>
+              </a>
+              
+              <a 
+                href="#" 
+                onClick={(e) => { e.preventDefault(); setActiveView('adminStats'); }}
+                style={{
+                  padding: '0.5rem 0',
+                  position: 'relative',
+                  color: activeView === 'adminStats' ? 'var(--primary)' : 'var(--text-light)',
+                  textDecoration: 'none',
+                  fontWeight: 500,
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                Statistics
+                <span style={{
+                  content: '""',
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '2px',
+                  backgroundColor: 'var(--primary)',
+                  transform: activeView === 'adminStats' ? 'scaleX(1)' : 'scaleX(0)',
+                  transformOrigin: 'left',
+                  transition: 'transform 0.2s ease',
+                }}></span>
+              </a>
+            </>
           )}
           
           <a 
@@ -177,7 +207,7 @@ const Header = ({ currentUser, activeView, setActiveView, logout, isDarkTheme, t
             height: '38px',
             padding: '0',
             backgroundColor: 'transparent',
-            color: 'var(--text-light)',
+            color: 'var(--text)',
             border: '1px solid var(--border)',
             borderRadius: '0.375rem',
             fontSize: '0.875rem',
@@ -188,9 +218,17 @@ const Header = ({ currentUser, activeView, setActiveView, logout, isDarkTheme, t
             alignItems: 'center',
             justifyContent: 'center',
           }}
+          onMouseEnter={(e) => {
+            e.target.style.backgroundColor = 'var(--subtle-bg)';
+            e.target.style.borderColor = 'var(--primary)';
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.backgroundColor = 'transparent';
+            e.target.style.borderColor = 'var(--border)';
+          }}
           aria-label={`Switch to ${isDarkTheme ? 'light' : 'dark'} theme`}
         >
-          {isDarkTheme ? '☀️' : '🌙'}
+          {isDarkTheme ? <Sun size={18} /> : <Moon size={18} />}
         </button>
       </div>
     </header>

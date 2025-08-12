@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ProviderDetail from './components/providers/ProviderDetail';
 import Header from './components/layout/Header';
+import PublicHeader from './components/layout/PublicHeader';
 import Footer from './components/layout/Footer';
 import { API_BASE, API_VERSION, apiRequest, initCsrfProtection } from './utils/apiUtils';
 import { useAuth } from './components/auth/AuthContext';
@@ -10,10 +11,12 @@ import Login from './components/auth/Login';
 import Dashboard from './components/dashboard/Dashboard';
 import UserManagement from './components/users/UserManagement';
 import Changelog from './components/changelog/Changelog';
+import About from './components/public/About';
+import { AdminDashboard, PublicStatsDashboard } from './components/statistics';
 
 function App() {
   const { token, currentUser, logout, sessionExpired, handleTokenExpiration } = useAuth();
-  const [activeView, setActiveView] = useState('dashboard'); // 'dashboard', 'userManagement', 'changelog', or 'providerDetail'
+  const [activeView, setActiveView] = useState('login'); // 'login', 'dashboard', 'userManagement', 'changelog', 'providerDetail', 'adminStats', 'publicStats', or 'about'
   const [selectedProvider, setSelectedProvider] = useState(null);
   const [isDarkTheme, setIsDarkTheme] = useState(() => {
     const savedTheme = localStorage.getItem('isDarkTheme');
@@ -61,8 +64,17 @@ function App() {
 
   // Render appropriate view based on whether user data is fully loaded
   const renderContent = () => {
-    // Don't render content until we have both token and user data
-    if (!token) {
+    // Public views can be accessed without authentication
+    if (activeView === 'publicStats') {
+      return <PublicStatsDashboard />;
+    }
+    
+    if (activeView === 'about') {
+      return <About />;
+    }
+    
+    // Login view - don't render content until we have both token and user data
+    if (!token || activeView === 'login') {
       return <Login sessionExpired={sessionExpired} />;
     }
     
@@ -101,6 +113,10 @@ function App() {
           <Changelog />
         )}
         
+        {activeView === 'adminStats' && currentUser && currentUser.is_global_admin && (
+          <AdminDashboard />
+        )}
+        
         {activeView === 'providerDetail' && selectedProvider && (
           <ProviderDetail 
             provider={selectedProvider}
@@ -124,7 +140,7 @@ function App() {
       color: 'var(--text)',
       transition: 'background-color 0.3s, color 0.3s',
     }}>
-      {token && currentUser && (
+      {token && currentUser ? (
         <Header 
           currentUser={currentUser} 
           activeView={activeView}
@@ -139,13 +155,20 @@ function App() {
           isDarkTheme={isDarkTheme}
           toggleTheme={toggleTheme}
         />
+      ) : (
+        <PublicHeader
+          activeView={activeView}
+          setActiveView={setActiveView}
+          isDarkTheme={isDarkTheme}
+          toggleTheme={toggleTheme}
+        />
       )}
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         {renderContent()}
       </div>
 
-      {token && currentUser && <Footer />}
+      <Footer />
     </div>
   );
 }

@@ -6,8 +6,9 @@ from typing import Optional, Dict, Any
 
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
-from app.db.session import get_db
+from app.db.session import get_db, get_sync_db
 from app.models.user import UserModel
 from app.security.password import verify_password
 from app.security.token import oauth2_scheme, decode_token
@@ -160,3 +161,65 @@ async def get_current_user(
         raise credentials_exception
         
     return user
+
+
+# Synchronous versions for compatibility with sync database sessions
+def get_current_user_sync(
+    token: str = Depends(oauth2_scheme), db: Session = Depends(get_sync_db)
+) -> UserModel:
+    """
+    Synchronous version of get_current_user for use with sync database sessions.
+    
+    Args:
+        token: The JWT token
+        db: Database session
+        
+    Returns:
+        UserModel: The authenticated user
+        
+    Raises:
+        HTTPException: If authentication fails
+    """
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    
+    try:
+        payload = decode_token(token)
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+    except HTTPException:
+        raise
+    except Exception:
+        raise credentials_exception
+        
+    user = db.query(UserModel).filter(UserModel.username == username).first()
+    if user is None:
+        logger.warning(f"User from token not found: {username}")
+        raise credentials_exception
+        
+    return user
+
+
+def require_admin(current_user: UserModel = Depends(get_current_user_sync)) -> UserModel:
+    """
+    Dependency that requires admin privileges.
+    
+    Args:
+        current_user: The current user
+        
+    Returns:
+        UserModel: The authenticated admin user
+        
+    Raises:
+        HTTPException: If the user is not an admin
+    """
+    if not current_user.is_global_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required"
+        )
+    return current_user

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { apiRequest } from '../../utils/apiUtils';
-import { Globe, Server, Plus, Search, ArrowLeft, Database, ExternalLink, Edit, Trash2 } from 'lucide-react';
+import { Globe, Server, Plus, Search, ArrowLeft, Database, ExternalLink, Edit, Trash2, BarChart3 } from 'lucide-react';
 import Alert from '../ui/Alert';
 import Modal from '../ui/Modal';
 import Breadcrumbs from '../ui/Breadcrumbs';
@@ -10,6 +10,7 @@ import DatasetCard from '../datasets/DatasetCard';
 import DatasetForm from '../datasets/DatasetForm';
 import ProviderForm from './ProviderForm';
 import ConfirmModal from '../ui/ConfirmModal';
+import { ProviderStatistics } from '../statistics';
 
 const ProviderDetail = ({ provider, onBack, currentUser }) => {
   const { handleTokenExpiration } = useAuth();
@@ -23,6 +24,7 @@ const ProviderDetail = ({ provider, onBack, currentUser }) => {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [editingProvider, setEditingProvider] = useState(null);
   const [addingProvider, setAddingProvider] = useState(false);
+  const [showStatistics, setShowStatistics] = useState(false);
 
   useEffect(() => {
     fetchDatasets();
@@ -339,7 +341,10 @@ const ProviderDetail = ({ provider, onBack, currentUser }) => {
           <div style={{ 
             paddingLeft: '1.5rem',
             position: 'relative',
-            zIndex: 1
+            zIndex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.5rem'
           }}>
             {/* Datasets count */}
             <div style={{ 
@@ -370,6 +375,38 @@ const ProviderDetail = ({ provider, onBack, currentUser }) => {
                 {datasets.length === 1 ? 'dataset' : 'datasets'}
               </span>
             </div>
+
+            {/* Statistics link */}
+            <button
+              onClick={() => setShowStatistics(true)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                fontSize: '0.8125rem',
+                color: 'var(--primary)',
+                cursor: 'pointer',
+                textDecoration: 'none',
+                transition: 'opacity 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.opacity = '0.8';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = '1';
+              }}
+            >
+              <BarChart3 
+                size={15} 
+                style={{ 
+                  marginRight: '0.75rem', 
+                  flexShrink: 0 
+                }} 
+              />
+              View detailed statistics
+            </button>
           </div>
         </div>
         
@@ -718,6 +755,19 @@ const ProviderDetail = ({ provider, onBack, currentUser }) => {
           }}
           onTokenExpired={handleTokenExpiration}
           currentUser={currentUser}
+        />
+      </Modal>
+
+      {/* Provider Statistics Modal */}
+      <Modal
+        isOpen={showStatistics}
+        onClose={() => setShowStatistics(false)}
+        title={`Statistics: ${provider.name}`}
+        size="large"
+      >
+        <ProviderStatistics 
+          providerId={provider.id}
+          providerName={provider.name}
         />
       </Modal>
     </div>

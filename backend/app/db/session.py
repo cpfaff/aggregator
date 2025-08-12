@@ -28,3 +28,15 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         yield session
     finally:
         await session.close()
+
+
+def get_sync_db() -> Generator[Session, None, None]:
+    """
+    Dependency for synchronous database session injection.
+    Yields a synchronous database session and ensures proper cleanup after use.
+    """
+    session = SessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()

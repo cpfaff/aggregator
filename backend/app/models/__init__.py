@@ -8,6 +8,7 @@ from app.models.user import UserModel
 from app.models.provider import DataProviderModel
 from app.models.dataset import DatasetModel, XmlArchiveModel, UsefulLinkModel
 from app.models.validation import ValidationJobModel
+from app.models.statistics import StatisticModel, MetricType, EntityType, Period
 
 # Export all models
 __all__ = [
@@ -19,4 +20,8 @@ __all__ = [
     "XmlArchiveModel",
     "UsefulLinkModel",
     "ValidationJobModel",
+    "StatisticModel",
+    "MetricType",
+    "EntityType",
+    "Period",
 ]

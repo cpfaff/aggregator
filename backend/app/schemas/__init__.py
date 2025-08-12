@@ -28,6 +28,20 @@ from app.schemas.common import (
     PaginatedDatasets,
     PaginatedUsers
 )
+from app.schemas.statistics import (
+    StatisticBase,
+    StatisticCreate,
+    StatisticUpdate,
+    StatisticResponse,
+    TimeSeriesPoint,
+    TimeSeriesResponse,
+    StatisticsQuery,
+    OverviewStats,
+    ProviderStats,
+    DatasetStats,
+    QualityMetrics,
+    GrowthMetrics
+)
 
 __all__ = [
     "User",
@@ -46,5 +60,17 @@ __all__ = [
     "TokenResponse",
     "PaginatedProviders",
     "PaginatedDatasets",
-    "PaginatedUsers"
+    "PaginatedUsers",
+    "StatisticBase",
+    "StatisticCreate",
+    "StatisticUpdate",
+    "StatisticResponse",
+    "TimeSeriesPoint",
+    "TimeSeriesResponse",
+    "StatisticsQuery",
+    "OverviewStats",
+    "ProviderStats",
+    "DatasetStats",
+    "QualityMetrics",
+    "GrowthMetrics"
 ]
