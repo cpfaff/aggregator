@@ -14,7 +14,6 @@ import {
   RefreshCw, 
   Users,
   Server,
-  Play,
   RotateCcw
 } from 'lucide-react';
 
@@ -341,12 +340,6 @@ function AdminDashboard() {
         mode="content-relative"
         offset={16}
         actions={[
-          {
-            icon: <Play size={24} />,
-            label: 'Trigger Collection',
-            onClick: triggerStatsCollection,
-            color: 'var(--primary)'
-          },
           {
             icon: <RefreshCw size={24} />,
             label: 'Manual Refresh',
