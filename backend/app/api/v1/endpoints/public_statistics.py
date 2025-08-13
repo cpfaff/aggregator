@@ -199,6 +199,62 @@ async def get_growth_timeline(
             for stat in validation_stats_raw
         ]
         
+        # Add today's data if there are new dataset registrations (hybrid approach)
+        today = date.today()
+        today_start = datetime.combine(today, datetime.min.time())
+        
+        # Check if today is missing from historical data and if there are new registrations today
+        has_today_data = any(point.date == today for point in datasets_timeline)
+        
+        if not has_today_data:
+            # Get today's dataset registrations count
+            todays_new_datasets = db.query(func.count(DatasetModel.id)).filter(
+                DatasetModel.created_at >= today_start
+            ).scalar() or 0
+            
+            # Only add today's data point if there are actual registrations
+            if todays_new_datasets > 0:
+                # Get current total dataset count for today's cumulative value
+                current_total_datasets = db.query(func.count(DatasetModel.id)).scalar() or 0
+                
+                # Add today's data point to datasets timeline
+                datasets_timeline.append(TimeSeriesPoint(
+                    date=today,
+                    value=float(current_total_datasets),
+                    extra_data={
+                        'records_aggregated': 1,
+                        'is_current_day': True,
+                        'new_registrations_today': todays_new_datasets
+                    }
+                ))
+                
+                # For providers timeline, add today's data if not already present
+                has_today_providers = any(point.date == today for point in providers_timeline)
+                if not has_today_providers:
+                    current_total_providers = db.query(func.count(DataProviderModel.id)).scalar() or 0
+                    providers_timeline.append(TimeSeriesPoint(
+                        date=today,
+                        value=float(current_total_providers),
+                        extra_data={'records_aggregated': 1, 'is_current_day': True}
+                    ))
+                
+                # For validation timeline, add today's validation activity if any
+                has_today_validation = any(point.date == today for point in validation_timeline)
+                if not has_today_validation:
+                    todays_validations = db.query(func.count(ValidationJobModel.id)).filter(
+                        ValidationJobModel.created_at >= today_start
+                    ).scalar() or 0
+                    
+                    if todays_validations > 0:
+                        validation_timeline.append(TimeSeriesPoint(
+                            date=today,
+                            value=float(todays_validations),
+                            extra_data={
+                                'records_aggregated': 1,
+                                'is_current_day': True
+                            }
+                        ))
+        
         return GrowthMetrics(
             datasets_timeline=datasets_timeline,
             providers_timeline=providers_timeline,
