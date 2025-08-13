@@ -5,13 +5,17 @@ import StatCard from '../ui/StatCard';
 import TimeSeriesChart from '../ui/TimeSeriesChart';
 import PieChart from '../ui/PieChart';
 import Alert from '../ui/Alert';
+import Breadcrumbs from '../ui/Breadcrumbs';
+import ActionMenu from '../ui/ActionMenu';
 import { 
   Database, 
   FileText, 
   CheckCircle, 
   RefreshCw, 
   Users,
-  Server
+  Server,
+  Play,
+  RotateCcw
 } from 'lucide-react';
 
 /**
@@ -35,6 +39,12 @@ function AdminDashboard() {
   const intervalRef = useRef(null);
   const countdownRef = useRef(null);
   const REFRESH_INTERVAL = 30000; // 30 seconds
+
+  // Breadcrumb navigation items
+  const breadcrumbItems = [
+    { label: 'Home', onClick: () => window.location.href = '/' },
+    { label: 'Statistics', onClick: null }
+  ];
 
   const fetchAllStats = useCallback(async (isAutoRefresh = false) => {
     try {
@@ -209,7 +219,17 @@ function AdminDashboard() {
 
   if (isLoading) {
     return (
-      <div style={{ padding: '1.5rem' }}>
+      <div 
+        style={{ 
+          flexGrow: 1,
+          padding: '2rem 1rem',
+          maxWidth: '1200px',
+          margin: '0 auto',
+          width: '100%',
+        }}
+        className="content-container"
+      >
+        <Breadcrumbs items={breadcrumbItems} />
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -231,78 +251,116 @@ function AdminDashboard() {
 
   if (error && !overviewStats) {
     return (
-      <div style={{ padding: '1.5rem' }}>
+      <div 
+        style={{ 
+          flexGrow: 1,
+          padding: '2rem 1rem',
+          maxWidth: '1200px',
+          margin: '0 auto',
+          width: '100%',
+        }}
+        className="content-container"
+      >
+        <Breadcrumbs items={breadcrumbItems} />
         <Alert type="error">{error}</Alert>
       </div>
     );
   }
 
   return (
-    <div style={{ padding: '1.5rem', maxWidth: '1400px', margin: '0 auto' }}>
-      {/* Header */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
+    <div 
+      style={{ 
+        flexGrow: 1,
+        padding: '2rem 1rem',
+        maxWidth: '1200px',
+        margin: '0 auto',
+        width: '100%',
+      }}
+      className="content-container"
+    >
+      <Breadcrumbs items={breadcrumbItems} />
+      
+      {/* Page title and actions */}
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
         alignItems: 'center',
-        marginBottom: '2rem'
+        marginBottom: '1rem',
       }}>
-        <div>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '1rem',
-            marginBottom: '0.5rem'
-          }}>
-            <h2 style={{
-              fontSize: '1.75rem',
-              fontWeight: 700,
-              color: 'var(--text)',
-              margin: 0
-            }}>
-              Admin Dashboard
-            </h2>
-            {autoRefreshEnabled && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.25rem',
-                padding: '0.25rem 0.75rem',
-                backgroundColor: 'var(--success)',
-                color: 'white',
-                borderRadius: '1rem',
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-                animation: 'pulse 3s infinite'
-              }}>
-                <div style={{
-                  width: '6px',
-                  height: '6px',
-                  backgroundColor: 'white',
-                  borderRadius: '50%',
-                  animation: 'pulse 1s infinite'
-                }} />
-                Live Data
-              </div>
-            )}
-          </div>
-          <p style={{
-            color: 'var(--text-light)',
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1rem'
+        }}>
+          <h2 style={{
+            fontSize: '1.5rem',
+            fontWeight: 600,
+            marginLeft: '0.1rem',
+            color: 'var(--text)',
             margin: 0
           }}>
-            Real-time system statistics and performance metrics
-          </p>
-          <p style={{
-            color: 'var(--text-light)',
-            fontSize: '0.875rem',
-            margin: '0.25rem 0 0 0'
-          }}>
-            Data updates automatically every 30 seconds
-          </p>
+            Statistics
+          </h2>
+          {autoRefreshEnabled && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.25rem',
+              padding: '0.25rem 0.75rem',
+              backgroundColor: 'var(--success)',
+              color: 'white',
+              borderRadius: '1rem',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              animation: 'pulse 3s infinite'
+            }}>
+              <div style={{
+                width: '6px',
+                height: '6px',
+                backgroundColor: 'white',
+                borderRadius: '50%',
+                animation: 'pulse 1s infinite'
+              }} />
+              Live Data
+            </div>
+          )}
         </div>
-        
       </div>
+      
+      <p style={{
+        color: 'var(--text-light)',
+        margin: '0 0 2rem 0'
+      }}>
+        Real-time system statistics and performance metrics. Data updates automatically every 30 seconds.
+      </p>
+
+      {/* ActionMenu for admin controls */}
+      <ActionMenu
+        mode="content-relative"
+        offset={16}
+        actions={[
+          {
+            icon: <Play size={24} />,
+            label: 'Trigger Collection',
+            onClick: triggerStatsCollection,
+            color: 'var(--primary)'
+          },
+          {
+            icon: <RefreshCw size={24} />,
+            label: 'Manual Refresh',
+            onClick: handleManualRefresh,
+            color: 'var(--success)'
+          },
+          {
+            icon: <RotateCcw size={24} />,
+            label: autoRefreshEnabled ? 'Disable Auto-refresh' : 'Enable Auto-refresh',
+            onClick: toggleAutoRefresh,
+            color: autoRefreshEnabled ? 'var(--warning)' : 'var(--success)'
+          }
+        ]}
+      />
 
       {error && (
         <Alert type="warning" style={{ marginBottom: '1.5rem' }}>
