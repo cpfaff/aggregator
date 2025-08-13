@@ -2,13 +2,13 @@ import React from 'react';
 
 /**
  * StatCard component for displaying key metrics
+ * Pure minimalist design with centered content
  */
 function StatCard({ 
   title, 
   value, 
   previousValue, 
   unit = '', 
-  icon, 
   color = 'var(--primary)',
   isLoading = false,
   isLiveData = false,
@@ -47,78 +47,21 @@ function StatCard({
       e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)';
     }}
     >
-      {/* Enhanced color accent with gradient */}
-      <div style={{
-        position: 'absolute',
-        top: 0,
-        right: 0,
-        width: '5px',
-        height: '100%',
-        background: `linear-gradient(180deg, ${color} 0%, rgba(0,0,0,0.1) 100%)`,
-        borderTopRightRadius: '1rem',
-        borderBottomRightRadius: '1rem',
-      }} />
-      
-      {/* Subtle background pattern */}
-      <div style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundImage: `radial-gradient(circle at 100% 0%, ${color}10 0%, transparent 50%)`,
-        borderRadius: '1rem',
-        pointerEvents: 'none',
-      }} />
-      
-      <div style={{
-        display: 'flex',
-        alignItems: 'flex-start',
-        justifyContent: 'space-between',
-        marginBottom: '1.25rem',
-        position: 'relative',
-        zIndex: 1
-      }}>
-        <div style={{
-          color: 'var(--text-light)',
-          fontSize: '0.875rem',
-          fontWeight: 600,
-          lineHeight: '1.2',
-          textTransform: 'uppercase',
-          letterSpacing: '0.5px'
-        }}>
-          {title}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          {icon && (
-            <div style={{ 
-              color, 
-              opacity: 0.8,
-              padding: '0.5rem',
-              borderRadius: '0.5rem',
-              backgroundColor: `${color}15`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-              {icon}
-            </div>
-          )}
-        </div>
-      </div>
-
       {isLoading ? (
         <div style={{ 
           display: 'flex', 
+          flexDirection: 'column',
           alignItems: 'center', 
           gap: '0.75rem',
           position: 'relative', 
           zIndex: 1,
-          padding: '1rem 0'
+          padding: '1rem 0',
+          textAlign: 'center',
+          marginBottom: '1.25rem'
         }}>
           <div style={{
-            width: '24px',
-            height: '24px',
+            width: '40px',
+            height: '40px',
             border: '3px solid var(--border)',
             borderRadius: '50%',
             borderTopColor: color,
@@ -136,35 +79,39 @@ function StatCard({
           </span>
         </div>
       ) : (
-        <div style={{ position: 'relative', zIndex: 1 }}>
+        <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', marginBottom: '1.25rem' }}>
           <div style={{
-            fontSize: '2.5rem',
-            fontWeight: 800,
-            color: 'var(--text)',
-            marginBottom: '0.75rem',
-            lineHeight: '1'
+            marginBottom: '0.75rem'
           }}>
-            {typeof value === 'number' ? value.toLocaleString() : value}
-            {unit && (
-              <span style={{
-                fontSize: '1.125rem',
-                fontWeight: 600,
-                color: 'var(--text-light)',
-                marginLeft: '0.375rem',
-                background: 'var(--text-light)',
-                backgroundClip: 'text',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent'
-              }}>
-                {unit}
-              </span>
-            )}
+            <div style={{
+              fontSize: '2.5rem',
+              fontWeight: 800,
+              color: 'var(--text)',
+              lineHeight: '1'
+            }}>
+              {typeof value === 'number' ? value.toLocaleString() : value}
+              {unit && (
+                <span style={{
+                  fontSize: '1.125rem',
+                  fontWeight: 600,
+                  color: 'var(--text-light)',
+                  marginLeft: '0.375rem',
+                  background: 'var(--text-light)',
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent'
+                }}>
+                  {unit}
+                </span>
+              )}
+            </div>
           </div>
 
           {change !== null && (
             <div style={{
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
               gap: '0.5rem',
               fontSize: '0.8rem',
               color: change >= 0 ? 'var(--success)' : 'var(--error)',
@@ -172,7 +119,9 @@ function StatCard({
               padding: '0.375rem 0.75rem',
               borderRadius: '2rem',
               border: `1px solid ${change >= 0 ? 'var(--success)' : 'var(--error)'}20`,
-              fontWeight: 600
+              fontWeight: 600,
+              margin: '0 auto',
+              width: 'fit-content'
             }}>
               <span style={{
                 fontSize: '0.875rem',
@@ -193,6 +142,23 @@ function StatCard({
           )}
         </div>
       )}
+
+      <div style={{
+        position: 'relative',
+        zIndex: 1,
+        textAlign: 'center'
+      }}>
+        <div style={{
+          color: 'var(--text-light)',
+          fontSize: '0.875rem',
+          fontWeight: 600,
+          lineHeight: '1.2',
+          textTransform: 'uppercase',
+          letterSpacing: '0.5px'
+        }}>
+          {title}
+        </div>
+      </div>
     </div>
   );
 }

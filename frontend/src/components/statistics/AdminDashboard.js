@@ -8,15 +8,8 @@ import Alert from '../ui/Alert';
 import Breadcrumbs from '../ui/Breadcrumbs';
 import ActionMenu from '../ui/ActionMenu';
 import { 
-  Database, 
-  FileText, 
-  CheckCircle, 
   RefreshCw, 
-  Users,
-  Server,
-  RotateCcw,
-  TrendingUp,
-  Clock
+  RotateCcw
 } from 'lucide-react';
 
 /**
@@ -374,32 +367,28 @@ function AdminDashboard() {
           <StatCard
             title="Total Datasets"
             value={overviewStats.total_datasets}
-            icon={<Database size={20} />}
-            color="var(--primary)"
+            color="var(--neutral-primary)"
             isLiveData={autoRefreshEnabled}
           />
           
           <StatCard
             title="Data Providers"
             value={overviewStats.total_providers}
-            icon={<Users size={20} />}
-            color="var(--success)"
+            color="var(--neutral-secondary)"
             isLiveData={autoRefreshEnabled}
           />
           
           <StatCard
             title="Data Centers"
             value={overviewStats.total_datacenters}
-            icon={<Server size={20} />}
-            color="var(--warning)"
+            color="var(--neutral-tertiary)"
             isLiveData={autoRefreshEnabled}
           />
           
           <StatCard
             title="XML Archives"
             value={overviewStats.total_xml_archives}
-            icon={<FileText size={20} />}
-            color="var(--error)"
+            color="var(--neutral-secondary)"
             isLiveData={autoRefreshEnabled}
           />
           
@@ -408,8 +397,7 @@ function AdminDashboard() {
               title="Validation Success Rate"
               value={`${overviewStats.validation_success_rate.toFixed(1)}`}
               unit="%"
-              icon={<CheckCircle size={20} />}
-              color="var(--success)"
+              color="var(--success-professional)"
               isLiveData={autoRefreshEnabled}
             />
           )}
@@ -418,8 +406,7 @@ function AdminDashboard() {
             <StatCard
               title="Total Validations"
               value={qualityMetrics.total_validations}
-              icon={<Database size={20} />}
-              color="var(--info)"
+              color="var(--neutral-tertiary)"
               isLiveData={autoRefreshEnabled}
             />
           )}
@@ -429,8 +416,7 @@ function AdminDashboard() {
               title="Average Processing Time"
               value={`${qualityMetrics.average_processing_time.toFixed(1)}`}
               unit="s"
-              icon={<Clock size={20} />}
-              color="var(--warning)"
+              color="var(--performance-indicator)"
               isLiveData={autoRefreshEnabled}
             />
           )}
