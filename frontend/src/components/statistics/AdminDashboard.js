@@ -14,7 +14,9 @@ import {
   RefreshCw, 
   Users,
   Server,
-  RotateCcw
+  RotateCcw,
+  TrendingUp,
+  Clock
 } from 'lucide-react';
 
 /**
@@ -411,6 +413,27 @@ function AdminDashboard() {
               isLiveData={autoRefreshEnabled}
             />
           )}
+          
+          {qualityMetrics && (
+            <StatCard
+              title="Total Validations"
+              value={qualityMetrics.total_validations}
+              icon={<Database size={20} />}
+              color="var(--info)"
+              isLiveData={autoRefreshEnabled}
+            />
+          )}
+          
+          {qualityMetrics && qualityMetrics.average_processing_time && (
+            <StatCard
+              title="Average Processing Time"
+              value={`${qualityMetrics.average_processing_time.toFixed(1)}`}
+              unit="s"
+              icon={<Clock size={20} />}
+              color="var(--warning)"
+              isLiveData={autoRefreshEnabled}
+            />
+          )}
         </div>
       )}
 
@@ -440,101 +463,6 @@ function AdminDashboard() {
         />
       </div>
 
-      {/* Quality Metrics */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        marginBottom: '2rem'
-      }}>
-        {/* Quality Metrics */}
-        {qualityMetrics && (
-          <div style={{
-            backgroundColor: 'var(--card-bg)',
-            borderRadius: '0.75rem',
-            padding: '1.5rem',
-            border: '1px solid var(--border)'
-          }}>
-            <h3 style={{
-              fontSize: '1.125rem',
-              fontWeight: 600,
-              color: 'var(--text)',
-              marginBottom: '1.5rem'
-            }}>
-              Data Quality Metrics
-            </h3>
-            
-            <div style={{ display: 'grid', gap: '1.5rem' }}>
-              <div>
-                <div style={{
-                  fontSize: '0.875rem',
-                  color: 'var(--text-light)',
-                  marginBottom: '0.5rem'
-                }}>
-                  Total Validations
-                </div>
-                <div style={{
-                  fontSize: '1.5rem',
-                  fontWeight: 700,
-                  color: 'var(--text)'
-                }}>
-                  {qualityMetrics.total_validations.toLocaleString()}
-                </div>
-              </div>
-              
-              <div>
-                <div style={{
-                  fontSize: '0.875rem',
-                  color: 'var(--text-light)',
-                  marginBottom: '0.5rem'
-                }}>
-                  Success Rate
-                </div>
-                <div style={{
-                  fontSize: '1.5rem',
-                  fontWeight: 700,
-                  color: 'var(--success)'
-                }}>
-                  {qualityMetrics.success_rate.toFixed(1)}%
-                </div>
-                <div style={{
-                  width: '100%',
-                  height: '6px',
-                  backgroundColor: 'var(--border)',
-                  borderRadius: '3px',
-                  marginTop: '0.5rem',
-                  overflow: 'hidden'
-                }}>
-                  <div style={{
-                    width: `${qualityMetrics.success_rate}%`,
-                    height: '100%',
-                    backgroundColor: 'var(--success)',
-                    transition: 'width 0.3s ease'
-                  }} />
-                </div>
-              </div>
-              
-              {qualityMetrics.average_processing_time && (
-                <div>
-                  <div style={{
-                    fontSize: '0.875rem',
-                    color: 'var(--text-light)',
-                    marginBottom: '0.5rem'
-                  }}>
-                    Avg. Processing Time
-                  </div>
-                  <div style={{
-                    fontSize: '1.25rem',
-                    fontWeight: 600,
-                    color: 'var(--text)'
-                  }}>
-                    {qualityMetrics.average_processing_time.toFixed(1)}s
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
 
     </div>
   );

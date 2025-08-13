@@ -142,12 +142,7 @@ function StatCard({
             fontWeight: 800,
             color: 'var(--text)',
             marginBottom: '0.75rem',
-            lineHeight: '1',
-            background: `linear-gradient(135deg, var(--text) 0%, ${color} 100%)`,
-            backgroundClip: 'text',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            textShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+            lineHeight: '1'
           }}>
             {typeof value === 'number' ? value.toLocaleString() : value}
             {unit && (
