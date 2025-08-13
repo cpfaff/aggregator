@@ -68,6 +68,10 @@ node_modules/
 .docker-data/
 docker-volumes/
 
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
 # Misc
 .cache/
 .eslintcache

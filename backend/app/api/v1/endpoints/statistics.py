@@ -318,10 +318,16 @@ async def get_quality_metrics(
     Requires admin permissions.
     """
     try:
-        # Get validation job statistics
-        total_validations = db.query(func.count(ValidationJobModel.id)).scalar()
+        # Get validation job statistics for the last 30 days (same as overview endpoint)
+        thirty_days_ago = date.today() - timedelta(days=30)
+        
+        total_validations = db.query(func.count(ValidationJobModel.id)).filter(
+            ValidationJobModel.created_at >= thirty_days_ago
+        ).scalar()
+        
         successful_validations = db.query(func.count(ValidationJobModel.id)).filter(
             and_(
+                ValidationJobModel.created_at >= thirty_days_ago,
                 ValidationJobModel.status == 'completed',
                 ValidationJobModel.valid_files == ValidationJobModel.total_files,
                 ValidationJobModel.total_files > 0
@@ -343,9 +349,10 @@ async def get_quality_metrics(
         if latest_compliance_stat:
             abcd_compliance_rate = latest_compliance_stat.value
         
-        # Calculate average processing time
+        # Calculate average processing time for the last 30 days
         avg_processing_time = db.query(func.avg(ValidationJobModel.validation_time)).filter(
             and_(
+                ValidationJobModel.created_at >= thirty_days_ago,
                 ValidationJobModel.status == 'completed',
                 ValidationJobModel.validation_time.isnot(None)
             )
