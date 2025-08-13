@@ -389,7 +389,7 @@ function PublicStatsDashboard() {
             position: 'relative',
             zIndex: 1
           }}>
-            Data Quality & Validation
+            Data Quality Metrics
           </h2>
           
           <div style={{
@@ -487,7 +487,7 @@ function PublicStatsDashboard() {
                   textTransform: 'uppercase',
                   letterSpacing: '0.5px'
                 }}>
-                  Avg Processing Time
+                  Avg. Processing Time
                 </div>
               </div>
             )}
@@ -508,8 +508,8 @@ function PublicStatsDashboard() {
         {/* Registry Growth Timeline */}
         <TimeSeriesChart
           data={timelineData}
-          title="Registry Growth Over Time"
-          subtitle="Historical growth in dataset registrations"
+          title="Dataset Registration Timeline"
+          subtitle="Growth in total datasets over time"
           color="var(--primary)"
           height={400}
         />
@@ -517,8 +517,8 @@ function PublicStatsDashboard() {
         {/* Data Center Distribution */}
         <PieChart
           data={providerStats.datacenters || []}
-          title="Geographic Distribution"
-          subtitle="Datasets by data center location"
+          title="Data Center Distribution"
+          subtitle="Datasets by data center"
           height={400}
           colors={['var(--primary)', 'var(--success)', 'var(--warning)', 'var(--error)']}
         />

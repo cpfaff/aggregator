@@ -351,8 +351,8 @@ function ProviderStatistics({ providerId, providerName }) {
       {/* Dataset Count Timeline */}
       <TimeSeriesChart
         data={timeSeriesData}
-        title="Dataset Count Over Time"
-        subtitle="Historical view of datasets registered by this provider"
+        title="Dataset Registration Timeline"
+        subtitle="Growth in total datasets over time"
         color="var(--primary)"
         height={300}
         isLoading={isTimeSeriesLoading}

@@ -283,7 +283,7 @@ function AdminDashboard() {
                   borderRadius: '50%',
                   animation: 'pulse 1s infinite'
                 }} />
-                Live
+                Live Data
               </div>
             )}
           </div>
