@@ -1,20 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { publicStatsApi } from '../../utils/statisticsApi';
 import StatCard from '../ui/StatCard';
 import TimeSeriesChart from '../ui/TimeSeriesChart';
 import PieChart from '../ui/PieChart';
 import Alert from '../ui/Alert';
-import Button from '../ui/Button';
 import { 
   Database, 
   FileText, 
-  RefreshCw, 
   Users,
   Server
 } from 'lucide-react';
 
 /**
  * PublicStatsDashboard component for external users to view registry statistics
+ * Features real-time auto-refresh every 60 seconds with manual controls
  */
 function PublicStatsDashboard() {
   const [overviewStats, setOverviewStats] = useState(null);
@@ -25,10 +24,22 @@ function PublicStatsDashboard() {
   const [healthStatus, setHealthStatus] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
+  const [nextRefreshIn, setNextRefreshIn] = useState(60);
+  
+  const intervalRef = useRef(null);
+  const countdownRef = useRef(null);
+  const REFRESH_INTERVAL = 60000; // 60 seconds for public dashboard
 
-  const fetchAllStats = async () => {
+  const fetchAllStats = useCallback(async (isAutoRefresh = false) => {
     try {
-      setIsLoading(true);
+      if (!isAutoRefresh) {
+        setIsLoading(true);
+      } else {
+        setIsRefreshing(true);
+      }
       setError('');
       
       const [overview, quality, providers, timeline, activity, health] = await Promise.all([
@@ -67,17 +78,90 @@ function PublicStatsDashboard() {
       setRecentActivity(activity);
       setHealthStatus(health);
       
+      // Update last refreshed timestamp
+      setLastUpdated(new Date());
+      
     } catch (err) {
       console.error('Error fetching public statistics:', err);
-      setError('Failed to load statistics: ' + err.message);
+      // Only show prominent error for manual refresh, not auto-refresh
+      if (!isAutoRefresh) {
+        setError('Failed to load statistics: ' + err.message);
+      } else {
+        // For auto-refresh failures, just log and continue silently
+        console.warn('Auto-refresh failed, will retry on next interval:', err.message);
+      }
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, []);
+
+  // Auto-refresh functionality
+  const startAutoRefresh = useCallback(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    
+    setNextRefreshIn(60);
+    
+    // Start countdown timer
+    countdownRef.current = setInterval(() => {
+      setNextRefreshIn(prev => {
+        if (prev <= 1) {
+          return 60; // Reset countdown
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    
+    // Start auto-refresh interval
+    intervalRef.current = setInterval(() => {
+      if (autoRefreshEnabled) {
+        fetchAllStats(true);
+      }
+    }, REFRESH_INTERVAL);
+  }, [autoRefreshEnabled, fetchAllStats]);
+  
+  const stopAutoRefresh = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    if (countdownRef.current) {
+      clearInterval(countdownRef.current);
+      countdownRef.current = null;
+    }
+  }, []);
+  
+  const toggleAutoRefresh = () => {
+    setAutoRefreshEnabled(prev => {
+      const newValue = !prev;
+      if (newValue) {
+        startAutoRefresh();
+      } else {
+        stopAutoRefresh();
+        setNextRefreshIn(0);
+      }
+      return newValue;
+    });
+  };
+  
+  const handleManualRefresh = () => {
+    fetchAllStats(false);
+    if (autoRefreshEnabled) {
+      startAutoRefresh(); // Reset the auto-refresh timer
     }
   };
-
+  
   useEffect(() => {
     fetchAllStats();
-  }, []);
+    if (autoRefreshEnabled) {
+      startAutoRefresh();
+    }
+    
+    return () => {
+      stopAutoRefresh();
+    };
+  }, [fetchAllStats, autoRefreshEnabled, startAutoRefresh, stopAutoRefresh]);
 
   if (isLoading) {
     return (
@@ -105,10 +189,6 @@ function PublicStatsDashboard() {
     return (
       <div style={{ padding: '1.5rem' }}>
         <Alert type="error">{error}</Alert>
-        <Button onClick={fetchAllStats} style={{ marginTop: '1rem' }}>
-          <RefreshCw size={16} />
-          Retry
-        </Button>
       </div>
     );
   }
@@ -140,18 +220,61 @@ function PublicStatsDashboard() {
           zIndex: -1
         }} />
         
-        <h1 style={{
-          fontSize: 'clamp(2rem, 5vw, 3rem)',
-          fontWeight: 800,
-          background: 'linear-gradient(135deg, var(--text) 0%, var(--primary) 100%)',
-          backgroundClip: 'text',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          marginBottom: '1.5rem',
-          letterSpacing: '-2px'
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          flexWrap: 'wrap',
+          gap: '1rem',
+          marginBottom: '1.5rem'
         }}>
-          GFBio Registry Statistics
-        </h1>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '1rem',
+            flexWrap: 'wrap'
+          }}>
+            <h1 style={{
+              fontSize: 'clamp(2rem, 5vw, 3rem)',
+              fontWeight: 800,
+              background: 'linear-gradient(135deg, var(--text) 0%, var(--primary) 100%)',
+              backgroundClip: 'text',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              letterSpacing: '-2px',
+              margin: 0
+            }}>
+              GFBio Registry Statistics
+            </h1>
+            {autoRefreshEnabled && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.25rem',
+                padding: '0.5rem 1rem',
+                backgroundColor: 'var(--success)',
+                color: 'white',
+                borderRadius: '1.5rem',
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                animation: 'pulse 3s infinite',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+              }}>
+                <div style={{
+                  width: '8px',
+                  height: '8px',
+                  backgroundColor: 'white',
+                  borderRadius: '50%',
+                  animation: 'pulse 1s infinite'
+                }} />
+                Live Data
+              </div>
+            )}
+          </div>
+          
+        </div>
         <p style={{
           fontSize: '1.25rem',
           color: 'var(--text-light)',
@@ -184,6 +307,7 @@ function PublicStatsDashboard() {
             value={overviewStats.total_datasets}
             icon={<Database size={20} />}
             color="var(--primary)"
+            isLiveData={autoRefreshEnabled}
           />
           
           <StatCard
@@ -191,6 +315,7 @@ function PublicStatsDashboard() {
             value={overviewStats.total_providers}
             icon={<Users size={20} />}
             color="var(--success)"
+            isLiveData={autoRefreshEnabled}
           />
           
           <StatCard
@@ -198,6 +323,7 @@ function PublicStatsDashboard() {
             value={overviewStats.total_datacenters}
             icon={<Server size={20} />}
             color="var(--warning)"
+            isLiveData={autoRefreshEnabled}
           />
           
           <StatCard
@@ -205,6 +331,7 @@ function PublicStatsDashboard() {
             value={overviewStats.total_xml_archives}
             icon={<FileText size={20} />}
             color="var(--error)"
+            isLiveData={autoRefreshEnabled}
           />
         </div>
       )}
@@ -515,6 +642,7 @@ function PublicStatsDashboard() {
           </div>
         )}
       </div>
+
 
     </div>
   );

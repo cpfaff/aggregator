@@ -168,7 +168,7 @@ function ProviderStatistics({ providerId, providerName }) {
           marginLeft: 'auto',
           marginRight: 'auto'
         }}>
-          Comprehensive overview of provider performance and data contributions
+          Real-time overview of provider performance and data contributions
         </p>
       </div>
 

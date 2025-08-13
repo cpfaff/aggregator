@@ -41,44 +41,21 @@ async def get_public_overview(
     """
     Get public overview statistics of the registry.
     No authentication required - shows basic registry information.
+    Real-time data with no caching for immediate updates.
     """
     try:
-        # Set cache headers for public endpoint
+        # Set no-cache headers for real-time updates
         if response:
-            response.headers["Cache-Control"] = "public, max-age=1800"  # 30 minutes
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
         
-        # Get latest counts from statistics table or fallback to direct queries
-        today = date.today()
+        # Get real-time counts directly from database for immediate accuracy
         
-        # Try to get latest statistics first
-        latest_dataset_count = db.query(StatisticModel).filter(
-            and_(
-                StatisticModel.metric_type == MetricType.DATASET_COUNT,
-                StatisticModel.entity_type == EntityType.SYSTEM,
-                StatisticModel.period == Period.DAILY
-            )
-        ).order_by(desc(StatisticModel.date)).first()
-        
-        latest_provider_count = db.query(StatisticModel).filter(
-            and_(
-                StatisticModel.metric_type == MetricType.PROVIDER_COUNT,
-                StatisticModel.entity_type == EntityType.SYSTEM,
-                StatisticModel.period == Period.DAILY
-            )
-        ).order_by(desc(StatisticModel.date)).first()
-        
-        latest_archive_count = db.query(StatisticModel).filter(
-            and_(
-                StatisticModel.metric_type == MetricType.XML_ARCHIVE_COUNT,
-                StatisticModel.entity_type == EntityType.SYSTEM,
-                StatisticModel.period == Period.DAILY
-            )
-        ).order_by(desc(StatisticModel.date)).first()
-        
-        # Fallback to direct queries if no statistics available
-        total_datasets = int(latest_dataset_count.value) if latest_dataset_count else db.query(func.count(DatasetModel.id)).scalar()
-        total_providers = int(latest_provider_count.value) if latest_provider_count else db.query(func.count(DataProviderModel.id)).scalar()
-        total_archives = int(latest_archive_count.value) if latest_archive_count else db.query(func.count(XmlArchiveModel.id)).scalar()
+        # Use direct database queries for real-time data instead of cached statistics
+        total_datasets = db.query(func.count(DatasetModel.id)).scalar()
+        total_providers = db.query(func.count(DataProviderModel.id)).scalar()
+        total_archives = db.query(func.count(XmlArchiveModel.id)).scalar()
         
         # Get actual data center count (providers marked as data centers)
         total_datacenters = db.query(func.count(DataProviderModel.id)).filter(
@@ -99,10 +76,8 @@ async def get_public_overview(
         if recent_validation_stat:
             validation_success_rate = recent_validation_stat.value
         
-        # Determine last updated time
+        # Set last updated to current time for real-time data
         last_updated = datetime.utcnow()
-        if latest_dataset_count and latest_dataset_count.created_at:
-            last_updated = latest_dataset_count.created_at
         
         return OverviewStats(
             total_datasets=total_datasets,
@@ -128,10 +103,13 @@ async def get_growth_timeline(
     """
     Get registry growth metrics over time.
     Shows dataset and provider growth trends for public viewing.
+    Real-time data with no caching for immediate updates.
     """
     try:
         if response:
-            response.headers["Cache-Control"] = "public, max-age=3600"  # 1 hour
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
         
         # Validate period
         try:
@@ -242,10 +220,13 @@ async def get_public_quality_metrics(
     """
     Get public data quality metrics showing overall registry health.
     Limited to aggregated statistics for public consumption.
+    Real-time data with no caching for immediate updates.
     """
     try:
         if response:
-            response.headers["Cache-Control"] = "public, max-age=1800"  # 30 minutes
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
         
         # Get aggregated validation statistics (last 30 days for performance)
         thirty_days_ago = date.today() - timedelta(days=30)
@@ -303,10 +284,13 @@ async def get_public_provider_stats(
     """
     Get public statistics about data providers.
     Shows aggregated information about top contributing providers.
+    Real-time data with no caching for immediate updates.
     """
     try:
         if response:
-            response.headers["Cache-Control"] = "public, max-age=1800"  # 30 minutes
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
         
         # Get provider dataset counts
         provider_stats = db.query(
@@ -374,10 +358,13 @@ async def get_recent_dataset_activity(
     """
     Get recent dataset registration and modification activity.
     Shows publicly available information about registry activity.
+    Real-time data with no caching for immediate updates.
     """
     try:
         if response:
-            response.headers["Cache-Control"] = "public, max-age=900"  # 15 minutes
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
         
         # Get recent dataset registrations (last 30 days)
         thirty_days_ago = datetime.utcnow() - timedelta(days=30)
@@ -448,10 +435,13 @@ async def get_registry_health(
 ) -> Dict[str, Any]:
     """
     Get basic health metrics of the registry system.
+    Real-time data with no caching for immediate updates.
     """
     try:
         if response:
-            response.headers["Cache-Control"] = "public, max-age=300"  # 5 minutes
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
         
         # Get basic counts
         total_datasets = db.query(func.count(DatasetModel.id)).scalar()

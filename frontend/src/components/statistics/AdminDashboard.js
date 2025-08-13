@@ -1,25 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { authStatsApi, publicStatsApi, statsUtils } from '../../utils/statisticsApi';
 import StatCard from '../ui/StatCard';
 import TimeSeriesChart from '../ui/TimeSeriesChart';
 import PieChart from '../ui/PieChart';
 import Alert from '../ui/Alert';
-import Button from '../ui/Button';
 import { 
   Database, 
-  Building, 
   FileText, 
   CheckCircle, 
   RefreshCw, 
-  Activity,
-  TrendingUp,
   Users,
   Server
 } from 'lucide-react';
 
 /**
  * AdminDashboard component for comprehensive system statistics
+ * Features real-time auto-refresh every 30 seconds with manual controls
  */
 function AdminDashboard() {
   const { handleTokenExpiration } = useAuth();
@@ -30,10 +27,22 @@ function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [isCollecting, setIsCollecting] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
+  const [nextRefreshIn, setNextRefreshIn] = useState(30);
+  
+  const intervalRef = useRef(null);
+  const countdownRef = useRef(null);
+  const REFRESH_INTERVAL = 30000; // 30 seconds
 
-  const fetchAllStats = async () => {
+  const fetchAllStats = useCallback(async (isAutoRefresh = false) => {
     try {
-      setIsLoading(true);
+      if (!isAutoRefresh) {
+        setIsLoading(true);
+      } else {
+        setIsRefreshing(true);
+      }
       setError('');
       
       // Fetch overview statistics
@@ -58,13 +67,23 @@ function AdminDashboard() {
       // Fetch time-series data for system dataset count
       await fetchTimeSeries();
       
+      // Update last refreshed timestamp
+      setLastUpdated(new Date());
+      
     } catch (err) {
       console.error('Error fetching admin statistics:', err);
-      setError('Failed to load statistics: ' + err.message);
+      // Only show prominent error for manual refresh, not auto-refresh
+      if (!isAutoRefresh) {
+        setError('Failed to load statistics: ' + err.message);
+      } else {
+        // For auto-refresh failures, just log and continue silently
+        console.warn('Auto-refresh failed, will retry on next interval:', err.message);
+      }
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
-  };
+  }, [handleTokenExpiration]);
 
   const fetchTimeSeries = async () => {
     try {
@@ -103,9 +122,72 @@ function AdminDashboard() {
     }
   };
 
+  // Auto-refresh functionality
+  const startAutoRefresh = useCallback(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    
+    setNextRefreshIn(30);
+    
+    // Start countdown timer
+    countdownRef.current = setInterval(() => {
+      setNextRefreshIn(prev => {
+        if (prev <= 1) {
+          return 30; // Reset countdown
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    
+    // Start auto-refresh interval
+    intervalRef.current = setInterval(() => {
+      if (autoRefreshEnabled) {
+        fetchAllStats(true);
+      }
+    }, REFRESH_INTERVAL);
+  }, [autoRefreshEnabled, fetchAllStats]);
+  
+  const stopAutoRefresh = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    if (countdownRef.current) {
+      clearInterval(countdownRef.current);
+      countdownRef.current = null;
+    }
+  }, []);
+  
+  const toggleAutoRefresh = () => {
+    setAutoRefreshEnabled(prev => {
+      const newValue = !prev;
+      if (newValue) {
+        startAutoRefresh();
+      } else {
+        stopAutoRefresh();
+        setNextRefreshIn(0);
+      }
+      return newValue;
+    });
+  };
+  
+  const handleManualRefresh = () => {
+    fetchAllStats(false);
+    if (autoRefreshEnabled) {
+      startAutoRefresh(); // Reset the auto-refresh timer
+    }
+  };
+  
   useEffect(() => {
     fetchAllStats();
-  }, []);
+    if (autoRefreshEnabled) {
+      startAutoRefresh();
+    }
+    
+    return () => {
+      stopAutoRefresh();
+    };
+  }, [fetchAllStats, autoRefreshEnabled, startAutoRefresh, stopAutoRefresh]);
 
   if (isLoading) {
     return (
@@ -133,10 +215,6 @@ function AdminDashboard() {
     return (
       <div style={{ padding: '1.5rem' }}>
         <Alert type="error">{error}</Alert>
-        <Button onClick={fetchAllStats} style={{ marginTop: '1rem' }}>
-          <RefreshCw size={16} />
-          Retry
-        </Button>
       </div>
     );
   }
@@ -151,30 +229,61 @@ function AdminDashboard() {
         marginBottom: '2rem'
       }}>
         <div>
-          <h2 style={{
-            fontSize: '1.75rem',
-            fontWeight: 700,
-            color: 'var(--text)',
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '1rem',
             marginBottom: '0.5rem'
           }}>
-            Admin Dashboard
-          </h2>
+            <h2 style={{
+              fontSize: '1.75rem',
+              fontWeight: 700,
+              color: 'var(--text)',
+              margin: 0
+            }}>
+              Admin Dashboard
+            </h2>
+            {autoRefreshEnabled && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.25rem',
+                padding: '0.25rem 0.75rem',
+                backgroundColor: 'var(--success)',
+                color: 'white',
+                borderRadius: '1rem',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                animation: 'pulse 3s infinite'
+              }}>
+                <div style={{
+                  width: '6px',
+                  height: '6px',
+                  backgroundColor: 'white',
+                  borderRadius: '50%',
+                  animation: 'pulse 1s infinite'
+                }} />
+                Live
+              </div>
+            )}
+          </div>
           <p style={{
             color: 'var(--text-light)',
             margin: 0
           }}>
-            System-wide statistics and performance metrics
+            Real-time system statistics and performance metrics
+          </p>
+          <p style={{
+            color: 'var(--text-light)',
+            fontSize: '0.875rem',
+            margin: '0.25rem 0 0 0'
+          }}>
+            Data updates automatically every 30 seconds
           </p>
         </div>
         
-        <Button 
-          onClick={triggerStatsCollection}
-          disabled={isCollecting}
-          isLoading={isCollecting}
-        >
-          <RefreshCw size={16} />
-          Collect Stats
-        </Button>
       </div>
 
       {error && (
@@ -196,6 +305,7 @@ function AdminDashboard() {
             value={overviewStats.total_datasets}
             icon={<Database size={20} />}
             color="var(--primary)"
+            isLiveData={autoRefreshEnabled}
           />
           
           <StatCard
@@ -203,6 +313,7 @@ function AdminDashboard() {
             value={overviewStats.total_providers}
             icon={<Users size={20} />}
             color="var(--success)"
+            isLiveData={autoRefreshEnabled}
           />
           
           <StatCard
@@ -210,6 +321,7 @@ function AdminDashboard() {
             value={overviewStats.total_datacenters}
             icon={<Server size={20} />}
             color="var(--warning)"
+            isLiveData={autoRefreshEnabled}
           />
           
           <StatCard
@@ -217,6 +329,7 @@ function AdminDashboard() {
             value={overviewStats.total_xml_archives}
             icon={<FileText size={20} />}
             color="var(--error)"
+            isLiveData={autoRefreshEnabled}
           />
           
           {overviewStats.validation_success_rate !== null && (
@@ -226,6 +339,7 @@ function AdminDashboard() {
               unit="%"
               icon={<CheckCircle size={20} />}
               color="var(--success)"
+              isLiveData={autoRefreshEnabled}
             />
           )}
         </div>
@@ -353,17 +467,6 @@ function AdminDashboard() {
         )}
       </div>
 
-      {/* Last Updated Information */}
-      {overviewStats?.last_updated && (
-        <div style={{
-          textAlign: 'center',
-          color: 'var(--text-light)',
-          fontSize: '0.875rem',
-          marginTop: '2rem'
-        }}>
-          Last updated: {new Date(overviewStats.last_updated).toLocaleString()}
-        </div>
-      )}
     </div>
   );
 }

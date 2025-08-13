@@ -222,7 +222,10 @@ function TimeSeriesChart({
       
       <div style={{ position: 'relative', zIndex: 1 }}>
         <ResponsiveContainer width="100%" height={height}>
-          <LineChart data={data} margin={{ top: 10, right: 30, left: 20, bottom: 10 }}>
+          <LineChart 
+            data={data} 
+            margin={{ top: 10, right: 30, left: 20, bottom: 10 }}
+          >
             {showGrid && (
               <CartesianGrid 
                 strokeDasharray="2 4" 
@@ -278,6 +281,8 @@ function TimeSeriesChart({
               }}
               strokeLinecap="round"
               strokeLinejoin="round"
+              isAnimationActive={false}
+              animationDuration={0}
             />
           </LineChart>
         </ResponsiveContainer>

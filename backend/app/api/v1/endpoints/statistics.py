@@ -46,40 +46,15 @@ async def get_system_overview(
     """
     Get system-wide statistics overview.
     Requires admin permissions.
+    Real-time data with no caching for immediate updates.
     """
     try:
-        # Get latest counts from statistics table or fallback to direct queries
-        today = date.today()
+        # Get real-time counts directly from database for immediate accuracy
         
-        # Try to get latest statistics first
-        latest_dataset_count = db.query(StatisticModel).filter(
-            and_(
-                StatisticModel.metric_type == MetricType.DATASET_COUNT,
-                StatisticModel.entity_type == EntityType.SYSTEM,
-                StatisticModel.period == Period.DAILY
-            )
-        ).order_by(desc(StatisticModel.date)).first()
-        
-        latest_provider_count = db.query(StatisticModel).filter(
-            and_(
-                StatisticModel.metric_type == MetricType.PROVIDER_COUNT,
-                StatisticModel.entity_type == EntityType.SYSTEM,
-                StatisticModel.period == Period.DAILY
-            )
-        ).order_by(desc(StatisticModel.date)).first()
-        
-        latest_archive_count = db.query(StatisticModel).filter(
-            and_(
-                StatisticModel.metric_type == MetricType.XML_ARCHIVE_COUNT,
-                StatisticModel.entity_type == EntityType.SYSTEM,
-                StatisticModel.period == Period.DAILY
-            )
-        ).order_by(desc(StatisticModel.date)).first()
-        
-        # Fallback to direct queries if no statistics available
-        total_datasets = int(latest_dataset_count.value) if latest_dataset_count else db.query(func.count(DatasetModel.id)).scalar()
-        total_providers = int(latest_provider_count.value) if latest_provider_count else db.query(func.count(DataProviderModel.id)).scalar()
-        total_archives = int(latest_archive_count.value) if latest_archive_count else db.query(func.count(XmlArchiveModel.id)).scalar()
+        # Use direct database queries for real-time data instead of cached statistics
+        total_datasets = db.query(func.count(DatasetModel.id)).scalar()
+        total_providers = db.query(func.count(DataProviderModel.id)).scalar()
+        total_archives = db.query(func.count(XmlArchiveModel.id)).scalar()
         
         # Get actual data center count (providers marked as data centers)
         total_datacenters = db.query(func.count(DataProviderModel.id)).filter(
@@ -99,10 +74,8 @@ async def get_system_overview(
                                         if job.status == 'completed' and job.valid_files == job.total_files and job.total_files > 0])
             validation_success_rate = (successful_validations / total_validations * 100) if total_validations > 0 else 0
         
-        # Determine last updated time
+        # Set last updated to current time for real-time data
         last_updated = datetime.utcnow()
-        if latest_dataset_count and latest_dataset_count.created_at:
-            last_updated = latest_dataset_count.created_at
         
         return OverviewStats(
             total_datasets=total_datasets,
@@ -140,18 +113,8 @@ async def get_provider_statistics(
         pass
     
     try:
-        # Get latest dataset count for this provider
-        latest_dataset_stat = db.query(StatisticModel).filter(
-            and_(
-                StatisticModel.metric_type == MetricType.PROVIDER_DATASET_COUNT,
-                StatisticModel.entity_type == EntityType.PROVIDER,
-                StatisticModel.entity_id == provider_id,
-                StatisticModel.period == Period.DAILY
-            )
-        ).order_by(desc(StatisticModel.date)).first()
-        
-        # Fallback to direct query
-        dataset_count = int(latest_dataset_stat.value) if latest_dataset_stat else db.query(func.count(DatasetModel.id)).filter(
+        # Get real-time dataset count for this provider
+        dataset_count = db.query(func.count(DatasetModel.id)).filter(
             DatasetModel.provider_id == provider_id
         ).scalar()
         
@@ -220,7 +183,9 @@ async def get_dataset_statistics(
         raise HTTPException(status_code=404, detail="Dataset not found")
     
     try:
-        # Get unit count from statistics
+        # For real-time data, calculate unit count and citation completeness dynamically
+        # Note: These may require additional logic to calculate in real-time
+        # For now, we'll check the latest statistics but not rely on them exclusively
         latest_unit_stat = db.query(StatisticModel).filter(
             and_(
                 StatisticModel.metric_type == MetricType.DATASET_UNIT_COUNT,
@@ -231,7 +196,6 @@ async def get_dataset_statistics(
         
         unit_count = int(latest_unit_stat.value) if latest_unit_stat else None
         
-        # Get citation completeness
         citation_stat = db.query(StatisticModel).filter(
             and_(
                 StatisticModel.metric_type == MetricType.CITATION_COMPLETENESS,

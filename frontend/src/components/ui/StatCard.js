@@ -11,6 +11,7 @@ function StatCard({
   icon, 
   color = 'var(--primary)',
   isLoading = false,
+  isLiveData = false,
   style = {}
 }) {
   // Calculate percentage change
@@ -88,20 +89,22 @@ function StatCard({
         }}>
           {title}
         </div>
-        {icon && (
-          <div style={{ 
-            color, 
-            opacity: 0.8,
-            padding: '0.5rem',
-            borderRadius: '0.5rem',
-            backgroundColor: `${color}15`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            {icon}
-          </div>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          {icon && (
+            <div style={{ 
+              color, 
+              opacity: 0.8,
+              padding: '0.5rem',
+              borderRadius: '0.5rem',
+              backgroundColor: `${color}15`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              {icon}
+            </div>
+          )}
+        </div>
       </div>
 
       {isLoading ? (
