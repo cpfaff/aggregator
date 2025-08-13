@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { publicStatsApi, statsUtils } from '../../utils/statisticsApi';
+import { publicStatsApi } from '../../utils/statisticsApi';
 import StatCard from '../ui/StatCard';
 import TimeSeriesChart from '../ui/TimeSeriesChart';
 import PieChart from '../ui/PieChart';
@@ -7,14 +7,10 @@ import Alert from '../ui/Alert';
 import Button from '../ui/Button';
 import { 
   Database, 
-  Building, 
   FileText, 
-  CheckCircle, 
   RefreshCw, 
-  Activity,
   Users,
-  Server,
-  Globe
+  Server
 } from 'lucide-react';
 
 /**
@@ -520,53 +516,6 @@ function PublicStatsDashboard() {
         )}
       </div>
 
-      {/* Footer Information */}
-      <div style={{
-        textAlign: 'center',
-        padding: '2rem',
-        backgroundColor: 'var(--subtle-bg)',
-        borderRadius: '1rem',
-        marginTop: '3rem'
-      }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '0.5rem',
-          marginBottom: '1rem'
-        }}>
-          <Globe size={20} color="var(--primary)" />
-          <h3 style={{
-            fontSize: '1.25rem',
-            fontWeight: 600,
-            color: 'var(--text)',
-            margin: 0
-          }}>
-            About GFBio Registry
-          </h3>
-        </div>
-        
-        <p style={{
-          color: 'var(--text-light)',
-          maxWidth: '800px',
-          margin: '0 auto 1rem',
-          lineHeight: 1.6
-        }}>
-          The German Federation for Biological Data (GFBio) registry serves as a central 
-          hub for biological datasets across Germany. Our platform enables researchers 
-          to discover, access, and contribute high-quality biological data while maintaining 
-          rigorous validation standards.
-        </p>
-        
-        {overviewStats?.last_updated && (
-          <div style={{
-            color: 'var(--text-light)',
-            fontSize: '0.875rem'
-          }}>
-            Statistics last updated: {new Date(overviewStats.last_updated).toLocaleString()}
-          </div>
-        )}
-      </div>
     </div>
   );
 }
