@@ -55,6 +55,7 @@ function PublicStatsDashboard() {
       setQualityMetrics(quality);
       
       // Transform provider stats data for compatibility with charts
+      // Only update if data has actually changed to prevent chart re-renders
       const transformedProviders = {
         ...providers,
         // Transform datacenter data for PieChart component
@@ -64,7 +65,16 @@ function PublicStatsDashboard() {
           provider_count: dc.provider_count
         }))
       };
-      setProviderStats(transformedProviders);
+      
+      // Only update providerStats if the data has actually changed
+      setProviderStats(prev => {
+        const prevDatacentersStr = JSON.stringify(prev?.datacenters || []);
+        const newDatacentersStr = JSON.stringify(transformedProviders.datacenters);
+        if (prevDatacentersStr !== newDatacentersStr) {
+          return transformedProviders;
+        }
+        return prev;
+      });
       
       // Format timeline data for the chart
       const formattedTimeline = (timeline.datasets_timeline || []).map(point => ({
@@ -73,7 +83,16 @@ function PublicStatsDashboard() {
         fullDate: point.date,
         ...point.extra_data
       }));
-      setTimelineData(formattedTimeline);
+      
+      // Only update timelineData if the data has actually changed
+      setTimelineData(prev => {
+        const prevTimelineStr = JSON.stringify(prev);
+        const newTimelineStr = JSON.stringify(formattedTimeline);
+        if (prevTimelineStr !== newTimelineStr) {
+          return formattedTimeline;
+        }
+        return prev;
+      });
       
       setRecentActivity(activity);
       setHealthStatus(health);

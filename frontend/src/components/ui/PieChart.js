@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   PieChart as RechartsPieChart,
   Pie,
@@ -26,6 +26,17 @@ function PieChart({
   innerRadius = 0,
   outerRadius = 80
 }) {
+  // Always call hooks at the top level to avoid conditional hook calls
+  // Add total to each data point for percentage calculation
+  // Use useMemo to prevent unnecessary recalculations during refreshes
+  const enhancedData = useMemo(() => {
+    if (!data || data.length === 0) return [];
+    const total = data.reduce((sum, item) => sum + item[dataKey], 0);
+    return data.map(item => ({
+      ...item,
+      total
+    }));
+  }, [data, dataKey]);
   if (isLoading) {
     return (
       <div style={{
@@ -181,12 +192,6 @@ function PieChart({
     );
   };
 
-  // Add total to each data point for percentage calculation
-  const total = data.reduce((sum, item) => sum + item[dataKey], 0);
-  const enhancedData = data.map(item => ({
-    ...item,
-    total
-  }));
 
   return (
     <div style={{
@@ -256,6 +261,8 @@ function PieChart({
               nameKey={nameKey}
               stroke="rgba(255, 255, 255, 0.2)"
               strokeWidth={2}
+              isAnimationActive={false}
+              animationDuration={0}
             >
               {enhancedData.map((entry, index) => (
                 <Cell 
@@ -273,4 +280,46 @@ function PieChart({
   );
 }
 
-export default PieChart;
+// Memoize component to prevent unnecessary re-renders during refresh cycles
+export default React.memo(PieChart, (prevProps, nextProps) => {
+  // Deep comparison for data arrays - only re-render if actual content changes
+  const shallowDataEqual = (prev, next) => {
+    if (prev === next) return true;
+    if (!prev || !next) return prev === next;
+    if (prev.length !== next.length) return false;
+    
+    return prev.every((item, index) => {
+      const nextItem = next[index];
+      if (!nextItem) return false;
+      
+      // Compare key properties that affect chart rendering
+      return (
+        item[prevProps.dataKey] === nextItem[nextProps.dataKey] &&
+        item[prevProps.nameKey] === nextItem[nextProps.nameKey]
+      );
+    });
+  };
+  
+  // Array comparison for colors
+  const arraysEqual = (a, b) => {
+    if (a === b) return true;
+    if (!a || !b) return a === b;
+    return a.length === b.length && a.every((val, i) => val === b[i]);
+  };
+  
+  return (
+    shallowDataEqual(prevProps.data, nextProps.data) &&
+    prevProps.dataKey === nextProps.dataKey &&
+    prevProps.nameKey === nextProps.nameKey &&
+    prevProps.height === nextProps.height &&
+    prevProps.isLoading === nextProps.isLoading &&
+    prevProps.error === nextProps.error &&
+    prevProps.title === nextProps.title &&
+    prevProps.subtitle === nextProps.subtitle &&
+    prevProps.innerRadius === nextProps.innerRadius &&
+    prevProps.outerRadius === nextProps.outerRadius &&
+    prevProps.showTooltip === nextProps.showTooltip &&
+    prevProps.showLegend === nextProps.showLegend &&
+    arraysEqual(prevProps.colors, nextProps.colors)
+  );
+});

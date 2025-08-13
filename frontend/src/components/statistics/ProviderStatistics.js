@@ -50,7 +50,16 @@ function ProviderStatistics({ providerId, providerName }) {
       
       const data = await authStatsApi.getTimeSeries(params, handleTokenExpiration);
       const formattedData = statsUtils.formatTimeSeriesForChart(data.data_points);
-      setTimeSeriesData(formattedData);
+      
+      // Only update if data has actually changed to prevent chart re-renders
+      setTimeSeriesData(prev => {
+        const prevDataStr = JSON.stringify(prev);
+        const newDataStr = JSON.stringify(formattedData);
+        if (prevDataStr !== newDataStr) {
+          return formattedData;
+        }
+        return prev;
+      });
       
     } catch (err) {
       console.error('Error fetching provider time-series:', err);

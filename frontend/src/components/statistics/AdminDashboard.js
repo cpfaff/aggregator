@@ -57,12 +57,21 @@ function AdminDashboard() {
       const providers = await publicStatsApi.getProviders();
       
       // Transform datacenter data for PieChart component
+      // Only update if data has actually changed to prevent chart re-renders
       const transformedDatacenters = (providers.datacenters || []).map(dc => ({
         name: dc.datacenter,
         value: dc.dataset_count,
         provider_count: dc.provider_count
       }));
-      setDatacenterStats(transformedDatacenters);
+      
+      setDatacenterStats(prev => {
+        const prevDataStr = JSON.stringify(prev);
+        const newDataStr = JSON.stringify(transformedDatacenters);
+        if (prevDataStr !== newDataStr) {
+          return transformedDatacenters;
+        }
+        return prev;
+      });
       
       // Fetch time-series data for system dataset count
       await fetchTimeSeries();
@@ -96,7 +105,16 @@ function AdminDashboard() {
       
       const data = await authStatsApi.getTimeSeries(params, handleTokenExpiration);
       const formattedData = statsUtils.formatTimeSeriesForChart(data.data_points);
-      setTimeSeriesData(formattedData);
+      
+      // Only update if data has actually changed to prevent chart re-renders
+      setTimeSeriesData(prev => {
+        const prevDataStr = JSON.stringify(prev);
+        const newDataStr = JSON.stringify(formattedData);
+        if (prevDataStr !== newDataStr) {
+          return formattedData;
+        }
+        return prev;
+      });
       
     } catch (err) {
       console.error('Error fetching time-series:', err);

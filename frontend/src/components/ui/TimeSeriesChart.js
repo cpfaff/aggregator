@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   LineChart,
   Line,
@@ -25,6 +25,24 @@ function TimeSeriesChart({
   title = '',
   subtitle = ''
 }) {
+  // Always call hooks at the top level to avoid conditional hook calls
+  // Memoize axis domain calculations to prevent flickering during refreshes
+  const yDomain = useMemo(() => {
+    if (!data || data.length === 0) {
+      return null;
+    }
+    
+    // Calculate stable Y domain with padding
+    const yValues = data.map(item => item[dataKey]).filter(val => typeof val === 'number');
+    const minY = Math.min(...yValues);
+    const maxY = Math.max(...yValues);
+    const padding = (maxY - minY) * 0.1; // 10% padding
+    
+    return [Math.max(0, minY - padding), maxY + padding];
+  }, [data, dataKey]);
+  
+  // Memoize processed data to ensure stable object references
+  const memoizedData = useMemo(() => data, [data]);
   if (isLoading) {
     return (
       <div style={{
@@ -223,7 +241,7 @@ function TimeSeriesChart({
       <div style={{ position: 'relative', zIndex: 1 }}>
         <ResponsiveContainer width="100%" height={height}>
           <LineChart 
-            data={data} 
+            data={memoizedData} 
             margin={{ top: 10, right: 30, left: 20, bottom: 10 }}
           >
             {showGrid && (
@@ -250,6 +268,7 @@ function TimeSeriesChart({
               tickLine={false}
               axisLine={false}
               tick={{ fill: 'var(--text-light)' }}
+              domain={yDomain}
               tickFormatter={(value) => {
                 if (value >= 1000000) {
                   return `${(value / 1000000).toFixed(1)}M`;
@@ -291,4 +310,37 @@ function TimeSeriesChart({
   );
 }
 
-export default TimeSeriesChart;
+// Memoize component to prevent unnecessary re-renders during refresh cycles
+export default React.memo(TimeSeriesChart, (prevProps, nextProps) => {
+  // Deep comparison for data arrays - only re-render if actual content changes
+  const shallowDataEqual = (prev, next) => {
+    if (prev === next) return true;
+    if (!prev || !next) return prev === next;
+    if (prev.length !== next.length) return false;
+    
+    return prev.every((item, index) => {
+      const nextItem = next[index];
+      if (!nextItem) return false;
+      
+      // Compare key properties that affect chart rendering
+      return (
+        item[prevProps.dataKey] === nextItem[nextProps.dataKey] &&
+        item[prevProps.xKey] === nextItem[nextProps.xKey]
+      );
+    });
+  };
+  
+  return (
+    shallowDataEqual(prevProps.data, nextProps.data) &&
+    prevProps.dataKey === nextProps.dataKey &&
+    prevProps.xKey === nextProps.xKey &&
+    prevProps.color === nextProps.color &&
+    prevProps.height === nextProps.height &&
+    prevProps.showGrid === nextProps.showGrid &&
+    prevProps.showTooltip === nextProps.showTooltip &&
+    prevProps.isLoading === nextProps.isLoading &&
+    prevProps.error === nextProps.error &&
+    prevProps.title === nextProps.title &&
+    prevProps.subtitle === nextProps.subtitle
+  );
+});
