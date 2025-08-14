@@ -213,12 +213,16 @@ function PublicStatsDashboard() {
   }
 
   return (
-    <div style={{ 
-      padding: '2rem 1.5rem 4rem', 
-      maxWidth: '1400px', 
-      margin: '0 auto',
-      minHeight: '100vh'
-    }}>
+    <div 
+      style={{ 
+        flexGrow: 1,
+        padding: '2rem 1rem',
+        maxWidth: '1200px',
+        margin: '0 auto',
+        width: '100%',
+      }}
+      className="content-container"
+    >
       {/* Header */}
       <div style={{ 
         textAlign: 'center', 
