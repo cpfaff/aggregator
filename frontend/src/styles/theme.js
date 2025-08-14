@@ -8,22 +8,14 @@ export const themeVariables = {
     '--error-rgb': '220, 38, 38',
     '--warning': '#ea580c',
     '--info': '#0891b2',
-    '--background': '#f8fafc',      // page background
-    '--card-bg': '#ffffff',         // main card/container background
+    '--background': '#f8fafc',
+    '--card-bg': '#ffffff',
     '--card-footer-bg': '#f8fafc',
-    '--subtle-bg': '#f1f5f9',       // smaller sub-panels or highlight sections
+    '--subtle-bg': '#f1f5f9',
     '--subtle-btn-bg': '#ffffff',
     '--text': '#1e293b',
     '--text-light': '#64748b',
     '--border': '#e2e8f0',
-    // Professional dashboard colors
-    '--neutral-primary': '#475569',     // Most important metrics
-    '--neutral-secondary': '#64748b',   // Secondary metrics  
-    '--neutral-tertiary': '#94a3b8',    // Supporting metrics
-    '--neutral-subtle': '#cbd5e1',      // Least critical metrics
-    '--success-professional': '#059669', // Muted success indicator
-    '--performance-indicator': '#d97706', // Muted performance indicator
-    '--neutral-icon-bg': '#f1f5f9',     // Subtle icon backgrounds
   },
   dark: {
     '--primary': '#3b82f6',
@@ -41,14 +33,6 @@ export const themeVariables = {
     '--text': '#f8fafc',
     '--text-light': '#cbd5e1',
     '--border': '#3b4a63',
-    // Professional dashboard colors (dark theme)
-    '--neutral-primary': '#64748b',       // Lighter in dark theme
-    '--neutral-secondary': '#475569',     // Medium in dark theme
-    '--neutral-tertiary': '#334155',      // Darker in dark theme  
-    '--neutral-subtle': '#1e293b',        // Darkest in dark theme
-    '--success-professional': '#10b981',  // Brighter success for dark
-    '--performance-indicator': '#f59e0b', // Brighter amber for dark
-    '--neutral-icon-bg': '#2d3748',       // Subtle dark icon backgrounds
   }
 };
 
