@@ -167,6 +167,16 @@ def parse_abcd_xml(xml_url: str) -> Dict[str, Any]:
             'total_units': unit_count
         }
         
+        # Helper function to find elements by tag name substring (case-insensitive)
+        def find_elements_by_tag_substring(parent, substring):
+            """Find all descendant elements whose tag contains the substring (case-insensitive)."""
+            result = []
+            for elem in parent.iter():
+                tag_name = elem.tag.split('}')[-1] if '}' in elem.tag else elem.tag
+                if substring.lower() in tag_name.lower():
+                    result.append(elem)
+            return result
+        
         # Process each unit
         for unit in units[:1000]:  # Limit processing to avoid memory issues
             # Extract taxonomic data
@@ -175,25 +185,25 @@ def parse_abcd_xml(xml_url: str) -> Dict[str, Any]:
                 ('Genus', 'genera'),
                 ('Species', 'species')
             ]:
-                tax_elements = unit.findall(f".//*[contains(local-name(), '{tax_field}')]")
+                tax_elements = find_elements_by_tag_substring(unit, tax_field)
                 for elem in tax_elements:
                     if elem.text and elem.text.strip():
                         taxonomic_info[field_name].add(elem.text.strip())
             
             # Extract geographic data
-            country_elements = unit.findall(".//*[contains(local-name(), 'Country')]")
+            country_elements = find_elements_by_tag_substring(unit, 'Country')
             for elem in country_elements:
                 if elem.text and elem.text.strip():
                     geographic_info['countries'].add(elem.text.strip())
             
-            locality_elements = unit.findall(".//*[contains(local-name(), 'Locality')]")
+            locality_elements = find_elements_by_tag_substring(unit, 'Locality')
             for elem in locality_elements:
                 if elem.text and elem.text.strip():
                     geographic_info['localities'].add(elem.text.strip())
             
             # Extract coordinates
-            lat_elements = unit.findall(".//*[contains(local-name(), 'Latitude')]")
-            lon_elements = unit.findall(".//*[contains(local-name(), 'Longitude')]")
+            lat_elements = find_elements_by_tag_substring(unit, 'Latitude')
+            lon_elements = find_elements_by_tag_substring(unit, 'Longitude')
             
             for lat_elem, lon_elem in zip(lat_elements, lon_elements):
                 try:
@@ -205,13 +215,13 @@ def parse_abcd_xml(xml_url: str) -> Dict[str, Any]:
                     pass
             
             # Check citation completeness
-            if unit.findall(".//*[contains(local-name(), 'Collector')]"):
+            if find_elements_by_tag_substring(unit, 'Collector'):
                 citation_info['has_collector'] += 1
-            if unit.findall(".//*[contains(local-name(), 'GatheringDate')]"):
+            if find_elements_by_tag_substring(unit, 'GatheringDate'):
                 citation_info['has_collection_date'] += 1
-            if unit.findall(".//*[contains(local-name(), 'Country') or contains(local-name(), 'Locality')]"):
+            if find_elements_by_tag_substring(unit, 'Country') or find_elements_by_tag_substring(unit, 'Locality'):
                 citation_info['has_location'] += 1
-            if unit.findall(".//*[contains(local-name(), 'Identification')]"):
+            if find_elements_by_tag_substring(unit, 'Identification'):
                 citation_info['has_identification'] += 1
         
         # Calculate citation completeness score
