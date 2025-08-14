@@ -71,12 +71,6 @@ const LandingPage = memo(({ onGetStarted, onLearnMore }) => {
     alignItems: 'center',
     flexWrap: 'wrap',
     marginBottom: '3rem',
-    // Mobile optimization: ensure buttons are easily tappable
-    '@media (max-width: 768px)': {
-      gap: '0.75rem',
-      flexDirection: 'column',
-      width: '100%',
-    }
   };
 
   const trustSignalsStyle = {
@@ -119,14 +113,6 @@ const LandingPage = memo(({ onGetStarted, onLearnMore }) => {
     gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
     gap: '2rem',
     marginBottom: '4rem',
-    // Enhanced mobile responsiveness
-    '@media (max-width: 768px)': {
-      gridTemplateColumns: '1fr',
-      gap: '1.5rem',
-    },
-    '@media (max-width: 480px)': {
-      gap: '1rem',
-    }
   };
 
   const cardStyle = {
