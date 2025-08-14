@@ -12,11 +12,12 @@ import Dashboard from './components/dashboard/Dashboard';
 import UserManagement from './components/users/UserManagement';
 import Changelog from './components/changelog/Changelog';
 import About from './components/public/About';
+import LandingPage from './components/public/LandingPage';
 import { AdminDashboard, PublicStatsDashboard } from './components/statistics';
 
 function App() {
   const { token, currentUser, logout, sessionExpired, handleTokenExpiration } = useAuth();
-  const [activeView, setActiveView] = useState('login'); // 'login', 'dashboard', 'userManagement', 'changelog', 'providerDetail', 'adminStats', 'publicStats', or 'about'
+  const [activeView, setActiveView] = useState('landing'); // 'landing', 'login', 'dashboard', 'userManagement', 'changelog', 'providerDetail', 'adminStats', 'publicStats', or 'about'
   const [selectedProvider, setSelectedProvider] = useState(null);
   const [isDarkTheme, setIsDarkTheme] = useState(() => {
     const savedTheme = localStorage.getItem('isDarkTheme');
@@ -65,6 +66,13 @@ function App() {
   // Render appropriate view based on whether user data is fully loaded
   const renderContent = () => {
     // Public views can be accessed without authentication
+    if (activeView === 'landing') {
+      return <LandingPage 
+        onGetStarted={() => setActiveView('login')}
+        onLearnMore={() => setActiveView('about')}
+      />;
+    }
+    
     if (activeView === 'publicStats') {
       return <PublicStatsDashboard />;
     }

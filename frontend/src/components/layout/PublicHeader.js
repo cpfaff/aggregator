@@ -34,6 +34,33 @@ const PublicHeader = ({ activeView, setActiveView, isDarkTheme, toggleTheme }) =
         }}>
           <a 
             href="#" 
+            onClick={(e) => { e.preventDefault(); setActiveView('landing'); }}
+            style={{
+              padding: '0.5rem 0',
+              position: 'relative',
+              color: activeView === 'landing' ? 'var(--primary)' : 'var(--text-light)',
+              textDecoration: 'none',
+              fontWeight: 500,
+              transition: 'all 0.2s ease',
+            }}
+          >
+            Home
+            <span style={{
+              content: '""',
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              width: '100%',
+              height: '2px',
+              backgroundColor: 'var(--primary)',
+              transform: activeView === 'landing' ? 'scaleX(1)' : 'scaleX(0)',
+              transformOrigin: 'left',
+              transition: 'transform 0.2s ease',
+            }}></span>
+          </a>
+          
+          <a 
+            href="#" 
             onClick={(e) => { e.preventDefault(); setActiveView('login'); }}
             style={{
               padding: '0.5rem 0',
