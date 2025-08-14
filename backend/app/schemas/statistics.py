@@ -163,6 +163,7 @@ METRIC_DESCRIPTIONS = {
     MetricType.PROVIDER_COUNT: "Total number of data providers",
     MetricType.PROVIDER_DATASET_COUNT: "Number of datasets per provider",
     MetricType.PROVIDER_ACTIVITY_SCORE: "Activity score based on provider engagement",
+    MetricType.PROVIDER_BIOLOGICAL_UNITS: "Total biological units across all datasets per provider",
     MetricType.VALIDATION_SUCCESS_RATE: "Percentage of successful validation jobs",
     MetricType.VALIDATION_ERROR_RATE: "Percentage of failed validation jobs",
     MetricType.VALIDATION_PROCESSING_TIME: "Average time to complete validation jobs",

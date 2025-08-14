@@ -26,6 +26,7 @@ class MetricType(str, Enum):
     PROVIDER_DATASET_COUNT = "provider_dataset_count"
     PROVIDER_ACTIVITY_SCORE = "provider_activity_score"
     PROVIDER_UNIT_COUNT = "provider_unit_count"
+    PROVIDER_BIOLOGICAL_UNITS = "provider_biological_units"
     
     # Validation metrics
     VALIDATION_SUCCESS_RATE = "validation_success_rate"
@@ -96,7 +97,7 @@ class StatisticModel(Base, TimestampMixin):
         CheckConstraint(
             "metric_type IN ('dataset_count', 'dataset_registration_rate', 'dataset_modification_rate', "
             "'dataset_unit_count', 'provider_count', 'provider_dataset_count', 'provider_activity_score', "
-            "'provider_unit_count', 'validation_success_rate', 'validation_error_rate', 'validation_processing_time', "
+            "'provider_unit_count', 'provider_biological_units', 'validation_success_rate', 'validation_error_rate', 'validation_processing_time', "
             "'validation_job_count', 'abcd_compliance_rate', 'xml_archive_count', 'citation_completeness', "
             "'geographic_coverage', 'system_storage_size', 'system_processing_load', 'system_api_response_time', "
             "'system_unit_count')",
@@ -150,6 +151,7 @@ class StatisticModel(Base, TimestampMixin):
             MetricType.PROVIDER_DATASET_COUNT: "Number of datasets per provider",
             MetricType.PROVIDER_ACTIVITY_SCORE: "Provider activity score",
             MetricType.PROVIDER_UNIT_COUNT: "Total number of units per provider",
+            MetricType.PROVIDER_BIOLOGICAL_UNITS: "Total biological units across all datasets per provider",
             MetricType.VALIDATION_SUCCESS_RATE: "Percentage of successful validations",
             MetricType.VALIDATION_ERROR_RATE: "Percentage of validation errors",
             MetricType.VALIDATION_PROCESSING_TIME: "Average validation processing time",

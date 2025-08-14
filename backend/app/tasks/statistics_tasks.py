@@ -450,6 +450,56 @@ def collect_daily_statistics(self, target_date: str = None) -> Dict[str, Any]:
             )
             db.add(stat)
             collected_stats.append(f"Provider {provider.id} dataset count: {provider_dataset_count}")
+            
+            # Calculate provider biological units (sum of all dataset unit counts for this provider)
+            provider_biological_units = db.query(func.sum(StatisticModel.value)).filter(
+                and_(
+                    StatisticModel.metric_type == MetricType.DATASET_UNIT_COUNT,
+                    StatisticModel.entity_type == EntityType.DATASET,
+                    StatisticModel.entity_id.in_(
+                        db.query(DatasetModel.id).filter(DatasetModel.provider_id == provider.id).subquery()
+                    ),
+                    StatisticModel.date >= stat_date - timedelta(days=7)  # Use recent data within 7 days
+                )
+            ).scalar() or 0
+            
+            # Use upsert to avoid duplicates for provider biological units
+            existing_bio_unit_stat = db.query(StatisticModel).filter(
+                and_(
+                    StatisticModel.metric_type == MetricType.PROVIDER_BIOLOGICAL_UNITS,
+                    StatisticModel.entity_type == EntityType.PROVIDER,
+                    StatisticModel.entity_id == provider.id,
+                    StatisticModel.period == Period.DAILY,
+                    StatisticModel.date == stat_date
+                )
+            ).first()
+            
+            if existing_bio_unit_stat:
+                existing_bio_unit_stat.value = provider_biological_units
+                existing_bio_unit_stat.extra_data = {
+                    'provider_name': provider.name,
+                    'provider_datacenter': provider.datacenter,
+                    'dataset_count': provider_dataset_count,
+                    'collection_timestamp': datetime.utcnow().isoformat()
+                }
+                collected_stats.append(f"Provider {provider.id} biological units (updated): {provider_biological_units}")
+            else:
+                bio_unit_stat = StatisticModel(
+                    metric_type=MetricType.PROVIDER_BIOLOGICAL_UNITS,
+                    entity_type=EntityType.PROVIDER,
+                    entity_id=provider.id,
+                    period=Period.DAILY,
+                    date=stat_date,
+                    value=provider_biological_units,
+                    extra_data={
+                        'provider_name': provider.name,
+                        'provider_datacenter': provider.datacenter,
+                        'dataset_count': provider_dataset_count,
+                        'collection_timestamp': datetime.utcnow().isoformat()
+                    }
+                )
+                db.add(bio_unit_stat)
+                collected_stats.append(f"Provider {provider.id} biological units (new): {provider_biological_units}")
         
         # Dataset registration rate (new datasets today)
         start_of_day = datetime.combine(stat_date, datetime.min.time())
@@ -777,6 +827,7 @@ def aggregate_weekly_statistics(self, target_date: str = None) -> Dict[str, Any]
         providers = db.query(DataProviderModel).all()
         
         for provider in providers:
+            # Aggregate provider dataset count
             daily_provider_stats = db.query(StatisticModel).filter(
                 and_(
                     StatisticModel.metric_type == MetricType.PROVIDER_DATASET_COUNT,
@@ -808,6 +859,39 @@ def aggregate_weekly_statistics(self, target_date: str = None) -> Dict[str, Any]
                 )
                 db.add(stat)
                 aggregated_stats.append(f"Weekly provider {provider.id} dataset count: {weekly_avg:.2f}")
+            
+            # Aggregate provider biological units
+            daily_bio_units_stats = db.query(StatisticModel).filter(
+                and_(
+                    StatisticModel.metric_type == MetricType.PROVIDER_BIOLOGICAL_UNITS,
+                    StatisticModel.entity_type == EntityType.PROVIDER,
+                    StatisticModel.entity_id == provider.id,
+                    StatisticModel.period == Period.DAILY,
+                    StatisticModel.date >= start_date,
+                    StatisticModel.date <= end_date
+                )
+            ).all()
+            
+            if daily_bio_units_stats:
+                weekly_avg_bio_units = sum(stat.value for stat in daily_bio_units_stats) / len(daily_bio_units_stats)
+                
+                bio_units_stat = StatisticModel(
+                    metric_type=MetricType.PROVIDER_BIOLOGICAL_UNITS,
+                    entity_type=EntityType.PROVIDER,
+                    entity_id=provider.id,
+                    period=Period.WEEKLY,
+                    date=end_date,
+                    value=weekly_avg_bio_units,
+                    extra_data={
+                        'provider_name': provider.name,
+                        'start_date': start_date.isoformat(),
+                        'end_date': end_date.isoformat(),
+                        'daily_values': [s.value for s in daily_bio_units_stats],
+                        'collection_timestamp': datetime.utcnow().isoformat()
+                    }
+                )
+                db.add(bio_units_stat)
+                aggregated_stats.append(f"Weekly provider {provider.id} biological units: {weekly_avg_bio_units:.2f}")
         
         # Commit aggregated statistics
         db.commit()
@@ -826,6 +910,138 @@ def aggregate_weekly_statistics(self, target_date: str = None) -> Dict[str, Any]
         
     except Exception as e:
         logger.exception(f"Error aggregating weekly statistics: {e}")
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+
+@shared_task(
+    bind=True,
+    name="statistics.collect_provider_biological_units",
+    max_retries=3,
+    soft_time_limit=1800,  # 30 minutes timeout
+    retry_backoff=True,
+)
+def collect_provider_biological_units(self, target_date: str = None) -> Dict[str, Any]:
+    """
+    Collect provider-level biological units by aggregating dataset unit counts.
+    
+    Args:
+        target_date: Date string in YYYY-MM-DD format (defaults to yesterday)
+        
+    Returns:
+        Dictionary with collection results
+    """
+    db = SessionLocal()
+    
+    try:
+        # Parse target date
+        if target_date:
+            stat_date = datetime.strptime(target_date, "%Y-%m-%d").date()
+        else:
+            stat_date = date.today() - timedelta(days=1)
+        
+        logger.info(f"Collecting provider biological units for {stat_date}")
+        
+        collected_stats = []
+        
+        # Get all providers
+        providers = db.query(DataProviderModel).all()
+        
+        for provider in providers:
+            # Get all datasets for this provider
+            dataset_ids = db.query(DatasetModel.id).filter(
+                DatasetModel.provider_id == provider.id
+            ).all()
+            
+            if not dataset_ids:
+                # Provider has no datasets, set biological units to 0
+                provider_biological_units = 0
+            else:
+                dataset_id_list = [dataset_id[0] for dataset_id in dataset_ids]
+                
+                # Calculate total biological units by summing the most recent dataset unit counts
+                # for each dataset belonging to this provider
+                subquery = db.query(
+                    StatisticModel.entity_id,
+                    func.max(StatisticModel.date).label('max_date')
+                ).filter(
+                    and_(
+                        StatisticModel.metric_type == MetricType.DATASET_UNIT_COUNT,
+                        StatisticModel.entity_type == EntityType.DATASET,
+                        StatisticModel.entity_id.in_(dataset_id_list),
+                        StatisticModel.date <= stat_date
+                    )
+                ).group_by(StatisticModel.entity_id).subquery()
+                
+                # Get the actual values using the max date for each dataset
+                recent_unit_counts = db.query(StatisticModel.value).join(
+                    subquery,
+                    and_(
+                        StatisticModel.entity_id == subquery.c.entity_id,
+                        StatisticModel.date == subquery.c.max_date
+                    )
+                ).filter(
+                    StatisticModel.metric_type == MetricType.DATASET_UNIT_COUNT
+                ).all()
+                
+                provider_biological_units = sum(count[0] for count in recent_unit_counts if count[0] is not None)
+            
+            # Use upsert to avoid duplicates
+            existing_stat = db.query(StatisticModel).filter(
+                and_(
+                    StatisticModel.metric_type == MetricType.PROVIDER_BIOLOGICAL_UNITS,
+                    StatisticModel.entity_type == EntityType.PROVIDER,
+                    StatisticModel.entity_id == provider.id,
+                    StatisticModel.period == Period.DAILY,
+                    StatisticModel.date == stat_date
+                )
+            ).first()
+            
+            if existing_stat:
+                existing_stat.value = provider_biological_units
+                existing_stat.extra_data = {
+                    'provider_name': provider.name,
+                    'provider_datacenter': provider.datacenter,
+                    'dataset_count': len(dataset_ids),
+                    'collection_timestamp': datetime.utcnow().isoformat()
+                }
+                collected_stats.append(f"Provider {provider.id} biological units (updated): {provider_biological_units}")
+            else:
+                stat = StatisticModel(
+                    metric_type=MetricType.PROVIDER_BIOLOGICAL_UNITS,
+                    entity_type=EntityType.PROVIDER,
+                    entity_id=provider.id,
+                    period=Period.DAILY,
+                    date=stat_date,
+                    value=provider_biological_units,
+                    extra_data={
+                        'provider_name': provider.name,
+                        'provider_datacenter': provider.datacenter,
+                        'dataset_count': len(dataset_ids),
+                        'collection_timestamp': datetime.utcnow().isoformat()
+                    }
+                )
+                db.add(stat)
+                collected_stats.append(f"Provider {provider.id} biological units (new): {provider_biological_units}")
+        
+        # Commit all statistics
+        db.commit()
+        
+        logger.info(f"Successfully collected {len(collected_stats)} provider biological unit statistics for {stat_date}")
+        
+        return {
+            'status': 'completed',
+            'date': stat_date.isoformat(),
+            'statistics_collected': len(collected_stats),
+            'details': collected_stats,
+            'task_id': self.request.id,
+            'completed_at': datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        logger.exception(f"Error collecting provider biological units: {e}")
         db.rollback()
         raise
     finally:

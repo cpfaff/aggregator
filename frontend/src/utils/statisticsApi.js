@@ -298,7 +298,8 @@ export const statsUtils = {
       provider_count: 'var(--success)',
       validation_success_rate: 'var(--primary)',
       xml_archive_count: 'var(--warning)',
-      provider_dataset_count: 'var(--success)'
+      provider_dataset_count: 'var(--success)',
+      provider_biological_units: 'var(--success)'
     };
     return colorMap[metricType] || 'var(--text-light)';
   }

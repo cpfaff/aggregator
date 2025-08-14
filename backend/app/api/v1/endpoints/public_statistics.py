@@ -546,3 +546,132 @@ async def get_registry_health(
     except Exception as e:
         logger.error(f"Error getting registry health: {e}")
         raise HTTPException(status_code=500, detail="Error retrieving health status")
+
+
+@router.get("/time-series", response_model=TimeSeriesResponse, summary="Public time series data")
+async def get_public_time_series_data(
+    metric_type: str = Query(..., description="Metric type to retrieve"),
+    entity_type: str = Query(..., description="Entity type"),
+    entity_id: Optional[int] = Query(None, description="Entity ID (null for system-wide)"),
+    period: str = Query(Period.DAILY.value, description="Time period"),
+    start_date: Optional[date] = Query(None, description="Start date"),
+    end_date: Optional[date] = Query(None, description="End date"),
+    limit: int = Query(30, ge=1, le=365, description="Maximum data points"),
+    db: Session = Depends(get_sync_db),
+    response: Response = None
+) -> TimeSeriesResponse:
+    """
+    Get public time series data for a specific metric.
+    
+    Supported public metrics:
+    - provider_biological_units: Total biological units per provider
+    - dataset_count: Total number of datasets (system-wide)
+    - provider_count: Total number of providers (system-wide)
+    - provider_dataset_count: Number of datasets per provider
+    """
+    try:
+        if response:
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+        
+        # Define allowed public metrics to prevent access to sensitive data
+        allowed_metrics = {
+            MetricType.PROVIDER_BIOLOGICAL_UNITS.value,
+            MetricType.DATASET_COUNT.value,
+            MetricType.PROVIDER_COUNT.value,
+            MetricType.PROVIDER_DATASET_COUNT.value,
+        }
+        
+        if metric_type not in allowed_metrics:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Metric type '{metric_type}' is not available for public access. "
+                       f"Allowed metrics: {', '.join(allowed_metrics)}"
+            )
+        
+        # Validate enum values
+        try:
+            MetricType(metric_type)
+            EntityType(entity_type)
+            Period(period)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=f"Invalid parameter: {e}")
+        
+        # Build aggregated query to prevent duplicate points per date
+        base_query = db.query(
+            StatisticModel.date,
+            func.max(StatisticModel.value).label('value'),
+            func.count(StatisticModel.id).label('count')
+        ).filter(
+            and_(
+                StatisticModel.metric_type == metric_type,
+                StatisticModel.entity_type == entity_type,
+                StatisticModel.period == period
+            )
+        )
+        
+        if entity_id is not None:
+            base_query = base_query.filter(StatisticModel.entity_id == entity_id)
+        else:
+            base_query = base_query.filter(StatisticModel.entity_id.is_(None))
+        
+        if start_date:
+            base_query = base_query.filter(StatisticModel.date >= start_date)
+        if end_date:
+            base_query = base_query.filter(StatisticModel.date <= end_date)
+        
+        # Group by date to aggregate and order by date descending, then limit
+        aggregated_stats = base_query.group_by(StatisticModel.date).order_by(desc(StatisticModel.date)).limit(limit).all()
+        
+        # Convert to time series points
+        data_points = [
+            TimeSeriesPoint(
+                date=stat.date,
+                value=float(stat.value) if stat.value is not None else 0.0,
+                extra_data={'records_aggregated': stat.count}
+            )
+            for stat in reversed(aggregated_stats)  # Reverse to get chronological order
+        ]
+        
+        # For system-wide dataset count, add today's data if missing and there are new registrations
+        today = date.today()
+        today_start = datetime.combine(today, datetime.min.time())
+        
+        if (not any(point.date == today for point in data_points) and 
+            metric_type == MetricType.DATASET_COUNT.value and 
+            entity_type == EntityType.SYSTEM.value and 
+            entity_id is None):
+            
+            # Get today's dataset registrations count
+            todays_new_datasets = db.query(func.count(DatasetModel.id)).filter(
+                DatasetModel.created_at >= today_start
+            ).scalar() or 0
+            
+            # Only add today's data point if there are actual registrations
+            if todays_new_datasets > 0:
+                current_total_datasets = db.query(func.count(DatasetModel.id)).scalar() or 0
+                data_points.append(TimeSeriesPoint(
+                    date=today,
+                    value=float(current_total_datasets),
+                    extra_data={
+                        'records_aggregated': 1,
+                        'is_current_day': True,
+                        'new_registrations_today': todays_new_datasets
+                    }
+                ))
+        
+        return TimeSeriesResponse(
+            metric_type=metric_type,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            period=period,
+            data_points=data_points,
+            total_points=len(data_points)
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting public time series data: {e}")
+        raise HTTPException(status_code=500, detail="Error retrieving public time series data")

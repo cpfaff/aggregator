@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { authStatsApi, statsUtils } from '../../utils/statisticsApi';
+import { apiRequest } from '../../utils/apiUtils';
 import StatCard from '../ui/StatCard';
 import TimeSeriesChart from '../ui/TimeSeriesChart';
 import Alert from '../ui/Alert';
-import { Database, FileText, CheckCircle, Activity, TrendingUp } from 'lucide-react';
+import { Database, CheckCircle, Activity, Package, Clock } from 'lucide-react';
 
 /**
  * ProviderStatistics component for displaying provider-specific statistics
@@ -13,8 +14,13 @@ function ProviderStatistics({ providerId, providerName }) {
   const { handleTokenExpiration } = useAuth();
   const [stats, setStats] = useState(null);
   const [timeSeriesData, setTimeSeriesData] = useState([]);
+  const [biologicalUnitsTimeSeriesData, setBiologicalUnitsTimeSeriesData] = useState([]);
+  const [datasets, setDatasets] = useState([]);
+  const [datasetStats, setDatasetStats] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [isTimeSeriesLoading, setIsTimeSeriesLoading] = useState(false);
+  const [isBiologicalUnitsTimeSeriesLoading, setIsBiologicalUnitsTimeSeriesLoading] = useState(false);
+  const [isDatasetsLoading, setIsDatasetsLoading] = useState(false);
   const [error, setError] = useState('');
 
   const fetchProviderStats = async () => {
@@ -28,11 +34,55 @@ function ProviderStatistics({ providerId, providerName }) {
       // Fetch time-series data for this provider's dataset count
       await fetchTimeSeries();
       
+      // Fetch biological units time-series data
+      await fetchBiologicalUnitsTimeSeries();
+      
+      // Fetch datasets with statistics
+      await fetchDatasetStats();
+      
     } catch (err) {
       console.error('Error fetching provider statistics:', err);
       setError('Failed to load provider statistics: ' + err.message);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchDatasetStats = async () => {
+    try {
+      setIsDatasetsLoading(true);
+      
+      // Fetch datasets for this provider
+      const datasetsRes = await apiRequest(`/data-providers/${providerId}/data-sets`, {}, handleTokenExpiration);
+      
+      if (!datasetsRes.ok) {
+        console.error('Failed to fetch datasets');
+        return;
+      }
+      
+      const datasetsData = await datasetsRes.json();
+      setDatasets(datasetsData);
+      
+      // Fetch statistics for each dataset
+      const statsPromises = datasetsData.map(async (dataset) => {
+        try {
+          const datasetStats = await authStatsApi.getDatasetStats(dataset.id, handleTokenExpiration);
+          return { [dataset.id]: datasetStats };
+        } catch (error) {
+          console.error(`Error fetching stats for dataset ${dataset.id}:`, error);
+          return { [dataset.id]: null };
+        }
+      });
+      
+      const statsResults = await Promise.all(statsPromises);
+      const combinedStats = statsResults.reduce((acc, stats) => ({ ...acc, ...stats }), {});
+      setDatasetStats(combinedStats);
+      
+    } catch (err) {
+      console.error('Error fetching dataset statistics:', err);
+      // Don't set error for dataset stats failure, just log it
+    } finally {
+      setIsDatasetsLoading(false);
     }
   };
 
@@ -66,6 +116,39 @@ function ProviderStatistics({ providerId, providerName }) {
       // Don't set error for time-series failure, just log it
     } finally {
       setIsTimeSeriesLoading(false);
+    }
+  };
+
+  const fetchBiologicalUnitsTimeSeries = async () => {
+    try {
+      setIsBiologicalUnitsTimeSeriesLoading(true);
+      
+      const params = {
+        metricType: 'provider_biological_units',
+        entityType: 'provider',
+        entityId: providerId,
+        period: 'daily',
+        limit: 30
+      };
+      
+      const data = await authStatsApi.getTimeSeries(params, handleTokenExpiration);
+      const formattedData = statsUtils.formatTimeSeriesForChart(data.data_points);
+      
+      // Only update if data has actually changed to prevent chart re-renders
+      setBiologicalUnitsTimeSeriesData(prev => {
+        const prevDataStr = JSON.stringify(prev);
+        const newDataStr = JSON.stringify(formattedData);
+        if (prevDataStr !== newDataStr) {
+          return formattedData;
+        }
+        return prev;
+      });
+      
+    } catch (err) {
+      console.error('Error fetching biological units time-series:', err);
+      // Don't set error for time-series failure, just log it
+    } finally {
+      setIsBiologicalUnitsTimeSeriesLoading(false);
     }
   };
 
@@ -113,22 +196,6 @@ function ProviderStatistics({ providerId, providerName }) {
     );
   }
 
-  const getActivityStatus = (score) => {
-    if (score === null || score === undefined) return 'Unknown';
-    if (score >= 80) return 'Very Active';
-    if (score >= 60) return 'Active';
-    if (score >= 40) return 'Moderate';
-    if (score >= 20) return 'Low';
-    return 'Inactive';
-  };
-
-  const getActivityColor = (score) => {
-    if (score === null || score === undefined) return 'var(--text-light)';
-    if (score >= 80) return 'var(--success)';
-    if (score >= 60) return 'var(--primary)';
-    if (score >= 40) return 'var(--warning)';
-    return 'var(--error)';
-  };
 
   return (
     <div style={{ 
@@ -163,11 +230,33 @@ function ProviderStatistics({ providerId, providerName }) {
           backgroundClip: 'text',
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
-          marginBottom: '1rem',
+          marginBottom: '0.5rem',
           letterSpacing: '-1px'
         }}>
           Statistics for {providerName || 'Provider'}
         </h2>
+        
+        {/* Last Activity integrated into header */}
+        {stats.last_activity && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.5rem',
+            marginBottom: '1rem',
+            fontSize: '0.9rem',
+            color: 'var(--text-light)',
+            fontWeight: 500
+          }}>
+            <Clock size={16} style={{ color: 'var(--primary)' }} />
+            Last activity: {new Date(stats.last_activity).toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric'
+            })}
+          </div>
+        )}
+        
         <p style={{
           color: 'var(--text-light)',
           margin: 0,
@@ -177,16 +266,18 @@ function ProviderStatistics({ providerId, providerName }) {
           marginLeft: 'auto',
           marginRight: 'auto'
         }}>
-          Real-time overview of provider performance and data contributions
+          Real-time overview of biological data contributions and temporal trends
         </p>
       </div>
 
-      {/* Key Metrics Cards */}
+      {/* Key Metrics Cards - Only 2 cards now */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
         gap: '2rem',
-        marginBottom: '3rem'
+        marginBottom: '3rem',
+        maxWidth: '800px',
+        margin: '0 auto 3rem auto'
       }}>
         <StatCard
           title="Total Datasets"
@@ -196,168 +287,262 @@ function ProviderStatistics({ providerId, providerName }) {
         />
         
         <StatCard
-          title="XML Archives"
-          value={stats.xml_archive_count}
-          icon={<FileText size={20} />}
-          color="var(--warning)"
-        />
-        
-        <StatCard
           title="Validation Success Rate"
           value={stats.validation_success_rate ? `${stats.validation_success_rate.toFixed(1)}` : 'N/A'}
           unit={stats.validation_success_rate ? '%' : ''}
           icon={<CheckCircle size={20} />}
           color="var(--success)"
         />
-        
-        <StatCard
-          title="Activity Status"
-          value={getActivityStatus(stats.activity_score)}
-          icon={<Activity size={20} />}
-          color={getActivityColor(stats.activity_score)}
-        />
       </div>
 
-      {/* Activity Details */}
-      {stats.activity_score !== null && (
+
+      {/* Dataset Cards Section */}
+      <div style={{
+        backgroundColor: 'var(--card-bg)',
+        borderRadius: '1rem',
+        padding: '2rem',
+        border: '1px solid var(--border)',
+        marginBottom: '3rem',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+        background: `linear-gradient(135deg, var(--card-bg) 0%, rgba(255, 255, 255, 0.02) 100%)`,
+        position: 'relative',
+        overflow: 'hidden'
+      }}>
+        {/* Background decoration */}
         <div style={{
-          backgroundColor: 'var(--card-bg)',
-          borderRadius: '1rem',
-          padding: '2rem',
-          border: '1px solid var(--border)',
-          marginBottom: '3rem',
-          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-          background: `linear-gradient(135deg, var(--card-bg) 0%, rgba(255, 255, 255, 0.02) 100%)`,
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '60%',
+          height: '100%',
+          background: 'radial-gradient(ellipse at 0% 50%, var(--primary)08 0%, transparent 70%)',
+          pointerEvents: 'none'
+        }} />
+        
+        <div style={{
           position: 'relative',
-          overflow: 'hidden'
+          zIndex: 1
         }}>
-          {/* Subtle background decoration */}
-          <div style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '60%',
-            height: '100%',
-            background: `radial-gradient(ellipse at 0% 50%, ${getActivityColor(stats.activity_score)}08 0%, transparent 70%)`,
-            pointerEvents: 'none'
-          }} />
-          
           <h3 style={{
             fontSize: '1.5rem',
             fontWeight: 700,
             color: 'var(--text)',
-            marginBottom: '2rem',
+            marginBottom: '1rem',
             letterSpacing: '-0.5px',
-            position: 'relative',
-            zIndex: 1
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem'
           }}>
-            Activity Details
+            <Package size={24} style={{ color: 'var(--primary)' }} />
+            Dataset Biological Units
           </h3>
           
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', 
-            gap: '2rem',
-            position: 'relative',
-            zIndex: 1,
-            '@media (max-width: 640px)': {
-              gridTemplateColumns: '1fr'
-            }
+          <p style={{
+            color: 'var(--text-light)',
+            margin: '0 0 2rem 0',
+            fontSize: '1rem',
+            lineHeight: '1.6'
           }}>
+            Unit counts for each dataset in this provider's collection
+          </p>
+          
+          {isDatasetsLoading ? (
             <div style={{
-              padding: '1.5rem',
-              backgroundColor: 'rgba(255, 255, 255, 0.03)',
-              borderRadius: '0.75rem',
-              border: '1px solid var(--border)',
-              backdropFilter: 'blur(10px)'
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '3rem 0'
             }}>
               <div style={{
-                fontSize: '0.9rem',
-                color: 'var(--text-light)',
-                marginBottom: '1rem',
-                fontWeight: 600,
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px'
-              }}>
-                Activity Score
-              </div>
-              <div style={{
-                fontSize: '2.5rem',
-                fontWeight: 800,
-                background: `linear-gradient(135deg, ${getActivityColor(stats.activity_score)} 0%, ${getActivityColor(stats.activity_score)}CC 100%)`,
-                backgroundClip: 'text',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                marginBottom: '1rem'
-              }}>
-                {Math.round(stats.activity_score)}/100
-              </div>
-              <div style={{
-                width: '100%',
-                height: '8px',
-                backgroundColor: 'var(--border)',
-                borderRadius: '8px',
-                overflow: 'hidden',
-                position: 'relative'
-              }}>
-                <div style={{
-                  width: `${Math.min(stats.activity_score, 100)}%`,
-                  height: '100%',
-                  background: `linear-gradient(90deg, ${getActivityColor(stats.activity_score)} 0%, ${getActivityColor(stats.activity_score)}AA 100%)`,
-                  transition: 'width 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
-                  borderRadius: '8px',
-                  boxShadow: `0 0 0 1px ${getActivityColor(stats.activity_score)}40`
-                }} />
-              </div>
+                width: '32px',
+                height: '32px',
+                border: '3px solid var(--border)',
+                borderRadius: '50%',
+                borderTopColor: 'var(--primary)',
+                animation: 'spin 1s linear infinite',
+              }}></div>
             </div>
-            
+          ) : datasets.length === 0 ? (
             <div style={{
-              padding: '1.5rem',
-              backgroundColor: 'rgba(255, 255, 255, 0.03)',
-              borderRadius: '0.75rem',
-              border: '1px solid var(--border)',
-              backdropFilter: 'blur(10px)'
+              textAlign: 'center',
+              padding: '3rem 0',
+              color: 'var(--text-light)'
             }}>
-              <div style={{
-                fontSize: '0.9rem',
-                color: 'var(--text-light)',
-                marginBottom: '1rem',
-                fontWeight: 600,
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px'
-              }}>
-                Last Activity
-              </div>
-              <div style={{
-                fontSize: '1.25rem',
-                fontWeight: 700,
-                color: 'var(--text)',
-                lineHeight: '1.3'
-              }}>
-                {stats.last_activity ? 
-                  new Date(stats.last_activity).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric'
-                  }) : 
-                  'No recent activity'
-                }
-              </div>
+              No datasets found for this provider
             </div>
-          </div>
+          ) : (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+              gap: '1.5rem'
+            }}>
+              {datasets.map((dataset) => {
+                const stats = datasetStats[dataset.id];
+                const unitCount = stats?.unit_count;
+                
+                return (
+                  <div
+                    key={dataset.id}
+                    style={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                      borderRadius: '0.75rem',
+                      border: '1px solid var(--border)',
+                      padding: '1.5rem',
+                      transition: 'all 0.2s ease',
+                      backdropFilter: 'blur(10px)',
+                      cursor: 'default'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.boxShadow = '0 8px 16px rgba(0, 0, 0, 0.1)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                  >
+                    {/* Dataset header */}
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      marginBottom: '1rem'
+                    }}>
+                      <span style={{
+                        backgroundColor: 'var(--primary)',
+                        color: 'white',
+                        padding: '0.25rem 0.625rem',
+                        borderRadius: '0.375rem',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        display: 'inline-block',
+                      }}>
+                        #{dataset.id}
+                      </span>
+                    </div>
+                    
+                    {/* Dataset title */}
+                    <h4 style={{
+                      fontSize: '1rem',
+                      fontWeight: 600,
+                      color: 'var(--text)',
+                      margin: '0 0 1.25rem 0',
+                      lineHeight: '1.4',
+                      display: '-webkit-box',
+                      WebkitLineClamp: '2',
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      minHeight: '2.8rem'
+                    }}>
+                      {dataset.title || 'Untitled Dataset'}
+                    </h4>
+                    
+                    {/* Biological units count */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                      padding: '1rem 0',
+                      borderTop: '1px solid var(--border-light)',
+                      borderBottom: '1px solid var(--border-light)'
+                    }}>
+                      <Database 
+                        size={20} 
+                        style={{ 
+                          color: unitCount > 0 ? 'var(--primary)' : 'var(--text-light)',
+                          flexShrink: 0 
+                        }} 
+                      />
+                      <div>
+                        <div style={{
+                          fontSize: '1.75rem',
+                          fontWeight: 800,
+                          color: unitCount > 0 ? 'var(--primary)' : 'var(--text-light)',
+                          lineHeight: 1
+                        }}>
+                          {unitCount !== null && unitCount !== undefined ? unitCount.toLocaleString() : '–'}
+                        </div>
+                        <div style={{
+                          fontSize: '0.8rem',
+                          color: 'var(--text-light)',
+                          fontWeight: 500,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
+                          marginTop: '0.25rem'
+                        }}>
+                          biological units
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Additional info */}
+                    {stats && (
+                      <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.5rem',
+                        marginTop: '1rem',
+                        fontSize: '0.8rem',
+                        color: 'var(--text-light)'
+                      }}>
+                        {stats.last_modified && (
+                          <div>
+                            Last updated: {new Date(stats.last_modified).toLocaleDateString()}
+                          </div>
+                        )}
+                        {stats.validation_status && (
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem'
+                          }}>
+                            {stats.validation_status === 'completed' ? (
+                              <CheckCircle size={14} style={{ color: 'var(--success)' }} />
+                            ) : (
+                              <Activity size={14} style={{ color: 'var(--warning)' }} />
+                            )}
+                            Validation: {stats.validation_status}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
-      {/* Dataset Count Timeline */}
-      <TimeSeriesChart
-        data={timeSeriesData}
-        title="Dataset Registration Timeline"
-        subtitle="Growth in total datasets over time"
-        color="var(--primary)"
-        height={300}
-        isLoading={isTimeSeriesLoading}
-        error={timeSeriesData.length === 0 ? 'No historical data available' : null}
-      />
+      {/* Timeline Charts Section */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr',
+        gap: '3rem'
+      }}>
+        {/* Dataset Count Timeline */}
+        <TimeSeriesChart
+          data={timeSeriesData}
+          title="Dataset Registration Timeline"
+          subtitle="Growth in total datasets over time"
+          color="var(--primary)"
+          height={300}
+          isLoading={isTimeSeriesLoading}
+          error={timeSeriesData.length === 0 ? 'No historical data available' : null}
+        />
+        
+        {/* Biological Units Timeline */}
+        <TimeSeriesChart
+          data={biologicalUnitsTimeSeriesData}
+          title="Biological Units Over Time"
+          subtitle="Total biological units across all datasets in this provider"
+          color="var(--success)"
+          height={300}
+          isLoading={isBiologicalUnitsTimeSeriesLoading}
+          error={biologicalUnitsTimeSeriesData.length === 0 ? 'No biological units data available' : null}
+        />
+      </div>
     </div>
   );
 }

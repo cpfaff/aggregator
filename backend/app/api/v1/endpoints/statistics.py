@@ -31,7 +31,7 @@ from app.schemas.statistics import (
 )
 from app.security.permissions import require_admin, get_current_user_sync as get_current_user
 from app.models.user import UserModel
-from app.tasks.statistics_tasks import collect_daily_statistics, analyze_xml_archives
+from app.tasks.statistics_tasks import collect_daily_statistics, analyze_xml_archives, collect_provider_biological_units
 
 logger = logging.getLogger(__name__)
 
@@ -460,6 +460,41 @@ async def trigger_xml_analysis(
     except Exception as e:
         logger.error(f"Error triggering XML analysis: {e}")
         raise HTTPException(status_code=500, detail="Error triggering XML analysis")
+
+
+@router.post("/collect-provider-biological-units", summary="Trigger provider biological units collection")
+async def trigger_provider_biological_units_collection(
+    background_tasks: BackgroundTasks,
+    target_date: Optional[str] = Query(None, description="Target date (YYYY-MM-DD)"),
+    current_user: UserModel = Depends(require_admin)
+) -> Dict[str, Any]:
+    """
+    Manually trigger provider biological units collection.
+    This aggregates dataset unit counts into provider-level statistics.
+    Requires admin permissions.
+    """
+    try:
+        # Validate date format if provided
+        if target_date:
+            try:
+                datetime.strptime(target_date, "%Y-%m-%d")
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+        
+        # Queue the provider biological units collection task
+        background_tasks.add_task(collect_provider_biological_units.delay, target_date)
+        
+        return {
+            "message": "Provider biological units collection task has been queued",
+            "target_date": target_date or "yesterday",
+            "status": "queued"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error triggering provider biological units collection: {e}")
+        raise HTTPException(status_code=500, detail="Error triggering provider biological units collection")
 
 
 @router.get("/search", response_model=List[StatisticResponse], summary="Search statistics")

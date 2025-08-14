@@ -47,4 +47,10 @@ celery_app.conf.beat_schedule = {
         "schedule": 3600.0 * 6,  # Every 6 hours
         "options": {"expires": 10800}  # Task expires after 3 hours
     },
+    # Provider biological units collection - runs daily at 1:30 AM UTC (after daily stats)
+    "collect-provider-biological-units": {
+        "task": "statistics.collect_provider_biological_units",
+        "schedule": 3600.0 * 24,  # Daily
+        "options": {"expires": 3600}  # Task expires after 1 hour
+    },
 }
