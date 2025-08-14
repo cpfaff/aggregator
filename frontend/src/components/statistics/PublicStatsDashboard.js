@@ -500,10 +500,7 @@ function PublicStatsDashboard() {
         display: 'grid',
         gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)',
         gap: '2.5rem',
-        marginBottom: '4rem',
-        '@media (max-width: 768px)': {
-          gridTemplateColumns: '1fr',
-        }
+        marginBottom: '4rem'
       }}>
         {/* Registry Growth Timeline */}
         <TimeSeriesChart
