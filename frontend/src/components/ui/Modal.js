@@ -55,31 +55,46 @@ function Modal({ isOpen, onClose, title, children, footer }) {
           display: 'flex', 
           justifyContent: 'space-between', 
           alignItems: 'center',
-          marginBottom: '1.5rem',
+          marginBottom: '2rem',
+          padding: '0 0 1.5rem',
+          borderBottom: '1px solid var(--border-light)'
         }}>
           <h3 style={{ 
             margin: 0, 
-            fontSize: '1.25rem', 
+            fontSize: '1.125rem', 
             fontWeight: 600,
             color: 'var(--text)',
+            letterSpacing: '-0.25px'
           }}>
             {title}
           </h3>
           <button 
             onClick={onClose}
             style={{
-              backgroundColor: 'transparent',
-              border: 'none',
-              fontSize: '1.5rem',
+              backgroundColor: 'var(--subtle-bg)',
+              border: '1px solid var(--border)',
+              fontSize: '1.25rem',
               lineHeight: 1,
-              padding: '0.25rem',
+              padding: '0.5rem',
               cursor: 'pointer',
               color: 'var(--text-light)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              borderRadius: '0.375rem',
+              width: '32px',
+              height: '32px',
+              transition: 'all 0.2s ease',
             }}
             aria-label="Close modal"
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--border)';
+              e.currentTarget.style.color = 'var(--text)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--subtle-bg)';
+              e.currentTarget.style.color = 'var(--text-light)';
+            }}
           >
             ×
           </button>

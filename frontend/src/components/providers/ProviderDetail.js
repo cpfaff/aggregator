@@ -762,7 +762,7 @@ const ProviderDetail = ({ provider, onBack, currentUser }) => {
       <Modal
         isOpen={showStatistics}
         onClose={() => setShowStatistics(false)}
-        title={`Statistics: ${provider.name}`}
+        title="Provider Statistics"
         size="large"
       >
         <ProviderStatistics 

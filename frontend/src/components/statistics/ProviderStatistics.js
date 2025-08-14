@@ -199,7 +199,7 @@ function ProviderStatistics({ providerId, providerName }) {
 
   return (
     <div style={{ 
-      padding: '2rem 1.5rem', 
+      padding: '0 1.5rem 2rem', 
       maxWidth: '1200px', 
       margin: '0 auto',
       position: 'relative'
@@ -207,11 +207,11 @@ function ProviderStatistics({ providerId, providerName }) {
       {/* Background decoration */}
       <div style={{
         position: 'absolute',
-        top: '2rem',
+        top: '0',
         right: '2rem',
-        width: '150px',
-        height: '150px',
-        background: 'radial-gradient(circle, var(--primary)06 0%, transparent 70%)',
+        width: '120px',
+        height: '120px',
+        background: 'radial-gradient(circle, var(--primary)08 0%, transparent 70%)',
         borderRadius: '50%',
         zIndex: -1
       }} />
@@ -219,52 +219,58 @@ function ProviderStatistics({ providerId, providerName }) {
       {/* Header */}
       <div style={{ 
         marginBottom: '3rem', 
-        textAlign: 'center',
+        textAlign: 'left',
         position: 'relative',
-        padding: '1rem 0'
+        padding: '0.5rem 0 1.5rem',
+        borderBottom: '1px solid var(--border-light)'
       }}>
+        {/* Provider name as primary heading */}
         <h2 style={{
-          fontSize: 'clamp(1.5rem, 4vw, 2rem)',
-          fontWeight: 800,
-          background: 'linear-gradient(135deg, var(--text) 0%, var(--primary) 100%)',
-          backgroundClip: 'text',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          marginBottom: '0.5rem',
-          letterSpacing: '-1px'
+          fontSize: 'clamp(1.25rem, 3vw, 1.625rem)',
+          fontWeight: 700,
+          color: 'var(--text)',
+          marginBottom: '1rem',
+          letterSpacing: '-0.5px',
+          lineHeight: '1.3'
         }}>
-          Statistics for {providerName || 'Provider'}
+          {providerName || 'Provider Statistics'}
         </h2>
         
-        {/* Last Activity integrated into header */}
-        {stats.last_activity && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '0.5rem',
-            marginBottom: '1rem',
-            fontSize: '0.9rem',
-            color: 'var(--text-light)',
-            fontWeight: 500
-          }}>
-            <Clock size={16} style={{ color: 'var(--primary)' }} />
-            Last activity: {new Date(stats.last_activity).toLocaleDateString('en-US', {
-              year: 'numeric',
-              month: 'short',
-              day: 'numeric'
-            })}
-          </div>
-        )}
+        {/* Meta information row */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '1rem',
+          marginBottom: '1rem'
+        }}>
+          {/* Last Activity */}
+          {stats.last_activity && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              fontSize: '0.875rem',
+              color: 'var(--text-light)',
+              fontWeight: 500
+            }}>
+              <Clock size={16} style={{ color: 'var(--primary)' }} />
+              Last activity: {new Date(stats.last_activity).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+              })}
+            </div>
+          )}
+        </div>
         
         <p style={{
           color: 'var(--text-light)',
           margin: 0,
-          fontSize: '1.1rem',
+          fontSize: '1rem',
           lineHeight: '1.6',
-          maxWidth: '600px',
-          marginLeft: 'auto',
-          marginRight: 'auto'
+          maxWidth: '700px'
         }}>
           Real-time overview of biological data contributions and temporal trends
         </p>
