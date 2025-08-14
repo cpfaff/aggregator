@@ -22,6 +22,7 @@ function AdminDashboard() {
   const [qualityMetrics, setQualityMetrics] = useState(null);
   const [datacenterStats, setDatacenterStats] = useState([]);
   const [timeSeriesData, setTimeSeriesData] = useState([]);
+  const [biologicalUnitsData, setBiologicalUnitsData] = useState([]);
   const [providerStats, setProviderStats] = useState([]);
   const [recentActivity, setRecentActivity] = useState([]);
   const [healthStatus, setHealthStatus] = useState(null);
@@ -92,8 +93,11 @@ function AdminDashboard() {
       setRecentActivity(activity);
       setHealthStatus(health);
       
-      // Fetch time-series data for system dataset count
-      await fetchTimeSeries();
+      // Fetch time-series data for system dataset count and biological units
+      await Promise.all([
+        fetchTimeSeries(),
+        fetchBiologicalUnitsTimeline()
+      ]);
       
       // Update last refreshed timestamp
       setLastUpdated(new Date());
@@ -138,6 +142,32 @@ function AdminDashboard() {
     } catch (err) {
       console.error('Error fetching time-series:', err);
       // Don't set error for time-series failure
+    }
+  };
+
+  const fetchBiologicalUnitsTimeline = async () => {
+    try {
+      const params = {
+        period: 'daily',
+        limit: 30
+      };
+      
+      const data = await authStatsApi.getBiologicalUnitsTimeline(params, handleTokenExpiration);
+      const formattedData = statsUtils.formatTimeSeriesForChart(data.data_points);
+      
+      // Only update if data has actually changed to prevent chart re-renders
+      setBiologicalUnitsData(prev => {
+        const prevDataStr = JSON.stringify(prev);
+        const newDataStr = JSON.stringify(formattedData);
+        if (prevDataStr !== newDataStr) {
+          return formattedData;
+        }
+        return prev;
+      });
+      
+    } catch (err) {
+      console.error('Error fetching biological units timeline:', err);
+      // Don't set error for biological units timeline failure
     }
   };
 
@@ -461,6 +491,19 @@ function AdminDashboard() {
           subtitle="Datasets by data center"
           height={350}
           colors={['var(--primary)', 'var(--success)', 'var(--warning)', 'var(--error)']}
+        />
+      </div>
+
+      {/* Biological Units Timeline - Full Width */}
+      <div style={{
+        marginBottom: '2rem'
+      }}>
+        <TimeSeriesChart
+          data={biologicalUnitsData}
+          title="Biological Units Timeline"
+          subtitle="Total biological units across all providers over time"
+          color="var(--success)"
+          height={350}
         />
       </div>
 

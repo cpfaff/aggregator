@@ -497,6 +497,75 @@ async def trigger_provider_biological_units_collection(
         raise HTTPException(status_code=500, detail="Error triggering provider biological units collection")
 
 
+@router.get("/biological-units-timeline", response_model=TimeSeriesResponse, summary="System biological units timeline")
+async def get_biological_units_timeline(
+    period: str = Query(Period.DAILY.value, description="Time period"),
+    start_date: Optional[date] = Query(None, description="Start date"),
+    end_date: Optional[date] = Query(None, description="End date"),
+    limit: int = Query(30, ge=1, le=365, description="Maximum data points"),
+    db: Session = Depends(get_sync_db),
+    current_user: UserModel = Depends(get_current_user)
+) -> TimeSeriesResponse:
+    """
+    Get system-wide biological units timeline by aggregating provider biological units.
+    Sums up all provider biological units for each date to show total system units over time.
+    """
+    try:
+        # Validate enum values
+        try:
+            Period(period)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=f"Invalid period: {e}")
+        
+        # Query to aggregate biological units across all providers for each date
+        # This sums up PROVIDER_BIOLOGICAL_UNITS for all providers per date
+        from sqlalchemy import func
+        
+        base_query = db.query(
+            StatisticModel.date,
+            func.sum(StatisticModel.value).label('total_units')
+        ).filter(
+            and_(
+                StatisticModel.metric_type == MetricType.PROVIDER_BIOLOGICAL_UNITS,
+                StatisticModel.entity_type == EntityType.PROVIDER,
+                StatisticModel.period == period
+            )
+        )
+        
+        if start_date:
+            base_query = base_query.filter(StatisticModel.date >= start_date)
+        if end_date:
+            base_query = base_query.filter(StatisticModel.date <= end_date)
+        
+        # Group by date to aggregate across providers and order by date descending, then limit
+        aggregated_stats = base_query.group_by(StatisticModel.date).order_by(desc(StatisticModel.date)).limit(limit).all()
+        
+        # Convert to time series points
+        data_points = [
+            TimeSeriesPoint(
+                date=stat.date,
+                value=float(stat.total_units) if stat.total_units is not None else 0.0,
+                extra_data={'aggregated_from_providers': True}
+            )
+            for stat in reversed(aggregated_stats)  # Reverse to get chronological order
+        ]
+        
+        return TimeSeriesResponse(
+            metric_type=MetricType.PROVIDER_BIOLOGICAL_UNITS.value,
+            entity_type=EntityType.SYSTEM.value,
+            entity_id=None,
+            period=period,
+            data_points=data_points,
+            total_points=len(data_points)
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting biological units timeline: {e}")
+        raise HTTPException(status_code=500, detail="Error retrieving biological units timeline")
+
+
 @router.get("/search", response_model=List[StatisticResponse], summary="Search statistics")
 async def search_statistics(
     query: StatisticsQuery = Depends(),

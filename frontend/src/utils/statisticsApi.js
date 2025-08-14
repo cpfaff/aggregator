@@ -241,6 +241,31 @@ export const authStatsApi = {
       throw new Error(`Failed to trigger XML analysis: ${response.status}`);
     }
     return response.json();
+  },
+
+  /**
+   * Get biological units timeline (system-wide aggregation)
+   * @param {Object} params - Query parameters
+   * @param {Function} onTokenExpired - Token expiration handler
+   * @returns {Promise<Object>} Biological units timeline data
+   */
+  getBiologicalUnitsTimeline: async (params, onTokenExpired) => {
+    const queryParams = new URLSearchParams({
+      period: params.period || 'daily',
+      limit: params.limit || 30,
+      ...(params.startDate && { start_date: params.startDate }),
+      ...(params.endDate && { end_date: params.endDate })
+    });
+
+    const response = await apiRequest(
+      `/statistics/biological-units-timeline?${queryParams}`, 
+      {}, 
+      onTokenExpired
+    );
+    if (!response.ok) {
+      throw new Error(`Failed to fetch biological units timeline: ${response.status}`);
+    }
+    return response.json();
   }
 };
 
@@ -299,7 +324,8 @@ export const statsUtils = {
       validation_success_rate: 'var(--primary)',
       xml_archive_count: 'var(--warning)',
       provider_dataset_count: 'var(--success)',
-      provider_biological_units: 'var(--success)'
+      provider_biological_units: 'var(--success)',
+      biological_units_timeline: 'var(--success)'
     };
     return colorMap[metricType] || 'var(--text-light)';
   }
