@@ -20,8 +20,6 @@ function PublicStatsDashboard() {
   const [qualityMetrics, setQualityMetrics] = useState(null);
   const [providerStats, setProviderStats] = useState([]);
   const [timelineData, setTimelineData] = useState([]);
-  const [recentActivity, setRecentActivity] = useState([]);
-  const [healthStatus, setHealthStatus] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -42,13 +40,11 @@ function PublicStatsDashboard() {
       }
       setError('');
       
-      const [overview, quality, providers, timeline, activity, health] = await Promise.all([
+      const [overview, quality, providers, timeline] = await Promise.all([
         publicStatsApi.getOverview(),
         publicStatsApi.getQuality(),
         publicStatsApi.getProviders(),
-        publicStatsApi.getTimeline({ period: 'daily', months: 1 }),
-        publicStatsApi.getRecentActivity(),
-        publicStatsApi.getHealth()
+        publicStatsApi.getTimeline({ period: 'daily', months: 1 })
       ]);
       
       setOverviewStats(overview);
@@ -93,9 +89,6 @@ function PublicStatsDashboard() {
         }
         return prev;
       });
-      
-      setRecentActivity(activity);
-      setHealthStatus(health);
       
       // Update last refreshed timestamp
       setLastUpdated(new Date());
@@ -356,35 +349,20 @@ function PublicStatsDashboard() {
       {qualityMetrics && (
         <div style={{
           backgroundColor: 'var(--card-bg)',
-          borderRadius: '1.5rem',
-          padding: '3rem 2rem',
+          borderRadius: '1rem',
+          padding: '2rem',
           border: '1px solid var(--border)',
           marginBottom: '4rem',
           textAlign: 'center',
           boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-          background: `linear-gradient(135deg, var(--card-bg) 0%, rgba(255, 255, 255, 0.02) 100%)`,
-          position: 'relative',
-          overflow: 'hidden'
+          background: `linear-gradient(135deg, var(--card-bg) 0%, rgba(255, 255, 255, 0.05) 100%)`
         }}>
-          {/* Background decoration */}
-          <div style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'radial-gradient(ellipse at center, var(--success)05 0%, transparent 70%)',
-            pointerEvents: 'none'
-          }} />
-          
           <h2 style={{
             fontSize: '2rem',
             fontWeight: 700,
             color: 'var(--text)',
             marginBottom: '1.5rem',
-            letterSpacing: '-1px',
-            position: 'relative',
-            zIndex: 1
+            letterSpacing: '-1px'
           }}>
             Data Quality Metrics
           </h2>
@@ -392,32 +370,25 @@ function PublicStatsDashboard() {
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-            gap: '3rem',
-            marginTop: '2.5rem',
-            position: 'relative',
-            zIndex: 1
+            gap: '2rem',
+            marginTop: '2rem'
           }}>
             <div style={{
               padding: '1.5rem',
-              backgroundColor: 'rgba(255, 255, 255, 0.03)',
               borderRadius: '1rem',
-              border: '1px solid var(--border)',
-              backdropFilter: 'blur(10px)'
+              border: '1px solid var(--border)'
             }}>
               <div style={{
-                fontSize: '3rem',
+                fontSize: '2.5rem',
                 fontWeight: 800,
-                background: 'linear-gradient(135deg, var(--primary) 0%, #3b82f6 100%)',
-                backgroundClip: 'text',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
+                color: 'var(--text)',
                 marginBottom: '0.75rem',
                 lineHeight: 1
               }}>
                 {qualityMetrics.total_validations.toLocaleString()}
               </div>
               <div style={{
-                fontSize: '1.1rem',
+                fontSize: '0.875rem',
                 color: 'var(--text-light)',
                 fontWeight: 600,
                 textTransform: 'uppercase',
@@ -429,25 +400,20 @@ function PublicStatsDashboard() {
             
             <div style={{
               padding: '1.5rem',
-              backgroundColor: 'rgba(255, 255, 255, 0.03)',
               borderRadius: '1rem',
-              border: '1px solid var(--border)',
-              backdropFilter: 'blur(10px)'
+              border: '1px solid var(--border)'
             }}>
               <div style={{
-                fontSize: '3rem',
+                fontSize: '2.5rem',
                 fontWeight: 800,
-                background: 'linear-gradient(135deg, var(--success) 0%, #22c55e 100%)',
-                backgroundClip: 'text',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
+                color: 'var(--text)',
                 marginBottom: '0.75rem',
                 lineHeight: 1
               }}>
                 {qualityMetrics.success_rate.toFixed(1)}%
               </div>
               <div style={{
-                fontSize: '1.1rem',
+                fontSize: '0.875rem',
                 color: 'var(--text-light)',
                 fontWeight: 600,
                 textTransform: 'uppercase',
@@ -460,25 +426,20 @@ function PublicStatsDashboard() {
             {qualityMetrics.average_processing_time && (
               <div style={{
                 padding: '1.5rem',
-                backgroundColor: 'rgba(255, 255, 255, 0.03)',
                 borderRadius: '1rem',
-                border: '1px solid var(--border)',
-                backdropFilter: 'blur(10px)'
+                border: '1px solid var(--border)'
               }}>
                 <div style={{
-                  fontSize: '3rem',
+                  fontSize: '2.5rem',
                   fontWeight: 800,
-                  background: 'linear-gradient(135deg, var(--warning) 0%, #f59e0b 100%)',
-                  backgroundClip: 'text',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
+                  color: 'var(--text)',
                   marginBottom: '0.75rem',
                   lineHeight: 1
                 }}>
                   {qualityMetrics.average_processing_time.toFixed(1)}s
                 </div>
                 <div style={{
-                  fontSize: '1.1rem',
+                  fontSize: '0.875rem',
                   color: 'var(--text-light)',
                   fontWeight: 600,
                   textTransform: 'uppercase',
@@ -518,143 +479,6 @@ function PublicStatsDashboard() {
         />
       </div>
 
-      {/* Registry Activity */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        marginBottom: '4rem'
-      }}>
-        {/* Activity Metrics */}
-        {healthStatus && (
-          <div style={{
-            backgroundColor: 'var(--card-bg)',
-            borderRadius: '1rem',
-            padding: '2rem',
-            border: '1px solid var(--border)',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-            background: `linear-gradient(135deg, var(--card-bg) 0%, rgba(255, 255, 255, 0.02) 100%)`,
-            position: 'relative',
-            overflow: 'hidden'
-          }}>
-            {/* Subtle background decoration */}
-            <div style={{
-              position: 'absolute',
-              top: 0,
-              right: 0,
-              width: '60%',
-              height: '100%',
-              background: `radial-gradient(ellipse at 100% 0%, var(--primary)05 0%, transparent 70%)`,
-              pointerEvents: 'none'
-            }} />
-            
-            <h3 style={{
-              fontSize: '1.5rem',
-              fontWeight: 700,
-              color: 'var(--text)',
-              marginBottom: '2rem',
-              letterSpacing: '-0.5px',
-              position: 'relative',
-              zIndex: 1
-            }}>
-              Registry Activity
-            </h3>
-            
-            <div style={{ 
-              display: 'grid', 
-              gap: '2rem',
-              position: 'relative',
-              zIndex: 1
-            }}>
-              <div style={{
-                textAlign: 'center',
-                padding: '1rem',
-                backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                borderRadius: '0.75rem',
-                border: '1px solid var(--border)'
-              }}>
-                <div style={{
-                  fontSize: '0.9rem',
-                  color: 'var(--text-light)',
-                  marginBottom: '0.75rem',
-                  fontWeight: 600,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px'
-                }}>
-                  Recent Registrations (30 days)
-                </div>
-                <div style={{
-                  fontSize: '2.5rem',
-                  fontWeight: 800,
-                  background: 'linear-gradient(135deg, var(--primary) 0%, #3b82f6 100%)',
-                  backgroundClip: 'text',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent'
-                }}>
-                  {recentActivity?.length || 0}
-                </div>
-              </div>
-              
-              <div style={{
-                textAlign: 'center',
-                padding: '1rem',
-                backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                borderRadius: '0.75rem',
-                border: '1px solid var(--border)'
-              }}>
-                <div style={{
-                  fontSize: '0.9rem',
-                  color: 'var(--text-light)',
-                  marginBottom: '0.75rem',
-                  fontWeight: 600,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px'
-                }}>
-                  Active Providers
-                </div>
-                <div style={{
-                  fontSize: '2.5rem',
-                  fontWeight: 800,
-                  background: 'linear-gradient(135deg, var(--success) 0%, #22c55e 100%)',
-                  backgroundClip: 'text',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent'
-                }}>
-                  {providerStats.total_providers || 0}
-                </div>
-              </div>
-              
-              <div style={{
-                textAlign: 'center',
-                padding: '1rem',
-                backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                borderRadius: '0.75rem',
-                border: '1px solid var(--border)'
-              }}>
-                <div style={{
-                  fontSize: '0.9rem',
-                  color: 'var(--text-light)',
-                  marginBottom: '0.75rem',
-                  fontWeight: 600,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px'
-                }}>
-                  Processing Jobs
-                </div>
-                <div style={{
-                  fontSize: '2.5rem',
-                  fontWeight: 800,
-                  background: 'linear-gradient(135deg, var(--warning) 0%, #f59e0b 100%)',
-                  backgroundClip: 'text',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent'
-                }}>
-                  {healthStatus.processing_jobs || 0}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
 
 
     </div>
