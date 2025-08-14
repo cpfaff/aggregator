@@ -389,63 +389,59 @@ def collect_daily_statistics(self, target_date: str = None) -> Dict[str, Any]:
         
         # System-wide statistics
         
-        # Total datasets - use upsert to avoid duplicates
+        # Total datasets - use proper upsert with ON CONFLICT
         total_datasets = db.query(func.count(DatasetModel.id)).scalar()
-        existing_stat = db.query(StatisticModel).filter(
-            and_(
-                StatisticModel.metric_type == MetricType.DATASET_COUNT,
-                StatisticModel.entity_type == EntityType.SYSTEM,
-                StatisticModel.entity_id.is_(None),
-                StatisticModel.period == Period.DAILY,
-                StatisticModel.date == stat_date
-            )
-        ).first()
         
-        if existing_stat:
-            existing_stat.value = total_datasets
-            existing_stat.extra_data = {'collection_timestamp': datetime.utcnow().isoformat()}
-            collected_stats.append(f"System dataset count (updated): {total_datasets}")
-        else:
-            stat = StatisticModel(
-                metric_type=MetricType.DATASET_COUNT,
-                entity_type=EntityType.SYSTEM,
-                entity_id=None,
-                period=Period.DAILY,
-                date=stat_date,
-                value=total_datasets,
-                extra_data={'collection_timestamp': datetime.utcnow().isoformat()}
-            )
-            db.add(stat)
-            collected_stats.append(f"System dataset count (new): {total_datasets}")
+        # Use SQLAlchemy's ON CONFLICT functionality for PostgreSQL upsert
+        from sqlalchemy.dialects.postgresql import insert
+        from sqlalchemy import text
         
-        # Total providers - use upsert to avoid duplicates
+        stmt = insert(StatisticModel).values(
+            metric_type=MetricType.DATASET_COUNT,
+            entity_type=EntityType.SYSTEM,
+            entity_id=None,
+            period=Period.DAILY,
+            date=stat_date,
+            value=total_datasets,
+            extra_data={'collection_timestamp': datetime.utcnow().isoformat()},
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        stmt = stmt.on_conflict_do_update(
+            constraint='uq_statistics_unique_entry',
+            set_={
+                'value': stmt.excluded.value,
+                'extra_data': stmt.excluded.extra_data,
+                'updated_at': datetime.utcnow()
+            }
+        )
+        db.execute(stmt)
+        collected_stats.append(f"System dataset count (upserted): {total_datasets}")
+        
+        # Total providers - use proper upsert with ON CONFLICT
         total_providers = db.query(func.count(DataProviderModel.id)).scalar()
-        existing_provider_stat = db.query(StatisticModel).filter(
-            and_(
-                StatisticModel.metric_type == MetricType.PROVIDER_COUNT,
-                StatisticModel.entity_type == EntityType.SYSTEM,
-                StatisticModel.entity_id.is_(None),
-                StatisticModel.period == Period.DAILY,
-                StatisticModel.date == stat_date
-            )
-        ).first()
         
-        if existing_provider_stat:
-            existing_provider_stat.value = total_providers
-            existing_provider_stat.extra_data = {'collection_timestamp': datetime.utcnow().isoformat()}
-            collected_stats.append(f"System provider count (updated): {total_providers}")
-        else:
-            stat = StatisticModel(
-                metric_type=MetricType.PROVIDER_COUNT,
-                entity_type=EntityType.SYSTEM,
-                entity_id=None,
-                period=Period.DAILY,
-                date=stat_date,
-                value=total_providers,
-                extra_data={'collection_timestamp': datetime.utcnow().isoformat()}
-            )
-            db.add(stat)
-            collected_stats.append(f"System provider count (new): {total_providers}")
+        stmt = insert(StatisticModel).values(
+            metric_type=MetricType.PROVIDER_COUNT,
+            entity_type=EntityType.SYSTEM,
+            entity_id=None,
+            period=Period.DAILY,
+            date=stat_date,
+            value=total_providers,
+            extra_data={'collection_timestamp': datetime.utcnow().isoformat()},
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        stmt = stmt.on_conflict_do_update(
+            constraint='uq_statistics_unique_entry',
+            set_={
+                'value': stmt.excluded.value,
+                'extra_data': stmt.excluded.extra_data,
+                'updated_at': datetime.utcnow()
+            }
+        )
+        db.execute(stmt)
+        collected_stats.append(f"System provider count (upserted): {total_providers}")
         
         # Total XML archives
         total_archives = db.query(func.count(XmlArchiveModel.id)).scalar()
@@ -540,55 +536,70 @@ def collect_daily_statistics(self, target_date: str = None) -> Dict[str, Any]:
             db.add(stat)
             collected_stats.append(f"Provider {provider.id} dataset count: {provider_dataset_count}")
             
-            # Calculate provider biological units (sum of all dataset unit counts for this provider)
-            provider_biological_units = db.query(func.sum(StatisticModel.value)).filter(
-                and_(
-                    StatisticModel.metric_type == MetricType.DATASET_UNIT_COUNT,
-                    StatisticModel.entity_type == EntityType.DATASET,
-                    StatisticModel.entity_id.in_(
-                        db.query(DatasetModel.id).filter(DatasetModel.provider_id == provider.id).subquery()
-                    ),
-                    StatisticModel.date >= stat_date - timedelta(days=7)  # Use recent data within 7 days
-                )
-            ).scalar() or 0
+            # Calculate provider biological units by getting the most recent unit count for each dataset
+            # Get all datasets for this provider
+            dataset_ids = db.query(DatasetModel.id).filter(
+                DatasetModel.provider_id == provider.id
+            ).all()
             
-            # Use upsert to avoid duplicates for provider biological units
-            existing_bio_unit_stat = db.query(StatisticModel).filter(
-                and_(
-                    StatisticModel.metric_type == MetricType.PROVIDER_BIOLOGICAL_UNITS,
-                    StatisticModel.entity_type == EntityType.PROVIDER,
-                    StatisticModel.entity_id == provider.id,
-                    StatisticModel.period == Period.DAILY,
-                    StatisticModel.date == stat_date
-                )
-            ).first()
+            if not dataset_ids:
+                provider_biological_units = 0
+            else:
+                dataset_id_list = [dataset_id[0] for dataset_id in dataset_ids]
+                
+                # Get the most recent unit count for each dataset
+                subquery = db.query(
+                    StatisticModel.entity_id,
+                    func.max(StatisticModel.date).label('max_date')
+                ).filter(
+                    and_(
+                        StatisticModel.metric_type == MetricType.DATASET_UNIT_COUNT,
+                        StatisticModel.entity_type == EntityType.DATASET,
+                        StatisticModel.entity_id.in_(dataset_id_list),
+                        StatisticModel.date <= stat_date
+                    )
+                ).group_by(StatisticModel.entity_id).subquery()
+                
+                # Get the actual values using the max date for each dataset
+                recent_unit_counts = db.query(StatisticModel.value).join(
+                    subquery,
+                    and_(
+                        StatisticModel.entity_id == subquery.c.entity_id,
+                        StatisticModel.date == subquery.c.max_date
+                    )
+                ).filter(
+                    StatisticModel.metric_type == MetricType.DATASET_UNIT_COUNT
+                ).all()
+                
+                provider_biological_units = sum(count[0] for count in recent_unit_counts if count[0] is not None)
             
-            if existing_bio_unit_stat:
-                existing_bio_unit_stat.value = provider_biological_units
-                existing_bio_unit_stat.extra_data = {
+            # Use proper upsert for provider biological units
+            stmt = insert(StatisticModel).values(
+                metric_type=MetricType.PROVIDER_BIOLOGICAL_UNITS,
+                entity_type=EntityType.PROVIDER,
+                entity_id=provider.id,
+                period=Period.DAILY,
+                date=stat_date,
+                value=provider_biological_units,
+                extra_data={
                     'provider_name': provider.name,
                     'provider_datacenter': provider.datacenter,
                     'dataset_count': provider_dataset_count,
                     'collection_timestamp': datetime.utcnow().isoformat()
+                },
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow()
+            )
+            stmt = stmt.on_conflict_do_update(
+                constraint='uq_statistics_unique_entry',
+                set_={
+                    'value': stmt.excluded.value,
+                    'extra_data': stmt.excluded.extra_data,
+                    'updated_at': datetime.utcnow()
                 }
-                collected_stats.append(f"Provider {provider.id} biological units (updated): {provider_biological_units}")
-            else:
-                bio_unit_stat = StatisticModel(
-                    metric_type=MetricType.PROVIDER_BIOLOGICAL_UNITS,
-                    entity_type=EntityType.PROVIDER,
-                    entity_id=provider.id,
-                    period=Period.DAILY,
-                    date=stat_date,
-                    value=provider_biological_units,
-                    extra_data={
-                        'provider_name': provider.name,
-                        'provider_datacenter': provider.datacenter,
-                        'dataset_count': provider_dataset_count,
-                        'collection_timestamp': datetime.utcnow().isoformat()
-                    }
-                )
-                db.add(bio_unit_stat)
-                collected_stats.append(f"Provider {provider.id} biological units (new): {provider_biological_units}")
+            )
+            db.execute(stmt)
+            collected_stats.append(f"Provider {provider.id} biological units (upserted): {provider_biological_units}")
         
         # Dataset registration rate (new datasets today)
         start_of_day = datetime.combine(stat_date, datetime.min.time())
@@ -1026,6 +1037,8 @@ def collect_provider_biological_units(self, target_date: str = None) -> Dict[str
     Returns:
         Dictionary with collection results
     """
+    from sqlalchemy.dialects.postgresql import insert
+    
     db = SessionLocal()
     
     try:
@@ -1081,43 +1094,33 @@ def collect_provider_biological_units(self, target_date: str = None) -> Dict[str
                 
                 provider_biological_units = sum(count[0] for count in recent_unit_counts if count[0] is not None)
             
-            # Use upsert to avoid duplicates
-            existing_stat = db.query(StatisticModel).filter(
-                and_(
-                    StatisticModel.metric_type == MetricType.PROVIDER_BIOLOGICAL_UNITS,
-                    StatisticModel.entity_type == EntityType.PROVIDER,
-                    StatisticModel.entity_id == provider.id,
-                    StatisticModel.period == Period.DAILY,
-                    StatisticModel.date == stat_date
-                )
-            ).first()
-            
-            if existing_stat:
-                existing_stat.value = provider_biological_units
-                existing_stat.extra_data = {
+            # Use proper upsert for provider biological units
+            stmt = insert(StatisticModel).values(
+                metric_type=MetricType.PROVIDER_BIOLOGICAL_UNITS,
+                entity_type=EntityType.PROVIDER,
+                entity_id=provider.id,
+                period=Period.DAILY,
+                date=stat_date,
+                value=provider_biological_units,
+                extra_data={
                     'provider_name': provider.name,
                     'provider_datacenter': provider.datacenter,
                     'dataset_count': len(dataset_ids),
                     'collection_timestamp': datetime.utcnow().isoformat()
+                },
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow()
+            )
+            stmt = stmt.on_conflict_do_update(
+                constraint='uq_statistics_unique_entry',
+                set_={
+                    'value': stmt.excluded.value,
+                    'extra_data': stmt.excluded.extra_data,
+                    'updated_at': datetime.utcnow()
                 }
-                collected_stats.append(f"Provider {provider.id} biological units (updated): {provider_biological_units}")
-            else:
-                stat = StatisticModel(
-                    metric_type=MetricType.PROVIDER_BIOLOGICAL_UNITS,
-                    entity_type=EntityType.PROVIDER,
-                    entity_id=provider.id,
-                    period=Period.DAILY,
-                    date=stat_date,
-                    value=provider_biological_units,
-                    extra_data={
-                        'provider_name': provider.name,
-                        'provider_datacenter': provider.datacenter,
-                        'dataset_count': len(dataset_ids),
-                        'collection_timestamp': datetime.utcnow().isoformat()
-                    }
-                )
-                db.add(stat)
-                collected_stats.append(f"Provider {provider.id} biological units (new): {provider_biological_units}")
+            )
+            db.execute(stmt)
+            collected_stats.append(f"Provider {provider.id} biological units (upserted): {provider_biological_units}")
         
         # Commit all statistics
         db.commit()
