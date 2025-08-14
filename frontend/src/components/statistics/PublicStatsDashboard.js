@@ -236,61 +236,15 @@ function PublicStatsDashboard() {
           zIndex: -1
         }} />
         
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          flexWrap: 'wrap',
-          gap: '1rem',
-          marginBottom: '1.5rem'
+        <h1 style={{
+          fontSize: 'clamp(2rem, 4vw, 2.75rem)',
+          fontWeight: 700,
+          color: 'var(--text)',
+          letterSpacing: '-0.025em',
+          margin: '0 0 1.5rem 0'
         }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '1rem',
-            flexWrap: 'wrap'
-          }}>
-            <h1 style={{
-              fontSize: 'clamp(2rem, 5vw, 3rem)',
-              fontWeight: 800,
-              background: 'linear-gradient(135deg, var(--text) 0%, var(--primary) 100%)',
-              backgroundClip: 'text',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              letterSpacing: '-2px',
-              margin: 0
-            }}>
-              GFBio Registry Statistics
-            </h1>
-            {autoRefreshEnabled && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.25rem',
-                padding: '0.5rem 1rem',
-                backgroundColor: 'var(--success)',
-                color: 'white',
-                borderRadius: '1.5rem',
-                fontSize: '0.875rem',
-                fontWeight: 600,
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-                animation: 'pulse 3s infinite',
-                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-              }}>
-                <div style={{
-                  width: '8px',
-                  height: '8px',
-                  backgroundColor: 'white',
-                  borderRadius: '50%',
-                  animation: 'pulse 1s infinite'
-                }} />
-                Live Data
-              </div>
-            )}
-          </div>
-          
-        </div>
+          GFBio Registry Statistics
+        </h1>
         <p style={{
           fontSize: '1.25rem',
           color: 'var(--text-light)',
