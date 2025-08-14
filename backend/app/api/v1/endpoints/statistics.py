@@ -292,6 +292,35 @@ async def get_time_series_data(
             for stat in reversed(aggregated_stats)  # Reverse to get chronological order
         ]
         
+        # Add today's data if missing and there are new registrations (similar to public endpoint)
+        today = date.today()
+        today_start = datetime.combine(today, datetime.min.time())
+        
+        # Check if today is missing from historical data
+        has_today_data = any(point.date == today for point in data_points)
+        
+        if not has_today_data and metric_type == MetricType.DATASET_COUNT.value and entity_type == EntityType.SYSTEM.value and entity_id is None:
+            # Get today's dataset registrations count
+            todays_new_datasets = db.query(func.count(DatasetModel.id)).filter(
+                DatasetModel.created_at >= today_start
+            ).scalar() or 0
+            
+            # Only add today's data point if there are actual registrations
+            if todays_new_datasets > 0:
+                # Get current total dataset count for today's cumulative value
+                current_total_datasets = db.query(func.count(DatasetModel.id)).scalar() or 0
+                
+                # Add today's data point to timeline
+                data_points.append(TimeSeriesPoint(
+                    date=today,
+                    value=float(current_total_datasets),
+                    extra_data={
+                        'records_aggregated': 1,
+                        'is_current_day': True,
+                        'new_registrations_today': todays_new_datasets
+                    }
+                ))
+        
         return TimeSeriesResponse(
             metric_type=metric_type,
             entity_type=entity_type,
