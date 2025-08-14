@@ -61,12 +61,15 @@ function AdminDashboard() {
       const providers = await publicStatsApi.getProviders();
       
       // Transform datacenter data for PieChart component
+      // Sort by dataset count (descending) to ensure largest gets primary color
       // Only update if data has actually changed to prevent chart re-renders
-      const transformedDatacenters = (providers.datacenters || []).map(dc => ({
-        name: dc.datacenter,
-        value: dc.dataset_count,
-        provider_count: dc.provider_count
-      }));
+      const transformedDatacenters = (providers.datacenters || [])
+        .map(dc => ({
+          name: dc.datacenter,
+          value: dc.dataset_count,
+          provider_count: dc.provider_count
+        }))
+        .sort((a, b) => b.value - a.value); // Sort descending by dataset count
       
       setDatacenterStats(prev => {
         const prevDataStr = JSON.stringify(prev);
@@ -365,58 +368,58 @@ function AdminDashboard() {
           marginBottom: '2rem'
         }}>
           <StatCard
-            title="Total Datasets"
-            value={overviewStats.total_datasets}
-            color="var(--neutral-primary)"
-            isLiveData={autoRefreshEnabled}
-          />
-          
-          <StatCard
             title="Data Providers"
             value={overviewStats.total_providers}
-            color="var(--neutral-secondary)"
+            color="var(--success)"
             isLiveData={autoRefreshEnabled}
           />
           
           <StatCard
             title="Data Centers"
             value={overviewStats.total_datacenters}
-            color="var(--neutral-tertiary)"
+            color="var(--warning)"
+            isLiveData={autoRefreshEnabled}
+          />
+          
+          <StatCard
+            title="Total Datasets"
+            value={overviewStats.total_datasets}
+            color="var(--primary)"
             isLiveData={autoRefreshEnabled}
           />
           
           <StatCard
             title="XML Archives"
             value={overviewStats.total_xml_archives}
-            color="var(--neutral-secondary)"
+            color="var(--info)"
             isLiveData={autoRefreshEnabled}
           />
+          
+          {qualityMetrics && (
+            <StatCard
+              title="Total Validations"
+              value={qualityMetrics.total_validations}
+              color="var(--warning)"
+              isLiveData={autoRefreshEnabled}
+            />
+          )}
           
           {overviewStats.validation_success_rate !== null && (
             <StatCard
               title="Validation Success Rate"
               value={`${overviewStats.validation_success_rate.toFixed(1)}`}
               unit="%"
-              color="var(--success-professional)"
-              isLiveData={autoRefreshEnabled}
-            />
-          )}
-          
-          {qualityMetrics && (
-            <StatCard
-              title="Total Validations"
-              value={qualityMetrics.total_validations}
-              color="var(--neutral-tertiary)"
+              color="var(--success)"
               isLiveData={autoRefreshEnabled}
             />
           )}
           
           {qualityMetrics && qualityMetrics.average_processing_time && (
             <StatCard
-              title="Average Processing Time"
+              title="Average Validation Time"
               value={`${qualityMetrics.average_processing_time.toFixed(1)}`}
               unit="s"
-              color="var(--performance-indicator)"
+              color="var(--warning)"
               isLiveData={autoRefreshEnabled}
             />
           )}

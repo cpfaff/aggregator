@@ -322,14 +322,6 @@ function PublicStatsDashboard() {
           marginBottom: '4rem'
         }}>
           <StatCard
-            title="Total Datasets"
-            value={overviewStats.total_datasets}
-            icon={<Database size={20} />}
-            color="var(--primary)"
-            isLiveData={autoRefreshEnabled}
-          />
-          
-          <StatCard
             title="Data Providers"
             value={overviewStats.total_providers}
             icon={<Users size={20} />}
@@ -342,6 +334,14 @@ function PublicStatsDashboard() {
             value={overviewStats.total_datacenters}
             icon={<Server size={20} />}
             color="var(--warning)"
+            isLiveData={autoRefreshEnabled}
+          />
+          
+          <StatCard
+            title="Total Datasets"
+            value={overviewStats.total_datasets}
+            icon={<Database size={20} />}
+            color="var(--primary)"
             isLiveData={autoRefreshEnabled}
           />
           
@@ -410,36 +410,6 @@ function PublicStatsDashboard() {
               <div style={{
                 fontSize: '3rem',
                 fontWeight: 800,
-                background: 'linear-gradient(135deg, var(--success) 0%, #22c55e 100%)',
-                backgroundClip: 'text',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                marginBottom: '0.75rem',
-                lineHeight: 1
-              }}>
-                {qualityMetrics.success_rate.toFixed(1)}%
-              </div>
-              <div style={{
-                fontSize: '1.1rem',
-                color: 'var(--text-light)',
-                fontWeight: 600,
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px'
-              }}>
-                Validation Success Rate
-              </div>
-            </div>
-            
-            <div style={{
-              padding: '1.5rem',
-              backgroundColor: 'rgba(255, 255, 255, 0.03)',
-              borderRadius: '1rem',
-              border: '1px solid var(--border)',
-              backdropFilter: 'blur(10px)'
-            }}>
-              <div style={{
-                fontSize: '3rem',
-                fontWeight: 800,
                 background: 'linear-gradient(135deg, var(--primary) 0%, #3b82f6 100%)',
                 backgroundClip: 'text',
                 WebkitBackgroundClip: 'text',
@@ -457,6 +427,36 @@ function PublicStatsDashboard() {
                 letterSpacing: '0.5px'
               }}>
                 Total Validations
+              </div>
+            </div>
+            
+            <div style={{
+              padding: '1.5rem',
+              backgroundColor: 'rgba(255, 255, 255, 0.03)',
+              borderRadius: '1rem',
+              border: '1px solid var(--border)',
+              backdropFilter: 'blur(10px)'
+            }}>
+              <div style={{
+                fontSize: '3rem',
+                fontWeight: 800,
+                background: 'linear-gradient(135deg, var(--success) 0%, #22c55e 100%)',
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                marginBottom: '0.75rem',
+                lineHeight: 1
+              }}>
+                {qualityMetrics.success_rate.toFixed(1)}%
+              </div>
+              <div style={{
+                fontSize: '1.1rem',
+                color: 'var(--text-light)',
+                fontWeight: 600,
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px'
+              }}>
+                Validation Success Rate
               </div>
             </div>
             
@@ -487,7 +487,7 @@ function PublicStatsDashboard() {
                   textTransform: 'uppercase',
                   letterSpacing: '0.5px'
                 }}>
-                  Avg. Processing Time
+                  Average Validation Time
                 </div>
               </div>
             )}
