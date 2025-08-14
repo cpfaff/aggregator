@@ -2,9 +2,11 @@ import React from 'react';
 
 const About = () => {
   const containerStyle = {
+    flexGrow: 1,
     padding: '2rem 1rem',
-    maxWidth: '900px',
+    maxWidth: '1200px',
     margin: '0 auto',
+    width: '100%',
     lineHeight: '1.7',
     fontSize: '1rem',
   };
@@ -176,7 +178,7 @@ const About = () => {
   };
 
   return (
-    <div style={containerStyle}>
+    <div style={containerStyle} className="content-container">
       {/* Hero Section */}
       <header style={heroSectionStyle}>
         <h1 style={titleStyle}>
@@ -191,12 +193,11 @@ const About = () => {
       <section style={sectionStyle}>
         <h2 style={sectionHeaderStyle}>What We Do</h2>
         
-        <p style={highlightParagraphStyle}>
-          The GFBio Aggregator provides comprehensive data provider and dataset management for the GFBio Search and Harvesting Infrastructure, enabling the discovery and integration of biodiversity data from certified data centers following FAIR principles.
-        </p>
-        
         <p style={paragraphStyle}>
+          The GFBio Aggregator provides comprehensive data provider and dataset management for the GFBio Search and Harvesting Infrastructure (SAHIS), enabling the discovery and integration of biodiversity data from certified data centers following FAIR principles.
+
           We serve as the central registry that coordinates the entire research data ecosystem from harvesting through publication, ensuring seamless integration and discoverability of biological data across Germany's research infrastructure.
+        
         </p>
         
         <h3 style={subsectionHeaderStyle}>Who We Are</h3>
@@ -240,7 +241,7 @@ const About = () => {
         
         <h3 style={subsectionHeaderStyle}>For Researchers</h3>
         
-        <p style={highlightParagraphStyle}>
+        <p style={paragraphStyle}>
           This service is available free of charge to researchers in biology, ecology, and environmental sciences. The aggregator ensures your data becomes discoverable through the GFBio search infrastructure, supporting data from field observations, collections, genomics, and environmental monitoring.
         </p>
       </section>
@@ -263,31 +264,28 @@ const About = () => {
           <span style={contactValueStyle}>Available Monday-Friday, 9:00-17:00 CET</span>
         </div>
         
-        <div style={contactItemStyle}>
-          <span style={contactLabelStyle}>Response:</span>
-          <span style={contactValueStyle}>We typically respond within 24 hours during business days</span>
-        </div>
       </section>
       
       {/* Legal Information */}
-      <section style={legalSectionStyle}>
-        <h3 style={h3Style}>Legal Information</h3>
+      <section style={contactSectionStyle}>
+        <h2 style={sectionHeaderStyle}>Legal Information</h2>
         
-        <div style={addressStyle}>
-          <strong style={{color: 'var(--text)', display: 'block', marginBottom: '0.5rem'}}>
-            GFBio e.V. (Gesellschaft für Biologische Daten e.V.)
-          </strong>
+        <div style={contactItemStyle}>
           <div style={{color: 'var(--text-light)'}}>
-            Unicom 2, Haus 2-4<br/>
-            Mary-Somerville-Str. 2<br/>
-            28359 Bremen<br/>
-            Registered at Amtsgericht Bremen
+            <strong style={{color: 'var(--text)', display: 'block', marginBottom: '0.75rem'}}>
+              GFBio e.V. (Gesellschaft für Biologische Daten e.V.)
+            </strong>
+            <div style={{marginBottom: '1rem'}}>
+              Unicom 2, Haus 2-4<br/>
+              Mary-Somerville-Str. 2<br/>
+              28359 Bremen<br/>
+              Registered at Amtsgericht Bremen
+            </div>
+            <div style={{fontSize: '0.9rem'}}>
+              For complete legal information including Impressum, data protection, and organizational details, visit our main website at <strong style={{color: 'var(--text)'}}>gfbio.org</strong>
+            </div>
           </div>
         </div>
-        
-        <p style={{...paragraphStyle, fontSize: '0.9rem', margin: 0}}>
-          For complete legal information including Impressum, data protection, and organizational details, visit our main website at <strong>gfbio.org</strong>
-        </p>
       </section>
       
       {/* Support Section */}
