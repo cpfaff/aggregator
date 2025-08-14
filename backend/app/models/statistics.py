@@ -25,6 +25,7 @@ class MetricType(str, Enum):
     PROVIDER_COUNT = "provider_count"
     PROVIDER_DATASET_COUNT = "provider_dataset_count"
     PROVIDER_ACTIVITY_SCORE = "provider_activity_score"
+    PROVIDER_UNIT_COUNT = "provider_unit_count"
     
     # Validation metrics
     VALIDATION_SUCCESS_RATE = "validation_success_rate"
@@ -42,6 +43,7 @@ class MetricType(str, Enum):
     SYSTEM_STORAGE_SIZE = "system_storage_size"
     SYSTEM_PROCESSING_LOAD = "system_processing_load"
     SYSTEM_API_RESPONSE_TIME = "system_api_response_time"
+    SYSTEM_UNIT_COUNT = "system_unit_count"
 
 
 class EntityType(str, Enum):
@@ -94,9 +96,10 @@ class StatisticModel(Base, TimestampMixin):
         CheckConstraint(
             "metric_type IN ('dataset_count', 'dataset_registration_rate', 'dataset_modification_rate', "
             "'dataset_unit_count', 'provider_count', 'provider_dataset_count', 'provider_activity_score', "
-            "'validation_success_rate', 'validation_error_rate', 'validation_processing_time', "
+            "'provider_unit_count', 'validation_success_rate', 'validation_error_rate', 'validation_processing_time', "
             "'validation_job_count', 'abcd_compliance_rate', 'xml_archive_count', 'citation_completeness', "
-            "'geographic_coverage', 'system_storage_size', 'system_processing_load', 'system_api_response_time')",
+            "'geographic_coverage', 'system_storage_size', 'system_processing_load', 'system_api_response_time', "
+            "'system_unit_count')",
             name="valid_metric_type"
         ),
         CheckConstraint(
@@ -146,6 +149,7 @@ class StatisticModel(Base, TimestampMixin):
             MetricType.PROVIDER_COUNT: "Total number of providers",
             MetricType.PROVIDER_DATASET_COUNT: "Number of datasets per provider",
             MetricType.PROVIDER_ACTIVITY_SCORE: "Provider activity score",
+            MetricType.PROVIDER_UNIT_COUNT: "Total number of units per provider",
             MetricType.VALIDATION_SUCCESS_RATE: "Percentage of successful validations",
             MetricType.VALIDATION_ERROR_RATE: "Percentage of validation errors",
             MetricType.VALIDATION_PROCESSING_TIME: "Average validation processing time",
@@ -157,5 +161,6 @@ class StatisticModel(Base, TimestampMixin):
             MetricType.SYSTEM_STORAGE_SIZE: "Total storage size in bytes",
             MetricType.SYSTEM_PROCESSING_LOAD: "System processing load",
             MetricType.SYSTEM_API_RESPONSE_TIME: "Average API response time",
+            MetricType.SYSTEM_UNIT_COUNT: "Total number of units in the system",
         }
         return descriptions.get(metric_type)

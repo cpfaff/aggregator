@@ -5,6 +5,8 @@ Celery tasks for statistics collection and aggregation.
 import logging
 import requests
 import xml.etree.ElementTree as ET
+import zipfile
+import io
 from datetime import datetime, date, timedelta
 from typing import Dict, Any, List, Optional, Tuple
 from urllib.parse import urlparse
@@ -36,9 +38,10 @@ class XMLParsingError(Exception):
 def parse_abcd_xml(xml_url: str) -> Dict[str, Any]:
     """
     Parse ABCD XML file and extract unit counts, taxonomic info, and geographic data.
+    Handles both direct XML files and ZIP archives containing XML files.
     
     Args:
-        xml_url: URL of the XML file to parse
+        xml_url: URL of the XML file or ZIP archive to parse
         
     Returns:
         Dictionary containing extracted information
@@ -47,12 +50,47 @@ def parse_abcd_xml(xml_url: str) -> Dict[str, Any]:
         XMLParsingError: If XML parsing fails
     """
     try:
-        # Download XML content
+        # Download content
         response = requests.get(xml_url, timeout=300, stream=True)
         response.raise_for_status()
         
-        # Parse XML
-        root = ET.parse(response.raw).getroot()
+        # Read content into memory
+        content = response.content
+        
+        # Determine if content is a ZIP file or direct XML
+        root = None
+        
+        # Check if content starts with ZIP file signature (PK)
+        if content.startswith(b'PK'):
+            logger.debug(f"Detected ZIP archive for URL: {xml_url}")
+            
+            # Handle ZIP file
+            try:
+                with zipfile.ZipFile(io.BytesIO(content)) as zip_file:
+                    # Look for XML files in the ZIP
+                    xml_files = [f for f in zip_file.namelist() 
+                               if f.lower().endswith('.xml') and not f.startswith('__MACOSX/')]
+                    
+                    if not xml_files:
+                        raise XMLParsingError("No XML files found in ZIP archive")
+                    
+                    # Use the first XML file found (typically there's only one)
+                    xml_filename = xml_files[0]
+                    logger.debug(f"Extracting XML file: {xml_filename}")
+                    
+                    # Extract and parse the XML file
+                    with zip_file.open(xml_filename) as xml_file:
+                        xml_content = xml_file.read()
+                        root = ET.fromstring(xml_content)
+                        
+            except zipfile.BadZipFile:
+                # Not a valid ZIP file, treat as direct XML
+                logger.debug(f"Invalid ZIP file, attempting direct XML parsing for: {xml_url}")
+                root = ET.fromstring(content)
+        else:
+            # Try direct XML parsing
+            logger.debug(f"Attempting direct XML parsing for: {xml_url}")
+            root = ET.fromstring(content)
         
         # Common ABCD namespaces
         namespaces = {
@@ -65,7 +103,13 @@ def parse_abcd_xml(xml_url: str) -> Dict[str, Any]:
         detected_ns = None
         for prefix, uri in namespaces.items():
             if uri in root.tag or any(uri in elem.tag for elem in root.iter()):
-                detected_ns = {prefix.split('abcd')[1] or 'abcd': uri}
+                # Map the different ABCD versions to a consistent prefix
+                if prefix == 'abcd':
+                    detected_ns = {'abcd': uri}
+                elif prefix == 'abcd21':
+                    detected_ns = {'abcd': uri}
+                elif prefix == 'abcd3':
+                    detected_ns = {'abcd': uri}
                 break
         
         if not detected_ns:
@@ -79,13 +123,12 @@ def parse_abcd_xml(xml_url: str) -> Dict[str, Any]:
         unit_count = 0
         
         if detected_ns:
-            ns_key = list(detected_ns.keys())[0]
-            ns_prefix = f"{ns_key}:" if ns_key != 'abcd' else ""
+            ns_uri = detected_ns['abcd']
             
             # Find Units - different paths for different versions
             unit_paths = [
-                f".//{{{detected_ns[ns_key]}}}Unit",
-                f".//{{{detected_ns[ns_key]}}}DataSet/{{{detected_ns[ns_key]}}}Units/{{{detected_ns[ns_key]}}}Unit"
+                f".//{{{ns_uri}}}Unit",
+                f".//{{{ns_uri}}}DataSet/{{{ns_uri}}}Units/{{{ns_uri}}}Unit"
             ]
             
             for path in unit_paths:
@@ -202,13 +245,16 @@ def parse_abcd_xml(xml_url: str) -> Dict[str, Any]:
         }
         
     except requests.RequestException as e:
-        logger.error(f"Failed to download XML from {xml_url}: {e}")
+        logger.error(f"Failed to download content from {xml_url}: {e}")
         raise XMLParsingError(f"Download failed: {e}")
+    except zipfile.BadZipFile as e:
+        logger.error(f"Invalid ZIP file format for {xml_url}: {e}")
+        raise XMLParsingError(f"Invalid ZIP file: {e}")
     except ET.ParseError as e:
         logger.error(f"Failed to parse XML from {xml_url}: {e}")
         raise XMLParsingError(f"XML parsing failed: {e}")
     except Exception as e:
-        logger.error(f"Unexpected error parsing XML from {xml_url}: {e}")
+        logger.error(f"Unexpected error processing {xml_url}: {e}")
         raise XMLParsingError(f"Unexpected error: {e}")
 
 
