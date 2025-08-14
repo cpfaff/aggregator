@@ -443,19 +443,30 @@ def collect_daily_statistics(self, target_date: str = None) -> Dict[str, Any]:
         db.execute(stmt)
         collected_stats.append(f"System provider count (upserted): {total_providers}")
         
-        # Total XML archives
+        # Total XML archives - use proper upsert with ON CONFLICT
         total_archives = db.query(func.count(XmlArchiveModel.id)).scalar()
-        stat = StatisticModel(
+        
+        stmt = insert(StatisticModel).values(
             metric_type=MetricType.XML_ARCHIVE_COUNT,
             entity_type=EntityType.SYSTEM,
             entity_id=None,
             period=Period.DAILY,
             date=stat_date,
             value=total_archives,
-            extra_data={'collection_timestamp': datetime.utcnow().isoformat()}
+            extra_data={'collection_timestamp': datetime.utcnow().isoformat()},
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
         )
-        db.add(stat)
-        collected_stats.append(f"System XML archive count: {total_archives}")
+        stmt = stmt.on_conflict_do_update(
+            constraint='uq_statistics_unique_entry',
+            set_={
+                'value': stmt.excluded.value,
+                'extra_data': stmt.excluded.extra_data,
+                'updated_at': datetime.utcnow()
+            }
+        )
+        db.execute(stmt)
+        collected_stats.append(f"System XML archive count (upserted): {total_archives}")
         
         # Validation statistics (last 7 days)
         week_ago = stat_date - timedelta(days=7)
@@ -477,8 +488,8 @@ def collect_daily_statistics(self, target_date: str = None) -> Dict[str, Any]:
                 if processing_times:
                     avg_processing_time = sum(processing_times) / len(processing_times)
             
-            # Validation success rate
-            stat = StatisticModel(
+            # Validation success rate - use proper upsert with ON CONFLICT
+            stmt = insert(StatisticModel).values(
                 metric_type=MetricType.VALIDATION_SUCCESS_RATE,
                 entity_type=EntityType.SYSTEM,
                 entity_id=None,
@@ -490,13 +501,23 @@ def collect_daily_statistics(self, target_date: str = None) -> Dict[str, Any]:
                     'successful_jobs': successful_jobs,
                     'period_days': 7,
                     'collection_timestamp': datetime.utcnow().isoformat()
+                },
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow()
+            )
+            stmt = stmt.on_conflict_do_update(
+                constraint='uq_statistics_unique_entry',
+                set_={
+                    'value': stmt.excluded.value,
+                    'extra_data': stmt.excluded.extra_data,
+                    'updated_at': datetime.utcnow()
                 }
             )
-            db.add(stat)
-            collected_stats.append(f"System validation success rate: {success_rate:.1f}%")
+            db.execute(stmt)
+            collected_stats.append(f"System validation success rate (upserted): {success_rate:.1f}%")
             
-            # Average processing time
-            stat = StatisticModel(
+            # Average processing time - use proper upsert with ON CONFLICT
+            stmt = insert(StatisticModel).values(
                 metric_type=MetricType.VALIDATION_PROCESSING_TIME,
                 entity_type=EntityType.SYSTEM,
                 entity_id=None,
@@ -506,10 +527,20 @@ def collect_daily_statistics(self, target_date: str = None) -> Dict[str, Any]:
                 extra_data={
                     'jobs_included': len([j for j in validation_jobs if j.validation_time is not None]),
                     'collection_timestamp': datetime.utcnow().isoformat()
+                },
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow()
+            )
+            stmt = stmt.on_conflict_do_update(
+                constraint='uq_statistics_unique_entry',
+                set_={
+                    'value': stmt.excluded.value,
+                    'extra_data': stmt.excluded.extra_data,
+                    'updated_at': datetime.utcnow()
                 }
             )
-            db.add(stat)
-            collected_stats.append(f"System avg processing time: {avg_processing_time:.2f}s")
+            db.execute(stmt)
+            collected_stats.append(f"System avg processing time (upserted): {avg_processing_time:.2f}s")
         
         # Provider-specific statistics
         providers = db.query(DataProviderModel).all()
@@ -520,7 +551,7 @@ def collect_daily_statistics(self, target_date: str = None) -> Dict[str, Any]:
                 DatasetModel.provider_id == provider.id
             ).scalar()
             
-            stat = StatisticModel(
+            stmt = insert(StatisticModel).values(
                 metric_type=MetricType.PROVIDER_DATASET_COUNT,
                 entity_type=EntityType.PROVIDER,
                 entity_id=provider.id,
@@ -531,10 +562,20 @@ def collect_daily_statistics(self, target_date: str = None) -> Dict[str, Any]:
                     'provider_name': provider.name,
                     'provider_datacenter': provider.datacenter,
                     'collection_timestamp': datetime.utcnow().isoformat()
+                },
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow()
+            )
+            stmt = stmt.on_conflict_do_update(
+                constraint='uq_statistics_unique_entry',
+                set_={
+                    'value': stmt.excluded.value,
+                    'extra_data': stmt.excluded.extra_data,
+                    'updated_at': datetime.utcnow()
                 }
             )
-            db.add(stat)
-            collected_stats.append(f"Provider {provider.id} dataset count: {provider_dataset_count}")
+            db.execute(stmt)
+            collected_stats.append(f"Provider {provider.id} dataset count (upserted): {provider_dataset_count}")
             
             # Calculate provider biological units by getting the most recent unit count for each dataset
             # Get all datasets for this provider
@@ -612,7 +653,7 @@ def collect_daily_statistics(self, target_date: str = None) -> Dict[str, Any]:
             )
         ).scalar()
         
-        stat = StatisticModel(
+        stmt = insert(StatisticModel).values(
             metric_type=MetricType.DATASET_REGISTRATION_RATE,
             entity_type=EntityType.SYSTEM,
             entity_id=None,
@@ -623,10 +664,20 @@ def collect_daily_statistics(self, target_date: str = None) -> Dict[str, Any]:
                 'period_start': start_of_day.isoformat(),
                 'period_end': end_of_day.isoformat(),
                 'collection_timestamp': datetime.utcnow().isoformat()
+            },
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        stmt = stmt.on_conflict_do_update(
+            constraint='uq_statistics_unique_entry',
+            set_={
+                'value': stmt.excluded.value,
+                'extra_data': stmt.excluded.extra_data,
+                'updated_at': datetime.utcnow()
             }
         )
-        db.add(stat)
-        collected_stats.append(f"New datasets today: {new_datasets_count}")
+        db.execute(stmt)
+        collected_stats.append(f"New datasets today (upserted): {new_datasets_count}")
         
         # Dataset modification rate (modified datasets today)
         modified_datasets_count = db.query(func.count(distinct(DatasetModel.id))).filter(
@@ -637,7 +688,7 @@ def collect_daily_statistics(self, target_date: str = None) -> Dict[str, Any]:
             )
         ).scalar()
         
-        stat = StatisticModel(
+        stmt = insert(StatisticModel).values(
             metric_type=MetricType.DATASET_MODIFICATION_RATE,
             entity_type=EntityType.SYSTEM,
             entity_id=None,
@@ -648,10 +699,20 @@ def collect_daily_statistics(self, target_date: str = None) -> Dict[str, Any]:
                 'period_start': start_of_day.isoformat(),
                 'period_end': end_of_day.isoformat(),
                 'collection_timestamp': datetime.utcnow().isoformat()
+            },
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        stmt = stmt.on_conflict_do_update(
+            constraint='uq_statistics_unique_entry',
+            set_={
+                'value': stmt.excluded.value,
+                'extra_data': stmt.excluded.extra_data,
+                'updated_at': datetime.utcnow()
             }
         )
-        db.add(stat)
-        collected_stats.append(f"Modified datasets today: {modified_datasets_count}")
+        db.execute(stmt)
+        collected_stats.append(f"Modified datasets today (upserted): {modified_datasets_count}")
         
         # Commit all statistics
         db.commit()
@@ -722,9 +783,9 @@ def analyze_xml_archives(self, batch_size: int = 50, offset: int = 0) -> Dict[st
                 # Parse XML and extract information
                 xml_data = parse_abcd_xml(archive.url)
                 
-                # Store unit count statistic
+                # Store unit count statistic - use proper upsert with ON CONFLICT
                 if xml_data['unit_count'] > 0:
-                    stat = StatisticModel(
+                    stmt = insert(StatisticModel).values(
                         metric_type=MetricType.DATASET_UNIT_COUNT,
                         entity_type=EntityType.DATASET,
                         entity_id=archive.dataset_id,
@@ -742,13 +803,23 @@ def analyze_xml_archives(self, batch_size: int = 50, offset: int = 0) -> Dict[st
                                 'xml_files_processed': xml_data.get('xml_files_processed', 1),
                                 'comprehensive_counting': True
                             }
+                        },
+                        created_at=datetime.utcnow(),
+                        updated_at=datetime.utcnow()
+                    )
+                    stmt = stmt.on_conflict_do_update(
+                        constraint='uq_statistics_unique_entry',
+                        set_={
+                            'value': stmt.excluded.value,
+                            'extra_data': stmt.excluded.extra_data,
+                            'updated_at': datetime.utcnow()
                         }
                     )
-                    db.add(stat)
+                    db.execute(stmt)
                 
-                # Store citation completeness statistic
+                # Store citation completeness statistic - use proper upsert with ON CONFLICT
                 if xml_data['citation_completeness'] is not None:
-                    stat = StatisticModel(
+                    stmt = insert(StatisticModel).values(
                         metric_type=MetricType.CITATION_COMPLETENESS,
                         entity_type=EntityType.DATASET,
                         entity_id=archive.dataset_id,
@@ -758,15 +829,25 @@ def analyze_xml_archives(self, batch_size: int = 50, offset: int = 0) -> Dict[st
                         extra_data={
                             'archive_id': archive.id,
                             'total_units': xml_data['unit_count']
+                        },
+                        created_at=datetime.utcnow(),
+                        updated_at=datetime.utcnow()
+                    )
+                    stmt = stmt.on_conflict_do_update(
+                        constraint='uq_statistics_unique_entry',
+                        set_={
+                            'value': stmt.excluded.value,
+                            'extra_data': stmt.excluded.extra_data,
+                            'updated_at': datetime.utcnow()
                         }
                     )
-                    db.add(stat)
+                    db.execute(stmt)
                 
-                # Store geographic coverage score
+                # Store geographic coverage score - use proper upsert with ON CONFLICT
                 geo_score = min(100.0, (xml_data['geographic_coverage']['countries'] * 10 +
                                       xml_data['geographic_coverage']['coordinates'] * 0.1))
                 
-                stat = StatisticModel(
+                stmt = insert(StatisticModel).values(
                     metric_type=MetricType.GEOGRAPHIC_COVERAGE,
                     entity_type=EntityType.DATASET,
                     entity_id=archive.dataset_id,
@@ -778,9 +859,19 @@ def analyze_xml_archives(self, batch_size: int = 50, offset: int = 0) -> Dict[st
                         'countries_count': xml_data['geographic_coverage']['countries'],
                         'coordinates_count': xml_data['geographic_coverage']['coordinates'],
                         'countries_sample': xml_data.get('countries_list', [])[:10]
+                    },
+                    created_at=datetime.utcnow(),
+                    updated_at=datetime.utcnow()
+                )
+                stmt = stmt.on_conflict_do_update(
+                    constraint='uq_statistics_unique_entry',
+                    set_={
+                        'value': stmt.excluded.value,
+                        'extra_data': stmt.excluded.extra_data,
+                        'updated_at': datetime.utcnow()
                     }
                 )
-                db.add(stat)
+                db.execute(stmt)
                 
                 processed_count += 1
                 results.append({
@@ -1252,6 +1343,517 @@ def aggregate_monthly_statistics(self, target_month: str = None) -> Dict[str, An
         
     except Exception as e:
         logger.exception(f"Error aggregating monthly statistics: {e}")
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+
+@shared_task(
+    bind=True,
+    name="statistics.update_dataset_statistics",
+    max_retries=3,
+    soft_time_limit=300,  # 5 minutes timeout
+    retry_backoff=True,
+)
+def update_dataset_statistics(self, dataset_id: int, trigger_type: str = "manual") -> Dict[str, Any]:
+    """
+    Update statistics for a specific dataset in real-time.
+    
+    Args:
+        dataset_id: ID of the dataset to update statistics for
+        trigger_type: What triggered this update (e.g., "creation", "validation", "archive_analysis")
+        
+    Returns:
+        Dictionary with update results
+    """
+    from sqlalchemy.dialects.postgresql import insert
+    
+    db = SessionLocal()
+    
+    try:
+        logger.info(f"Updating statistics for dataset {dataset_id} (trigger: {trigger_type})")
+        
+        # Get dataset and its provider
+        dataset = db.query(DatasetModel).filter(DatasetModel.id == dataset_id).first()
+        if not dataset:
+            logger.warning(f"Dataset {dataset_id} not found")
+            return {
+                'status': 'error',
+                'message': f'Dataset {dataset_id} not found',
+                'dataset_id': dataset_id,
+                'trigger_type': trigger_type
+            }
+        
+        provider_id = dataset.provider_id
+        stat_date = date.today()
+        collected_stats = []
+        
+        # 1. Update system-wide dataset count
+        total_datasets = db.query(func.count(DatasetModel.id)).scalar()
+        
+        stmt = insert(StatisticModel).values(
+            metric_type=MetricType.DATASET_COUNT,
+            entity_type=EntityType.SYSTEM,
+            entity_id=None,
+            period=Period.DAILY,
+            date=stat_date,
+            value=total_datasets,
+            extra_data={
+                'collection_timestamp': datetime.utcnow().isoformat(),
+                'trigger_type': trigger_type,
+                'trigger_dataset_id': dataset_id
+            },
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        stmt = stmt.on_conflict_do_update(
+            constraint='uq_statistics_unique_entry',
+            set_={
+                'value': stmt.excluded.value,
+                'extra_data': stmt.excluded.extra_data,
+                'updated_at': datetime.utcnow()
+            }
+        )
+        db.execute(stmt)
+        collected_stats.append(f"System dataset count updated: {total_datasets}")
+        
+        # 2. Update provider-specific dataset count
+        provider_dataset_count = db.query(func.count(DatasetModel.id)).filter(
+            DatasetModel.provider_id == provider_id
+        ).scalar()
+        
+        stmt = insert(StatisticModel).values(
+            metric_type=MetricType.PROVIDER_DATASET_COUNT,
+            entity_type=EntityType.PROVIDER,
+            entity_id=provider_id,
+            period=Period.DAILY,
+            date=stat_date,
+            value=provider_dataset_count,
+            extra_data={
+                'provider_name': dataset.provider.name if dataset.provider else 'Unknown',
+                'provider_datacenter': dataset.provider.datacenter if dataset.provider else 'Unknown',
+                'collection_timestamp': datetime.utcnow().isoformat(),
+                'trigger_type': trigger_type,
+                'trigger_dataset_id': dataset_id
+            },
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        stmt = stmt.on_conflict_do_update(
+            constraint='uq_statistics_unique_entry',
+            set_={
+                'value': stmt.excluded.value,
+                'extra_data': stmt.excluded.extra_data,
+                'updated_at': datetime.utcnow()
+            }
+        )
+        db.execute(stmt)
+        collected_stats.append(f"Provider {provider_id} dataset count updated: {provider_dataset_count}")
+        
+        # 3. If dataset has XML archives, analyze them and update unit counts
+        latest_archive = db.query(XmlArchiveModel).filter(
+            and_(
+                XmlArchiveModel.dataset_id == dataset_id,
+                XmlArchiveModel.isLatest == True
+            )
+        ).first()
+        
+        if latest_archive:
+            try:
+                # Parse XML and extract unit information
+                xml_data = parse_abcd_xml(latest_archive.url)
+                
+                # Store unit count statistic for this dataset
+                if xml_data['unit_count'] > 0:
+                    stmt = insert(StatisticModel).values(
+                        metric_type=MetricType.DATASET_UNIT_COUNT,
+                        entity_type=EntityType.DATASET,
+                        entity_id=dataset_id,
+                        period=Period.DAILY,
+                        date=stat_date,
+                        value=xml_data['unit_count'],
+                        extra_data={
+                            'archive_id': latest_archive.id,
+                            'archive_url': latest_archive.url,
+                            'taxonomic_diversity': xml_data['taxonomic_diversity'],
+                            'geographic_coverage': xml_data['geographic_coverage'],
+                            'parsing_metadata': {
+                                'schema_detected': xml_data['schema_detected'],
+                                'parsing_date': xml_data['parsing_date'],
+                                'xml_files_processed': xml_data.get('xml_files_processed', 1),
+                                'comprehensive_counting': True
+                            },
+                            'trigger_type': trigger_type,
+                            'collection_timestamp': datetime.utcnow().isoformat()
+                        },
+                        created_at=datetime.utcnow(),
+                        updated_at=datetime.utcnow()
+                    )
+                    stmt = stmt.on_conflict_do_update(
+                        constraint='uq_statistics_unique_entry',
+                        set_={
+                            'value': stmt.excluded.value,
+                            'extra_data': stmt.excluded.extra_data,
+                            'updated_at': datetime.utcnow()
+                        }
+                    )
+                    db.execute(stmt)
+                    collected_stats.append(f"Dataset {dataset_id} unit count updated: {xml_data['unit_count']}")
+                    
+                    # Store citation completeness
+                    if xml_data['citation_completeness'] is not None:
+                        stmt = insert(StatisticModel).values(
+                            metric_type=MetricType.CITATION_COMPLETENESS,
+                            entity_type=EntityType.DATASET,
+                            entity_id=dataset_id,
+                            period=Period.DAILY,
+                            date=stat_date,
+                            value=xml_data['citation_completeness'],
+                            extra_data={
+                                'archive_id': latest_archive.id,
+                                'total_units': xml_data['unit_count'],
+                                'trigger_type': trigger_type,
+                                'collection_timestamp': datetime.utcnow().isoformat()
+                            },
+                            created_at=datetime.utcnow(),
+                            updated_at=datetime.utcnow()
+                        )
+                        stmt = stmt.on_conflict_do_update(
+                            constraint='uq_statistics_unique_entry',
+                            set_={
+                                'value': stmt.excluded.value,
+                                'extra_data': stmt.excluded.extra_data,
+                                'updated_at': datetime.utcnow()
+                            }
+                        )
+                        db.execute(stmt)
+                        collected_stats.append(f"Dataset {dataset_id} citation completeness updated: {xml_data['citation_completeness']:.3f}")
+                    
+                    # Store geographic coverage
+                    geo_score = min(100.0, (xml_data['geographic_coverage']['countries'] * 10 +
+                                          xml_data['geographic_coverage']['coordinates'] * 0.1))
+                    
+                    stmt = insert(StatisticModel).values(
+                        metric_type=MetricType.GEOGRAPHIC_COVERAGE,
+                        entity_type=EntityType.DATASET,
+                        entity_id=dataset_id,
+                        period=Period.DAILY,
+                        date=stat_date,
+                        value=geo_score,
+                        extra_data={
+                            'archive_id': latest_archive.id,
+                            'countries_count': xml_data['geographic_coverage']['countries'],
+                            'coordinates_count': xml_data['geographic_coverage']['coordinates'],
+                            'countries_sample': xml_data.get('countries_list', [])[:10],
+                            'trigger_type': trigger_type,
+                            'collection_timestamp': datetime.utcnow().isoformat()
+                        },
+                        created_at=datetime.utcnow(),
+                        updated_at=datetime.utcnow()
+                    )
+                    stmt = stmt.on_conflict_do_update(
+                        constraint='uq_statistics_unique_entry',
+                        set_={
+                            'value': stmt.excluded.value,
+                            'extra_data': stmt.excluded.extra_data,
+                            'updated_at': datetime.utcnow()
+                        }
+                    )
+                    db.execute(stmt)
+                    collected_stats.append(f"Dataset {dataset_id} geographic coverage updated: {geo_score:.2f}")
+                
+            except XMLParsingError as e:
+                logger.warning(f"Failed to parse archive for dataset {dataset_id}: {e}")
+                collected_stats.append(f"Archive parsing failed: {str(e)}")
+            except Exception as e:
+                logger.error(f"Error analyzing archive for dataset {dataset_id}: {e}")
+                collected_stats.append(f"Archive analysis error: {str(e)}")
+        
+        # 4. Update provider biological units (sum of all dataset units for this provider)
+        # This should be called after updating dataset unit counts
+        update_provider_biological_units.delay(provider_id, stat_date.isoformat(), trigger_type)
+        
+        # Commit changes
+        db.commit()
+        
+        logger.info(f"Successfully updated {len(collected_stats)} statistics for dataset {dataset_id}")
+        
+        return {
+            'status': 'completed',
+            'dataset_id': dataset_id,
+            'provider_id': provider_id,
+            'trigger_type': trigger_type,
+            'date': stat_date.isoformat(),
+            'statistics_updated': len(collected_stats),
+            'details': collected_stats,
+            'task_id': self.request.id,
+            'completed_at': datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        logger.exception(f"Error updating dataset statistics for {dataset_id}: {e}")
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+
+@shared_task(
+    bind=True,
+    name="statistics.update_provider_biological_units",
+    max_retries=3,
+    soft_time_limit=300,  # 5 minutes timeout
+    retry_backoff=True,
+)
+def update_provider_biological_units(self, provider_id: int, target_date: str = None, trigger_type: str = "manual") -> Dict[str, Any]:
+    """
+    Update biological units statistics for a specific provider.
+    
+    Args:
+        provider_id: ID of the provider to update
+        target_date: Date string in YYYY-MM-DD format (defaults to today)
+        trigger_type: What triggered this update
+        
+    Returns:
+        Dictionary with update results
+    """
+    from sqlalchemy.dialects.postgresql import insert
+    
+    db = SessionLocal()
+    
+    try:
+        # Parse target date
+        if target_date:
+            stat_date = datetime.strptime(target_date, "%Y-%m-%d").date()
+        else:
+            stat_date = date.today()
+        
+        logger.info(f"Updating provider {provider_id} biological units for {stat_date} (trigger: {trigger_type})")
+        
+        # Get provider
+        provider = db.query(DataProviderModel).filter(DataProviderModel.id == provider_id).first()
+        if not provider:
+            logger.warning(f"Provider {provider_id} not found")
+            return {
+                'status': 'error',
+                'message': f'Provider {provider_id} not found',
+                'provider_id': provider_id,
+                'trigger_type': trigger_type
+            }
+        
+        # Get all datasets for this provider
+        dataset_ids = db.query(DatasetModel.id).filter(
+            DatasetModel.provider_id == provider_id
+        ).all()
+        
+        if not dataset_ids:
+            provider_biological_units = 0
+        else:
+            dataset_id_list = [dataset_id[0] for dataset_id in dataset_ids]
+            
+            # Get the most recent unit count for each dataset
+            subquery = db.query(
+                StatisticModel.entity_id,
+                func.max(StatisticModel.date).label('max_date')
+            ).filter(
+                and_(
+                    StatisticModel.metric_type == MetricType.DATASET_UNIT_COUNT,
+                    StatisticModel.entity_type == EntityType.DATASET,
+                    StatisticModel.entity_id.in_(dataset_id_list),
+                    StatisticModel.date <= stat_date
+                )
+            ).group_by(StatisticModel.entity_id).subquery()
+            
+            # Get the actual values using the max date for each dataset
+            recent_unit_counts = db.query(StatisticModel.value).join(
+                subquery,
+                and_(
+                    StatisticModel.entity_id == subquery.c.entity_id,
+                    StatisticModel.date == subquery.c.max_date
+                )
+            ).filter(
+                StatisticModel.metric_type == MetricType.DATASET_UNIT_COUNT
+            ).all()
+            
+            provider_biological_units = sum(count[0] for count in recent_unit_counts if count[0] is not None)
+        
+        # Use proper upsert for provider biological units
+        stmt = insert(StatisticModel).values(
+            metric_type=MetricType.PROVIDER_BIOLOGICAL_UNITS,
+            entity_type=EntityType.PROVIDER,
+            entity_id=provider_id,
+            period=Period.DAILY,
+            date=stat_date,
+            value=provider_biological_units,
+            extra_data={
+                'provider_name': provider.name,
+                'provider_datacenter': provider.datacenter,
+                'dataset_count': len(dataset_ids),
+                'trigger_type': trigger_type,
+                'collection_timestamp': datetime.utcnow().isoformat()
+            },
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        stmt = stmt.on_conflict_do_update(
+            constraint='uq_statistics_unique_entry',
+            set_={
+                'value': stmt.excluded.value,
+                'extra_data': stmt.excluded.extra_data,
+                'updated_at': datetime.utcnow()
+            }
+        )
+        db.execute(stmt)
+        
+        # Commit changes
+        db.commit()
+        
+        logger.info(f"Successfully updated provider {provider_id} biological units: {provider_biological_units}")
+        
+        return {
+            'status': 'completed',
+            'provider_id': provider_id,
+            'date': stat_date.isoformat(),
+            'biological_units': provider_biological_units,
+            'dataset_count': len(dataset_ids),
+            'trigger_type': trigger_type,
+            'task_id': self.request.id,
+            'completed_at': datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        logger.exception(f"Error updating provider {provider_id} biological units: {e}")
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+
+@shared_task(
+    bind=True,
+    name="statistics.update_validation_statistics",
+    max_retries=3,
+    soft_time_limit=300,  # 5 minutes timeout
+    retry_backoff=True,
+)
+def update_validation_statistics(self, validation_job_id: int = None, trigger_type: str = "completion") -> Dict[str, Any]:
+    """
+    Update validation statistics when a validation job completes.
+    
+    Args:
+        validation_job_id: ID of the validation job that completed (optional)
+        trigger_type: What triggered this update
+        
+    Returns:
+        Dictionary with update results
+    """
+    from sqlalchemy.dialects.postgresql import insert
+    
+    db = SessionLocal()
+    
+    try:
+        stat_date = date.today()
+        logger.info(f"Updating validation statistics for {stat_date} (trigger: {trigger_type})")
+        
+        # Calculate validation statistics for the last 7 days
+        week_ago = stat_date - timedelta(days=7)
+        validation_jobs = db.query(ValidationJobModel).filter(
+            ValidationJobModel.created_at >= week_ago
+        ).all()
+        
+        collected_stats = []
+        
+        if validation_jobs:
+            total_jobs = len(validation_jobs)
+            successful_jobs = len([job for job in validation_jobs 
+                                 if job.status == 'completed' and job.valid_files == job.total_files and job.total_files > 0])
+            success_rate = (successful_jobs / total_jobs) * 100 if total_jobs > 0 else 0
+            
+            avg_processing_time = 0
+            completed_jobs = [job for job in validation_jobs if job.status == 'completed']
+            if completed_jobs:
+                processing_times = [job.validation_time for job in completed_jobs 
+                                  if job.validation_time is not None]
+                if processing_times:
+                    avg_processing_time = sum(processing_times) / len(processing_times)
+            
+            # Update validation success rate
+            stmt = insert(StatisticModel).values(
+                metric_type=MetricType.VALIDATION_SUCCESS_RATE,
+                entity_type=EntityType.SYSTEM,
+                entity_id=None,
+                period=Period.DAILY,
+                date=stat_date,
+                value=success_rate,
+                extra_data={
+                    'total_jobs': total_jobs,
+                    'successful_jobs': successful_jobs,
+                    'period_days': 7,
+                    'trigger_type': trigger_type,
+                    'trigger_job_id': validation_job_id,
+                    'collection_timestamp': datetime.utcnow().isoformat()
+                },
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow()
+            )
+            stmt = stmt.on_conflict_do_update(
+                constraint='uq_statistics_unique_entry',
+                set_={
+                    'value': stmt.excluded.value,
+                    'extra_data': stmt.excluded.extra_data,
+                    'updated_at': datetime.utcnow()
+                }
+            )
+            db.execute(stmt)
+            collected_stats.append(f"Validation success rate updated: {success_rate:.1f}%")
+            
+            # Update average processing time
+            stmt = insert(StatisticModel).values(
+                metric_type=MetricType.VALIDATION_PROCESSING_TIME,
+                entity_type=EntityType.SYSTEM,
+                entity_id=None,
+                period=Period.DAILY,
+                date=stat_date,
+                value=avg_processing_time,
+                extra_data={
+                    'jobs_included': len([j for j in validation_jobs if j.validation_time is not None]),
+                    'trigger_type': trigger_type,
+                    'trigger_job_id': validation_job_id,
+                    'collection_timestamp': datetime.utcnow().isoformat()
+                },
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow()
+            )
+            stmt = stmt.on_conflict_do_update(
+                constraint='uq_statistics_unique_entry',
+                set_={
+                    'value': stmt.excluded.value,
+                    'extra_data': stmt.excluded.extra_data,
+                    'updated_at': datetime.utcnow()
+                }
+            )
+            db.execute(stmt)
+            collected_stats.append(f"Validation avg processing time updated: {avg_processing_time:.2f}s")
+        
+        # Commit changes
+        db.commit()
+        
+        logger.info(f"Successfully updated {len(collected_stats)} validation statistics")
+        
+        return {
+            'status': 'completed',
+            'date': stat_date.isoformat(),
+            'validation_job_id': validation_job_id,
+            'trigger_type': trigger_type,
+            'statistics_updated': len(collected_stats),
+            'details': collected_stats,
+            'task_id': self.request.id,
+            'completed_at': datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        logger.exception(f"Error updating validation statistics: {e}")
         db.rollback()
         raise
     finally:

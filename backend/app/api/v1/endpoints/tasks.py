@@ -7,8 +7,14 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
 from app.tasks.example import process_data
+from app.tasks.statistics_tasks import (
+    update_dataset_statistics,
+    update_provider_biological_units,
+    update_validation_statistics,
+    collect_daily_statistics
+)
 from app.models import UserModel
-from app.security import get_current_user
+from app.security import get_current_user, check_global_admin
 
 router = APIRouter()
 
@@ -79,3 +85,107 @@ async def get_task_status(
         response["result"] = task.result
     
     return response
+
+
+@router.post("/statistics/dataset/{dataset_id}", response_model=TaskResponse)
+async def trigger_dataset_statistics(
+    dataset_id: int,
+    current_user: UserModel = Depends(get_current_user),
+) -> TaskResponse:
+    """
+    Manually trigger statistics collection for a specific dataset.
+    
+    Args:
+        dataset_id: The ID of the dataset to update statistics for
+        current_user: The current authenticated user (must be global admin)
+        
+    Returns:
+        Information about the submitted task
+    """
+    # Only global admins can trigger statistics collection
+    check_global_admin(current_user)
+    
+    # Submit the task to Celery
+    task = update_dataset_statistics.delay(dataset_id, "manual_trigger")
+    
+    return TaskResponse(
+        task_id=task.id,
+        status="pending"
+    )
+
+
+@router.post("/statistics/provider/{provider_id}", response_model=TaskResponse)
+async def trigger_provider_statistics(
+    provider_id: int,
+    current_user: UserModel = Depends(get_current_user),
+) -> TaskResponse:
+    """
+    Manually trigger biological units statistics collection for a specific provider.
+    
+    Args:
+        provider_id: The ID of the provider to update statistics for
+        current_user: The current authenticated user (must be global admin)
+        
+    Returns:
+        Information about the submitted task
+    """
+    # Only global admins can trigger statistics collection
+    check_global_admin(current_user)
+    
+    # Submit the task to Celery
+    task = update_provider_biological_units.delay(provider_id, None, "manual_trigger")
+    
+    return TaskResponse(
+        task_id=task.id,
+        status="pending"
+    )
+
+
+@router.post("/statistics/validation", response_model=TaskResponse)
+async def trigger_validation_statistics(
+    current_user: UserModel = Depends(get_current_user),
+) -> TaskResponse:
+    """
+    Manually trigger validation statistics collection.
+    
+    Args:
+        current_user: The current authenticated user (must be global admin)
+        
+    Returns:
+        Information about the submitted task
+    """
+    # Only global admins can trigger statistics collection
+    check_global_admin(current_user)
+    
+    # Submit the task to Celery
+    task = update_validation_statistics.delay(None, "manual_trigger")
+    
+    return TaskResponse(
+        task_id=task.id,
+        status="pending"
+    )
+
+
+@router.post("/statistics/daily", response_model=TaskResponse)
+async def trigger_daily_statistics(
+    current_user: UserModel = Depends(get_current_user),
+) -> TaskResponse:
+    """
+    Manually trigger full daily statistics collection.
+    
+    Args:
+        current_user: The current authenticated user (must be global admin)
+        
+    Returns:
+        Information about the submitted task
+    """
+    # Only global admins can trigger statistics collection
+    check_global_admin(current_user)
+    
+    # Submit the task to Celery
+    task = collect_daily_statistics.delay()
+    
+    return TaskResponse(
+        task_id=task.id,
+        status="pending"
+    )

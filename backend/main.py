@@ -1272,6 +1272,10 @@ async def create_dataset(
     invalidate_cache(f"provider:{provider_id}")
     invalidate_cache("providers")
 
+    # Trigger real-time statistics update for the new dataset
+    from app.tasks.statistics_tasks import update_dataset_statistics
+    update_dataset_statistics.delay(dataset_obj.id, "creation")
+
     return result.scalar_one()
 
 
@@ -1357,6 +1361,10 @@ async def update_dataset(
     invalidate_cache(f"provider:{provider_id}")
     invalidate_cache("providers")
 
+    # Trigger real-time statistics update for the modified dataset
+    from app.tasks.statistics_tasks import update_dataset_statistics
+    update_dataset_statistics.delay(dataset_id, "modification")
+
     return result.scalar_one()
 
 
@@ -1396,6 +1404,10 @@ async def delete_dataset(
     invalidate_cache("datasets")
     invalidate_cache(f"provider:{provider_id}")
     invalidate_cache("providers")
+
+    # Trigger real-time statistics update for dataset deletion
+    from app.tasks.statistics_tasks import update_provider_biological_units
+    update_provider_biological_units.delay(provider_id, None, "dataset_deletion")
 
     return
 
@@ -1479,6 +1491,10 @@ async def create_xml_archive(
     # Automatically trigger validation task
     from app.tasks.validator_tasks import validate_archive
     validate_archive.delay(xml_obj.id)
+
+    # Trigger real-time statistics update for the dataset (archive analysis)
+    from app.tasks.statistics_tasks import update_dataset_statistics
+    update_dataset_statistics.delay(dataset_id, "archive_analysis")
 
     return xml_obj
 
