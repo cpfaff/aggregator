@@ -6,7 +6,6 @@ import PieChart from '../ui/PieChart';
 import Alert from '../ui/Alert';
 import { 
   Database, 
-  FileText, 
   Users,
   Server
 } from 'lucide-react';
@@ -17,7 +16,6 @@ import {
  */
 function PublicStatsDashboard() {
   const [overviewStats, setOverviewStats] = useState(null);
-  const [qualityMetrics, setQualityMetrics] = useState(null);
   const [providerStats, setProviderStats] = useState([]);
   const [timelineData, setTimelineData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -40,15 +38,13 @@ function PublicStatsDashboard() {
       }
       setError('');
       
-      const [overview, quality, providers, timeline] = await Promise.all([
+      const [overview, providers, timeline] = await Promise.all([
         publicStatsApi.getOverview(),
-        publicStatsApi.getQuality(),
         publicStatsApi.getProviders(),
         publicStatsApi.getTimeline({ period: 'daily', months: 1 })
       ]);
       
       setOverviewStats(overview);
-      setQualityMetrics(quality);
       
       // Transform provider stats data for compatibility with charts
       // Only update if data has actually changed to prevent chart re-renders
@@ -253,8 +249,8 @@ function PublicStatsDashboard() {
           lineHeight: '1.6',
           fontWeight: 400
         }}>
-          Explore comprehensive statistics about biological datasets, data providers, 
-          and quality metrics in the German Federation for Biological Data registry.
+          Explore comprehensive statistics about biological datasets and data providers 
+          in the German Federation for Biological Data registry.
         </p>
       </div>
 
@@ -299,113 +295,6 @@ function PublicStatsDashboard() {
         </div>
       )}
 
-      {/* Data Quality Section */}
-      {qualityMetrics && (
-        <div style={{
-          backgroundColor: 'var(--card-bg)',
-          borderRadius: '1rem',
-          padding: '2rem',
-          border: '1px solid var(--border)',
-          marginBottom: '4rem',
-          textAlign: 'center',
-          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-          background: `linear-gradient(135deg, var(--card-bg) 0%, rgba(255, 255, 255, 0.05) 100%)`
-        }}>
-          <h2 style={{
-            fontSize: '2rem',
-            fontWeight: 700,
-            color: 'var(--text)',
-            marginBottom: '1.5rem',
-            letterSpacing: '-1px'
-          }}>
-            Data Quality Metrics
-          </h2>
-          
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-            gap: '2rem',
-            marginTop: '2rem'
-          }}>
-            <div style={{
-              padding: '1.5rem',
-              borderRadius: '1rem',
-              border: '1px solid var(--border)'
-            }}>
-              <div style={{
-                fontSize: '2.5rem',
-                fontWeight: 800,
-                color: 'var(--text)',
-                marginBottom: '0.75rem',
-                lineHeight: 1
-              }}>
-                {qualityMetrics.total_validations.toLocaleString()}
-              </div>
-              <div style={{
-                fontSize: '0.875rem',
-                color: 'var(--text-light)',
-                fontWeight: 600,
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px'
-              }}>
-                Total Validations
-              </div>
-            </div>
-            
-            <div style={{
-              padding: '1.5rem',
-              borderRadius: '1rem',
-              border: '1px solid var(--border)'
-            }}>
-              <div style={{
-                fontSize: '2.5rem',
-                fontWeight: 800,
-                color: 'var(--text)',
-                marginBottom: '0.75rem',
-                lineHeight: 1
-              }}>
-                {qualityMetrics.success_rate.toFixed(1)}%
-              </div>
-              <div style={{
-                fontSize: '0.875rem',
-                color: 'var(--text-light)',
-                fontWeight: 600,
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px'
-              }}>
-                Validation Success Rate
-              </div>
-            </div>
-            
-            {qualityMetrics.average_processing_time && (
-              <div style={{
-                padding: '1.5rem',
-                borderRadius: '1rem',
-                border: '1px solid var(--border)'
-              }}>
-                <div style={{
-                  fontSize: '2.5rem',
-                  fontWeight: 800,
-                  color: 'var(--text)',
-                  marginBottom: '0.75rem',
-                  lineHeight: 1
-                }}>
-                  {qualityMetrics.average_processing_time.toFixed(1)}s
-                </div>
-                <div style={{
-                  fontSize: '0.875rem',
-                  color: 'var(--text-light)',
-                  fontWeight: 600,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px'
-                }}>
-                  Average Validation Time
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Charts Section */}
       <div style={{
@@ -432,8 +321,6 @@ function PublicStatsDashboard() {
           colors={['var(--primary)', 'var(--success)', 'var(--warning)', 'var(--error)']}
         />
       </div>
-
-
 
     </div>
   );
