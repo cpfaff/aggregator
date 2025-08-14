@@ -1405,9 +1405,16 @@ async def delete_dataset(
     invalidate_cache(f"provider:{provider_id}")
     invalidate_cache("providers")
 
-    # Trigger real-time statistics update for dataset deletion
-    from app.tasks.statistics_tasks import update_provider_biological_units
+    # Trigger comprehensive real-time statistics update for dataset deletion
+    from app.tasks.statistics_tasks import update_provider_biological_units, update_dataset_statistics
+    
+    # Update provider biological units (as before)
     update_provider_biological_units.delay(provider_id, None, "dataset_deletion")
+    
+    # Update provider dataset count timeline by triggering a provider-specific statistics update
+    # This ensures the timeline reflects the deletion immediately
+    from app.tasks.statistics_tasks import update_provider_dataset_count_after_deletion
+    update_provider_dataset_count_after_deletion.delay(provider_id, "dataset_deletion")
 
     return
 

@@ -1858,3 +1858,128 @@ def update_validation_statistics(self, validation_job_id: int = None, trigger_ty
         raise
     finally:
         db.close()
+
+
+@shared_task(
+    bind=True,
+    name="statistics.update_provider_dataset_count_after_deletion",
+    max_retries=3,
+    soft_time_limit=300,  # 5 minutes timeout
+    retry_backoff=True,
+)
+def update_provider_dataset_count_after_deletion(self, provider_id: int, trigger_type: str = "dataset_deletion") -> Dict[str, Any]:
+    """
+    Update provider dataset count timeline after a dataset deletion.
+    This ensures the Dataset Registration Timeline reflects deletions immediately.
+    
+    Args:
+        provider_id: ID of the provider to update
+        trigger_type: What triggered this update
+        
+    Returns:
+        Dictionary with update results
+    """
+    from sqlalchemy.dialects.postgresql import insert
+    
+    db = SessionLocal()
+    
+    try:
+        stat_date = date.today()
+        logger.info(f"Updating provider {provider_id} dataset count for {stat_date} (trigger: {trigger_type})")
+        
+        # Get provider
+        provider = db.query(DataProviderModel).filter(DataProviderModel.id == provider_id).first()
+        if not provider:
+            logger.warning(f"Provider {provider_id} not found")
+            return {
+                'status': 'error',
+                'message': f'Provider {provider_id} not found',
+                'provider_id': provider_id,
+                'trigger_type': trigger_type
+            }
+        
+        # Get current dataset count for this provider (after deletion)
+        provider_dataset_count = db.query(func.count(DatasetModel.id)).filter(
+            DatasetModel.provider_id == provider_id
+        ).scalar()
+        
+        # Update the provider dataset count statistic for today
+        # This will create a new timeline point or update the existing one for today
+        stmt = insert(StatisticModel).values(
+            metric_type=MetricType.PROVIDER_DATASET_COUNT,
+            entity_type=EntityType.PROVIDER,
+            entity_id=provider_id,
+            period=Period.DAILY,
+            date=stat_date,
+            value=provider_dataset_count,
+            extra_data={
+                'provider_name': provider.name,
+                'provider_datacenter': provider.datacenter,
+                'trigger_type': trigger_type,
+                'collection_timestamp': datetime.utcnow().isoformat(),
+                'real_time_update': True
+            },
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        stmt = stmt.on_conflict_do_update(
+            constraint='uq_statistics_unique_entry',
+            set_={
+                'value': stmt.excluded.value,
+                'extra_data': stmt.excluded.extra_data,
+                'updated_at': datetime.utcnow()
+            }
+        )
+        db.execute(stmt)
+        
+        # Also update system-wide dataset count to keep everything in sync
+        total_datasets = db.query(func.count(DatasetModel.id)).scalar()
+        
+        stmt = insert(StatisticModel).values(
+            metric_type=MetricType.DATASET_COUNT,
+            entity_type=EntityType.SYSTEM,
+            entity_id=None,
+            period=Period.DAILY,
+            date=stat_date,
+            value=total_datasets,
+            extra_data={
+                'collection_timestamp': datetime.utcnow().isoformat(),
+                'trigger_type': trigger_type,
+                'trigger_provider_id': provider_id,
+                'real_time_update': True
+            },
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        stmt = stmt.on_conflict_do_update(
+            constraint='uq_statistics_unique_entry',
+            set_={
+                'value': stmt.excluded.value,
+                'extra_data': stmt.excluded.extra_data,
+                'updated_at': datetime.utcnow()
+            }
+        )
+        db.execute(stmt)
+        
+        # Commit changes
+        db.commit()
+        
+        logger.info(f"Successfully updated provider {provider_id} dataset count: {provider_dataset_count}")
+        
+        return {
+            'status': 'completed',
+            'provider_id': provider_id,
+            'date': stat_date.isoformat(),
+            'dataset_count': provider_dataset_count,
+            'system_dataset_count': total_datasets,
+            'trigger_type': trigger_type,
+            'task_id': self.request.id,
+            'completed_at': datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        logger.exception(f"Error updating provider {provider_id} dataset count after deletion: {e}")
+        db.rollback()
+        raise
+    finally:
+        db.close()
