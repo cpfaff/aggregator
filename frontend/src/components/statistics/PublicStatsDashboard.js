@@ -345,13 +345,6 @@ function PublicStatsDashboard() {
             isLiveData={autoRefreshEnabled}
           />
           
-          <StatCard
-            title="XML Archives"
-            value={overviewStats.total_xml_archives}
-            icon={<FileText size={20} />}
-            color="var(--error)"
-            isLiveData={autoRefreshEnabled}
-          />
         </div>
       )}
 

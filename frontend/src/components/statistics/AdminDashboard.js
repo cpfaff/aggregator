@@ -22,6 +22,9 @@ function AdminDashboard() {
   const [qualityMetrics, setQualityMetrics] = useState(null);
   const [datacenterStats, setDatacenterStats] = useState([]);
   const [timeSeriesData, setTimeSeriesData] = useState([]);
+  const [providerStats, setProviderStats] = useState([]);
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [healthStatus, setHealthStatus] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [isCollecting, setIsCollecting] = useState(false);
@@ -57,8 +60,12 @@ function AdminDashboard() {
       const quality = await authStatsApi.getQualityMetrics(handleTokenExpiration);
       setQualityMetrics(quality);
       
-      // Fetch public stats for datacenter distribution
-      const providers = await publicStatsApi.getProviders();
+      // Fetch public stats for datacenter distribution and provider stats
+      const [providers, activity, health] = await Promise.all([
+        publicStatsApi.getProviders(),
+        publicStatsApi.getRecentActivity(),
+        publicStatsApi.getHealth()
+      ]);
       
       // Transform datacenter data for PieChart component
       // Sort by dataset count (descending) to ensure largest gets primary color
@@ -79,6 +86,11 @@ function AdminDashboard() {
         }
         return prev;
       });
+      
+      // Set provider stats, recent activity, and health status for Registry Activity
+      setProviderStats(providers);
+      setRecentActivity(activity);
+      setHealthStatus(health);
       
       // Fetch time-series data for system dataset count
       await fetchTimeSeries();
@@ -450,6 +462,144 @@ function AdminDashboard() {
           height={350}
           colors={['var(--primary)', 'var(--success)', 'var(--warning)', 'var(--error)']}
         />
+      </div>
+
+      {/* Registry Activity */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        marginBottom: '4rem'
+      }}>
+        {/* Activity Metrics */}
+        {healthStatus && (
+          <div style={{
+            backgroundColor: 'var(--card-bg)',
+            borderRadius: '1rem',
+            padding: '2rem',
+            border: '1px solid var(--border)',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+            background: `linear-gradient(135deg, var(--card-bg) 0%, rgba(255, 255, 255, 0.02) 100%)`,
+            position: 'relative',
+            overflow: 'hidden'
+          }}>
+            {/* Subtle background decoration */}
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              right: 0,
+              width: '60%',
+              height: '100%',
+              background: `radial-gradient(ellipse at 100% 0%, var(--primary)05 0%, transparent 70%)`,
+              pointerEvents: 'none'
+            }} />
+            
+            <h3 style={{
+              fontSize: '1.5rem',
+              fontWeight: 700,
+              color: 'var(--text)',
+              marginBottom: '2rem',
+              letterSpacing: '-0.5px',
+              position: 'relative',
+              zIndex: 1
+            }}>
+              Registry Activity
+            </h3>
+            
+            <div style={{ 
+              display: 'grid', 
+              gap: '2rem',
+              position: 'relative',
+              zIndex: 1
+            }}>
+              <div style={{
+                textAlign: 'center',
+                padding: '1rem',
+                backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                borderRadius: '0.75rem',
+                border: '1px solid var(--border)'
+              }}>
+                <div style={{
+                  fontSize: '0.9rem',
+                  color: 'var(--text-light)',
+                  marginBottom: '0.75rem',
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }}>
+                  Recent Registrations (30 days)
+                </div>
+                <div style={{
+                  fontSize: '2.5rem',
+                  fontWeight: 800,
+                  background: 'linear-gradient(135deg, var(--primary) 0%, #3b82f6 100%)',
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent'
+                }}>
+                  {recentActivity?.length || 0}
+                </div>
+              </div>
+              
+              <div style={{
+                textAlign: 'center',
+                padding: '1rem',
+                backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                borderRadius: '0.75rem',
+                border: '1px solid var(--border)'
+              }}>
+                <div style={{
+                  fontSize: '0.9rem',
+                  color: 'var(--text-light)',
+                  marginBottom: '0.75rem',
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }}>
+                  Active Providers
+                </div>
+                <div style={{
+                  fontSize: '2.5rem',
+                  fontWeight: 800,
+                  background: 'linear-gradient(135deg, var(--success) 0%, #22c55e 100%)',
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent'
+                }}>
+                  {providerStats.total_providers || 0}
+                </div>
+              </div>
+              
+              <div style={{
+                textAlign: 'center',
+                padding: '1rem',
+                backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                borderRadius: '0.75rem',
+                border: '1px solid var(--border)'
+              }}>
+                <div style={{
+                  fontSize: '0.9rem',
+                  color: 'var(--text-light)',
+                  marginBottom: '0.75rem',
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }}>
+                  Processing Jobs
+                </div>
+                <div style={{
+                  fontSize: '2.5rem',
+                  fontWeight: 800,
+                  background: 'linear-gradient(135deg, var(--warning) 0%, #f59e0b 100%)',
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent'
+                }}>
+                  {healthStatus.processing_jobs || 0}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
 
