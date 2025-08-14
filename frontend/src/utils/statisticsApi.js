@@ -266,6 +266,31 @@ export const authStatsApi = {
       throw new Error(`Failed to fetch biological units timeline: ${response.status}`);
     }
     return response.json();
+  },
+
+  /**
+   * Get multi-provider biological units timeline (all providers as separate lines)
+   * @param {Object} params - Query parameters
+   * @param {Function} onTokenExpired - Token expiration handler
+   * @returns {Promise<Object>} Multi-provider biological units timeline data
+   */
+  getMultiProviderBiologicalUnits: async (params, onTokenExpired) => {
+    const queryParams = new URLSearchParams({
+      period: params.period || 'daily',
+      limit: params.limit || 30,
+      ...(params.startDate && { start_date: params.startDate }),
+      ...(params.endDate && { end_date: params.endDate })
+    });
+
+    const response = await apiRequest(
+      `/statistics/multi-provider-biological-units?${queryParams}`, 
+      {}, 
+      onTokenExpired
+    );
+    if (!response.ok) {
+      throw new Error(`Failed to fetch multi-provider biological units: ${response.status}`);
+    }
+    return response.json();
   }
 };
 
@@ -284,6 +309,19 @@ export const statsUtils = {
       value: point.value,
       fullDate: point.date,
       ...point.extra_data
+    }));
+  },
+
+  /**
+   * Format multi-provider time-series data for charts
+   * @param {Array} dataPoints - Raw multi-provider data points
+   * @returns {Array} Formatted data for multi-line charts
+   */
+  formatMultiProviderTimeSeriesForChart: (dataPoints) => {
+    return dataPoints.map(point => ({
+      ...point,
+      date: new Date(point.date).toLocaleDateString(),
+      fullDate: point.date
     }));
   },
 

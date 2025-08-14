@@ -3,6 +3,7 @@ import { useAuth } from '../auth/AuthContext';
 import { authStatsApi, publicStatsApi, statsUtils } from '../../utils/statisticsApi';
 import StatCard from '../ui/StatCard';
 import TimeSeriesChart from '../ui/TimeSeriesChart';
+import MultiLineTimeSeriesChart from '../ui/MultiLineTimeSeriesChart';
 import PieChart from '../ui/PieChart';
 import Alert from '../ui/Alert';
 import Breadcrumbs from '../ui/Breadcrumbs';
@@ -23,6 +24,7 @@ function AdminDashboard() {
   const [datacenterStats, setDatacenterStats] = useState([]);
   const [timeSeriesData, setTimeSeriesData] = useState([]);
   const [biologicalUnitsData, setBiologicalUnitsData] = useState([]);
+  const [multiProviderBiologicalUnits, setMultiProviderBiologicalUnits] = useState({ data: [], providers: [] });
   const [providerStats, setProviderStats] = useState([]);
   const [recentActivity, setRecentActivity] = useState([]);
   const [healthStatus, setHealthStatus] = useState(null);
@@ -96,7 +98,8 @@ function AdminDashboard() {
       // Fetch time-series data for system dataset count and biological units
       await Promise.all([
         fetchTimeSeries(),
-        fetchBiologicalUnitsTimeline()
+        fetchBiologicalUnitsTimeline(),
+        fetchMultiProviderBiologicalUnits()
       ]);
       
       // Update last refreshed timestamp
@@ -168,6 +171,32 @@ function AdminDashboard() {
     } catch (err) {
       console.error('Error fetching biological units timeline:', err);
       // Don't set error for biological units timeline failure
+    }
+  };
+
+  const fetchMultiProviderBiologicalUnits = async () => {
+    try {
+      const params = {
+        period: 'daily',
+        limit: 30
+      };
+      
+      const data = await authStatsApi.getMultiProviderBiologicalUnits(params, handleTokenExpiration);
+      const formattedData = statsUtils.formatMultiProviderTimeSeriesForChart(data.data_points);
+      
+      // Only update if data has actually changed to prevent chart re-renders
+      setMultiProviderBiologicalUnits(prev => {
+        const prevDataStr = JSON.stringify(prev);
+        const newDataStr = JSON.stringify({ data: formattedData, providers: data.providers });
+        if (prevDataStr !== newDataStr) {
+          return { data: formattedData, providers: data.providers };
+        }
+        return prev;
+      });
+      
+    } catch (err) {
+      console.error('Error fetching multi-provider biological units:', err);
+      // Don't set error for multi-provider biological units failure
     }
   };
 
@@ -504,6 +533,31 @@ function AdminDashboard() {
           subtitle="Total biological units across all providers over time"
           color="var(--success)"
           height={350}
+        />
+      </div>
+
+      {/* Multi-Provider Biological Units Comparison - Full Width */}
+      <div style={{
+        marginBottom: '2rem'
+      }}>
+        <MultiLineTimeSeriesChart
+          data={multiProviderBiologicalUnits.data}
+          providers={multiProviderBiologicalUnits.providers}
+          title="Provider Biological Units Comparison"
+          subtitle="Compare biological units across different data providers over time"
+          height={400}
+          colors={[
+            'var(--primary)',
+            'var(--success)', 
+            'var(--warning)',
+            'var(--error)',
+            '#8B5CF6',
+            '#F59E0B',
+            '#EF4444',
+            '#10B981',
+            '#3B82F6',
+            '#6366F1'
+          ]}
         />
       </div>
 

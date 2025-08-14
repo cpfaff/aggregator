@@ -566,6 +566,115 @@ async def get_biological_units_timeline(
         raise HTTPException(status_code=500, detail="Error retrieving biological units timeline")
 
 
+@router.get("/multi-provider-biological-units", response_model=Dict[str, Any], summary="Multi-provider biological units timeline")
+async def get_multi_provider_biological_units_timeline(
+    period: str = Query(Period.DAILY.value, description="Time period"),
+    start_date: Optional[date] = Query(None, description="Start date"),
+    end_date: Optional[date] = Query(None, description="End date"),
+    limit: int = Query(30, ge=1, le=365, description="Maximum data points"),
+    db: Session = Depends(get_sync_db),
+    current_user: UserModel = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """
+    Get biological units timeline for all providers simultaneously.
+    Returns data structured for multi-line chart display with each provider as a separate series.
+    """
+    try:
+        # Validate enum values
+        try:
+            Period(period)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=f"Invalid period: {e}")
+        
+        # Query to get biological units data for each provider per date
+        from sqlalchemy import func
+        
+        base_query = db.query(
+            StatisticModel.date,
+            StatisticModel.entity_id.label('provider_id'),
+            func.max(StatisticModel.value).label('units')
+        ).join(
+            DataProviderModel, DataProviderModel.id == StatisticModel.entity_id
+        ).filter(
+            and_(
+                StatisticModel.metric_type == MetricType.PROVIDER_BIOLOGICAL_UNITS,
+                StatisticModel.entity_type == EntityType.PROVIDER,
+                StatisticModel.period == period
+            )
+        )
+        
+        if start_date:
+            base_query = base_query.filter(StatisticModel.date >= start_date)
+        if end_date:
+            base_query = base_query.filter(StatisticModel.date <= end_date)
+        
+        # Group by date and provider to get latest value per provider per date
+        stats_data = base_query.group_by(
+            StatisticModel.date, 
+            StatisticModel.entity_id
+        ).order_by(desc(StatisticModel.date)).all()
+        
+        # Get provider names for display
+        provider_names = dict(
+            db.query(DataProviderModel.id, DataProviderModel.name).all()
+        )
+        
+        # Transform data into multi-line chart format
+        # Structure: [{date: "2023-01-01", Provider1: 1000, Provider2: 2000, ...}, ...]
+        date_data = {}
+        
+        for stat in stats_data:
+            date_str = stat.date.isoformat()
+            provider_name = provider_names.get(stat.provider_id, f"Provider {stat.provider_id}")
+            
+            if date_str not in date_data:
+                date_data[date_str] = {'date': date_str}
+            
+            date_data[date_str][provider_name] = float(stat.units) if stat.units is not None else 0.0
+        
+        # Convert to list and sort by date, limit results
+        data_points = list(date_data.values())
+        data_points.sort(key=lambda x: x['date'])
+        data_points = data_points[-limit:] if len(data_points) > limit else data_points
+        
+        # Get list of all providers that have data
+        all_providers = set()
+        for point in data_points:
+            all_providers.update(key for key in point.keys() if key != 'date')
+        
+        # Ensure all data points have all provider fields (fill with 0 if missing)
+        for point in data_points:
+            for provider in all_providers:
+                if provider not in point:
+                    point[provider] = 0.0
+        
+        # Get provider metadata for colors and legend
+        provider_metadata = []
+        for provider_id, provider_name in provider_names.items():
+            if provider_name in all_providers:
+                provider_metadata.append({
+                    'id': provider_id,
+                    'name': provider_name,
+                    'key': provider_name  # Key used in data points
+                })
+        
+        return {
+            'metric_type': MetricType.PROVIDER_BIOLOGICAL_UNITS.value,
+            'entity_type': 'multi_provider',
+            'period': period,
+            'data_points': data_points,
+            'total_points': len(data_points),
+            'providers': provider_metadata,
+            'total_providers': len(provider_metadata)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting multi-provider biological units timeline: {e}")
+        raise HTTPException(status_code=500, detail="Error retrieving multi-provider biological units timeline")
+
+
 @router.get("/search", response_model=List[StatisticResponse], summary="Search statistics")
 async def search_statistics(
     query: StatisticsQuery = Depends(),
