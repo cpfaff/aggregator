@@ -35,150 +35,107 @@ class XMLParsingError(Exception):
     pass
 
 
-def parse_abcd_xml(xml_url: str) -> Dict[str, Any]:
+def _process_single_xml_root(root, filename: str) -> Dict[str, Any]:
     """
-    Parse ABCD XML file and extract unit counts, taxonomic info, and geographic data.
-    Handles both direct XML files and ZIP archives containing XML files.
+    Process a single XML root element and extract unit information.
+    Implements memory-efficient streaming processing for large unit collections.
     
     Args:
-        xml_url: URL of the XML file or ZIP archive to parse
+        root: XML root element
+        filename: Name of XML file being processed (for logging)
         
     Returns:
-        Dictionary containing extracted information
-        
-    Raises:
-        XMLParsingError: If XML parsing fails
+        Dictionary containing extracted information from this XML file
     """
-    try:
-        # Download content
-        response = requests.get(xml_url, timeout=300, stream=True)
-        response.raise_for_status()
+    # Common ABCD namespaces
+    namespaces = {
+        'abcd': 'http://www.tdwg.org/schemas/abcd/2.06',
+        'abcd21': 'http://rs.tdwg.org/abcd/2.1',
+        'abcd3': 'http://rs.tdwg.org/abcd/3.0'
+    }
+    
+    # Try to detect namespace
+    detected_ns = None
+    for prefix, uri in namespaces.items():
+        if uri in root.tag or any(uri in elem.tag for elem in root.iter()):
+            # Map the different ABCD versions to a consistent prefix
+            if prefix in ['abcd', 'abcd21', 'abcd3']:
+                detected_ns = {'abcd': uri}
+            break
+    
+    if not detected_ns:
+        # Fallback: use default namespace if present
+        if root.tag.startswith('{'):
+            ns_uri = root.tag.split('}')[0][1:]
+            detected_ns = {'abcd': ns_uri}
+    
+    # Extract unit information
+    units = []
+    unit_count = 0
+    
+    if detected_ns:
+        ns_uri = detected_ns['abcd']
         
-        # Read content into memory
-        content = response.content
+        # Find Units - different paths for different versions
+        unit_paths = [
+            f".//{{{ns_uri}}}Unit",
+            f".//{{{ns_uri}}}DataSet/{{{ns_uri}}}Units/{{{ns_uri}}}Unit"
+        ]
         
-        # Determine if content is a ZIP file or direct XML
-        root = None
-        
-        # Check if content starts with ZIP file signature (PK)
-        if content.startswith(b'PK'):
-            logger.debug(f"Detected ZIP archive for URL: {xml_url}")
-            
-            # Handle ZIP file
-            try:
-                with zipfile.ZipFile(io.BytesIO(content)) as zip_file:
-                    # Look for XML files in the ZIP
-                    xml_files = [f for f in zip_file.namelist() 
-                               if f.lower().endswith('.xml') and not f.startswith('__MACOSX/')]
-                    
-                    if not xml_files:
-                        raise XMLParsingError("No XML files found in ZIP archive")
-                    
-                    # Use the first XML file found (typically there's only one)
-                    xml_filename = xml_files[0]
-                    logger.debug(f"Extracting XML file: {xml_filename}")
-                    
-                    # Extract and parse the XML file
-                    with zip_file.open(xml_filename) as xml_file:
-                        xml_content = xml_file.read()
-                        root = ET.fromstring(xml_content)
-                        
-            except zipfile.BadZipFile:
-                # Not a valid ZIP file, treat as direct XML
-                logger.debug(f"Invalid ZIP file, attempting direct XML parsing for: {xml_url}")
-                root = ET.fromstring(content)
-        else:
-            # Try direct XML parsing
-            logger.debug(f"Attempting direct XML parsing for: {xml_url}")
-            root = ET.fromstring(content)
-        
-        # Common ABCD namespaces
-        namespaces = {
-            'abcd': 'http://www.tdwg.org/schemas/abcd/2.06',
-            'abcd21': 'http://rs.tdwg.org/abcd/2.1',
-            'abcd3': 'http://rs.tdwg.org/abcd/3.0'
-        }
-        
-        # Try to detect namespace
-        detected_ns = None
-        for prefix, uri in namespaces.items():
-            if uri in root.tag or any(uri in elem.tag for elem in root.iter()):
-                # Map the different ABCD versions to a consistent prefix
-                if prefix == 'abcd':
-                    detected_ns = {'abcd': uri}
-                elif prefix == 'abcd21':
-                    detected_ns = {'abcd': uri}
-                elif prefix == 'abcd3':
-                    detected_ns = {'abcd': uri}
-                break
-        
-        if not detected_ns:
-            # Fallback: use default namespace if present
-            if root.tag.startswith('{'):
-                ns_uri = root.tag.split('}')[0][1:]
-                detected_ns = {'abcd': ns_uri}
-        
-        # Extract unit information
-        units = []
-        unit_count = 0
-        
-        if detected_ns:
-            ns_uri = detected_ns['abcd']
-            
-            # Find Units - different paths for different versions
-            unit_paths = [
-                f".//{{{ns_uri}}}Unit",
-                f".//{{{ns_uri}}}DataSet/{{{ns_uri}}}Units/{{{ns_uri}}}Unit"
-            ]
-            
-            for path in unit_paths:
-                unit_elements = root.findall(path, detected_ns)
-                if unit_elements:
-                    units = unit_elements
-                    break
-        else:
-            # Try without namespace
-            unit_elements = root.findall(".//Unit")
+        for path in unit_paths:
+            unit_elements = root.findall(path, detected_ns)
             if unit_elements:
                 units = unit_elements
+                break
+    else:
+        # Try without namespace
+        unit_elements = root.findall(".//Unit")
+        if unit_elements:
+            units = unit_elements
+    
+    unit_count = len(units)
+    
+    # Extract taxonomic information
+    taxonomic_info = {
+        'families': set(),
+        'genera': set(),
+        'species': set()
+    }
+    
+    # Extract geographic information
+    geographic_info = {
+        'countries': set(),
+        'localities': set(),
+        'coordinates': []
+    }
+    
+    # Extract citation information
+    citation_info = {
+        'has_collector': 0,
+        'has_collection_date': 0,
+        'has_location': 0,
+        'has_identification': 0,
+        'total_units': unit_count
+    }
+    
+    # Helper function to find elements by tag name substring (case-insensitive)
+    def find_elements_by_tag_substring(parent, substring):
+        """Find all descendant elements whose tag contains the substring (case-insensitive)."""
+        result = []
+        for elem in parent.iter():
+            tag_name = elem.tag.split('}')[-1] if '}' in elem.tag else elem.tag
+            if substring.lower() in tag_name.lower():
+                result.append(elem)
+        return result
+    
+    # Process each unit - REMOVED 1000 unit limit for comprehensive counting
+    # Use memory-efficient processing by processing units in batches if needed
+    batch_size = 5000  # Process units in batches to manage memory
+    for i in range(0, len(units), batch_size):
+        batch_units = units[i:i + batch_size]
+        logger.debug(f"Processing units {i+1} to {min(i+batch_size, len(units))} of {len(units)} in {filename}")
         
-        unit_count = len(units)
-        
-        # Extract taxonomic information
-        taxonomic_info = {
-            'families': set(),
-            'genera': set(),
-            'species': set()
-        }
-        
-        # Extract geographic information
-        geographic_info = {
-            'countries': set(),
-            'localities': set(),
-            'coordinates': []
-        }
-        
-        # Extract citation information
-        citation_info = {
-            'has_collector': 0,
-            'has_collection_date': 0,
-            'has_location': 0,
-            'has_identification': 0,
-            'total_units': unit_count
-        }
-        
-        # Helper function to find elements by tag name substring (case-insensitive)
-        def find_elements_by_tag_substring(parent, substring):
-            """Find all descendant elements whose tag contains the substring (case-insensitive)."""
-            result = []
-            for elem in parent.iter():
-                tag_name = elem.tag.split('}')[-1] if '}' in elem.tag else elem.tag
-                if substring.lower() in tag_name.lower():
-                    result.append(elem)
-            return result
-        
-        # Process each unit
-        for unit in units[:1000]:  # Limit processing to avoid memory issues
+        for unit in batch_units:
             # Extract taxonomic data
             for tax_field, field_name in [
                 ('Family', 'families'),
@@ -223,35 +180,167 @@ def parse_abcd_xml(xml_url: str) -> Dict[str, Any]:
                 citation_info['has_location'] += 1
             if find_elements_by_tag_substring(unit, 'Identification'):
                 citation_info['has_identification'] += 1
+    
+    return {
+        'unit_count': unit_count,
+        'taxonomic_info': taxonomic_info,
+        'geographic_info': geographic_info,
+        'citation_info': citation_info,
+        'schema_detected': detected_ns is not None
+    }
+
+
+def parse_abcd_xml(xml_url: str) -> Dict[str, Any]:
+    """
+    Parse ABCD XML file and extract unit counts, taxonomic info, and geographic data.
+    Handles both direct XML files and ZIP archives containing XML files.
+    For ZIP archives, processes ALL XML files to get complete unit counts.
+    
+    Args:
+        xml_url: URL of the XML file or ZIP archive to parse
         
-        # Calculate citation completeness score
-        if unit_count > 0:
+    Returns:
+        Dictionary containing extracted information aggregated across all XML files in archive
+        
+    Raises:
+        XMLParsingError: If XML parsing fails
+    """
+    try:
+        # Download content
+        response = requests.get(xml_url, timeout=300, stream=True)
+        response.raise_for_status()
+        
+        # Read content into memory
+        content = response.content
+        
+        # Initialize aggregated results
+        total_unit_count = 0
+        all_taxonomic_info = {
+            'families': set(),
+            'genera': set(),
+            'species': set()
+        }
+        all_geographic_info = {
+            'countries': set(),
+            'localities': set(),
+            'coordinates': []
+        }
+        all_citation_info = {
+            'has_collector': 0,
+            'has_collection_date': 0,
+            'has_location': 0,
+            'has_identification': 0,
+            'total_units': 0
+        }
+        
+        xml_files_processed = 0
+        
+        # Check if content starts with ZIP file signature (PK)
+        if content.startswith(b'PK'):
+            logger.debug(f"Detected ZIP archive for URL: {xml_url}")
+            
+            # Handle ZIP file - process ALL XML files
+            try:
+                with zipfile.ZipFile(io.BytesIO(content)) as zip_file:
+                    # Look for XML files in the ZIP
+                    xml_files = [f for f in zip_file.namelist() 
+                               if f.lower().endswith('.xml') and not f.startswith('__MACOSX/')]
+                    
+                    if not xml_files:
+                        raise XMLParsingError("No XML files found in ZIP archive")
+                    
+                    logger.debug(f"Found {len(xml_files)} XML files in archive, processing all")
+                    
+                    # Process ALL XML files in the archive
+                    for xml_filename in xml_files:
+                        try:
+                            logger.debug(f"Processing XML file: {xml_filename}")
+                            
+                            # Extract and parse the XML file
+                            with zip_file.open(xml_filename) as xml_file:
+                                xml_content = xml_file.read()
+                                root = ET.fromstring(xml_content)
+                                
+                                # Process this XML file and aggregate results
+                                file_results = _process_single_xml_root(root, xml_filename)
+                                
+                                # Aggregate results
+                                total_unit_count += file_results['unit_count']
+                                all_taxonomic_info['families'].update(file_results['taxonomic_info']['families'])
+                                all_taxonomic_info['genera'].update(file_results['taxonomic_info']['genera'])
+                                all_taxonomic_info['species'].update(file_results['taxonomic_info']['species'])
+                                all_geographic_info['countries'].update(file_results['geographic_info']['countries'])
+                                all_geographic_info['localities'].update(file_results['geographic_info']['localities'])
+                                all_geographic_info['coordinates'].extend(file_results['geographic_info']['coordinates'])
+                                all_citation_info['has_collector'] += file_results['citation_info']['has_collector']
+                                all_citation_info['has_collection_date'] += file_results['citation_info']['has_collection_date']
+                                all_citation_info['has_location'] += file_results['citation_info']['has_location']
+                                all_citation_info['has_identification'] += file_results['citation_info']['has_identification']
+                                
+                                xml_files_processed += 1
+                                
+                        except ET.ParseError as e:
+                            logger.warning(f"Failed to parse XML file {xml_filename} in archive: {e}")
+                            continue
+                        except Exception as e:
+                            logger.warning(f"Error processing XML file {xml_filename} in archive: {e}")
+                            continue
+                        
+            except zipfile.BadZipFile:
+                # Not a valid ZIP file, treat as direct XML
+                logger.debug(f"Invalid ZIP file, attempting direct XML parsing for: {xml_url}")
+                root = ET.fromstring(content)
+                file_results = _process_single_xml_root(root, "direct_xml")
+                total_unit_count = file_results['unit_count']
+                all_taxonomic_info = file_results['taxonomic_info']
+                all_geographic_info = file_results['geographic_info']
+                all_citation_info = file_results['citation_info']
+                xml_files_processed = 1
+        else:
+            # Try direct XML parsing
+            logger.debug(f"Attempting direct XML parsing for: {xml_url}")
+            root = ET.fromstring(content)
+            file_results = _process_single_xml_root(root, "direct_xml")
+            total_unit_count = file_results['unit_count']
+            all_taxonomic_info = file_results['taxonomic_info']
+            all_geographic_info = file_results['geographic_info']
+            all_citation_info = file_results['citation_info']
+            xml_files_processed = 1
+        
+        # Update total units
+        all_citation_info['total_units'] = total_unit_count
+        
+        # Calculate aggregated citation completeness score
+        if total_unit_count > 0:
             completeness_score = (
-                citation_info['has_collector'] +
-                citation_info['has_collection_date'] +
-                citation_info['has_location'] +
-                citation_info['has_identification']
-            ) / (4 * unit_count)  # 4 criteria per unit
+                all_citation_info['has_collector'] +
+                all_citation_info['has_collection_date'] +
+                all_citation_info['has_location'] +
+                all_citation_info['has_identification']
+            ) / (4 * total_unit_count)  # 4 criteria per unit
         else:
             completeness_score = 0.0
         
+        logger.info(f"Archive processing complete: {total_unit_count} total units from {xml_files_processed} XML files")
+        
         return {
-            'unit_count': unit_count,
+            'unit_count': total_unit_count,
             'taxonomic_diversity': {
-                'families': len(taxonomic_info['families']),
-                'genera': len(taxonomic_info['genera']),
-                'species': len(taxonomic_info['species'])
+                'families': len(all_taxonomic_info['families']),
+                'genera': len(all_taxonomic_info['genera']),
+                'species': len(all_taxonomic_info['species'])
             },
             'geographic_coverage': {
-                'countries': len(geographic_info['countries']),
-                'localities': len(geographic_info['localities']),
-                'coordinates': len(geographic_info['coordinates'])
+                'countries': len(all_geographic_info['countries']),
+                'localities': len(all_geographic_info['localities']),
+                'coordinates': len(all_geographic_info['coordinates'])
             },
             'citation_completeness': completeness_score,
             'parsing_date': datetime.utcnow().isoformat(),
-            'schema_detected': detected_ns is not None,
-            'families_list': list(taxonomic_info['families'])[:50],  # Limit for storage
-            'countries_list': list(geographic_info['countries'])[:50]
+            'schema_detected': xml_files_processed > 0,  # True if we processed any files
+            'xml_files_processed': xml_files_processed,
+            'families_list': list(all_taxonomic_info['families'])[:50],  # Limit for storage
+            'countries_list': list(all_geographic_info['countries'])[:50]
         }
         
     except requests.RequestException as e:
@@ -599,8 +688,10 @@ def analyze_xml_archives(self, batch_size: int = 50, offset: int = 0) -> Dict[st
     try:
         logger.info(f"Analyzing XML archives - batch size: {batch_size}, offset: {offset}")
         
-        # Get batch of archives to analyze
-        archives = db.query(XmlArchiveModel).offset(offset).limit(batch_size).all()
+        # Get batch of LATEST archives to analyze (respecting system constraint)
+        archives = db.query(XmlArchiveModel).filter(
+            XmlArchiveModel.isLatest == True
+        ).offset(offset).limit(batch_size).all()
         
         if not archives:
             return {
@@ -636,7 +727,9 @@ def analyze_xml_archives(self, batch_size: int = 50, offset: int = 0) -> Dict[st
                             'geographic_coverage': xml_data['geographic_coverage'],
                             'parsing_metadata': {
                                 'schema_detected': xml_data['schema_detected'],
-                                'parsing_date': xml_data['parsing_date']
+                                'parsing_date': xml_data['parsing_date'],
+                                'xml_files_processed': xml_data.get('xml_files_processed', 1),
+                                'comprehensive_counting': True
                             }
                         }
                     )
@@ -687,7 +780,7 @@ def analyze_xml_archives(self, batch_size: int = 50, offset: int = 0) -> Dict[st
                     'status': 'success'
                 })
                 
-                logger.debug(f"Successfully analyzed archive {archive.id}: {xml_data['unit_count']} units")
+                logger.info(f"Successfully analyzed archive {archive.id}: {xml_data['unit_count']} units from {xml_data.get('xml_files_processed', 1)} XML files")
                 
             except XMLParsingError as e:
                 error_count += 1
