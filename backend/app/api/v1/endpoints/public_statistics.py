@@ -126,10 +126,11 @@ async def get_growth_timeline(
         else:  # daily
             start_date = end_date - timedelta(days=months * 30)
         
-        # Get dataset growth timeline - with unique constraint, we can get the value directly
+        # Get dataset growth timeline - use GROUP BY aggregation for proper date handling
         dataset_stats_raw = db.query(
             StatisticModel.date,
-            StatisticModel.value
+            func.max(StatisticModel.value).label('value'),
+            func.count(StatisticModel.id).label('count')
         ).filter(
             and_(
                 StatisticModel.metric_type == MetricType.DATASET_COUNT,
@@ -138,12 +139,13 @@ async def get_growth_timeline(
                 StatisticModel.date >= start_date,
                 StatisticModel.date <= end_date
             )
-        ).order_by(StatisticModel.date).all()
+        ).group_by(StatisticModel.date).order_by(StatisticModel.date).all()
         
-        # Get provider growth timeline - with unique constraint, we can get the value directly
+        # Get provider growth timeline - use GROUP BY aggregation for proper date handling
         provider_stats_raw = db.query(
             StatisticModel.date,
-            StatisticModel.value
+            func.max(StatisticModel.value).label('value'),
+            func.count(StatisticModel.id).label('count')
         ).filter(
             and_(
                 StatisticModel.metric_type == MetricType.PROVIDER_COUNT,
@@ -152,7 +154,7 @@ async def get_growth_timeline(
                 StatisticModel.date >= start_date,
                 StatisticModel.date <= end_date
             )
-        ).order_by(StatisticModel.date).all()
+        ).group_by(StatisticModel.date).order_by(StatisticModel.date).all()
         
         # Get validation activity timeline (using registration rate as proxy for activity)
         validation_stats_raw = db.query(
@@ -174,7 +176,7 @@ async def get_growth_timeline(
             TimeSeriesPoint(
                 date=stat.date,
                 value=float(stat.value) if stat.value is not None else 0.0,
-                extra_data={'unique_entry': True}
+                extra_data={'records_aggregated': stat.count}
             )
             for stat in dataset_stats_raw
         ]
@@ -183,7 +185,7 @@ async def get_growth_timeline(
             TimeSeriesPoint(
                 date=stat.date,
                 value=float(stat.value) if stat.value is not None else 0.0,
-                extra_data={'unique_entry': True}
+                extra_data={'records_aggregated': stat.count}
             )
             for stat in provider_stats_raw
         ]
@@ -220,7 +222,7 @@ async def get_growth_timeline(
                     date=today,
                     value=float(current_total_datasets),
                     extra_data={
-                        'unique_entry': True,
+                        'records_aggregated': 1,
                         'is_current_day': True,
                         'new_registrations_today': todays_new_datasets
                     }
@@ -233,7 +235,7 @@ async def get_growth_timeline(
                     providers_timeline.append(TimeSeriesPoint(
                         date=today,
                         value=float(current_total_providers),
-                        extra_data={'unique_entry': True, 'is_current_day': True}
+                        extra_data={'records_aggregated': 1, 'is_current_day': True}
                     ))
                 
                 # For validation timeline, add today's validation activity if any
@@ -248,7 +250,7 @@ async def get_growth_timeline(
                             date=today,
                             value=float(todays_validations),
                             extra_data={
-                                'unique_entry': True,
+                                'records_aggregated': 1,
                                 'is_current_day': True
                             }
                         ))
@@ -608,10 +610,11 @@ async def get_public_time_series_data(
         except ValueError as e:
             raise HTTPException(status_code=400, detail=f"Invalid parameter: {e}")
         
-        # Build query - with unique constraint, no need for aggregation
+        # Build query with GROUP BY aggregation for proper date handling
         base_query = db.query(
             StatisticModel.date,
-            StatisticModel.value
+            func.max(StatisticModel.value).label('value'),
+            func.count(StatisticModel.id).label('count')
         ).filter(
             and_(
                 StatisticModel.metric_type == metric_type,
@@ -630,15 +633,15 @@ async def get_public_time_series_data(
         if end_date:
             base_query = base_query.filter(StatisticModel.date <= end_date)
         
-        # Order by date descending and limit
-        stats = base_query.order_by(desc(StatisticModel.date)).limit(limit).all()
+        # Group by date to aggregate and order by date descending, then limit
+        stats = base_query.group_by(StatisticModel.date).order_by(desc(StatisticModel.date)).limit(limit).all()
         
         # Convert to time series points
         data_points = [
             TimeSeriesPoint(
                 date=stat.date,
                 value=float(stat.value) if stat.value is not None else 0.0,
-                extra_data={'unique_entry': True}
+                extra_data={'records_aggregated': stat.count}
             )
             for stat in reversed(stats)  # Reverse to get chronological order
         ]
@@ -664,7 +667,7 @@ async def get_public_time_series_data(
                     date=today,
                     value=float(current_total_datasets),
                     extra_data={
-                        'unique_entry': True,
+                        'records_aggregated': 1,
                         'is_current_day': True,
                         'new_registrations_today': todays_new_datasets
                     }
