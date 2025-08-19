@@ -194,9 +194,6 @@ async def get_dataset_statistics(
         
         unit_count = int(latest_unit_stat.value) if latest_unit_stat else None
         
-        # Citation completeness is no longer collected
-        citation_completeness = None
-        
         # Get latest validation status
         latest_validation = db.query(ValidationJobModel).join(
             XmlArchiveModel, ValidationJobModel.archive_id == XmlArchiveModel.id
@@ -225,8 +222,7 @@ async def get_dataset_statistics(
             unit_count=unit_count,
             last_modified=dataset.updated_at,
             validation_status=validation_status,
-            is_valid=is_valid,
-            citation_completeness=citation_completeness
+            is_valid=is_valid
         )
         
     except Exception as e:
