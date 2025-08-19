@@ -236,43 +236,62 @@ function MultiLineTimeSeriesChart({
   const CustomLegend = ({ payload }) => {
     if (!payload || payload.length === 0) return null;
     
+    // Determine if we need compact mode based on number of providers
+    const needsCompactMode = payload.length > 6;
+    
     return (
       <div style={{
-        display: 'flex',
-        flexWrap: 'wrap',
-        justifyContent: 'center',
-        gap: '1rem',
+        display: 'grid',
+        gridTemplateColumns: needsCompactMode ? 'repeat(2, 1fr)' : 'repeat(auto-fit, minmax(200px, 1fr))',
+        gap: needsCompactMode ? '0.5rem' : '0.75rem',
         marginTop: '1rem',
-        padding: '0.75rem',
-        backgroundColor: 'rgba(255, 255, 255, 0.02)',
+        padding: needsCompactMode ? '0.5rem' : '0.75rem',
+        backgroundColor: needsCompactMode ? 'transparent' : 'rgba(255, 255, 255, 0.02)',
         borderRadius: '0.5rem',
-        border: '1px solid var(--border)'
+        border: needsCompactMode ? 'none' : '1px solid var(--border)',
+        fontSize: needsCompactMode ? '0.75rem' : '0.875rem'
       }}>
-        {payload.map((entry, index) => (
-          <div key={index} style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            padding: '0.25rem 0.75rem',
-            borderRadius: '1rem',
-            backgroundColor: 'rgba(255, 255, 255, 0.03)'
-          }}>
-            <div style={{
-              width: '10px',
-              height: '10px',
-              borderRadius: '50%',
-              backgroundColor: entry.color,
-              boxShadow: `0 0 0 2px ${entry.color}20`
-            }} />
-            <span style={{
-              color: 'var(--text)',
-              fontSize: '0.875rem',
-              fontWeight: 500
-            }}>
-              {entry.value}
-            </span>
-          </div>
-        ))}
+        {payload.map((entry, index) => {
+          // Truncate long provider names
+          const displayName = entry.value.length > 40 
+            ? entry.value.substring(0, 37) + '...' 
+            : entry.value;
+          
+          return (
+            <div 
+              key={index} 
+              title={entry.value} // Show full name on hover
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: needsCompactMode ? '0.375rem' : '0.5rem',
+                padding: needsCompactMode ? '0.125rem 0.5rem' : '0.25rem 0.75rem',
+                borderRadius: needsCompactMode ? '0.25rem' : '1rem',
+                backgroundColor: needsCompactMode ? 'transparent' : 'rgba(255, 255, 255, 0.03)',
+                overflow: 'hidden'
+              }}
+            >
+              <div style={{
+                width: needsCompactMode ? '8px' : '10px',
+                height: needsCompactMode ? '8px' : '10px',
+                borderRadius: '50%',
+                backgroundColor: entry.color,
+                flexShrink: 0,
+                boxShadow: needsCompactMode ? 'none' : `0 0 0 2px ${entry.color}20`
+              }} />
+              <span style={{
+                color: 'var(--text)',
+                fontSize: 'inherit',
+                fontWeight: needsCompactMode ? 400 : 500,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }}>
+                {displayName}
+              </span>
+            </div>
+          );
+        })}
       </div>
     );
   };

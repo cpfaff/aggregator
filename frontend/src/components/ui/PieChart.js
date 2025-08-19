@@ -121,6 +121,8 @@ function PieChart({
     if (active && payload && payload.length) {
       const data = payload[0];
       const percentage = ((data.value / data.payload.total) * 100).toFixed(1);
+      const isOther = data.name && data.name.includes('Other');
+      const details = data.payload.details;
       
       return (
         <div style={{
@@ -129,7 +131,8 @@ function PieChart({
           border: '1px solid var(--border)',
           borderRadius: '0.5rem',
           boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-          fontSize: '0.875rem'
+          fontSize: '0.875rem',
+          maxWidth: isOther && details ? '250px' : 'auto'
         }}>
           <p style={{ 
             margin: 0, 
@@ -142,10 +145,33 @@ function PieChart({
           <p style={{ 
             margin: 0, 
             color: data.fill,
-            fontWeight: 600
+            fontWeight: 600,
+            marginBottom: isOther && details ? '0.5rem' : 0
           }}>
-            {`${data.value.toLocaleString()} (${percentage}%)`}
+            {`${data.value.toLocaleString()} datasets (${percentage}%)`}
           </p>
+          {isOther && details && (
+            <div style={{
+              borderTop: '1px solid var(--border)',
+              paddingTop: '0.5rem',
+              fontSize: '0.75rem',
+              color: 'var(--text-light)'
+            }}>
+              <p style={{ margin: 0, marginBottom: '0.25rem', fontWeight: 500 }}>
+                Includes:
+              </p>
+              {details.slice(0, 5).map((dc, idx) => (
+                <p key={idx} style={{ margin: 0, marginLeft: '0.5rem' }}>
+                  • {dc.name}: {dc.value}
+                </p>
+              ))}
+              {details.length > 5 && (
+                <p style={{ margin: 0, marginLeft: '0.5rem', fontStyle: 'italic' }}>
+                  • and {details.length - 5} more...
+                </p>
+              )}
+            </div>
+          )}
         </div>
       );
     }
@@ -153,41 +179,62 @@ function PieChart({
   };
 
   const CustomLegend = ({ payload }) => {
+    // Determine if we need compact mode based on number of items
+    const needsCompactMode = payload.length > 6;
+    
     return (
       <div style={{
-        display: 'flex',
-        flexWrap: 'wrap',
-        justifyContent: 'center',
-        gap: '1.25rem',
-        marginTop: '1.5rem'
+        display: 'grid',
+        gridTemplateColumns: needsCompactMode ? 'repeat(2, 1fr)' : 'repeat(auto-fit, minmax(140px, 1fr))',
+        gap: needsCompactMode ? '0.5rem' : '0.75rem',
+        marginTop: '1.5rem',
+        maxWidth: '100%'
       }}>
-        {payload.map((entry, index) => (
-          <div key={index} style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.75rem',
-            fontSize: '0.875rem',
-            padding: '0.5rem 0.75rem',
-            borderRadius: '0.5rem',
-            backgroundColor: `${entry.color}10`,
-            border: `1px solid ${entry.color}20`,
-            transition: 'all 0.2s ease'
-          }}>
-            <div style={{
-              width: '12px',
-              height: '12px',
-              backgroundColor: entry.color,
-              borderRadius: '50%',
-              boxShadow: `0 0 0 2px ${entry.color}20`
-            }} />
-            <span style={{ 
-              color: 'var(--text)',
-              fontWeight: 500 
-            }}>
-              {entry.value}
-            </span>
-          </div>
-        ))}
+        {payload.map((entry, index) => {
+          // Truncate long names for display
+          const displayName = entry.value.length > 25 
+            ? entry.value.substring(0, 22) + '...' 
+            : entry.value;
+          
+          return (
+            <div 
+              key={index} 
+              title={entry.value} // Show full name on hover
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                fontSize: needsCompactMode ? '0.75rem' : '0.875rem',
+                padding: needsCompactMode ? '0.25rem 0.5rem' : '0.5rem 0.75rem',
+                borderRadius: '0.25rem',
+                backgroundColor: needsCompactMode ? 'transparent' : `${entry.color}10`,
+                border: needsCompactMode ? 'none' : `1px solid ${entry.color}20`,
+                transition: 'all 0.2s ease',
+                cursor: 'default',
+                minWidth: 0, // Allow content to shrink
+                overflow: 'hidden'
+              }}
+            >
+              <div style={{
+                width: needsCompactMode ? '10px' : '12px',
+                height: needsCompactMode ? '10px' : '12px',
+                backgroundColor: entry.color,
+                borderRadius: '50%',
+                flexShrink: 0,
+                boxShadow: needsCompactMode ? 'none' : `0 0 0 2px ${entry.color}20`
+              }} />
+              <span style={{ 
+                color: 'var(--text)',
+                fontWeight: needsCompactMode ? 400 : 500,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }}>
+                {displayName}
+              </span>
+            </div>
+          );
+        })}
       </div>
     );
   };

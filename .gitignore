@@ -86,3 +86,6 @@ celerybeat.pid
 backups
 
 CLAUDE.md
+
+# Playwright MCP
+.playwright-mcp/

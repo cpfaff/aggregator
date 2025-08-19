@@ -124,7 +124,7 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "celery -A app.core.celery_app inspect ping"]
       interval: 30s
-      timeout: 10s
+      timeout: 60s
       retries: 3
       start_period: 10s
     command: >
@@ -156,7 +156,7 @@ services:
     healthcheck:
       test: ["CMD", "celery", "-A", "app.core.celery_app", "inspect", "ping"]
       interval: 30s
-      timeout: 10s
+      timeout: 60s
       retries: 3
       start_period: 10s
     command: >

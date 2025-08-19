@@ -183,9 +183,7 @@ async def get_dataset_statistics(
         raise HTTPException(status_code=404, detail="Dataset not found")
     
     try:
-        # For real-time data, calculate unit count and citation completeness dynamically
-        # Note: These may require additional logic to calculate in real-time
-        # For now, we'll check the latest statistics but not rely on them exclusively
+        # For real-time data, get the latest unit count from statistics
         latest_unit_stat = db.query(StatisticModel).filter(
             and_(
                 StatisticModel.metric_type == MetricType.DATASET_UNIT_COUNT,
@@ -196,15 +194,8 @@ async def get_dataset_statistics(
         
         unit_count = int(latest_unit_stat.value) if latest_unit_stat else None
         
-        citation_stat = db.query(StatisticModel).filter(
-            and_(
-                StatisticModel.metric_type == MetricType.CITATION_COMPLETENESS,
-                StatisticModel.entity_type == EntityType.DATASET,
-                StatisticModel.entity_id == dataset_id
-            )
-        ).order_by(desc(StatisticModel.date)).first()
-        
-        citation_completeness = citation_stat.value if citation_stat else None
+        # Citation completeness is no longer collected
+        citation_completeness = None
         
         # Get latest validation status
         latest_validation = db.query(ValidationJobModel).join(

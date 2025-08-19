@@ -134,7 +134,7 @@ class DatasetStats(BaseModel):
     unit_count: Optional[int] = Field(None, description="Number of units in dataset")
     last_modified: Optional[datetime] = Field(None, description="Last modification timestamp")
     validation_status: Optional[str] = Field(None, description="Latest validation status")
-    citation_completeness: Optional[float] = Field(None, description="Citation completeness score")
+    citation_completeness: Optional[float] = Field(None, description="Citation completeness score (deprecated, always None)")
 
 
 class QualityMetrics(BaseModel):
@@ -170,8 +170,6 @@ METRIC_DESCRIPTIONS = {
     MetricType.VALIDATION_JOB_COUNT: "Total number of validation jobs",
     MetricType.ABCD_COMPLIANCE_RATE: "Percentage of XML files compliant with ABCD schema",
     MetricType.XML_ARCHIVE_COUNT: "Total number of XML archive files",
-    MetricType.CITATION_COMPLETENESS: "Completeness score of citation metadata",
-    MetricType.GEOGRAPHIC_COVERAGE: "Geographic coverage score of datasets",
     MetricType.SYSTEM_STORAGE_SIZE: "Total storage used by the system",
     MetricType.SYSTEM_PROCESSING_LOAD: "System processing load metrics",
     MetricType.SYSTEM_API_RESPONSE_TIME: "Average API response time",

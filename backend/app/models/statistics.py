@@ -37,8 +37,6 @@ class MetricType(str, Enum):
     # Data quality metrics
     ABCD_COMPLIANCE_RATE = "abcd_compliance_rate"
     XML_ARCHIVE_COUNT = "xml_archive_count"
-    CITATION_COMPLETENESS = "citation_completeness"
-    GEOGRAPHIC_COVERAGE = "geographic_coverage"
     
     # System metrics
     SYSTEM_STORAGE_SIZE = "system_storage_size"
@@ -98,8 +96,8 @@ class StatisticModel(Base, TimestampMixin):
             "metric_type IN ('dataset_count', 'dataset_registration_rate', 'dataset_modification_rate', "
             "'dataset_unit_count', 'provider_count', 'provider_dataset_count', 'provider_activity_score', "
             "'provider_unit_count', 'provider_biological_units', 'validation_success_rate', 'validation_error_rate', 'validation_processing_time', "
-            "'validation_job_count', 'abcd_compliance_rate', 'xml_archive_count', 'citation_completeness', "
-            "'geographic_coverage', 'system_storage_size', 'system_processing_load', 'system_api_response_time', "
+            "'validation_job_count', 'abcd_compliance_rate', 'xml_archive_count', "
+            "'system_storage_size', 'system_processing_load', 'system_api_response_time', "
             "'system_unit_count')",
             name="valid_metric_type"
         ),
@@ -158,8 +156,6 @@ class StatisticModel(Base, TimestampMixin):
             MetricType.VALIDATION_JOB_COUNT: "Number of validation jobs",
             MetricType.ABCD_COMPLIANCE_RATE: "ABCD schema compliance rate",
             MetricType.XML_ARCHIVE_COUNT: "Number of XML archives",
-            MetricType.CITATION_COMPLETENESS: "Citation completeness score",
-            MetricType.GEOGRAPHIC_COVERAGE: "Geographic coverage score",
             MetricType.SYSTEM_STORAGE_SIZE: "Total storage size in bytes",
             MetricType.SYSTEM_PROCESSING_LOAD: "System processing load",
             MetricType.SYSTEM_API_RESPONSE_TIME: "Average API response time",

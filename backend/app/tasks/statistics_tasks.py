@@ -7,6 +7,7 @@ import requests
 import xml.etree.ElementTree as ET
 import zipfile
 import io
+import tempfile
 from datetime import datetime, date, timedelta
 from typing import Dict, Any, List, Optional, Tuple
 from urllib.parse import urlparse
@@ -37,7 +38,7 @@ class XMLParsingError(Exception):
 
 def _process_single_xml_root(root, filename: str) -> Dict[str, Any]:
     """
-    Process a single XML root element and extract unit information.
+    Process a single XML root element and extract unit count only.
     Implements memory-efficient streaming processing for large unit collections.
     
     Args:
@@ -45,7 +46,7 @@ def _process_single_xml_root(root, filename: str) -> Dict[str, Any]:
         filename: Name of XML file being processed (for logging)
         
     Returns:
-        Dictionary containing extracted information from this XML file
+        Dictionary containing unit count from this XML file
     """
     # Common ABCD namespaces
     namespaces = {
@@ -69,8 +70,7 @@ def _process_single_xml_root(root, filename: str) -> Dict[str, Any]:
             ns_uri = root.tag.split('}')[0][1:]
             detected_ns = {'abcd': ns_uri}
     
-    # Extract unit information
-    units = []
+    # Count units only - no need to extract other information
     unit_count = 0
     
     if detected_ns:
@@ -79,7 +79,9 @@ def _process_single_xml_root(root, filename: str) -> Dict[str, Any]:
         # Find Units - different paths for different versions
         unit_paths = [
             f".//{{{ns_uri}}}Unit",
-            f".//{{{ns_uri}}}DataSet/{{{ns_uri}}}Units/{{{ns_uri}}}Unit"
+            f".//{{{ns_uri}}}DataSet/{{{ns_uri}}}Units/{{{ns_uri}}}Unit",
+            f".//{{{ns_uri}}}DataSets/{{{ns_uri}}}DataSet/{{{ns_uri}}}Units/{{{ns_uri}}}Unit",
+            f".//{{{ns_uri}}}Units/{{{ns_uri}}}Unit"
         ]
         
         for path in unit_paths:
@@ -95,104 +97,17 @@ def _process_single_xml_root(root, filename: str) -> Dict[str, Any]:
     
     unit_count = len(units)
     
-    # Extract taxonomic information
-    taxonomic_info = {
-        'families': set(),
-        'genera': set(),
-        'species': set()
-    }
-    
-    # Extract geographic information
-    geographic_info = {
-        'countries': set(),
-        'localities': set(),
-        'coordinates': []
-    }
-    
-    # Extract citation information
-    citation_info = {
-        'has_collector': 0,
-        'has_collection_date': 0,
-        'has_location': 0,
-        'has_identification': 0,
-        'total_units': unit_count
-    }
-    
-    # Helper function to find elements by tag name substring (case-insensitive)
-    def find_elements_by_tag_substring(parent, substring):
-        """Find all descendant elements whose tag contains the substring (case-insensitive)."""
-        result = []
-        for elem in parent.iter():
-            tag_name = elem.tag.split('}')[-1] if '}' in elem.tag else elem.tag
-            if substring.lower() in tag_name.lower():
-                result.append(elem)
-        return result
-    
-    # Process each unit - REMOVED 1000 unit limit for comprehensive counting
-    # Use memory-efficient processing by processing units in batches if needed
-    batch_size = 5000  # Process units in batches to manage memory
-    for i in range(0, len(units), batch_size):
-        batch_units = units[i:i + batch_size]
-        logger.debug(f"Processing units {i+1} to {min(i+batch_size, len(units))} of {len(units)} in {filename}")
-        
-        for unit in batch_units:
-            # Extract taxonomic data
-            for tax_field, field_name in [
-                ('Family', 'families'),
-                ('Genus', 'genera'),
-                ('Species', 'species')
-            ]:
-                tax_elements = find_elements_by_tag_substring(unit, tax_field)
-                for elem in tax_elements:
-                    if elem.text and elem.text.strip():
-                        taxonomic_info[field_name].add(elem.text.strip())
-            
-            # Extract geographic data
-            country_elements = find_elements_by_tag_substring(unit, 'Country')
-            for elem in country_elements:
-                if elem.text and elem.text.strip():
-                    geographic_info['countries'].add(elem.text.strip())
-            
-            locality_elements = find_elements_by_tag_substring(unit, 'Locality')
-            for elem in locality_elements:
-                if elem.text and elem.text.strip():
-                    geographic_info['localities'].add(elem.text.strip())
-            
-            # Extract coordinates
-            lat_elements = find_elements_by_tag_substring(unit, 'Latitude')
-            lon_elements = find_elements_by_tag_substring(unit, 'Longitude')
-            
-            for lat_elem, lon_elem in zip(lat_elements, lon_elements):
-                try:
-                    lat = float(lat_elem.text) if lat_elem.text else None
-                    lon = float(lon_elem.text) if lon_elem.text else None
-                    if lat is not None and lon is not None:
-                        geographic_info['coordinates'].append([lat, lon])
-                except (ValueError, TypeError):
-                    pass
-            
-            # Check citation completeness
-            if find_elements_by_tag_substring(unit, 'Collector'):
-                citation_info['has_collector'] += 1
-            if find_elements_by_tag_substring(unit, 'GatheringDate'):
-                citation_info['has_collection_date'] += 1
-            if find_elements_by_tag_substring(unit, 'Country') or find_elements_by_tag_substring(unit, 'Locality'):
-                citation_info['has_location'] += 1
-            if find_elements_by_tag_substring(unit, 'Identification'):
-                citation_info['has_identification'] += 1
+    # Only return unit count - skip all other extraction
+    logger.debug(f"Found {unit_count} units in {filename}")
     
     return {
-        'unit_count': unit_count,
-        'taxonomic_info': taxonomic_info,
-        'geographic_info': geographic_info,
-        'citation_info': citation_info,
-        'schema_detected': detected_ns is not None
+        'unit_count': unit_count
     }
 
 
 def parse_abcd_xml(xml_url: str) -> Dict[str, Any]:
     """
-    Parse ABCD XML file and extract unit counts, taxonomic info, and geographic data.
+    Parse ABCD XML file and extract unit counts only.
     Handles both direct XML files and ZIP archives containing XML files.
     For ZIP archives, processes ALL XML files to get complete unit counts.
     
@@ -200,147 +115,98 @@ def parse_abcd_xml(xml_url: str) -> Dict[str, Any]:
         xml_url: URL of the XML file or ZIP archive to parse
         
     Returns:
-        Dictionary containing extracted information aggregated across all XML files in archive
+        Dictionary containing unit count aggregated across all XML files in archive
         
     Raises:
         XMLParsingError: If XML parsing fails
     """
     try:
-        # Download content
+        # Download content with streaming to avoid memory issues
         response = requests.get(xml_url, timeout=300, stream=True)
         response.raise_for_status()
         
-        # Read content into memory
-        content = response.content
-        
-        # Initialize aggregated results
+        # Initialize aggregated results - only unit count now
         total_unit_count = 0
-        all_taxonomic_info = {
-            'families': set(),
-            'genera': set(),
-            'species': set()
-        }
-        all_geographic_info = {
-            'countries': set(),
-            'localities': set(),
-            'coordinates': []
-        }
-        all_citation_info = {
-            'has_collector': 0,
-            'has_collection_date': 0,
-            'has_location': 0,
-            'has_identification': 0,
-            'total_units': 0
-        }
-        
         xml_files_processed = 0
         
-        # Check if content starts with ZIP file signature (PK)
-        if content.startswith(b'PK'):
-            logger.debug(f"Detected ZIP archive for URL: {xml_url}")
+        # Use a temporary file to avoid loading entire content into memory
+        # SpooledTemporaryFile keeps small files in memory, large files on disk
+        with tempfile.SpooledTemporaryFile(max_size=10*1024*1024) as temp_file:  # 10MB threshold
+            # Stream download to temp file
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:
+                    temp_file.write(chunk)
             
-            # Handle ZIP file - process ALL XML files
-            try:
-                with zipfile.ZipFile(io.BytesIO(content)) as zip_file:
-                    # Look for XML files in the ZIP
-                    xml_files = [f for f in zip_file.namelist() 
-                               if f.lower().endswith('.xml') and not f.startswith('__MACOSX/')]
-                    
-                    if not xml_files:
-                        raise XMLParsingError("No XML files found in ZIP archive")
-                    
-                    logger.debug(f"Found {len(xml_files)} XML files in archive, processing all")
-                    
-                    # Process ALL XML files in the archive
-                    for xml_filename in xml_files:
-                        try:
-                            logger.debug(f"Processing XML file: {xml_filename}")
-                            
-                            # Extract and parse the XML file
-                            with zip_file.open(xml_filename) as xml_file:
-                                xml_content = xml_file.read()
-                                root = ET.fromstring(xml_content)
-                                
-                                # Process this XML file and aggregate results
-                                file_results = _process_single_xml_root(root, xml_filename)
-                                
-                                # Aggregate results
-                                total_unit_count += file_results['unit_count']
-                                all_taxonomic_info['families'].update(file_results['taxonomic_info']['families'])
-                                all_taxonomic_info['genera'].update(file_results['taxonomic_info']['genera'])
-                                all_taxonomic_info['species'].update(file_results['taxonomic_info']['species'])
-                                all_geographic_info['countries'].update(file_results['geographic_info']['countries'])
-                                all_geographic_info['localities'].update(file_results['geographic_info']['localities'])
-                                all_geographic_info['coordinates'].extend(file_results['geographic_info']['coordinates'])
-                                all_citation_info['has_collector'] += file_results['citation_info']['has_collector']
-                                all_citation_info['has_collection_date'] += file_results['citation_info']['has_collection_date']
-                                all_citation_info['has_location'] += file_results['citation_info']['has_location']
-                                all_citation_info['has_identification'] += file_results['citation_info']['has_identification']
-                                
-                                xml_files_processed += 1
-                                
-                        except ET.ParseError as e:
-                            logger.warning(f"Failed to parse XML file {xml_filename} in archive: {e}")
-                            continue
-                        except Exception as e:
-                            logger.warning(f"Error processing XML file {xml_filename} in archive: {e}")
-                            continue
+            # Reset to beginning for reading
+            temp_file.seek(0)
+            
+            # Check if content starts with ZIP file signature (PK)
+            first_bytes = temp_file.read(2)
+            temp_file.seek(0)  # Reset again
+            
+            if first_bytes == b'PK':
+                logger.debug(f"Detected ZIP archive for URL: {xml_url}")
+                
+                # Handle ZIP file - process ALL XML files
+                try:
+                    with zipfile.ZipFile(temp_file) as zip_file:
+                        # Look for XML files in the ZIP
+                        xml_files = [f for f in zip_file.namelist() 
+                                   if f.lower().endswith('.xml') and not f.startswith('__MACOSX/')]
                         
-            except zipfile.BadZipFile:
-                # Not a valid ZIP file, treat as direct XML
-                logger.debug(f"Invalid ZIP file, attempting direct XML parsing for: {xml_url}")
-                root = ET.fromstring(content)
+                        if not xml_files:
+                            raise XMLParsingError("No XML files found in ZIP archive")
+                        
+                        logger.debug(f"Found {len(xml_files)} XML files in archive, processing all")
+                        
+                        # Process ALL XML files in the archive
+                        for xml_filename in xml_files:
+                            try:
+                                logger.debug(f"Processing XML file: {xml_filename}")
+                                
+                                # Extract and parse the XML file
+                                with zip_file.open(xml_filename) as xml_file:
+                                    xml_content = xml_file.read()
+                                    root = ET.fromstring(xml_content)
+                                    
+                                    # Process this XML file and aggregate unit count only
+                                    file_results = _process_single_xml_root(root, xml_filename)
+                                    
+                                    # Aggregate unit count only
+                                    total_unit_count += file_results['unit_count']
+                                    xml_files_processed += 1
+                                    
+                            except ET.ParseError as e:
+                                logger.warning(f"Failed to parse XML file {xml_filename} in archive: {e}")
+                                continue
+                            except Exception as e:
+                                logger.warning(f"Error processing XML file {xml_filename} in archive: {e}")
+                                continue
+                            
+                except zipfile.BadZipFile:
+                    # Not a valid ZIP file, treat as direct XML
+                    logger.debug(f"Invalid ZIP file, attempting direct XML parsing for: {xml_url}")
+                    temp_file.seek(0)
+                    xml_content = temp_file.read()
+                    root = ET.fromstring(xml_content)
+                    file_results = _process_single_xml_root(root, "direct_xml")
+                    total_unit_count = file_results['unit_count']
+                    xml_files_processed = 1
+            else:
+                # Try direct XML parsing
+                logger.debug(f"Attempting direct XML parsing for: {xml_url}")
+                temp_file.seek(0)
+                xml_content = temp_file.read()
+                root = ET.fromstring(xml_content)
                 file_results = _process_single_xml_root(root, "direct_xml")
                 total_unit_count = file_results['unit_count']
-                all_taxonomic_info = file_results['taxonomic_info']
-                all_geographic_info = file_results['geographic_info']
-                all_citation_info = file_results['citation_info']
                 xml_files_processed = 1
-        else:
-            # Try direct XML parsing
-            logger.debug(f"Attempting direct XML parsing for: {xml_url}")
-            root = ET.fromstring(content)
-            file_results = _process_single_xml_root(root, "direct_xml")
-            total_unit_count = file_results['unit_count']
-            all_taxonomic_info = file_results['taxonomic_info']
-            all_geographic_info = file_results['geographic_info']
-            all_citation_info = file_results['citation_info']
-            xml_files_processed = 1
-        
-        # Update total units
-        all_citation_info['total_units'] = total_unit_count
-        
-        # Calculate aggregated citation completeness score
-        if total_unit_count > 0:
-            completeness_score = (
-                all_citation_info['has_collector'] +
-                all_citation_info['has_collection_date'] +
-                all_citation_info['has_location'] +
-                all_citation_info['has_identification']
-            ) / (4 * total_unit_count)  # 4 criteria per unit
-        else:
-            completeness_score = 0.0
         
         logger.info(f"Archive processing complete: {total_unit_count} total units from {xml_files_processed} XML files")
         
         return {
             'unit_count': total_unit_count,
-            'taxonomic_diversity': {
-                'families': len(all_taxonomic_info['families']),
-                'genera': len(all_taxonomic_info['genera']),
-                'species': len(all_taxonomic_info['species'])
-            },
-            'geographic_coverage': {
-                'countries': len(all_geographic_info['countries']),
-                'localities': len(all_geographic_info['localities']),
-                'coordinates': len(all_geographic_info['coordinates'])
-            },
-            'citation_completeness': completeness_score,
-            'parsing_date': datetime.utcnow().isoformat(),
-            'schema_detected': xml_files_processed > 0,  # True if we processed any files
-            'xml_files_processed': xml_files_processed,
-            'families_list': list(all_taxonomic_info['families'])[:50],  # Limit for storage
-            'countries_list': list(all_geographic_info['countries'])[:50]
+            'xml_files_processed': xml_files_processed
         }
         
     except requests.RequestException as e:
@@ -743,7 +609,7 @@ def collect_daily_statistics(self, target_date: str = None) -> Dict[str, Any]:
     soft_time_limit=3600,  # 1 hour timeout
     retry_backoff=True,
 )
-def analyze_xml_archives(self, batch_size: int = 50, offset: int = 0) -> Dict[str, Any]:
+def analyze_xml_archives(self, batch_size: int = 50, offset: int = 0, dataset_ids: Optional[List[int]] = None) -> Dict[str, Any]:
     """
     Analyze XML archives to extract unit counts and metadata.
     Processes archives in batches to avoid memory issues.
@@ -751,19 +617,36 @@ def analyze_xml_archives(self, batch_size: int = 50, offset: int = 0) -> Dict[st
     Args:
         batch_size: Number of archives to process in this batch
         offset: Starting offset for the batch
+        dataset_ids: Optional list of specific dataset IDs to process
         
     Returns:
         Dictionary with analysis results
     """
+    from sqlalchemy.dialects.postgresql import insert
+    
     db = SessionLocal()
     
     try:
-        logger.info(f"Analyzing XML archives - batch size: {batch_size}, offset: {offset}")
+        if dataset_ids:
+            logger.info(f"Analyzing XML archives for specific datasets: {dataset_ids}")
+        else:
+            logger.info(f"Analyzing XML archives - batch size: {batch_size}, offset: {offset}")
+        logger.info(f"[DB-DEBUG] Created new database session: is_active={db.is_active}")
         
         # Get batch of LATEST archives to analyze (respecting system constraint)
-        archives = db.query(XmlArchiveModel).filter(
+        query = db.query(XmlArchiveModel).filter(
             XmlArchiveModel.isLatest == True
-        ).offset(offset).limit(batch_size).all()
+        )
+        
+        # If specific dataset IDs are provided, filter by them
+        if dataset_ids:
+            query = query.filter(XmlArchiveModel.dataset_id.in_(dataset_ids))
+            archives = query.order_by(XmlArchiveModel.id).all()
+        else:
+            # Use offset/limit for batch processing of all archives
+            archives = query.order_by(XmlArchiveModel.id).offset(offset).limit(batch_size).all()
+        
+        logger.info(f"[DB-DEBUG] Found {len(archives)} archives to process in this batch")
         
         if not archives:
             return {
@@ -780,11 +663,16 @@ def analyze_xml_archives(self, batch_size: int = 50, offset: int = 0) -> Dict[st
         
         for archive in archives:
             try:
+                logger.info(f"[DB-DEBUG] Starting analysis of archive {archive.id} (dataset {archive.dataset_id})")
+                
                 # Parse XML and extract information
                 xml_data = parse_abcd_xml(archive.url)
+                logger.info(f"[DB-DEBUG] Parsed XML data for archive {archive.id}: unit_count={xml_data['unit_count']}, files_processed={xml_data.get('xml_files_processed', 1)}")
                 
                 # Store unit count statistic - use proper upsert with ON CONFLICT
                 if xml_data['unit_count'] > 0:
+                    logger.info(f"[DB-DEBUG] DB session state before unit count insert: is_active={db.is_active}")
+                    
                     stmt = insert(StatisticModel).values(
                         metric_type=MetricType.DATASET_UNIT_COUNT,
                         entity_type=EntityType.DATASET,
@@ -795,14 +683,7 @@ def analyze_xml_archives(self, batch_size: int = 50, offset: int = 0) -> Dict[st
                         extra_data={
                             'archive_id': archive.id,
                             'archive_url': archive.url,
-                            'taxonomic_diversity': xml_data['taxonomic_diversity'],
-                            'geographic_coverage': xml_data['geographic_coverage'],
-                            'parsing_metadata': {
-                                'schema_detected': xml_data['schema_detected'],
-                                'parsing_date': xml_data['parsing_date'],
-                                'xml_files_processed': xml_data.get('xml_files_processed', 1),
-                                'comprehensive_counting': True
-                            }
+                            'xml_files_processed': xml_data.get('xml_files_processed', 1)
                         },
                         created_at=datetime.utcnow(),
                         updated_at=datetime.utcnow()
@@ -815,78 +696,32 @@ def analyze_xml_archives(self, batch_size: int = 50, offset: int = 0) -> Dict[st
                             'updated_at': datetime.utcnow()
                         }
                     )
-                    db.execute(stmt)
+                    
+                    logger.info(f"[DB-DEBUG] Executing unit count upsert for archive {archive.id}, dataset {archive.dataset_id}, value={xml_data['unit_count']}")
+                    logger.info(f"[DB-DEBUG] Using constraint 'uq_statistics_unique_entry' for upsert")
+                    result = db.execute(stmt)
+                    logger.info(f"[DB-DEBUG] Unit count upsert result: {result}, rowcount={getattr(result, 'rowcount', 'N/A')}")
+                    logger.info(f"[DB-DEBUG] DB session state after unit count execute: is_active={db.is_active}, dirty={len(db.dirty)}, new={len(db.new)}")
+                else:
+                    logger.warning(f"[DB-DEBUG] Skipping unit count insert for archive {archive.id} - unit_count is {xml_data['unit_count']}")
                 
-                # Store citation completeness statistic - use proper upsert with ON CONFLICT
-                if xml_data['citation_completeness'] is not None:
-                    stmt = insert(StatisticModel).values(
-                        metric_type=MetricType.CITATION_COMPLETENESS,
-                        entity_type=EntityType.DATASET,
-                        entity_id=archive.dataset_id,
-                        period=Period.DAILY,
-                        date=date.today(),
-                        value=xml_data['citation_completeness'],
-                        extra_data={
-                            'archive_id': archive.id,
-                            'total_units': xml_data['unit_count']
-                        },
-                        created_at=datetime.utcnow(),
-                        updated_at=datetime.utcnow()
-                    )
-                    stmt = stmt.on_conflict_do_update(
-                        constraint='uq_statistics_unique_entry',
-                        set_={
-                            'value': stmt.excluded.value,
-                            'extra_data': stmt.excluded.extra_data,
-                            'updated_at': datetime.utcnow()
-                        }
-                    )
-                    db.execute(stmt)
+                # Citation completeness and geographic coverage have been removed
+                # We now only extract and store unit counts for performance
                 
-                # Store geographic coverage score - use proper upsert with ON CONFLICT
-                geo_score = min(100.0, (xml_data['geographic_coverage']['countries'] * 10 +
-                                      xml_data['geographic_coverage']['coordinates'] * 0.1))
-                
-                stmt = insert(StatisticModel).values(
-                    metric_type=MetricType.GEOGRAPHIC_COVERAGE,
-                    entity_type=EntityType.DATASET,
-                    entity_id=archive.dataset_id,
-                    period=Period.DAILY,
-                    date=date.today(),
-                    value=geo_score,
-                    extra_data={
-                        'archive_id': archive.id,
-                        'countries_count': xml_data['geographic_coverage']['countries'],
-                        'coordinates_count': xml_data['geographic_coverage']['coordinates'],
-                        'countries_sample': xml_data.get('countries_list', [])[:10]
-                    },
-                    created_at=datetime.utcnow(),
-                    updated_at=datetime.utcnow()
-                )
-                stmt = stmt.on_conflict_do_update(
-                    constraint='uq_statistics_unique_entry',
-                    set_={
-                        'value': stmt.excluded.value,
-                        'extra_data': stmt.excluded.extra_data,
-                        'updated_at': datetime.utcnow()
-                    }
-                )
-                db.execute(stmt)
-                
-                processed_count += 1
                 results.append({
                     'archive_id': archive.id,
                     'dataset_id': archive.dataset_id,
                     'unit_count': xml_data['unit_count'],
-                    'citation_completeness': xml_data['citation_completeness'],
                     'status': 'success'
                 })
                 
+                processed_count += 1
                 logger.info(f"Successfully analyzed archive {archive.id}: {xml_data['unit_count']} units from {xml_data.get('xml_files_processed', 1)} XML files")
                 
             except XMLParsingError as e:
                 error_count += 1
-                logger.warning(f"Failed to parse archive {archive.id}: {e}")
+                logger.warning(f"[DB-DEBUG] XMLParsingError for archive {archive.id}: {e}")
+                logger.info(f"[DB-DEBUG] DB session state after XMLParsingError: is_active={db.is_active}, dirty={len(db.dirty)}, new={len(db.new)}")
                 results.append({
                     'archive_id': archive.id,
                     'dataset_id': archive.dataset_id,
@@ -895,7 +730,12 @@ def analyze_xml_archives(self, batch_size: int = 50, offset: int = 0) -> Dict[st
                 })
             except Exception as e:
                 error_count += 1
-                logger.error(f"Unexpected error processing archive {archive.id}: {e}")
+                logger.error(f"[DB-DEBUG] Unexpected error processing archive {archive.id}: {e}")
+                logger.error(f"[DB-DEBUG] Exception type: {type(e).__name__}")
+                logger.info(f"[DB-DEBUG] DB session state after unexpected error: is_active={db.is_active}, dirty={len(db.dirty)}, new={len(db.new)}")
+                # Check if this is a database-related exception
+                if hasattr(e, 'statement') or 'database' in str(e).lower() or 'postgresql' in str(e).lower():
+                    logger.error(f"[DB-DEBUG] DATABASE-RELATED EXCEPTION DETECTED: {e}")
                 results.append({
                     'archive_id': archive.id,
                     'dataset_id': archive.dataset_id,
@@ -904,12 +744,50 @@ def analyze_xml_archives(self, batch_size: int = 50, offset: int = 0) -> Dict[st
                 })
         
         # Commit statistics
-        db.commit()
+        logger.info(f"[DB-DEBUG] Pre-commit DB session state: is_active={db.is_active}, dirty={len(db.dirty)}, new={len(db.new)}")
+        logger.info(f"[DB-DEBUG] Attempting to commit {processed_count} processed archives with statistics to database")
+        
+        try:
+            db.commit()
+            logger.info(f"[DB-DEBUG] Successfully committed database transaction")
+            logger.info(f"[DB-DEBUG] Post-commit DB session state: is_active={db.is_active}, dirty={len(db.dirty)}, new={len(db.new)}")
+            
+            # Verify data was actually persisted by querying it back
+            if processed_count > 0:
+                from sqlalchemy import and_
+                verification_count = db.query(StatisticModel).filter(
+                    and_(
+                        StatisticModel.metric_type == MetricType.DATASET_UNIT_COUNT,
+                        StatisticModel.date == date.today()
+                    )
+                ).count()
+                logger.info(f"[DB-DEBUG] Verification query: Found {verification_count} DATASET_UNIT_COUNT statistics for today in database")
+                
+                # Also check for specific archives we just processed
+                if archives:
+                    sample_archive = archives[0]
+                    specific_stat = db.query(StatisticModel).filter(
+                        and_(
+                            StatisticModel.metric_type == MetricType.DATASET_UNIT_COUNT,
+                            StatisticModel.entity_type == EntityType.DATASET,
+                            StatisticModel.entity_id == sample_archive.dataset_id,
+                            StatisticModel.date == date.today()
+                        )
+                    ).first()
+                    if specific_stat:
+                        logger.info(f"[DB-DEBUG] Verification successful: Found statistic for dataset {sample_archive.dataset_id} with value {specific_stat.value}")
+                    else:
+                        logger.error(f"[DB-DEBUG] VERIFICATION FAILED: No statistic found for dataset {sample_archive.dataset_id} that we just processed!")
+                        
+        except Exception as commit_error:
+            logger.error(f"[DB-DEBUG] COMMIT FAILED: {commit_error}")
+            logger.error(f"[DB-DEBUG] DB session state during commit failure: is_active={db.is_active}, dirty={len(db.dirty)}, new={len(db.new)}")
+            raise
         
         logger.info(f"XML analysis batch completed - processed: {processed_count}, errors: {error_count}")
         
-        # Schedule next batch if there were results
-        if len(archives) == batch_size:
+        # Schedule next batch if there were results (but not when processing specific datasets)
+        if len(archives) == batch_size and not dataset_ids:
             # There might be more archives to process
             analyze_xml_archives.delay(batch_size=batch_size, offset=offset + batch_size)
         
@@ -926,11 +804,25 @@ def analyze_xml_archives(self, batch_size: int = 50, offset: int = 0) -> Dict[st
         }
         
     except Exception as e:
-        logger.exception(f"Error in XML analysis batch: {e}")
-        db.rollback()
+        logger.exception(f"[DB-DEBUG] CRITICAL ERROR in XML analysis batch: {e}")
+        logger.error(f"[DB-DEBUG] Exception type: {type(e).__name__}")
+        logger.error(f"[DB-DEBUG] DB session state during critical error: is_active={db.is_active}, dirty={len(db.dirty)}, new={len(db.new)}")
+        
+        try:
+            logger.info(f"[DB-DEBUG] Attempting rollback due to critical error")
+            db.rollback()
+            logger.info(f"[DB-DEBUG] Rollback successful")
+        except Exception as rollback_error:
+            logger.error(f"[DB-DEBUG] ROLLBACK FAILED: {rollback_error}")
+        
         raise
     finally:
-        db.close()
+        logger.debug(f"[DB-DEBUG] Closing database session")
+        try:
+            db.close()
+            logger.debug(f"[DB-DEBUG] Database session closed successfully")
+        except Exception as close_error:
+            logger.error(f"[DB-DEBUG] Error closing database session: {close_error}")
 
 
 @shared_task(
@@ -1476,11 +1368,9 @@ def update_dataset_statistics(self, dataset_id: int, trigger_type: str = "manual
                         extra_data={
                             'archive_id': latest_archive.id,
                             'archive_url': latest_archive.url,
-                            'taxonomic_diversity': xml_data['taxonomic_diversity'],
-                            'geographic_coverage': xml_data['geographic_coverage'],
                             'parsing_metadata': {
-                                'schema_detected': xml_data['schema_detected'],
-                                'parsing_date': xml_data['parsing_date'],
+                                'schema_detected': xml_data.get('schema_detected', 'unknown'),
+                                'parsing_date': xml_data.get('parsing_date', datetime.utcnow().isoformat()),
                                 'xml_files_processed': xml_data.get('xml_files_processed', 1),
                                 'comprehensive_counting': True
                             },
@@ -1500,68 +1390,6 @@ def update_dataset_statistics(self, dataset_id: int, trigger_type: str = "manual
                     )
                     db.execute(stmt)
                     collected_stats.append(f"Dataset {dataset_id} unit count updated: {xml_data['unit_count']}")
-                    
-                    # Store citation completeness
-                    if xml_data['citation_completeness'] is not None:
-                        stmt = insert(StatisticModel).values(
-                            metric_type=MetricType.CITATION_COMPLETENESS,
-                            entity_type=EntityType.DATASET,
-                            entity_id=dataset_id,
-                            period=Period.DAILY,
-                            date=stat_date,
-                            value=xml_data['citation_completeness'],
-                            extra_data={
-                                'archive_id': latest_archive.id,
-                                'total_units': xml_data['unit_count'],
-                                'trigger_type': trigger_type,
-                                'collection_timestamp': datetime.utcnow().isoformat()
-                            },
-                            created_at=datetime.utcnow(),
-                            updated_at=datetime.utcnow()
-                        )
-                        stmt = stmt.on_conflict_do_update(
-                            constraint='uq_statistics_unique_entry',
-                            set_={
-                                'value': stmt.excluded.value,
-                                'extra_data': stmt.excluded.extra_data,
-                                'updated_at': datetime.utcnow()
-                            }
-                        )
-                        db.execute(stmt)
-                        collected_stats.append(f"Dataset {dataset_id} citation completeness updated: {xml_data['citation_completeness']:.3f}")
-                    
-                    # Store geographic coverage
-                    geo_score = min(100.0, (xml_data['geographic_coverage']['countries'] * 10 +
-                                          xml_data['geographic_coverage']['coordinates'] * 0.1))
-                    
-                    stmt = insert(StatisticModel).values(
-                        metric_type=MetricType.GEOGRAPHIC_COVERAGE,
-                        entity_type=EntityType.DATASET,
-                        entity_id=dataset_id,
-                        period=Period.DAILY,
-                        date=stat_date,
-                        value=geo_score,
-                        extra_data={
-                            'archive_id': latest_archive.id,
-                            'countries_count': xml_data['geographic_coverage']['countries'],
-                            'coordinates_count': xml_data['geographic_coverage']['coordinates'],
-                            'countries_sample': xml_data.get('countries_list', [])[:10],
-                            'trigger_type': trigger_type,
-                            'collection_timestamp': datetime.utcnow().isoformat()
-                        },
-                        created_at=datetime.utcnow(),
-                        updated_at=datetime.utcnow()
-                    )
-                    stmt = stmt.on_conflict_do_update(
-                        constraint='uq_statistics_unique_entry',
-                        set_={
-                            'value': stmt.excluded.value,
-                            'extra_data': stmt.excluded.extra_data,
-                            'updated_at': datetime.utcnow()
-                        }
-                    )
-                    db.execute(stmt)
-                    collected_stats.append(f"Dataset {dataset_id} geographic coverage updated: {geo_score:.2f}")
                 
             except XMLParsingError as e:
                 logger.warning(f"Failed to parse archive for dataset {dataset_id}: {e}")

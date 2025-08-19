@@ -65,14 +65,37 @@ function AdminDashboard() {
       
       // Transform datacenter data for PieChart component
       // Sort by dataset count (descending) to ensure largest gets primary color
-      // Only update if data has actually changed to prevent chart re-renders
-      const transformedDatacenters = (providers.datacenters || [])
-        .map(dc => ({
-          name: dc.datacenter,
-          value: dc.dataset_count,
-          provider_count: dc.provider_count
-        }))
-        .sort((a, b) => b.value - a.value); // Sort descending by dataset count
+      // Group smaller data centers into "Other" category if too many
+      const transformedDatacenters = (() => {
+        const sorted = (providers.datacenters || [])
+          .map(dc => ({
+            name: dc.datacenter,
+            value: dc.dataset_count,
+            provider_count: dc.provider_count
+          }))
+          .sort((a, b) => b.value - a.value); // Sort descending by dataset count
+        
+        // If more than 7 data centers, group the smallest ones into "Other"
+        if (sorted.length > 7) {
+          const topProviders = sorted.slice(0, 6); // Take top 6
+          const otherProviders = sorted.slice(6); // All the rest
+          
+          const otherTotal = otherProviders.reduce((sum, dc) => sum + dc.value, 0);
+          const otherCount = otherProviders.length;
+          
+          return [
+            ...topProviders,
+            {
+              name: `Other (${otherCount} centers)`,
+              value: otherTotal,
+              provider_count: otherProviders.reduce((sum, dc) => sum + (dc.provider_count || 0), 0),
+              details: otherProviders // Keep details for tooltip if needed
+            }
+          ];
+        }
+        
+        return sorted;
+      })();
       
       setDatacenterStats(prev => {
         const prevDataStr = JSON.stringify(prev);
@@ -508,7 +531,20 @@ function AdminDashboard() {
           title="Data Center Distribution"
           subtitle="Datasets by data center"
           height={350}
-          colors={['var(--primary)', 'var(--success)', 'var(--warning)', 'var(--error)']}
+          colors={[
+            '#3B82F6', // Blue
+            '#10B981', // Green
+            '#F59E0B', // Amber
+            '#EF4444', // Red
+            '#8B5CF6', // Purple
+            '#EC4899', // Pink
+            '#14B8A6', // Teal
+            '#F97316', // Orange
+            '#6366F1', // Indigo
+            '#84CC16', // Lime
+            '#06B6D4', // Cyan
+            '#FBBF24'  // Yellow
+          ]}
         />
       </div>
 
@@ -534,7 +570,7 @@ function AdminDashboard() {
           providers={multiProviderBiologicalUnits.providers}
           title="Provider Biological Units Comparison"
           subtitle="Compare biological units across different data providers over time"
-          height={400}
+          height={600}
           colors={[
             'var(--primary)',
             'var(--success)', 
