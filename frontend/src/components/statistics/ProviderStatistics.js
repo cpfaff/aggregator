@@ -5,7 +5,7 @@ import { apiRequest } from '../../utils/apiUtils';
 import StatCard from '../ui/StatCard';
 import TimeSeriesChart from '../ui/TimeSeriesChart';
 import Alert from '../ui/Alert';
-import { Database, CheckCircle, Activity, Package, Clock } from 'lucide-react';
+import { Database, CheckCircle, XCircle, Activity, Package, Clock } from 'lucide-react';
 
 /**
  * ProviderStatistics component for displaying provider-specific statistics
@@ -504,11 +504,25 @@ function ProviderStatistics({ providerId, providerName }) {
                             gap: '0.5rem'
                           }}>
                             {stats.validation_status === 'completed' ? (
-                              <CheckCircle size={14} style={{ color: 'var(--success)' }} />
-                            ) : (
+                              stats.is_valid ? (
+                                <CheckCircle size={14} style={{ color: 'var(--success)' }} />
+                              ) : (
+                                <XCircle size={14} style={{ color: 'var(--error)' }} />
+                              )
+                            ) : stats.validation_status === 'pending' || stats.validation_status === 'running' ? (
                               <Activity size={14} style={{ color: 'var(--warning)' }} />
+                            ) : (
+                              <Activity size={14} style={{ color: 'var(--text-light)' }} />
                             )}
-                            Validation: {stats.validation_status}
+                            Validation: {
+                              stats.validation_status === 'completed' 
+                                ? (stats.is_valid ? 'Valid' : 'Invalid')
+                                : stats.validation_status === 'pending' 
+                                  ? 'Pending'
+                                  : stats.validation_status === 'running'
+                                    ? 'Running'
+                                    : stats.validation_status || 'Not validated'
+                            }
                           </div>
                         )}
                       </div>

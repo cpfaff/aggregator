@@ -205,6 +205,18 @@ async def get_dataset_statistics(
         ).order_by(desc(ValidationJobModel.created_at)).first()
         
         validation_status = latest_validation.status if latest_validation else None
+        is_valid = None
+        
+        # If validation is completed, check if it's valid
+        if latest_validation and latest_validation.status == 'completed':
+            # Parse the results to determine if validation passed
+            if latest_validation.results:
+                import json
+                try:
+                    results = json.loads(latest_validation.results) if isinstance(latest_validation.results, str) else latest_validation.results
+                    is_valid = results.get('is_valid', False)
+                except (json.JSONDecodeError, AttributeError):
+                    is_valid = False
         
         return DatasetStats(
             dataset_id=dataset_id,
@@ -213,6 +225,7 @@ async def get_dataset_statistics(
             unit_count=unit_count,
             last_modified=dataset.updated_at,
             validation_status=validation_status,
+            is_valid=is_valid,
             citation_completeness=citation_completeness
         )
         

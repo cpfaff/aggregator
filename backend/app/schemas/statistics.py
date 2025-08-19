@@ -134,6 +134,7 @@ class DatasetStats(BaseModel):
     unit_count: Optional[int] = Field(None, description="Number of units in dataset")
     last_modified: Optional[datetime] = Field(None, description="Last modification timestamp")
     validation_status: Optional[str] = Field(None, description="Latest validation status")
+    is_valid: Optional[bool] = Field(None, description="Whether the latest validation passed")
     citation_completeness: Optional[float] = Field(None, description="Citation completeness score (deprecated, always None)")
 
 
