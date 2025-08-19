@@ -5,6 +5,7 @@ import logging
 from typing import Optional, Dict, Any
 
 from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
@@ -12,6 +13,7 @@ from app.db.session import get_db, get_sync_db
 from app.models.user import UserModel
 from app.security.password import verify_password
 from app.security.token import oauth2_scheme, decode_token
+import jwt
 
 logger = logging.getLogger(__name__)
 
@@ -202,6 +204,48 @@ def get_current_user_sync(
         raise credentials_exception
         
     return user
+
+def get_current_user_optional(
+    token: Optional[str] = Depends(OAuth2PasswordBearer(tokenUrl="/api/v1/auth-token", auto_error=False)),
+    db: Session = Depends(get_sync_db),
+) -> Optional[UserModel]:
+    """
+    Get the current authenticated user or None if not authenticated.
+    This is used for endpoints that have different behavior based on authentication status.
+    
+    Args:
+        token: Optional JWT token from the request header
+        db: Database session
+        
+    Returns:
+        Optional[UserModel]: The authenticated user or None
+    """
+    if not token:
+        return None
+    
+    try:
+        # Decode and validate the token
+        payload = decode_token(token)
+        username = payload.get("sub")
+        
+        if not username:
+            return None
+        
+        # Get the user from the database
+        user = db.query(UserModel).filter(UserModel.username == username).first()
+        
+        if not user:
+            return None
+        
+        # Update provider roles format if needed
+        if hasattr(user, 'provider_roles') and user.provider_roles:
+            user.provider_roles = normalize_provider_roles(user.provider_roles)
+        
+        return user
+        
+    except (jwt.PyJWTError, HTTPException):
+        # If token is invalid, return None instead of raising an exception
+        return None
 
 
 def require_admin(current_user: UserModel = Depends(get_current_user_sync)) -> UserModel:
