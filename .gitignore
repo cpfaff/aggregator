@@ -89,3 +89,8 @@ CLAUDE.md
 
 # Playwright MCP
 .playwright-mcp/
+
+# Claude Code tools
+.bmad-core/
+.claude/
+.serena/
