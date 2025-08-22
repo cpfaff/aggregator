@@ -27,6 +27,7 @@ from app.models import (
     Period
 )
 from app.db.session import SessionLocal
+from app.core.task_base import LoggingTask
 
 logger = logging.getLogger(__name__)
 
@@ -225,14 +226,23 @@ def parse_abcd_xml(xml_url: str) -> Dict[str, Any]:
 
 @shared_task(
     bind=True,
+    base=LoggingTask,  # Use custom base class for enhanced logging
     name="statistics.collect_daily_stats",
+    queue='light_tasks',
     max_retries=3,
     soft_time_limit=1800,  # 30 minutes timeout
     retry_backoff=True,
+    retry_backoff_max=120,  # Maximum backoff in seconds (2 minutes)
+    retry_jitter=True,  # Add randomization to prevent thundering herd
+    autoretry_for=(Exception,),  # Auto-retry on all exceptions
+    task_time_limit=1900,  # Hard time limit (31min 40s)
 )
 def collect_daily_statistics(self, target_date: str = None) -> Dict[str, Any]:
     """
     Collect daily statistics for datasets, providers, and validation jobs.
+    
+    Queue Assignment: Routes to 'light_tasks' queue for lightweight statistical
+    calculations using prefork worker pool optimized for CPU-bound operations.
     
     Args:
         target_date: Date string in YYYY-MM-DD format (defaults to yesterday)
@@ -604,15 +614,24 @@ def collect_daily_statistics(self, target_date: str = None) -> Dict[str, Any]:
 
 @shared_task(
     bind=True,
+    base=LoggingTask,  # Use custom base class for enhanced logging
     name="statistics.analyze_xml_archives",
+    queue='light_tasks',
     max_retries=2,
     soft_time_limit=3600,  # 1 hour timeout
     retry_backoff=True,
+    retry_backoff_max=120,  # Maximum backoff in seconds (2 minutes)
+    retry_jitter=True,  # Add randomization to prevent thundering herd
+    autoretry_for=(Exception,),  # Auto-retry on all exceptions
+    task_time_limit=3700,  # Hard time limit (1h 1min 40s)
 )
 def analyze_xml_archives(self, batch_size: int = 50, offset: int = 0, dataset_ids: Optional[List[int]] = None) -> Dict[str, Any]:
     """
     Analyze XML archives to extract unit counts and metadata.
     Processes archives in batches to avoid memory issues.
+    
+    Queue Assignment: Routes to 'light_tasks' queue for statistical data extraction
+    using prefork worker pool optimized for CPU-bound operations.
     
     Args:
         batch_size: Number of archives to process in this batch
@@ -827,14 +846,23 @@ def analyze_xml_archives(self, batch_size: int = 50, offset: int = 0, dataset_id
 
 @shared_task(
     bind=True,
+    base=LoggingTask,  # Use custom base class for enhanced logging
     name="statistics.aggregate_weekly_stats",
+    queue='light_tasks',
     max_retries=3,
     soft_time_limit=1800,  # 30 minutes timeout
     retry_backoff=True,
+    retry_backoff_max=120,  # Maximum backoff in seconds (2 minutes)
+    retry_jitter=True,  # Add randomization to prevent thundering herd
+    autoretry_for=(Exception,),  # Auto-retry on all exceptions
+    task_time_limit=1900,  # Hard time limit (31min 40s)
 )
 def aggregate_weekly_statistics(self, target_date: str = None) -> Dict[str, Any]:
     """
     Aggregate weekly statistics from daily data.
+    
+    Queue Assignment: Routes to 'light_tasks' queue for lightweight aggregation
+    calculations using prefork worker pool optimized for CPU-bound operations.
     
     Args:
         target_date: Date string in YYYY-MM-DD format (defaults to last Sunday)
@@ -1005,14 +1033,24 @@ def aggregate_weekly_statistics(self, target_date: str = None) -> Dict[str, Any]
 
 @shared_task(
     bind=True,
+    base=LoggingTask,  # Use custom base class for enhanced logging
     name="statistics.collect_provider_biological_units",
+    queue='light_tasks',
+    priority=10,
     max_retries=3,
     soft_time_limit=1800,  # 30 minutes timeout
     retry_backoff=True,
+    retry_backoff_max=120,  # Maximum backoff in seconds (2 minutes)
+    retry_jitter=True,  # Add randomization to prevent thundering herd
+    autoretry_for=(Exception,),  # Auto-retry on all exceptions
+    task_time_limit=1900,  # Hard time limit (31min 40s)
 )
 def collect_provider_biological_units(self, target_date: str = None) -> Dict[str, Any]:
     """
     Collect provider-level biological units by aggregating dataset unit counts.
+    
+    Queue Assignment: Routes to 'light_tasks' queue with priority=10 for higher
+    priority execution using prefork worker pool optimized for CPU-bound operations.
     
     Args:
         target_date: Date string in YYYY-MM-DD format (defaults to yesterday)
@@ -1129,14 +1167,23 @@ def collect_provider_biological_units(self, target_date: str = None) -> Dict[str
 
 @shared_task(
     bind=True,
+    base=LoggingTask,  # Use custom base class for enhanced logging
     name="statistics.aggregate_monthly_stats",
+    queue='light_tasks',
     max_retries=3,
     soft_time_limit=1800,  # 30 minutes timeout
     retry_backoff=True,
+    retry_backoff_max=120,  # Maximum backoff in seconds (2 minutes)
+    retry_jitter=True,  # Add randomization to prevent thundering herd
+    autoretry_for=(Exception,),  # Auto-retry on all exceptions
+    task_time_limit=1900,  # Hard time limit (31min 40s)
 )
 def aggregate_monthly_statistics(self, target_month: str = None) -> Dict[str, Any]:
     """
     Aggregate monthly statistics from weekly data.
+    
+    Queue Assignment: Routes to 'light_tasks' queue for lightweight aggregation
+    calculations using prefork worker pool optimized for CPU-bound operations.
     
     Args:
         target_month: Month string in YYYY-MM format (defaults to last month)
@@ -1243,14 +1290,23 @@ def aggregate_monthly_statistics(self, target_month: str = None) -> Dict[str, An
 
 @shared_task(
     bind=True,
+    base=LoggingTask,  # Use custom base class for enhanced logging
     name="statistics.update_dataset_statistics",
+    queue='light_tasks',
     max_retries=3,
     soft_time_limit=300,  # 5 minutes timeout
     retry_backoff=True,
+    retry_backoff_max=120,  # Maximum backoff in seconds (2 minutes)
+    retry_jitter=True,  # Add randomization to prevent thundering herd
+    autoretry_for=(Exception,),  # Auto-retry on all exceptions
+    task_time_limit=400,  # Hard time limit (6min 40s)
 )
 def update_dataset_statistics(self, dataset_id: int, trigger_type: str = "manual") -> Dict[str, Any]:
     """
     Update statistics for a specific dataset in real-time.
+    
+    Queue Assignment: Routes to 'light_tasks' queue for real-time statistical
+    updates using prefork worker pool optimized for CPU-bound operations.
     
     Args:
         dataset_id: ID of the dataset to update statistics for
@@ -1429,14 +1485,23 @@ def update_dataset_statistics(self, dataset_id: int, trigger_type: str = "manual
 
 @shared_task(
     bind=True,
+    base=LoggingTask,  # Use custom base class for enhanced logging
     name="statistics.update_provider_biological_units",
+    queue='light_tasks',
     max_retries=3,
     soft_time_limit=300,  # 5 minutes timeout
     retry_backoff=True,
+    retry_backoff_max=120,  # Maximum backoff in seconds (2 minutes)
+    retry_jitter=True,  # Add randomization to prevent thundering herd
+    autoretry_for=(Exception,),  # Auto-retry on all exceptions
+    task_time_limit=400,  # Hard time limit (6min 40s)
 )
 def update_provider_biological_units(self, provider_id: int, target_date: str = None, trigger_type: str = "manual") -> Dict[str, Any]:
     """
     Update biological units statistics for a specific provider.
+    
+    Queue Assignment: Routes to 'light_tasks' queue for real-time biological unit
+    calculations using prefork worker pool optimized for CPU-bound operations.
     
     Args:
         provider_id: ID of the provider to update
@@ -1560,14 +1625,23 @@ def update_provider_biological_units(self, provider_id: int, target_date: str = 
 
 @shared_task(
     bind=True,
+    base=LoggingTask,  # Use custom base class for enhanced logging
     name="statistics.update_validation_statistics",
+    queue='light_tasks',
     max_retries=3,
     soft_time_limit=300,  # 5 minutes timeout
     retry_backoff=True,
+    retry_backoff_max=120,  # Maximum backoff in seconds (2 minutes)
+    retry_jitter=True,  # Add randomization to prevent thundering herd
+    autoretry_for=(Exception,),  # Auto-retry on all exceptions
+    task_time_limit=400,  # Hard time limit (6min 40s)
 )
 def update_validation_statistics(self, validation_job_id: int = None, trigger_type: str = "completion") -> Dict[str, Any]:
     """
     Update validation statistics when a validation job completes.
+    
+    Queue Assignment: Routes to 'light_tasks' queue for validation metric
+    calculations using prefork worker pool optimized for CPU-bound operations.
     
     Args:
         validation_job_id: ID of the validation job that completed (optional)
@@ -1690,15 +1764,24 @@ def update_validation_statistics(self, validation_job_id: int = None, trigger_ty
 
 @shared_task(
     bind=True,
+    base=LoggingTask,  # Use custom base class for enhanced logging
     name="statistics.update_provider_dataset_count_after_deletion",
+    queue='light_tasks',
     max_retries=3,
     soft_time_limit=300,  # 5 minutes timeout
     retry_backoff=True,
+    retry_backoff_max=120,  # Maximum backoff in seconds (2 minutes)
+    retry_jitter=True,  # Add randomization to prevent thundering herd
+    autoretry_for=(Exception,),  # Auto-retry on all exceptions
+    task_time_limit=400,  # Hard time limit (6min 40s)
 )
 def update_provider_dataset_count_after_deletion(self, provider_id: int, trigger_type: str = "dataset_deletion") -> Dict[str, Any]:
     """
     Update provider dataset count timeline after a dataset deletion.
     This ensures the Dataset Registration Timeline reflects deletions immediately.
+    
+    Queue Assignment: Routes to 'light_tasks' queue for real-time count updates
+    using prefork worker pool optimized for CPU-bound operations.
     
     Args:
         provider_id: ID of the provider to update

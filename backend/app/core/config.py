@@ -2,8 +2,9 @@
 Configuration management for the application.
 Settings are loaded from environment variables.
 """
-from typing import List
+from typing import List, Union
 from pydantic_settings import BaseSettings
+from pydantic import Field, field_validator
 
 
 class Settings(BaseSettings):
@@ -38,6 +39,27 @@ class Settings(BaseSettings):
     # Celery settings
     CELERY_BROKER_URL: str = "redis://redis:6379/0"
     CELERY_RESULT_BACKEND: str = "redis://redis:6379/0"
+    # Resource allocation settings
+    VALIDATOR_CPU_PERCENT: int = Field(default=75, ge=1, le=100)
+    STATS_WORKER_CONCURRENCY: Union[str, int] = "auto"
+    
+    @field_validator('VALIDATOR_CPU_PERCENT')
+    @classmethod
+    def validate_cpu_percent(cls, v):
+        if not 1 <= v <= 100:
+            raise ValueError("VALIDATOR_CPU_PERCENT must be between 1 and 100")
+        return v
+    
+    @field_validator('STATS_WORKER_CONCURRENCY')
+    @classmethod
+    def validate_concurrency(cls, v):
+        if isinstance(v, str):
+            if v != 'auto':
+                try:
+                    return int(v)
+                except ValueError:
+                    raise ValueError("STATS_WORKER_CONCURRENCY must be 'auto' or an integer")
+        return v
     # Redis settings
     REDIS_HOST: str = "redis"
     REDIS_PORT: int = 6379

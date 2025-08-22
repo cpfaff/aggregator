@@ -12,16 +12,23 @@ from celery import shared_task
 from app.models import ValidationJobModel, XmlArchiveModel
 from app.db.session import SessionLocal
 from app.tasks.validator.service import ValidatorService
+from app.core.task_base import LoggingTask
 
 logger = logging.getLogger(__name__)
 
 
 @shared_task(
     bind=True,
+    base=LoggingTask,  # Use custom base class for enhanced logging
     name="validator.validate_archive",
+    queue='heavy_validation',
     max_retries=3,
     soft_time_limit=7200,  # 2 hour timeout
     retry_backoff=True,
+    retry_backoff_max=120,  # Maximum backoff in seconds (2 minutes)
+    retry_jitter=True,  # Add randomization to prevent thundering herd
+    autoretry_for=(Exception,),  # Auto-retry on all exceptions
+    task_time_limit=7500,  # Hard time limit (2h 5min)
 )
 def validate_archive(self, archive_id: int, job_id: Optional[int] = None) -> Dict[str, Any]:
     """
@@ -32,6 +39,9 @@ def validate_archive(self, archive_id: int, job_id: Optional[int] = None) -> Dic
     2. Use an existing validation job record or create one if job_id not provided
     3. Run the validation using the validator service
     4. Update the job record with the results
+    
+    Queue Assignment: Routes to 'heavy_validation' queue for resource-intensive
+    XML processing with thread-based worker pool optimized for I/O operations.
     
     Args:
         archive_id: ID of the XML archive to validate

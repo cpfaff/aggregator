@@ -102,7 +102,41 @@ services:
         uvicorn main:app --host 0.0.0.0 --port 8000 --reload
       "
 
-  celery-worker:
+  # Legacy single worker - commented out in favor of dual-worker configuration
+  # celery-worker:
+  #   build:
+  #     context: ./backend
+  #   volumes:
+  #     - ./backend:/app
+  #     - ./validator:/validator
+  #   depends_on:
+  #     - db
+  #     - redis
+  #   env_file:
+  #     - ./backend/.env
+  #   environment:
+  #     - DATABASE_URL=postgresql+asyncpg://${DB_USER:-user}:${DB_PASSWORD:-password}@db:5432/${DB_NAME:-dbname}
+  #     - SYNC_DATABASE_URL=postgresql://${DB_USER:-user}:${DB_PASSWORD:-password}@db:5432/${DB_NAME:-dbname}
+  #     - ENVIRONMENT=${ENVIRONMENT:-development}
+  #     - CELERY_BROKER_URL=redis://redis:6379/${REDIS_BROKER_DB:-0}
+  #     - CELERY_RESULT_BACKEND=redis://redis:6379/${REDIS_RESULT_DB:-0}
+  #   networks:
+  #     - app-network
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "celery -A app.core.celery_app inspect ping"]
+  #     interval: 30s
+  #     timeout: 60s
+  #     retries: 3
+  #     start_period: 10s
+  #   command: >
+  #     bash -c "
+  #       cd /app && 
+  #       pip install -e /validator &&
+  #       celery -A app.core.celery_app worker --concurrency=1 --pool=solo --loglevel=info
+  #     "
+
+  # Validation worker - handles heavy validation tasks
+  celery_worker_validation:
     build:
       context: ./backend
     volumes:
@@ -121,6 +155,10 @@ services:
       - CELERY_RESULT_BACKEND=redis://redis:6379/${REDIS_RESULT_DB:-0}
     networks:
       - app-network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
     healthcheck:
       test: ["CMD-SHELL", "celery -A app.core.celery_app inspect ping"]
       interval: 30s
@@ -131,7 +169,44 @@ services:
       bash -c "
         cd /app && 
         pip install -e /validator &&
-        celery -A app.core.celery_app worker --concurrency=1 --pool=solo --loglevel=info
+        python -c 'from app.core.resource_allocation import get_validator_cpu_count; from app.core.config import settings; cpus = get_validator_cpu_count(settings.VALIDATOR_CPU_PERCENT); print(f\"Starting validation worker with {cpus} threads\"); import subprocess; subprocess.run([\"celery\", \"-A\", \"app.core.celery_app\", \"worker\", \"--queues=heavy_validation\", f\"--concurrency={cpus}\", \"--pool=threads\", \"--loglevel=info\"])'
+      "
+
+  # Statistics worker - handles light tasks and statistics collection
+  celery_worker_stats:
+    build:
+      context: ./backend
+    volumes:
+      - ./backend:/app
+      - ./validator:/validator
+    depends_on:
+      - db
+      - redis
+    env_file:
+      - ./backend/.env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${DB_USER:-user}:${DB_PASSWORD:-password}@db:5432/${DB_NAME:-dbname}
+      - SYNC_DATABASE_URL=postgresql://${DB_USER:-user}:${DB_PASSWORD:-password}@db:5432/${DB_NAME:-dbname}
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - CELERY_BROKER_URL=redis://redis:6379/${REDIS_BROKER_DB:-0}
+      - CELERY_RESULT_BACKEND=redis://redis:6379/${REDIS_RESULT_DB:-0}
+    networks:
+      - app-network
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.core.celery_app inspect ping"]
+      interval: 30s
+      timeout: 60s
+      retries: 3
+      start_period: 10s
+    command: >
+      bash -c "
+        cd /app && 
+        pip install -e /validator &&
+        python -c 'from app.core.resource_allocation import get_validator_cpu_count, get_stats_worker_concurrency; from app.core.config import settings; validator_cpus = get_validator_cpu_count(settings.VALIDATOR_CPU_PERCENT); stats_concurrency = get_stats_worker_concurrency(settings.STATS_WORKER_CONCURRENCY, validator_cpus); print(f\"Starting stats worker with {stats_concurrency} workers\"); import subprocess; subprocess.run([\"celery\", \"-A\", \"app.core.celery_app\", \"worker\", \"--queues=light_tasks\", f\"--concurrency={stats_concurrency}\", \"--pool=prefork\", \"--loglevel=info\"])'
       "
 
   celery-beat:
@@ -142,7 +217,8 @@ services:
       - ./validator:/validator
     depends_on:
       - redis
-      - celery-worker
+      - celery_worker_validation
+      - celery_worker_stats
     env_file:
       - ./backend/.env
     environment:
