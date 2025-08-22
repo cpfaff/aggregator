@@ -9,13 +9,12 @@ import Alert from '../ui/Alert';
 import Breadcrumbs from '../ui/Breadcrumbs';
 import ActionMenu from '../ui/ActionMenu';
 import { 
-  RefreshCw, 
-  RotateCcw
+  Database
 } from 'lucide-react';
 
 /**
  * AdminDashboard component for comprehensive system statistics
- * Features real-time auto-refresh every 30 seconds with manual controls
+ * Features manual statistics collection via Celery background tasks
  */
 function AdminDashboard() {
   const { handleTokenExpiration } = useAuth();
@@ -27,15 +26,9 @@ function AdminDashboard() {
   const [multiProviderBiologicalUnits, setMultiProviderBiologicalUnits] = useState({ data: [], providers: [] });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [isCollecting, setIsCollecting] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
-  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
-  const [nextRefreshIn, setNextRefreshIn] = useState(30);
-  
-  const intervalRef = useRef(null);
-  const countdownRef = useRef(null);
-  const REFRESH_INTERVAL = 30000; // 30 seconds
 
   // Breadcrumb navigation items
   const breadcrumbItems = [
@@ -43,13 +36,9 @@ function AdminDashboard() {
     { label: 'Statistics', onClick: null }
   ];
 
-  const fetchAllStats = useCallback(async (isAutoRefresh = false) => {
+  const fetchAllStats = useCallback(async () => {
     try {
-      if (!isAutoRefresh) {
-        setIsLoading(true);
-      } else {
-        setIsRefreshing(true);
-      }
+      setIsLoading(true);
       setError('');
       
       // Fetch overview statistics
@@ -119,16 +108,9 @@ function AdminDashboard() {
       
     } catch (err) {
       console.error('Error fetching admin statistics:', err);
-      // Only show prominent error for manual refresh, not auto-refresh
-      if (!isAutoRefresh) {
-        setError('Failed to load statistics: ' + err.message);
-      } else {
-        // For auto-refresh failures, just log and continue silently
-        console.warn('Auto-refresh failed, will retry on next interval:', err.message);
-      }
+      setError('Failed to load statistics: ' + err.message);
     } finally {
       setIsLoading(false);
-      setIsRefreshing(false);
     }
   }, [handleTokenExpiration]);
 
@@ -215,12 +197,20 @@ function AdminDashboard() {
   const triggerStatsCollection = async () => {
     try {
       setIsCollecting(true);
-      await authStatsApi.triggerCollection(null, handleTokenExpiration);
+      setError(''); // Clear any existing errors
+      setSuccessMessage(''); // Clear any existing success messages
+      
+      const result = await authStatsApi.triggerCollection(null, handleTokenExpiration);
+      
+      // Show success message
+      setSuccessMessage(`Statistics collection triggered successfully. ${result.message || 'Processing in background...'}`);
       
       // Wait a moment then refresh data
       setTimeout(() => {
         fetchAllStats();
         setIsCollecting(false);
+        // Clear the success message after 5 seconds
+        setTimeout(() => setSuccessMessage(''), 5000);
       }, 2000);
       
     } catch (err) {
@@ -230,72 +220,9 @@ function AdminDashboard() {
     }
   };
 
-  // Auto-refresh functionality
-  const startAutoRefresh = useCallback(() => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    if (countdownRef.current) clearInterval(countdownRef.current);
-    
-    setNextRefreshIn(30);
-    
-    // Start countdown timer
-    countdownRef.current = setInterval(() => {
-      setNextRefreshIn(prev => {
-        if (prev <= 1) {
-          return 30; // Reset countdown
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    
-    // Start auto-refresh interval
-    intervalRef.current = setInterval(() => {
-      if (autoRefreshEnabled) {
-        fetchAllStats(true);
-      }
-    }, REFRESH_INTERVAL);
-  }, [autoRefreshEnabled, fetchAllStats]);
-  
-  const stopAutoRefresh = useCallback(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-    if (countdownRef.current) {
-      clearInterval(countdownRef.current);
-      countdownRef.current = null;
-    }
-  }, []);
-  
-  const toggleAutoRefresh = () => {
-    setAutoRefreshEnabled(prev => {
-      const newValue = !prev;
-      if (newValue) {
-        startAutoRefresh();
-      } else {
-        stopAutoRefresh();
-        setNextRefreshIn(0);
-      }
-      return newValue;
-    });
-  };
-  
-  const handleManualRefresh = () => {
-    fetchAllStats(false);
-    if (autoRefreshEnabled) {
-      startAutoRefresh(); // Reset the auto-refresh timer
-    }
-  };
-  
   useEffect(() => {
     fetchAllStats();
-    if (autoRefreshEnabled) {
-      startAutoRefresh();
-    }
-    
-    return () => {
-      stopAutoRefresh();
-    };
-  }, [fetchAllStats, autoRefreshEnabled, startAutoRefresh, stopAutoRefresh]);
+  }, [fetchAllStats]);
 
   if (isLoading) {
     return (
@@ -367,53 +294,22 @@ function AdminDashboard() {
         alignItems: 'center',
         marginBottom: '1rem',
       }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '1rem'
+        <h2 style={{
+          fontSize: '1.5rem',
+          fontWeight: 600,
+          marginLeft: '0.1rem',
+          color: 'var(--text)',
+          margin: 0
         }}>
-          <h2 style={{
-            fontSize: '1.5rem',
-            fontWeight: 600,
-            marginLeft: '0.1rem',
-            color: 'var(--text)',
-            margin: 0
-          }}>
-            Statistics
-          </h2>
-          {autoRefreshEnabled && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.25rem',
-              padding: '0.25rem 0.75rem',
-              backgroundColor: 'var(--success)',
-              color: 'white',
-              borderRadius: '1rem',
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px',
-              animation: 'pulse 3s infinite'
-            }}>
-              <div style={{
-                width: '6px',
-                height: '6px',
-                backgroundColor: 'white',
-                borderRadius: '50%',
-                animation: 'pulse 1s infinite'
-              }} />
-              Live Data
-            </div>
-          )}
-        </div>
+          Statistics
+        </h2>
       </div>
       
       <p style={{
         color: 'var(--text-light)',
         margin: '0 0 2rem 0'
       }}>
-        Real-time system statistics and performance metrics. Data updates automatically every 30 seconds.
+        System statistics and performance metrics. Click "Collect Statistics" to update data.
       </p>
 
       {/* ActionMenu for admin controls */}
@@ -422,16 +318,11 @@ function AdminDashboard() {
         offset={16}
         actions={[
           {
-            icon: <RefreshCw size={24} />,
-            label: 'Manual Refresh',
-            onClick: handleManualRefresh,
-            color: 'var(--success)'
-          },
-          {
-            icon: <RotateCcw size={24} />,
-            label: autoRefreshEnabled ? 'Disable Auto-refresh' : 'Enable Auto-refresh',
-            onClick: toggleAutoRefresh,
-            color: autoRefreshEnabled ? 'var(--warning)' : 'var(--success)'
+            icon: <Database size={24} />,
+            label: isCollecting ? 'Collecting...' : 'Collect Statistics',
+            onClick: triggerStatsCollection,
+            color: 'var(--primary)',
+            disabled: isCollecting
           }
         ]}
       />
@@ -439,6 +330,12 @@ function AdminDashboard() {
       {error && (
         <Alert type="warning" style={{ marginBottom: '1.5rem' }}>
           {error}
+        </Alert>
+      )}
+      
+      {successMessage && (
+        <Alert type="success" style={{ marginBottom: '1.5rem' }}>
+          {successMessage}
         </Alert>
       )}
 
@@ -454,28 +351,24 @@ function AdminDashboard() {
             title="Data Providers"
             value={overviewStats.total_providers}
             color="var(--success)"
-            isLiveData={autoRefreshEnabled}
           />
           
           <StatCard
             title="Data Centers"
             value={overviewStats.total_datacenters}
             color="var(--warning)"
-            isLiveData={autoRefreshEnabled}
           />
           
           <StatCard
             title="Total Datasets"
             value={overviewStats.total_datasets}
             color="var(--primary)"
-            isLiveData={autoRefreshEnabled}
           />
           
           <StatCard
             title="XML Archives"
             value={overviewStats.total_xml_archives}
             color="var(--info)"
-            isLiveData={autoRefreshEnabled}
           />
           
           {qualityMetrics && (
@@ -483,8 +376,7 @@ function AdminDashboard() {
               title="Total Validations"
               value={qualityMetrics.total_validations}
               color="var(--warning)"
-              isLiveData={autoRefreshEnabled}
-            />
+              />
           )}
           
           {overviewStats.validation_success_rate !== null && (
@@ -493,8 +385,7 @@ function AdminDashboard() {
               value={`${overviewStats.validation_success_rate.toFixed(1)}`}
               unit="%"
               color="var(--success)"
-              isLiveData={autoRefreshEnabled}
-            />
+              />
           )}
           
           {qualityMetrics && qualityMetrics.average_processing_time && (
@@ -503,8 +394,7 @@ function AdminDashboard() {
               value={`${qualityMetrics.average_processing_time.toFixed(1)}`}
               unit="s"
               color="var(--warning)"
-              isLiveData={autoRefreshEnabled}
-            />
+              />
           )}
         </div>
       )}
