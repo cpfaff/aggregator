@@ -285,48 +285,130 @@ class StatisticsService:
         Returns:
             Dictionary containing time series data
         """
-        # Build aggregated query
-        base_query = self.db.query(
-            StatisticModel.date,
-            func.max(StatisticModel.value).label('value'),
-            func.count(StatisticModel.id).label('count')
-        ).filter(
-            and_(
-                StatisticModel.metric_type == metric_type,
-                StatisticModel.entity_type == entity_type,
-                StatisticModel.period == period
+        from sqlalchemy import desc
+        today = date.today()
+        
+        # For system-level metrics with potential duplicate issues, use special handling
+        if entity_type == EntityType.SYSTEM and entity_id is None:
+            # Use a subquery to get the most recent entry for each date
+            subquery = self.db.query(
+                StatisticModel.date,
+                func.max(StatisticModel.created_at).label('max_created')
+            ).filter(
+                and_(
+                    StatisticModel.metric_type == metric_type,
+                    StatisticModel.entity_type == entity_type,
+                    StatisticModel.period == period,
+                    StatisticModel.entity_id.is_(None)
+                )
             )
-        )
-        
-        if entity_id is not None:
-            base_query = base_query.filter(StatisticModel.entity_id == entity_id)
+            
+            if start_date:
+                subquery = subquery.filter(StatisticModel.date >= start_date)
+            if end_date:
+                subquery = subquery.filter(StatisticModel.date <= end_date)
+                
+            subquery = subquery.group_by(StatisticModel.date).subquery()
+            
+            # Join to get the actual values using the most recent created_at
+            stats_query = self.db.query(
+                StatisticModel.date,
+                StatisticModel.value,
+                StatisticModel.extra_data
+            ).join(
+                subquery,
+                and_(
+                    StatisticModel.date == subquery.c.date,
+                    StatisticModel.created_at == subquery.c.max_created,
+                    StatisticModel.metric_type == metric_type,
+                    StatisticModel.entity_type == entity_type,
+                    StatisticModel.period == period,
+                    StatisticModel.entity_id.is_(None)
+                )
+            ).order_by(desc(StatisticModel.date)).limit(limit)
+            
+            aggregated_stats = stats_query.all()
+            
+            # Convert to time series points
+            data_points = []
+            has_today = False
+            
+            for stat in reversed(aggregated_stats):  # Reverse for chronological order
+                if stat.date == today:
+                    has_today = True
+                    # Skip today's data from database - we'll add real-time data instead
+                    continue
+                    
+                data_points.append({
+                    "date": stat.date,
+                    "value": float(stat.value) if stat.value is not None else 0.0,
+                    "extra_data": stat.extra_data or {"records_aggregated": 1}
+                })
         else:
-            base_query = base_query.filter(StatisticModel.entity_id.is_(None))
+            # Original logic for non-system metrics
+            base_query = self.db.query(
+                StatisticModel.date,
+                func.max(StatisticModel.value).label('value'),
+                func.count(StatisticModel.id).label('count')
+            ).filter(
+                and_(
+                    StatisticModel.metric_type == metric_type,
+                    StatisticModel.entity_type == entity_type,
+                    StatisticModel.period == period
+                )
+            )
+            
+            if entity_id is not None:
+                base_query = base_query.filter(StatisticModel.entity_id == entity_id)
+            else:
+                base_query = base_query.filter(StatisticModel.entity_id.is_(None))
+            
+            if start_date:
+                base_query = base_query.filter(StatisticModel.date >= start_date)
+            if end_date:
+                base_query = base_query.filter(StatisticModel.date <= end_date)
+            
+            # Group by date and order
+            aggregated_stats = base_query.group_by(
+                StatisticModel.date
+            ).order_by(desc(StatisticModel.date)).limit(limit).all()
+            
+            # Convert to time series points
+            data_points = []
+            has_today = False
+            
+            for stat in reversed(aggregated_stats):  # Reverse for chronological order
+                if stat.date == today and self._should_include_today_data(metric_type, entity_type, entity_id):
+                    has_today = True
+                    # Skip today's data from database if we should include real-time data
+                    continue
+                    
+                data_points.append({
+                    "date": stat.date,
+                    "value": float(stat.value) if stat.value is not None else 0.0,
+                    "extra_data": {"records_aggregated": stat.count}
+                })
         
-        if start_date:
-            base_query = base_query.filter(StatisticModel.date >= start_date)
-        if end_date:
-            base_query = base_query.filter(StatisticModel.date <= end_date)
-        
-        # Group by date and order
-        aggregated_stats = base_query.group_by(
-            StatisticModel.date
-        ).order_by(desc(StatisticModel.date)).limit(limit).all()
-        
-        # Convert to time series points
-        data_points = []
-        for stat in reversed(aggregated_stats):  # Reverse for chronological order
-            data_points.append({
-                "date": stat.date,
-                "value": float(stat.value) if stat.value is not None else 0.0,
-                "extra_data": {"records_aggregated": stat.count}
-            })
-        
-        # Optionally add today's real-time data
+        # Always add today's real-time data for metrics that need it
         if include_today and self._should_include_today_data(metric_type, entity_type, entity_id):
             today_data = self._get_today_real_time_data(metric_type, entity_type, entity_id)
-            if today_data and not any(p["date"] == date.today() for p in data_points):
+            if today_data:
+                # Ensure today's real-time data is added
                 data_points.append(today_data)
+            elif not today_data and has_today:
+                # If we can't get real-time data but today was in the database,
+                # calculate it directly for dataset count
+                if metric_type == MetricType.DATASET_COUNT.value and entity_type == EntityType.SYSTEM.value:
+                    current_count = self.db.query(func.count(DatasetModel.id)).scalar() or 0
+                    data_points.append({
+                        "date": today,
+                        "value": float(current_count),
+                        "extra_data": {
+                            "records_aggregated": 1,
+                            "is_current_day": True,
+                            "real_time_calculation": True
+                        }
+                    })
         
         return {
             "metric_type": metric_type,
@@ -649,31 +731,83 @@ class StatisticsService:
         period: str,
         start_date: date,
         end_date: date,
-        aggregation_func=func.max
+        aggregation_func=None  # Changed: default is None, will use custom logic
     ) -> List[Dict[str, Any]]:
-        """Get timeline data for a specific metric."""
-        stats_raw = self.db.query(
-            StatisticModel.date,
-            aggregation_func(StatisticModel.value).label('value'),
-            func.count(StatisticModel.id).label('count')
-        ).filter(
-            and_(
-                StatisticModel.metric_type == metric_type,
-                StatisticModel.entity_type == entity_type,
-                StatisticModel.period == period,
-                StatisticModel.date >= start_date,
-                StatisticModel.date <= end_date
-            )
-        ).group_by(StatisticModel.date).order_by(StatisticModel.date).all()
+        """Get timeline data for a specific metric.
         
-        return [
-            {
-                "date": stat.date,
-                "value": float(stat.value) if stat.value is not None else 0.0,
-                "extra_data": {"records_aggregated": stat.count}
-            }
-            for stat in stats_raw
-        ]
+        For metrics with potential duplicates (like system-level metrics with NULL entity_id),
+        this method now selects the most recent value instead of using MAX aggregation.
+        """
+        from sqlalchemy import desc
+        
+        # For system-level metrics (where entity_id is NULL), we need special handling
+        # due to PostgreSQL's treatment of NULL in unique constraints
+        if entity_type == EntityType.SYSTEM and aggregation_func is None:
+            # Use a subquery to get the most recent entry for each date
+            subquery = self.db.query(
+                StatisticModel.date,
+                func.max(StatisticModel.created_at).label('max_created')
+            ).filter(
+                and_(
+                    StatisticModel.metric_type == metric_type,
+                    StatisticModel.entity_type == entity_type,
+                    StatisticModel.period == period,
+                    StatisticModel.date >= start_date,
+                    StatisticModel.date <= end_date
+                )
+            ).group_by(StatisticModel.date).subquery()
+            
+            # Join to get the actual values
+            stats_raw = self.db.query(
+                StatisticModel.date,
+                StatisticModel.value,
+                StatisticModel.extra_data
+            ).join(
+                subquery,
+                and_(
+                    StatisticModel.date == subquery.c.date,
+                    StatisticModel.created_at == subquery.c.max_created,
+                    StatisticModel.metric_type == metric_type,
+                    StatisticModel.entity_type == entity_type,
+                    StatisticModel.period == period
+                )
+            ).order_by(StatisticModel.date).all()
+            
+            return [
+                {
+                    "date": stat.date,
+                    "value": float(stat.value) if stat.value is not None else 0.0,
+                    "extra_data": stat.extra_data or {"records_aggregated": 1}
+                }
+                for stat in stats_raw
+            ]
+        else:
+            # For other cases, use the provided aggregation function or default to max
+            if aggregation_func is None:
+                aggregation_func = func.max
+                
+            stats_raw = self.db.query(
+                StatisticModel.date,
+                aggregation_func(StatisticModel.value).label('value'),
+                func.count(StatisticModel.id).label('count')
+            ).filter(
+                and_(
+                    StatisticModel.metric_type == metric_type,
+                    StatisticModel.entity_type == entity_type,
+                    StatisticModel.period == period,
+                    StatisticModel.date >= start_date,
+                    StatisticModel.date <= end_date
+                )
+            ).group_by(StatisticModel.date).order_by(StatisticModel.date).all()
+            
+            return [
+                {
+                    "date": stat.date,
+                    "value": float(stat.value) if stat.value is not None else 0.0,
+                    "extra_data": {"records_aggregated": stat.count}
+                }
+                for stat in stats_raw
+            ]
     
     def _should_include_today_data(
         self, 
@@ -682,12 +816,23 @@ class StatisticsService:
         entity_id: Optional[int]
     ) -> bool:
         """Determine if today's real-time data should be included."""
-        # Only include today's data for system-wide dataset count
-        return (
-            metric_type == MetricType.DATASET_COUNT.value and
+        # Include today's data for system-wide dataset count
+        if (metric_type == MetricType.DATASET_COUNT.value and
             entity_type == EntityType.SYSTEM.value and
-            entity_id is None
-        )
+            entity_id is None):
+            return True
+        
+        # Include today's data for provider-specific dataset count
+        if (metric_type == MetricType.PROVIDER_DATASET_COUNT.value and 
+            entity_type == EntityType.PROVIDER.value and
+            entity_id is not None):
+            return True
+        
+        # Include today's data for provider biological units
+        if metric_type == MetricType.PROVIDER_BIOLOGICAL_UNITS.value and entity_type == EntityType.PROVIDER.value:
+            return True
+            
+        return False
     
     def _get_today_real_time_data(
         self,
@@ -717,6 +862,113 @@ class StatisticsService:
                     }
                 }
         
+        elif metric_type == MetricType.PROVIDER_DATASET_COUNT.value:
+            # Handle provider-specific dataset count
+            if entity_id is not None:
+                # Check if we have today's statistics
+                existing_today_stat = self.db.query(StatisticModel).filter(
+                    and_(
+                        StatisticModel.metric_type == metric_type,
+                        StatisticModel.entity_type == entity_type,
+                        StatisticModel.entity_id == entity_id,
+                        StatisticModel.date == today
+                    )
+                ).first()
+                
+                if existing_today_stat:
+                    return {
+                        "date": today,
+                        "value": float(existing_today_stat.value),
+                        "extra_data": existing_today_stat.extra_data or {
+                            "records_aggregated": 1,
+                            "is_current_day": True
+                        }
+                    }
+                else:
+                    # Calculate real-time count
+                    current_count = self.db.query(func.count(DatasetModel.id)).filter(
+                        DatasetModel.provider_id == entity_id
+                    ).scalar() or 0
+                    
+                    if current_count > 0:
+                        return {
+                            "date": today,
+                            "value": float(current_count),
+                            "extra_data": {
+                                "records_aggregated": 1,
+                                "is_current_day": True,
+                                "real_time_calculation": True
+                            }
+                        }
+        
+        elif metric_type == MetricType.PROVIDER_BIOLOGICAL_UNITS.value:
+            # For provider biological units, always calculate real-time from dataset unit counts
+            # to ensure we capture any changes immediately
+            
+            # Determine which datasets to include
+            if entity_id is not None:
+                # Specific provider - get datasets for this provider
+                dataset_ids = self.db.query(DatasetModel.id).filter(
+                    DatasetModel.provider_id == entity_id
+                ).all()
+            else:
+                # System-wide - get all datasets
+                dataset_ids = self.db.query(DatasetModel.id).all()
+            
+            if not dataset_ids:
+                return {
+                    "date": today,
+                    "value": 0.0,
+                    "extra_data": {
+                        "records_aggregated": 0,
+                        "is_current_day": True,
+                        "real_time_calculation": True,
+                        "dataset_count": 0
+                    }
+                }
+            
+            dataset_id_list = [dataset_id[0] for dataset_id in dataset_ids]
+            
+            # Get the most recent unit count for each dataset (including today's updates)
+            subquery = self.db.query(
+                StatisticModel.entity_id,
+                func.max(StatisticModel.date).label('max_date')
+            ).filter(
+                and_(
+                    StatisticModel.metric_type == MetricType.DATASET_UNIT_COUNT,
+                    StatisticModel.entity_type == EntityType.DATASET,
+                    StatisticModel.entity_id.in_(dataset_id_list),
+                    StatisticModel.date <= today
+                )
+            ).group_by(StatisticModel.entity_id).subquery()
+            
+            # Get the actual values using the max date for each dataset
+            recent_unit_counts = self.db.query(
+                StatisticModel.value
+            ).join(
+                subquery,
+                and_(
+                    StatisticModel.entity_id == subquery.c.entity_id,
+                    StatisticModel.date == subquery.c.max_date
+                )
+            ).filter(
+                StatisticModel.metric_type == MetricType.DATASET_UNIT_COUNT
+            ).all()
+            
+            total_units = sum(count[0] for count in recent_unit_counts if count[0] is not None)
+            
+            return {
+                "date": today,
+                "value": float(total_units),
+                "extra_data": {
+                    "records_aggregated": len(recent_unit_counts),
+                    "is_current_day": True,
+                    "real_time_calculation": True,
+                    "dataset_count": len(dataset_ids),
+                    "provider_id": entity_id if entity_id else "system"
+                }
+            }
+        
         return None
     
     def _add_today_growth_data(
@@ -725,56 +977,69 @@ class StatisticsService:
         providers_timeline: List[Dict],
         validation_timeline: List[Dict]
     ) -> None:
-        """Add today's data to growth timelines if applicable."""
+        """Add today's data to growth timelines if applicable.
+        
+        Always uses real-time data for today to ensure accuracy, especially
+        after dataset additions or deletions.
+        """
         today = date.today()
         today_start = datetime.combine(today, datetime.min.time())
         
-        # Check if today is missing from datasets timeline
-        has_today_data = any(point["date"] == today for point in datasets_timeline)
+        # Always replace or add today's data with real-time counts
+        # Remove any existing entry for today first
+        datasets_timeline[:] = [point for point in datasets_timeline if point["date"] != today]
+        providers_timeline[:] = [point for point in providers_timeline if point["date"] != today]
+        validation_timeline[:] = [point for point in validation_timeline if point["date"] != today]
         
-        if not has_today_data:
-            # Get today's dataset registrations
-            todays_new_datasets = self.db.query(func.count(DatasetModel.id)).filter(
-                DatasetModel.created_at >= today_start
-            ).scalar() or 0
-            
-            if todays_new_datasets > 0:
-                # Add today's data to datasets timeline
-                current_total_datasets = self.db.query(func.count(DatasetModel.id)).scalar() or 0
-                datasets_timeline.append({
-                    "date": today,
-                    "value": float(current_total_datasets),
-                    "extra_data": {
-                        "records_aggregated": 1,
-                        "is_current_day": True,
-                        "new_registrations_today": todays_new_datasets
-                    }
-                })
-                
-                # Add today's data to providers timeline if missing
-                if not any(point["date"] == today for point in providers_timeline):
-                    current_total_providers = self.db.query(func.count(DataProviderModel.id)).scalar() or 0
-                    providers_timeline.append({
-                        "date": today,
-                        "value": float(current_total_providers),
-                        "extra_data": {"records_aggregated": 1, "is_current_day": True}
-                    })
-                
-                # Add today's validation activity if any
-                if not any(point["date"] == today for point in validation_timeline):
-                    todays_validations = self.db.query(func.count(ValidationJobModel.id)).filter(
-                        ValidationJobModel.created_at >= today_start
-                    ).scalar() or 0
-                    
-                    if todays_validations > 0:
-                        validation_timeline.append({
-                            "date": today,
-                            "value": float(todays_validations),
-                            "extra_data": {
-                                "records_aggregated": 1,
-                                "is_current_day": True
-                            }
-                        })
+        # Get real-time dataset count and add to timeline
+        current_total_datasets = self.db.query(func.count(DatasetModel.id)).scalar() or 0
+        todays_new_datasets = self.db.query(func.count(DatasetModel.id)).filter(
+            DatasetModel.created_at >= today_start
+        ).scalar() or 0
+        
+        datasets_timeline.append({
+            "date": today,
+            "value": float(current_total_datasets),
+            "extra_data": {
+                "records_aggregated": 1,
+                "is_current_day": True,
+                "new_registrations_today": todays_new_datasets,
+                "real_time": True
+            }
+        })
+        
+        # Get real-time provider count and add to timeline
+        current_total_providers = self.db.query(func.count(DataProviderModel.id)).scalar() or 0
+        providers_timeline.append({
+            "date": today,
+            "value": float(current_total_providers),
+            "extra_data": {
+                "records_aggregated": 1,
+                "is_current_day": True,
+                "real_time": True
+            }
+        })
+        
+        # Get today's validation activity if any
+        todays_validations = self.db.query(func.count(ValidationJobModel.id)).filter(
+            ValidationJobModel.created_at >= today_start
+        ).scalar() or 0
+        
+        if todays_validations > 0:
+            validation_timeline.append({
+                "date": today,
+                "value": float(todays_validations),
+                "extra_data": {
+                    "records_aggregated": 1,
+                    "is_current_day": True,
+                    "real_time": True
+                }
+            })
+        
+        # Sort timelines by date to maintain order
+        datasets_timeline.sort(key=lambda x: x["date"])
+        providers_timeline.sort(key=lambda x: x["date"])
+        validation_timeline.sort(key=lambda x: x["date"])
     
     def _get_datacenter_stats(self) -> List[Dict[str, Any]]:
         """Get datacenter statistics."""

@@ -348,6 +348,7 @@ async def get_time_series_data(
 
 
 @router.get("/biological-units-timeline", response_model=TimeSeriesResponse, summary="Biological units timeline")
+
 async def get_biological_units_timeline(
     period: str = Query(Period.DAILY.value, description="Time period"),
     start_date: Optional[date] = Query(None, description="Start date"),
@@ -360,6 +361,7 @@ async def get_biological_units_timeline(
     Get system-wide biological units timeline.
     Requires authentication.
     Aggregates provider biological units for system-wide view.
+    Includes real-time data for today.
     """
     try:
         # Validate period
@@ -374,6 +376,7 @@ async def get_biological_units_timeline(
         # Query to aggregate biological units across all providers
         from sqlalchemy import func, and_, desc
         from app.models import StatisticModel, MetricType, EntityType
+        from datetime import datetime
         
         base_query = db.query(
             StatisticModel.date,
@@ -398,7 +401,12 @@ async def get_biological_units_timeline(
         
         # Convert to time series points
         data_points = []
+        today = date.today()
+        has_today = False
+        
         for stat in reversed(aggregated_stats):  # Reverse for chronological order
+            if stat.date == today:
+                has_today = True
             data_points.append(
                 TimeSeriesPoint(
                     date=stat.date,
@@ -406,6 +414,64 @@ async def get_biological_units_timeline(
                     extra_data={'aggregated_from_providers': True}
                 )
             )
+        
+        # Add or update today's data with real-time calculation
+        if not has_today or (data_points and data_points[-1].date == today):
+            # Calculate real-time biological units for today
+            # Sum all dataset unit counts that have been recorded
+            
+            # Get all dataset IDs
+            from app.models import DatasetModel
+            all_dataset_ids = db.query(DatasetModel.id).all()
+            
+            if all_dataset_ids:
+                dataset_id_list = [d[0] for d in all_dataset_ids]
+                
+                # Get the most recent unit count for each dataset (including today)
+                subquery = db.query(
+                    StatisticModel.entity_id,
+                    func.max(StatisticModel.date).label('max_date')
+                ).filter(
+                    and_(
+                        StatisticModel.metric_type == MetricType.DATASET_UNIT_COUNT,
+                        StatisticModel.entity_type == EntityType.DATASET,
+                        StatisticModel.entity_id.in_(dataset_id_list),
+                        StatisticModel.date <= today
+                    )
+                ).group_by(StatisticModel.entity_id).subquery()
+                
+                # Get the actual values using the max date for each dataset
+                recent_unit_counts = db.query(
+                    func.sum(StatisticModel.value).label('total_units')
+                ).join(
+                    subquery,
+                    and_(
+                        StatisticModel.entity_id == subquery.c.entity_id,
+                        StatisticModel.date == subquery.c.max_date
+                    )
+                ).filter(
+                    StatisticModel.metric_type == MetricType.DATASET_UNIT_COUNT
+                ).first()
+                
+                real_time_total = float(recent_unit_counts.total_units) if recent_unit_counts and recent_unit_counts.total_units else 0.0
+                
+                # Remove existing today entry if present
+                if data_points and data_points[-1].date == today:
+                    data_points.pop()
+                
+                # Add real-time data for today
+                data_points.append(
+                    TimeSeriesPoint(
+                        date=today,
+                        value=real_time_total,
+                        extra_data={
+                            'aggregated_from_providers': True,
+                            'real_time': True,
+                            'is_current_day': True,
+                            'dataset_count': len(dataset_id_list)
+                        }
+                    )
+                )
         
         return TimeSeriesResponse(
             metric_type=MetricType.PROVIDER_BIOLOGICAL_UNITS.value,
@@ -424,6 +490,7 @@ async def get_biological_units_timeline(
 
 
 @router.get("/multi-provider-biological-units", response_model=Dict[str, Any], summary="Multi-provider biological units")
+
 async def get_multi_provider_biological_units_timeline(
     period: str = Query(Period.DAILY.value, description="Time period"),
     start_date: Optional[date] = Query(None, description="Start date"),
@@ -436,6 +503,7 @@ async def get_multi_provider_biological_units_timeline(
     Get biological units timeline for all providers simultaneously.
     Requires authentication.
     Returns data structured for multi-line chart display.
+    Includes real-time data for today.
     """
     try:
         # Validate period
@@ -446,7 +514,8 @@ async def get_multi_provider_biological_units_timeline(
         
         # Query to get biological units data for each provider
         from sqlalchemy import func, and_, desc
-        from app.models import StatisticModel, DataProviderModel, MetricType, EntityType
+        from app.models import StatisticModel, DataProviderModel, DatasetModel, MetricType, EntityType
+        from datetime import datetime
         
         base_query = db.query(
             StatisticModel.date,
@@ -480,6 +549,7 @@ async def get_multi_provider_biological_units_timeline(
         
         # Transform data into multi-line chart format
         date_data = {}
+        today = date.today()
         
         for stat in stats_data:
             date_str = stat.date.isoformat()
@@ -490,6 +560,57 @@ async def get_multi_provider_biological_units_timeline(
             
             date_data[date_str][provider_name] = float(stat.units) if stat.units is not None else 0.0
         
+        # Add or update today's real-time data for each provider
+        today_str = today.isoformat()
+        if today_str not in date_data:
+            date_data[today_str] = {'date': today_str}
+        
+        # Calculate real-time biological units for each provider
+        for provider_id, provider_name in provider_names.items():
+            # Get all datasets for this provider
+            provider_dataset_ids = db.query(DatasetModel.id).filter(
+                DatasetModel.provider_id == provider_id
+            ).all()
+            
+            if provider_dataset_ids:
+                dataset_id_list = [d[0] for d in provider_dataset_ids]
+                
+                # Get the most recent unit count for each dataset
+                subquery = db.query(
+                    StatisticModel.entity_id,
+                    func.max(StatisticModel.date).label('max_date')
+                ).filter(
+                    and_(
+                        StatisticModel.metric_type == MetricType.DATASET_UNIT_COUNT,
+                        StatisticModel.entity_type == EntityType.DATASET,
+                        StatisticModel.entity_id.in_(dataset_id_list),
+                        StatisticModel.date <= today
+                    )
+                ).group_by(StatisticModel.entity_id).subquery()
+                
+                # Get the actual values using the max date for each dataset
+                recent_unit_counts = db.query(
+                    func.sum(StatisticModel.value).label('total_units')
+                ).join(
+                    subquery,
+                    and_(
+                        StatisticModel.entity_id == subquery.c.entity_id,
+                        StatisticModel.date == subquery.c.max_date
+                    )
+                ).filter(
+                    StatisticModel.metric_type == MetricType.DATASET_UNIT_COUNT
+                ).first()
+                
+                real_time_total = float(recent_unit_counts.total_units) if recent_unit_counts and recent_unit_counts.total_units else 0.0
+            else:
+                real_time_total = 0.0
+            
+            # Update today's data with real-time calculation
+            date_data[today_str][provider_name] = real_time_total
+        
+        # Mark today's data as real-time
+        date_data[today_str]['_real_time'] = True
+        
         # Convert to list and sort by date
         data_points = list(date_data.values())
         data_points.sort(key=lambda x: x['date'])
@@ -498,7 +619,7 @@ async def get_multi_provider_biological_units_timeline(
         # Get list of all providers
         all_providers = set()
         for point in data_points:
-            all_providers.update(key for key in point.keys() if key != 'date')
+            all_providers.update(key for key in point.keys() if key not in ['date', '_real_time'])
         
         # Ensure all data points have all provider fields
         for point in data_points:

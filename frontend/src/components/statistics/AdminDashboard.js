@@ -29,6 +29,7 @@ function AdminDashboard() {
   const [successMessage, setSuccessMessage] = useState('');
   const [isCollecting, setIsCollecting] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [biologicalUnitsScaleType, setBiologicalUnitsScaleType] = useState('log'); // Default to log for better visibility
 
   // Breadcrumb navigation items
   const breadcrumbItems = [
@@ -473,6 +474,8 @@ function AdminDashboard() {
             '#3B82F6',
             '#6366F1'
           ]}
+          scaleType={biologicalUnitsScaleType}
+          onScaleTypeChange={setBiologicalUnitsScaleType}
         />
       </div>
 

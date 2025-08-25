@@ -169,7 +169,7 @@ services:
       bash -c "
         cd /app && 
         pip install -e /validator &&
-        python -c 'from app.core.resource_allocation import get_validator_cpu_count; from app.core.config import settings; cpus = get_validator_cpu_count(settings.VALIDATOR_CPU_PERCENT); print(f\"Starting validation worker with {cpus} threads\"); import subprocess; subprocess.run([\"celery\", \"-A\", \"app.core.celery_app\", \"worker\", \"--queues=heavy_validation\", f\"--concurrency={cpus}\", \"--pool=threads\", \"--loglevel=info\"])'
+        celery -A app.core.celery_app worker --queues=heavy_validation --concurrency=1 --pool=solo --loglevel=info
       "
 
   # Statistics worker - handles light tasks and statistics collection

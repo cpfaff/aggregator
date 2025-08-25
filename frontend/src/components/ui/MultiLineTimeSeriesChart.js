@@ -37,7 +37,9 @@ function MultiLineTimeSeriesChart({
   isLoading = false,
   error = null,
   title = '',
-  subtitle = ''
+  subtitle = '',
+  scaleType = 'linear',
+  onScaleTypeChange = null
 }) {
   // Memoize Y domain calculations
   const yDomain = useMemo(() => {
@@ -50,7 +52,7 @@ function MultiLineTimeSeriesChart({
     data.forEach(item => {
       providers.forEach(provider => {
         const value = item[provider.key];
-        if (typeof value === 'number') {
+        if (typeof value === 'number' && value > 0) {
           allValues.push(value);
         }
       });
@@ -60,10 +62,17 @@ function MultiLineTimeSeriesChart({
     
     const minY = Math.min(...allValues);
     const maxY = Math.max(...allValues);
-    const padding = (maxY - minY) * 0.1; // 10% padding
     
-    return [Math.max(0, minY - padding), maxY + padding];
-  }, [data, providers]);
+    if (scaleType === 'log') {
+      // For log scale, use actual min and max without padding
+      // Ensure minimum is at least 1 for log scale
+      return [Math.max(1, minY * 0.9), maxY * 1.1];
+    } else {
+      // Linear scale with padding
+      const padding = (maxY - minY) * 0.1; // 10% padding
+      return [Math.max(0, minY - padding), maxY + padding];
+    }
+  }, [data, providers, scaleType]);
   
   // Memoize processed data
   const memoizedData = useMemo(() => data, [data]);
@@ -324,28 +333,80 @@ function MultiLineTimeSeriesChart({
           position: 'relative', 
           zIndex: 1 
         }}>
-          {title && (
-            <h3 style={{
-              margin: 0,
-              marginBottom: subtitle ? '0.5rem' : 0,
-              fontSize: '1.25rem',
-              fontWeight: 700,
-              color: 'var(--text)',
-              letterSpacing: '-0.5px'
-            }}>
-              {title}
-            </h3>
-          )}
-          {subtitle && (
-            <p style={{
-              margin: 0,
-              fontSize: '0.9rem',
-              color: 'var(--text-light)',
-              lineHeight: '1.5'
-            }}>
-              {subtitle}
-            </p>
-          )}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start'
+          }}>
+            <div style={{ flex: 1 }}>
+              {title && (
+                <h3 style={{
+                  margin: 0,
+                  marginBottom: subtitle ? '0.5rem' : 0,
+                  fontSize: '1.25rem',
+                  fontWeight: 700,
+                  color: 'var(--text)',
+                  letterSpacing: '-0.5px'
+                }}>
+                  {title}
+                </h3>
+              )}
+              {subtitle && (
+                <p style={{
+                  margin: 0,
+                  fontSize: '0.9rem',
+                  color: 'var(--text-light)',
+                  lineHeight: '1.5'
+                }}>
+                  {subtitle}
+                </p>
+              )}
+            </div>
+            {onScaleTypeChange && (
+              <div style={{
+                display: 'flex',
+                gap: '0.5rem',
+                marginLeft: '1rem'
+              }}>
+                <button
+                  onClick={() => onScaleTypeChange('linear')}
+                  style={{
+                    padding: '0.375rem 0.75rem',
+                    fontSize: '0.8rem',
+                    fontWeight: 500,
+                    border: '1px solid var(--border)',
+                    borderRadius: '0.375rem',
+                    backgroundColor: scaleType === 'linear' ? 'var(--primary)' : 'var(--card-bg)',
+                    color: scaleType === 'linear' ? 'white' : 'var(--text)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    outline: 'none'
+                  }}
+                  title="Linear scale shows absolute values"
+                >
+                  Linear
+                </button>
+                <button
+                  onClick={() => onScaleTypeChange('log')}
+                  style={{
+                    padding: '0.375rem 0.75rem',
+                    fontSize: '0.8rem',
+                    fontWeight: 500,
+                    border: '1px solid var(--border)',
+                    borderRadius: '0.375rem',
+                    backgroundColor: scaleType === 'log' ? 'var(--primary)' : 'var(--card-bg)',
+                    color: scaleType === 'log' ? 'white' : 'var(--text)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    outline: 'none'
+                  }}
+                  title="Logarithmic scale helps visualize data with large differences"
+                >
+                  Log
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
       
@@ -379,14 +440,21 @@ function MultiLineTimeSeriesChart({
               tickLine={false}
               axisLine={false}
               tick={{ fill: 'var(--text-light)' }}
+              scale={scaleType}
               domain={yDomain}
+              allowDataOverflow={scaleType === 'log'}
               tickFormatter={(value) => {
+                // For very small values, show them as is
+                if (value < 1) {
+                  return value.toFixed(2);
+                }
+                // Format large numbers with K/M suffixes
                 if (value >= 1000000) {
                   return `${(value / 1000000).toFixed(1)}M`;
                 } else if (value >= 1000) {
                   return `${(value / 1000).toFixed(1)}K`;
                 }
-                return value;
+                return Math.round(value).toString();
               }}
             />
             {showTooltip && <Tooltip content={<CustomTooltip />} />}
@@ -473,6 +541,8 @@ export default React.memo(MultiLineTimeSeriesChart, (prevProps, nextProps) => {
     prevProps.isLoading === nextProps.isLoading &&
     prevProps.error === nextProps.error &&
     prevProps.title === nextProps.title &&
-    prevProps.subtitle === nextProps.subtitle
+    prevProps.subtitle === nextProps.subtitle &&
+    prevProps.scaleType === nextProps.scaleType &&
+    prevProps.onScaleTypeChange === nextProps.onScaleTypeChange
   );
 });

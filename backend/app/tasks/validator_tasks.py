@@ -54,10 +54,18 @@ def validate_archive(self, archive_id: int, job_id: Optional[int] = None) -> Dic
     job = None
     
     try:
-        # Get archive details from DB
-        archive = db.query(XmlArchiveModel).filter(XmlArchiveModel.id == archive_id).first()
-        if not archive:
+        # Get archive details from DB - only select the columns that exist
+        archive_data = db.query(
+            XmlArchiveModel.id,
+            XmlArchiveModel.dataset_id,
+            XmlArchiveModel.url,
+            XmlArchiveModel.isLatest
+        ).filter(XmlArchiveModel.id == archive_id).first()
+        if not archive_data:
             raise ValueError(f"Archive with ID {archive_id} not found")
+        
+        # Extract archive data from tuple
+        archive_id_db, dataset_id, archive_url, is_latest = archive_data
         
         # Find existing job or create a new one if job_id not provided
         if job_id:
@@ -92,7 +100,7 @@ def validate_archive(self, archive_id: int, job_id: Optional[int] = None) -> Dic
         
         # Run validation
         validator_service = ValidatorService()
-        final_report = validator_service.validate_archive(archive.url)
+        final_report = validator_service.validate_archive(archive_url)
         
         # Update job with results
         job.status = "completed"

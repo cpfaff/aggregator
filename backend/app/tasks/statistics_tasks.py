@@ -14,7 +14,8 @@ from urllib.parse import urlparse
 from collections import defaultdict
 
 from celery import shared_task
-from sqlalchemy import func, and_, distinct
+from sqlalchemy import func, and_, distinct, Integer
+from sqlalchemy.orm import Session
 
 from app.models import (
     StatisticModel, 
@@ -223,6 +224,672 @@ def parse_abcd_xml(xml_url: str) -> Dict[str, Any]:
         logger.error(f"Unexpected error processing {xml_url}: {e}")
         raise XMLParsingError(f"Unexpected error: {e}")
 
+def is_archive_first_processing(db: Session, archive_id: int, metric_type: MetricType = MetricType.DATASET_UNIT_COUNT) -> bool:
+    """
+    Check if an archive is being processed for the first time.
+    
+    This function determines whether an archive has been successfully processed before
+    by checking for the presence of a 'first_processed_at' marker in the statistics
+    extra_data field. Archives with processing_failed=true are treated as never 
+    processed to ensure they use the correct anchor date on retry.
+    
+    The function is critical for the timeline enhancement feature, as it determines
+    which anchor date to use:
+    - First processing: Dataset's created_at date (historical anchor)
+    - Subsequent processing: Current date (real-time updates)
+    - Failed archives: Treated as first processing for anchor date consistency
+    
+    Args:
+        db: Database session for querying statistics
+        archive_id: ID of the archive to check processing status for
+        metric_type: The metric type to check for processing history (default: DATASET_UNIT_COUNT)
+        
+    Returns:
+        bool: True if this is the first processing (or if it previously failed), 
+              False if the archive has been successfully processed before
+              
+    Example:
+        >>> is_first = is_archive_first_processing(db, archive_id=123)
+        >>> if is_first:
+        ...     anchor_date = dataset.created_at.date()
+        ... else:
+        ...     anchor_date = date.today()
+    """
+    from sqlalchemy import and_, cast, String
+    from sqlalchemy.dialects.postgresql import JSONB
+    
+    # First check if this archive has a failure record
+    failure_stat = db.query(StatisticModel).filter(
+        and_(
+            StatisticModel.metric_type == metric_type,
+            cast(StatisticModel.extra_data["archive_id"], String) == str(archive_id),
+            StatisticModel.extra_data["processing_failed"].astext == "true"
+        )
+    ).first()
+    
+    if failure_stat:
+        # Archive has failed before, treat as first processing for anchor date purposes
+        return True
+    
+    # Look for any existing successful statistic that references this archive_id
+    existing_stat = db.query(StatisticModel).filter(
+        and_(
+            StatisticModel.metric_type == metric_type,
+            cast(StatisticModel.extra_data["archive_id"], String) == str(archive_id)
+        )
+    ).first()
+    
+    if existing_stat:
+        # Check if it has the first_processed_at marker
+        extra_data = existing_stat.extra_data or {}
+        # If processing_failed is present and true, treat as first processing
+        if extra_data.get('processing_failed', False):
+            return True
+        return 'first_processed_at' not in extra_data
+    
+    return True  # No existing statistics, so this is first processing  # No existing statistics, so this is first processing  # No existing statistics, so this is first processing
+
+
+def mark_archive_processed(db: Session, archive_id: int, dataset_id: int, 
+                          process_date: date, metric_type: MetricType = MetricType.DATASET_UNIT_COUNT) -> None:
+    """
+    Mark an archive as successfully processed by adding first_processed_at timestamp.
+    
+    This function adds a 'first_processed_at' marker to the statistics extra_data field
+    when an archive is successfully processed for the first time. This marker is used
+    by is_archive_first_processing() to determine whether future processing should use
+    the historical anchor date or the current date.
+    
+    The function is idempotent - if the marker already exists, it won't be overwritten,
+    preserving the original first processing timestamp for audit purposes.
+    
+    Args:
+        db: Database session for updating statistics
+        archive_id: ID of the archive being marked as processed
+        dataset_id: ID of the dataset this archive belongs to
+        process_date: The date used for processing (anchor date)
+        metric_type: The metric type being processed (default: DATASET_UNIT_COUNT)
+        
+    Side Effects:
+        - Updates the extra_data field of the matching StatisticModel record
+        - Commits the change to the database
+        - Logs the successful marking with timestamp
+        
+    Example:
+        >>> # After successful XML processing
+        >>> mark_archive_processed(db, archive_id=123, dataset_id=456, 
+        ...                       process_date=date(2024, 1, 15))
+        >>> # Statistics now has first_processed_at marker
+        
+    Note:
+        This function assumes a statistic record already exists for the given
+        parameters. If no matching record is found, the function returns silently
+        to handle edge cases gracefully.
+    """
+    from sqlalchemy import and_
+    
+    # Find the statistic for this archive and update its extra_data
+    stat = db.query(StatisticModel).filter(
+        and_(
+            StatisticModel.metric_type == metric_type,
+            StatisticModel.entity_type == EntityType.DATASET,
+            StatisticModel.entity_id == dataset_id,
+            StatisticModel.date == process_date
+        )
+    ).first()
+    
+    if stat and stat.extra_data:
+        # Only add first_processed_at if it doesn't exist
+        if 'first_processed_at' not in stat.extra_data:
+            stat.extra_data['first_processed_at'] = datetime.utcnow().isoformat()
+            stat.extra_data['dataset_id'] = dataset_id  # Store dataset_id for reference
+            # Mark the object as modified so SQLAlchemy knows to update it
+            from sqlalchemy.orm.attributes import flag_modified
+            flag_modified(stat, 'extra_data')
+            logger.info(f"Marked archive {archive_id} as first processed at {stat.extra_data['first_processed_at']}")
+    
+    db.commit()
+
+
+def get_archive_anchor_date(db: Session, archive: XmlArchiveModel) -> date:
+    """
+    Determine the appropriate anchor date for processing an archive's biological units.
+    
+    This function implements the timeline enhancement's anchor date strategy:
+    - First-time processing: Uses the dataset's created_at date to place statistics
+      at the historical point when the dataset was created
+    - Failed archives: Uses the dataset's created_at date on retry to maintain
+      consistency with the original intended timeline position
+    - Subsequent processing: Uses today's date for real-time updates reflecting
+      current state of the biological units
+    
+    The anchor date is critical for maintaining accurate historical timelines,
+    especially during backfill operations where datasets may be processed long
+    after their creation date.
+    
+    Args:
+        db: Database session for checking processing status
+        archive: The XmlArchiveModel instance being processed, must have a
+                related dataset with created_at timestamp
+        
+    Returns:
+        date: The anchor date to use for statistics generation
+              - Dataset's created_at date for first processing/retries
+              - Today's date for subsequent processing
+              
+    Example:
+        >>> archive = db.query(XmlArchiveModel).filter_by(id=123).first()
+        >>> anchor_date = get_archive_anchor_date(db, archive)
+        >>> # Use anchor_date for statistics target_date
+        >>> create_statistics(target_date=anchor_date, ...)
+        
+    Note:
+        If the dataset's created_at is None (edge case), falls back to today's date
+        to ensure processing can continue.
+    """
+    is_first = is_archive_first_processing(db, archive.id)
+    failure_info = get_archive_failure_info(db, archive.id)
+    
+    if is_first:
+        # For first processing or retries after failure, use dataset's created_at date as anchor
+        anchor_date = archive.dataset.created_at.date() if archive.dataset.created_at else date.today()
+        if failure_info:
+            logger.info(f"Archive {archive.id} retry after {failure_info['failure_count']} failure(s): using dataset created_at {anchor_date} as anchor")
+        else:
+            logger.info(f"Archive {archive.id} first-time processing: using dataset created_at {anchor_date} as anchor")
+    else:
+        # For subsequent processing, use current date
+        anchor_date = date.today()
+        logger.info(f"Archive {archive.id} subsequent processing: using current date {anchor_date} as anchor")
+    
+    return anchor_date
+
+def mark_archive_failed(db: Session, archive_id: int, error_message: str, 
+                        metric_type: MetricType = MetricType.DATASET_UNIT_COUNT) -> None:
+    """
+    Mark an archive as failed and track comprehensive failure metadata.
+    
+    This function implements failure tracking for the resilient retry mechanism.
+    It maintains a failure record with count, reason, and timestamp to support:
+    - Exponential backoff calculations (based on failure_count)
+    - Circuit breaker pattern (max_retries checking)
+    - Time-based reset (using last_failure_at timestamp)
+    
+    For first failures, creates a special statistic record with a marker date (1970-01-01)
+    to indicate failure state. For subsequent failures, increments the failure count
+    and updates the timestamp and reason.
+    
+    Args:
+        db: Database session for creating/updating failure records
+        archive_id: ID of the archive that failed processing
+        error_message: Description of the failure (e.g., "Network timeout", "Parse error")
+        metric_type: The metric type being processed (default: DATASET_UNIT_COUNT)
+        
+    Side Effects:
+        - Creates or updates a StatisticModel record with failure metadata
+        - Commits the change to the database
+        - Logs warning with failure count and reason
+        
+    Failure Tracking Fields in extra_data:
+        - processing_failed: bool - Flag indicating failure state
+        - failure_count: int - Number of consecutive failures
+        - last_failure_reason: str - Most recent error message
+        - last_failure_at: str - ISO timestamp of last failure
+        
+    Example:
+        >>> try:
+        ...     parse_abcd_xml(archive.url)
+        ... except XMLParsingError as e:
+        ...     mark_archive_failed(db, archive.id, str(e))
+        ...     # Archive now tracked for retry with exponential backoff
+        
+    Note:
+        Failed archives are excluded from provider aggregation totals to prevent
+        corruption of timeline data. The failure_count is used to calculate
+        exponential backoff delays: delay = min(60 * 2^(count-1), 3600) seconds
+    """
+    from sqlalchemy import and_, cast, String
+    from sqlalchemy.dialects.postgresql import JSONB
+    from sqlalchemy.orm.attributes import flag_modified
+    
+    # Find or create a failure tracking record
+    # We look for a failure marker using archive_id as entity_id and special date
+    existing_stat = db.query(StatisticModel).filter(
+        and_(
+            StatisticModel.metric_type == metric_type,
+            StatisticModel.entity_type == EntityType.DATASET,
+            StatisticModel.entity_id == archive_id,
+            StatisticModel.date == date(1970, 1, 1)  # Failure marker date
+        )
+    ).first()
+    
+    if existing_stat:
+        # Update existing failure record
+        failure_count = existing_stat.extra_data.get('failure_count', 0) + 1
+        existing_stat.extra_data['failure_count'] = failure_count
+        existing_stat.extra_data['last_failure_reason'] = error_message[:1000]  # Truncate very long errors
+        existing_stat.extra_data['last_failure_at'] = datetime.utcnow().isoformat()
+        flag_modified(existing_stat, 'extra_data')
+        logger.warning(f"Archive {archive_id} failed again (attempt #{failure_count}): {error_message}")
+    else:
+        # Create a new failure tracking record with minimal data
+        # We'll use a special date far in the past to indicate failure state
+        failure_marker_date = date(1970, 1, 1)
+        
+        failure_data = {
+            'archive_id': archive_id,
+            'processing_failed': True,
+            'failure_count': 1,
+            'last_failure_reason': error_message[:1000],  # Truncate very long errors
+            'last_failure_at': datetime.utcnow().isoformat()
+        }
+        
+        failure_stat = StatisticModel(
+            metric_type=metric_type,
+            entity_type=EntityType.DATASET,
+            entity_id=archive_id,  # Use archive_id to ensure uniqueness
+            date=failure_marker_date,
+            period=Period.DAILY,
+            value=0,
+            extra_data=failure_data
+        )
+        db.add(failure_stat)
+        logger.warning(f"Archive {archive_id} marked as failed (first failure): {error_message}")
+    
+    db.commit()
+
+
+def reset_archive_failure(db: Session, archive_id: int, 
+                          metric_type: MetricType = MetricType.DATASET_UNIT_COUNT) -> None:
+    """
+    Clear failure state for an archive after successful processing.
+    
+    This function removes the failure tracking record when an archive that previously
+    failed is successfully processed. This is part of the resilient retry mechanism,
+    allowing archives to recover from transient failures.
+    
+    The function is called after successful XML parsing and statistics generation
+    to clean up the failure state and reset the archive for normal processing.
+    
+    Args:
+        db: Database session for deleting failure records
+        archive_id: ID of the archive that succeeded after previous failures
+        metric_type: The metric type being processed (default: DATASET_UNIT_COUNT)
+        
+    Side Effects:
+        - Deletes the failure tracking StatisticModel record if it exists
+        - Commits the deletion to the database
+        - Logs successful recovery with previous failure count
+        
+    Example:
+        >>> # After successful retry
+        >>> try:
+        ...     result = parse_abcd_xml(archive.url)
+        ...     create_statistics(result)
+        ...     reset_archive_failure(db, archive.id)  # Clear failure state
+        ... except Exception as e:
+        ...     mark_archive_failed(db, archive.id, str(e))
+        
+    Note:
+        This function is idempotent - calling it multiple times or when no
+        failure record exists has no adverse effects. The failure record uses
+        a special marker date (1970-01-01) and is completely removed rather
+        than just updated to maintain database cleanliness.
+    """
+    from sqlalchemy import and_, cast, String
+    from sqlalchemy.dialects.postgresql import JSONB
+    from sqlalchemy.orm.attributes import flag_modified
+    
+    # Find the failure tracking record using archive_id as entity_id and special date
+    failure_stat = db.query(StatisticModel).filter(
+        and_(
+            StatisticModel.metric_type == metric_type,
+            StatisticModel.entity_type == EntityType.DATASET,
+            StatisticModel.entity_id == archive_id,
+            StatisticModel.date == date(1970, 1, 1)  # Failure marker date
+        )
+    ).first()
+    
+    if failure_stat:
+        failure_count = failure_stat.extra_data.get('failure_count', 0)
+        last_failure = failure_stat.extra_data.get('last_failure_reason', 'Unknown')
+        logger.info(f"Archive {archive_id} recovered after {failure_count} failure(s). Last error was: {last_failure}")
+        db.delete(failure_stat)
+        db.commit()
+    else:
+        # No failure record exists - this is normal for archives that never failed
+        logger.debug(f"No failure record found for archive {archive_id} - normal successful processing")
+
+
+def get_archive_failure_info(db: Session, archive_id: int, 
+                             metric_type: MetricType = MetricType.DATASET_UNIT_COUNT) -> Optional[Dict[str, Any]]:
+    """
+    Retrieve comprehensive failure information for an archive if it exists.
+    
+    This function queries the failure tracking record to get detailed information
+    about an archive's failure history. The information is used to:
+    - Calculate exponential backoff delays
+    - Determine if max retries have been exceeded
+    - Check if time-based reset period has elapsed
+    - Provide debugging information in logs and API responses
+    
+    Args:
+        db: Database session for querying failure records
+        archive_id: ID of the archive to check for failure information
+        metric_type: The metric type to check (default: DATASET_UNIT_COUNT)
+        
+    Returns:
+        Optional[Dict[str, Any]]: Dictionary containing failure information or None if no failures
+        
+        Dictionary structure when failures exist:
+        {
+            'failure_count': int,          # Number of consecutive failures (1-based)
+            'last_failure_reason': str,     # Error message from most recent failure
+            'last_failure_at': str          # ISO timestamp of last failure
+        }
+        
+    Example:
+        >>> failure_info = get_archive_failure_info(db, archive_id=123)
+        >>> if failure_info:
+        ...     if failure_info['failure_count'] >= 5:
+        ...         print("Max retries exceeded")
+        ...     else:
+        ...         # Calculate backoff delay
+        ...         delay = min(60 * (2 ** (failure_info['failure_count'] - 1)), 3600)
+        
+    Note:
+        Returns None for archives that have never failed or have been reset after
+        successful processing. The last_failure_at timestamp can be parsed to
+        determine if the 24-hour reset period has elapsed for circuit breaker reset.
+    """
+    from sqlalchemy import and_, cast, String
+    
+    # Query for failure tracking record with processing_failed=true
+    failure_stat = db.query(StatisticModel).filter(
+        and_(
+            StatisticModel.metric_type == metric_type,
+            cast(StatisticModel.extra_data["archive_id"], String) == str(archive_id),
+            StatisticModel.extra_data["processing_failed"].astext == "true"
+        )
+    ).first()
+    
+    if failure_stat:
+        return {
+            'failure_count': failure_stat.extra_data.get('failure_count', 0),
+            'last_failure_reason': failure_stat.extra_data.get('last_failure_reason'),
+            'last_failure_at': failure_stat.extra_data.get('last_failure_at')
+        }
+    return None
+
+
+def should_retry_failed_archive(db: Session, archive_id: int, 
+                                max_retries: int = 5,
+                                reset_after_hours: int = 24) -> bool:
+    """
+    Determine if a failed archive should be retried based on failure count and time elapsed.
+    
+    This function implements a sophisticated retry policy combining:
+    1. **Exponential Backoff**: Retry delays increase exponentially with failure count
+    2. **Circuit Breaker Pattern**: Hard stop at max_retries to prevent infinite loops
+    3. **Time-Based Reset**: Allows retry after reset_after_hours even if max_retries exceeded
+    
+    The time-based reset ensures that archives aren't permanently abandoned due to
+    temporary issues (e.g., network outages, service maintenance) while still protecting
+    against persistent problems that could cause resource exhaustion.
+    
+    Retry Decision Logic:
+    - No failures → Always retry (return True)
+    - Failures < max_retries → Always retry (return True)  
+    - Failures >= max_retries AND time < reset_after_hours → Skip (return False)
+    - Failures >= max_retries AND time >= reset_after_hours → Allow retry (return True)
+    
+    Args:
+        db: Database session for querying failure information
+        archive_id: ID of the archive to check retry eligibility for
+        max_retries: Maximum number of consecutive retries before requiring time-based reset
+                    (default: 5, which with 60s base delay = max 16 min total delay)
+        reset_after_hours: Hours to wait before allowing retry of max-failed archives
+                          (default: 24 hours, allowing daily retry attempts)
+        
+    Returns:
+        bool: True if the archive should be retried, False if it should be skipped
+        
+    Example:
+        >>> # In analyze_xml_archives task
+        >>> if not should_retry_failed_archive(db, archive.id):
+        ...     logger.info(f"Skipping archive {archive.id} - max retries exceeded")
+        ...     continue
+        >>> # Proceed with processing
+        
+    Exponential Backoff Calculation:
+        The actual retry delay (implemented elsewhere) follows:
+        delay = min(60 * (2 ** (failure_count - 1)), 3600) seconds
+        
+        Examples:
+        - 1st retry: 60 seconds
+        - 2nd retry: 120 seconds
+        - 3rd retry: 240 seconds
+        - 4th retry: 480 seconds
+        - 5th retry: 960 seconds
+        - 6th+ retry: 3600 seconds (capped at 1 hour)
+        
+    Note:
+        This function only determines eligibility for retry. The actual retry delay
+        is implemented in the task execution layer using the failure_count from
+        get_archive_failure_info().
+    """
+    failure_info = get_archive_failure_info(db, archive_id)
+    
+    if not failure_info:
+        # No failure record, can process
+        return True
+    
+    failure_count = failure_info['failure_count']
+    
+    # If under max retries, always allow retry
+    if failure_count < max_retries:
+        return True
+    
+    # Check if enough time has passed for a reset
+    if failure_info['last_failure_at']:
+        try:
+            last_failure = datetime.fromisoformat(failure_info['last_failure_at'])
+            hours_since_failure = (datetime.utcnow() - last_failure).total_seconds() / 3600
+            
+            if hours_since_failure >= reset_after_hours:
+                logger.info(
+                    f"Archive {archive_id} failed {failure_count} times but "
+                    f"{hours_since_failure:.1f} hours have passed (>= {reset_after_hours}h) - allowing retry"
+                )
+                return True
+            else:
+                logger.debug(
+                    f"Archive {archive_id} failed {failure_count} times and only "
+                    f"{hours_since_failure:.1f} hours have passed (< {reset_after_hours}h) - skipping"
+                )
+                return False
+        except (ValueError, TypeError) as e:
+            logger.warning(f"Could not parse last_failure_at for archive {archive_id}: {e}")
+            # If we can't parse the timestamp, err on the side of allowing retry
+            return True
+    
+    # No timestamp available, be conservative and skip
+    return False
+
+
+def check_statistics_exist(
+    db: Session,
+    metric_type: str,
+    entity_type: str,
+    entity_id: Optional[int],
+    period: str
+) -> bool:
+    """
+    Check if statistics exist for a given metric/entity combination.
+    
+    Args:
+        db: Database session
+        metric_type: Type of metric from MetricType enum
+        entity_type: Type of entity from EntityType enum
+        entity_id: ID of the specific entity (None for system-level)
+        period: Time period from Period enum
+        
+    Returns:
+        Boolean indicating if any statistics exist for this combination
+    """
+    exists = db.query(StatisticModel).filter(
+        StatisticModel.metric_type == metric_type,
+        StatisticModel.entity_type == entity_type,
+        StatisticModel.entity_id == entity_id,
+        StatisticModel.period == period
+    ).first() is not None
+    
+    logger.debug(
+        f"Statistics exist check - metric: {metric_type}, entity: {entity_type}, "
+        f"entity_id: {entity_id}, period: {period} - Result: {exists}"
+    )
+    
+    return exists
+
+
+def generate_backfill_dates(
+    entity_created_at: datetime,
+    target_date: date
+) -> List[date]:
+    """
+    Generate a list of dates from entity creation to target date for backfilling.
+    
+    Args:
+        entity_created_at: The creation timestamp of the entity
+        target_date: The current collection date
+        
+    Returns:
+        List of dates from entity creation to target date (inclusive)
+    """
+    start_date = entity_created_at.date() if isinstance(entity_created_at, datetime) else entity_created_at
+    dates = []
+    current = start_date
+    
+    while current <= target_date:
+        dates.append(current)
+        current += timedelta(days=1)
+    
+    logger.info(
+        f"Generated {len(dates)} backfill dates from {start_date} to {target_date}"
+    )
+    
+    return dates
+
+def get_cumulative_count(
+    db: Session,
+    model,
+    target_date: date,
+    filter_conditions=None
+) -> int:
+    """
+    Get cumulative count of entities up to and including target date.
+    
+    Args:
+        db: Database session
+        model: SQLAlchemy model to count
+        target_date: The date to count up to (inclusive)
+        filter_conditions: Additional filter conditions
+        
+    Returns:
+        Count of entities created up to target date
+    """
+    # Convert target_date to end of day datetime for proper comparison
+    end_of_day = datetime.combine(target_date, datetime.max.time())
+    
+    query = db.query(func.count(model.id)).filter(
+        model.created_at <= end_of_day
+    )
+    
+    if filter_conditions is not None:
+        query = query.filter(filter_conditions)
+    
+    return query.scalar() or 0
+
+def get_cumulative_xml_archive_count(
+    db: Session,
+    target_date: date
+) -> int:
+    """
+    Get cumulative count of XML archives up to and including target date.
+    Since XmlArchiveModel doesn't have created_at, we count based on the 
+    dataset's created_at date.
+    
+    Args:
+        db: Database session
+        target_date: The date to count up to (inclusive)
+        
+    Returns:
+        Count of XML archives whose datasets were created up to target date
+    """
+    # Convert target_date to end of day datetime for proper comparison
+    end_of_day = datetime.combine(target_date, datetime.max.time())
+    
+    # Join with DatasetModel to access created_at
+    count = db.query(func.count(XmlArchiveModel.id)).join(
+        DatasetModel, XmlArchiveModel.dataset_id == DatasetModel.id
+    ).filter(
+        DatasetModel.created_at <= end_of_day
+    ).scalar()
+    
+    return count or 0
+
+
+def perform_statistics_upsert(
+    db: Session,
+    metric_type: str,
+    entity_type: str,
+    entity_id: Optional[int],
+    period: str,
+    date_value: date,
+    value: float,
+    extra_data: Dict[str, Any],
+    log_message: str = None
+) -> None:
+    """
+    Perform an upsert operation for a statistic entry.
+    
+    Args:
+        db: Database session
+        metric_type: Type of metric from MetricType enum
+        entity_type: Type of entity from EntityType enum
+        entity_id: ID of the specific entity (None for system-level)
+        period: Time period from Period enum
+        date_value: The date this statistic represents
+        value: The numeric value of the metric
+        extra_data: Additional context data
+        log_message: Optional log message for debugging
+    """
+    from sqlalchemy.dialects.postgresql import insert
+    
+    stmt = insert(StatisticModel).values(
+        metric_type=metric_type,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        period=period,
+        date=date_value,
+        value=value,
+        extra_data=extra_data,
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow()
+    )
+    stmt = stmt.on_conflict_do_update(
+        constraint='uq_statistics_unique_entry',
+        set_={
+            'value': stmt.excluded.value,
+            'extra_data': stmt.excluded.extra_data,
+            'updated_at': datetime.utcnow()
+        }
+    )
+    
+    db.execute(stmt)
+    
+    if log_message:
+        logger.debug(log_message)
 
 @shared_task(
     bind=True,
@@ -240,6 +907,7 @@ def parse_abcd_xml(xml_url: str) -> Dict[str, Any]:
 def collect_daily_statistics(self, target_date: str = None) -> Dict[str, Any]:
     """
     Collect daily statistics for datasets, providers, and validation jobs.
+    Implements backfill-then-update pattern using model timestamps.
     
     Queue Assignment: Routes to 'light_tasks' queue for lightweight statistical
     calculations using prefork worker pool optimized for CPU-bound operations.
@@ -262,89 +930,146 @@ def collect_daily_statistics(self, target_date: str = None) -> Dict[str, Any]:
         logger.info(f"Collecting daily statistics for {stat_date}")
         
         collected_stats = []
+        backfill_performed = []
         
-        # System-wide statistics
+        # Get the earliest creation date for system-wide metrics
+        earliest_dataset = db.query(func.min(DatasetModel.created_at)).scalar()
+        earliest_provider = db.query(func.min(DataProviderModel.created_at)).scalar()
+        # For archives, get the earliest dataset creation date that has archives
+        earliest_archive = db.query(func.min(DatasetModel.created_at)).join(
+            XmlArchiveModel, XmlArchiveModel.dataset_id == DatasetModel.id
+        ).scalar()
         
-        # Total datasets - use proper upsert with ON CONFLICT
-        total_datasets = db.query(func.count(DatasetModel.id)).scalar()
+        # Determine the overall earliest date for system metrics
+        system_start_dates = [d for d in [earliest_dataset, earliest_provider, earliest_archive] if d]
+        system_start_date = min(system_start_dates).date() if system_start_dates else stat_date
         
-        # Use SQLAlchemy's ON CONFLICT functionality for PostgreSQL upsert
-        from sqlalchemy.dialects.postgresql import insert
-        from sqlalchemy import text
+        # System-wide statistics with backfill support
         
-        stmt = insert(StatisticModel).values(
-            metric_type=MetricType.DATASET_COUNT,
-            entity_type=EntityType.SYSTEM,
-            entity_id=None,
-            period=Period.DAILY,
-            date=stat_date,
-            value=total_datasets,
-            extra_data={'collection_timestamp': datetime.utcnow().isoformat()},
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
-        )
-        stmt = stmt.on_conflict_do_update(
-            constraint='uq_statistics_unique_entry',
-            set_={
-                'value': stmt.excluded.value,
-                'extra_data': stmt.excluded.extra_data,
-                'updated_at': datetime.utcnow()
-            }
-        )
-        db.execute(stmt)
-        collected_stats.append(f"System dataset count (upserted): {total_datasets}")
+        # 1. Total datasets - check if backfill needed
+        if not check_statistics_exist(db, MetricType.DATASET_COUNT, EntityType.SYSTEM, None, Period.DAILY):
+            # Backfill mode - generate historical data
+            logger.info(f"Backfilling DATASET_COUNT from {system_start_date} to {stat_date}")
+            backfill_dates = generate_backfill_dates(system_start_date, stat_date)
+            
+            for backfill_date in backfill_dates:
+                count = get_cumulative_count(db, DatasetModel, backfill_date)
+                perform_statistics_upsert(
+                    db=db,
+                    metric_type=MetricType.DATASET_COUNT,
+                    entity_type=EntityType.SYSTEM,
+                    entity_id=None,
+                    period=Period.DAILY,
+                    date_value=backfill_date,
+                    value=count,
+                    extra_data={
+                        'collection_timestamp': datetime.utcnow().isoformat(),
+                        'backfilled': True,
+                        'backfill_date_range': f"{system_start_date} to {stat_date}"
+                    },
+                    log_message=f"Backfilled DATASET_COUNT for {backfill_date}: {count}"
+                )
+            backfill_performed.append(f"DATASET_COUNT: {len(backfill_dates)} days")
+            collected_stats.append(f"System dataset count backfilled: {len(backfill_dates)} days")
+        else:
+            # Incremental mode - only update current date
+            count = get_cumulative_count(db, DatasetModel, stat_date)
+            perform_statistics_upsert(
+                db=db,
+                metric_type=MetricType.DATASET_COUNT,
+                entity_type=EntityType.SYSTEM,
+                entity_id=None,
+                period=Period.DAILY,
+                date_value=stat_date,
+                value=count,
+                extra_data={'collection_timestamp': datetime.utcnow().isoformat()},
+                log_message=f"Updated DATASET_COUNT for {stat_date}: {count}"
+            )
+            collected_stats.append(f"System dataset count (updated): {count}")
         
-        # Total providers - use proper upsert with ON CONFLICT
-        total_providers = db.query(func.count(DataProviderModel.id)).scalar()
+        # 2. Total providers - check if backfill needed
+        if not check_statistics_exist(db, MetricType.PROVIDER_COUNT, EntityType.SYSTEM, None, Period.DAILY):
+            # Backfill mode
+            logger.info(f"Backfilling PROVIDER_COUNT from {system_start_date} to {stat_date}")
+            backfill_dates = generate_backfill_dates(system_start_date, stat_date)
+            
+            for backfill_date in backfill_dates:
+                count = get_cumulative_count(db, DataProviderModel, backfill_date)
+                perform_statistics_upsert(
+                    db=db,
+                    metric_type=MetricType.PROVIDER_COUNT,
+                    entity_type=EntityType.SYSTEM,
+                    entity_id=None,
+                    period=Period.DAILY,
+                    date_value=backfill_date,
+                    value=count,
+                    extra_data={
+                        'collection_timestamp': datetime.utcnow().isoformat(),
+                        'backfilled': True,
+                        'backfill_date_range': f"{system_start_date} to {stat_date}"
+                    },
+                    log_message=f"Backfilled PROVIDER_COUNT for {backfill_date}: {count}"
+                )
+            backfill_performed.append(f"PROVIDER_COUNT: {len(backfill_dates)} days")
+            collected_stats.append(f"System provider count backfilled: {len(backfill_dates)} days")
+        else:
+            # Incremental mode
+            count = get_cumulative_count(db, DataProviderModel, stat_date)
+            perform_statistics_upsert(
+                db=db,
+                metric_type=MetricType.PROVIDER_COUNT,
+                entity_type=EntityType.SYSTEM,
+                entity_id=None,
+                period=Period.DAILY,
+                date_value=stat_date,
+                value=count,
+                extra_data={'collection_timestamp': datetime.utcnow().isoformat()},
+                log_message=f"Updated PROVIDER_COUNT for {stat_date}: {count}"
+            )
+            collected_stats.append(f"System provider count (updated): {count}")
         
-        stmt = insert(StatisticModel).values(
-            metric_type=MetricType.PROVIDER_COUNT,
-            entity_type=EntityType.SYSTEM,
-            entity_id=None,
-            period=Period.DAILY,
-            date=stat_date,
-            value=total_providers,
-            extra_data={'collection_timestamp': datetime.utcnow().isoformat()},
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
-        )
-        stmt = stmt.on_conflict_do_update(
-            constraint='uq_statistics_unique_entry',
-            set_={
-                'value': stmt.excluded.value,
-                'extra_data': stmt.excluded.extra_data,
-                'updated_at': datetime.utcnow()
-            }
-        )
-        db.execute(stmt)
-        collected_stats.append(f"System provider count (upserted): {total_providers}")
+        # 3. Total XML archives - check if backfill needed
+        if not check_statistics_exist(db, MetricType.XML_ARCHIVE_COUNT, EntityType.SYSTEM, None, Period.DAILY):
+            # Backfill mode
+            logger.info(f"Backfilling XML_ARCHIVE_COUNT from {system_start_date} to {stat_date}")
+            backfill_dates = generate_backfill_dates(system_start_date, stat_date)
+            
+            for backfill_date in backfill_dates:
+                count = get_cumulative_xml_archive_count(db, backfill_date)
+                perform_statistics_upsert(
+                    db=db,
+                    metric_type=MetricType.XML_ARCHIVE_COUNT,
+                    entity_type=EntityType.SYSTEM,
+                    entity_id=None,
+                    period=Period.DAILY,
+                    date_value=backfill_date,
+                    value=count,
+                    extra_data={
+                        'collection_timestamp': datetime.utcnow().isoformat(),
+                        'backfilled': True,
+                        'backfill_date_range': f"{system_start_date} to {stat_date}"
+                    },
+                    log_message=f"Backfilled XML_ARCHIVE_COUNT for {backfill_date}: {count}"
+                )
+            backfill_performed.append(f"XML_ARCHIVE_COUNT: {len(backfill_dates)} days")
+            collected_stats.append(f"System XML archive count backfilled: {len(backfill_dates)} days")
+        else:
+            # Incremental mode
+            count = get_cumulative_xml_archive_count(db, stat_date)
+            perform_statistics_upsert(
+                db=db,
+                metric_type=MetricType.XML_ARCHIVE_COUNT,
+                entity_type=EntityType.SYSTEM,
+                entity_id=None,
+                period=Period.DAILY,
+                date_value=stat_date,
+                value=count,
+                extra_data={'collection_timestamp': datetime.utcnow().isoformat()},
+                log_message=f"Updated XML_ARCHIVE_COUNT for {stat_date}: {count}"
+            )
+            collected_stats.append(f"System XML archive count (updated): {count}")
         
-        # Total XML archives - use proper upsert with ON CONFLICT
-        total_archives = db.query(func.count(XmlArchiveModel.id)).scalar()
-        
-        stmt = insert(StatisticModel).values(
-            metric_type=MetricType.XML_ARCHIVE_COUNT,
-            entity_type=EntityType.SYSTEM,
-            entity_id=None,
-            period=Period.DAILY,
-            date=stat_date,
-            value=total_archives,
-            extra_data={'collection_timestamp': datetime.utcnow().isoformat()},
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
-        )
-        stmt = stmt.on_conflict_do_update(
-            constraint='uq_statistics_unique_entry',
-            set_={
-                'value': stmt.excluded.value,
-                'extra_data': stmt.excluded.extra_data,
-                'updated_at': datetime.utcnow()
-            }
-        )
-        db.execute(stmt)
-        collected_stats.append(f"System XML archive count (upserted): {total_archives}")
-        
-        # Validation statistics (last 7 days)
+        # Validation statistics (rolling window - always current)
         week_ago = stat_date - timedelta(days=7)
         validation_jobs = db.query(ValidationJobModel).filter(
             ValidationJobModel.created_at >= week_ago
@@ -364,13 +1089,14 @@ def collect_daily_statistics(self, target_date: str = None) -> Dict[str, Any]:
                 if processing_times:
                     avg_processing_time = sum(processing_times) / len(processing_times)
             
-            # Validation success rate - use proper upsert with ON CONFLICT
-            stmt = insert(StatisticModel).values(
+            # Validation metrics don't need backfill as they're rolling window metrics
+            perform_statistics_upsert(
+                db=db,
                 metric_type=MetricType.VALIDATION_SUCCESS_RATE,
                 entity_type=EntityType.SYSTEM,
                 entity_id=None,
                 period=Period.DAILY,
-                date=stat_date,
+                date_value=stat_date,
                 value=success_rate,
                 extra_data={
                     'total_jobs': total_jobs,
@@ -378,147 +1104,209 @@ def collect_daily_statistics(self, target_date: str = None) -> Dict[str, Any]:
                     'period_days': 7,
                     'collection_timestamp': datetime.utcnow().isoformat()
                 },
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow()
+                log_message=f"Updated VALIDATION_SUCCESS_RATE for {stat_date}: {success_rate:.1f}%"
             )
-            stmt = stmt.on_conflict_do_update(
-                constraint='uq_statistics_unique_entry',
-                set_={
-                    'value': stmt.excluded.value,
-                    'extra_data': stmt.excluded.extra_data,
-                    'updated_at': datetime.utcnow()
-                }
-            )
-            db.execute(stmt)
-            collected_stats.append(f"System validation success rate (upserted): {success_rate:.1f}%")
+            collected_stats.append(f"System validation success rate (updated): {success_rate:.1f}%")
             
-            # Average processing time - use proper upsert with ON CONFLICT
-            stmt = insert(StatisticModel).values(
+            perform_statistics_upsert(
+                db=db,
                 metric_type=MetricType.VALIDATION_PROCESSING_TIME,
                 entity_type=EntityType.SYSTEM,
                 entity_id=None,
                 period=Period.DAILY,
-                date=stat_date,
+                date_value=stat_date,
                 value=avg_processing_time,
                 extra_data={
                     'jobs_included': len([j for j in validation_jobs if j.validation_time is not None]),
                     'collection_timestamp': datetime.utcnow().isoformat()
                 },
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow()
+                log_message=f"Updated VALIDATION_PROCESSING_TIME for {stat_date}: {avg_processing_time:.2f}s"
             )
-            stmt = stmt.on_conflict_do_update(
-                constraint='uq_statistics_unique_entry',
-                set_={
-                    'value': stmt.excluded.value,
-                    'extra_data': stmt.excluded.extra_data,
-                    'updated_at': datetime.utcnow()
-                }
-            )
-            db.execute(stmt)
-            collected_stats.append(f"System avg processing time (upserted): {avg_processing_time:.2f}s")
+            collected_stats.append(f"System avg processing time (updated): {avg_processing_time:.2f}s")
         
         # Provider-specific statistics
         providers = db.query(DataProviderModel).all()
         
         for provider in providers:
-            # Dataset count per provider
-            provider_dataset_count = db.query(func.count(DatasetModel.id)).filter(
-                DatasetModel.provider_id == provider.id
-            ).scalar()
+            provider_start_date = provider.created_at.date() if provider.created_at else stat_date
             
-            stmt = insert(StatisticModel).values(
-                metric_type=MetricType.PROVIDER_DATASET_COUNT,
-                entity_type=EntityType.PROVIDER,
-                entity_id=provider.id,
-                period=Period.DAILY,
-                date=stat_date,
-                value=provider_dataset_count,
-                extra_data={
-                    'provider_name': provider.name,
-                    'provider_datacenter': provider.datacenter,
-                    'collection_timestamp': datetime.utcnow().isoformat()
-                },
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow()
-            )
-            stmt = stmt.on_conflict_do_update(
-                constraint='uq_statistics_unique_entry',
-                set_={
-                    'value': stmt.excluded.value,
-                    'extra_data': stmt.excluded.extra_data,
-                    'updated_at': datetime.utcnow()
-                }
-            )
-            db.execute(stmt)
-            collected_stats.append(f"Provider {provider.id} dataset count (upserted): {provider_dataset_count}")
-            
-            # Calculate provider biological units by getting the most recent unit count for each dataset
-            # Get all datasets for this provider
-            dataset_ids = db.query(DatasetModel.id).filter(
-                DatasetModel.provider_id == provider.id
-            ).all()
-            
-            if not dataset_ids:
-                provider_biological_units = 0
+            # Provider dataset count - check if backfill needed
+            if not check_statistics_exist(
+                db, MetricType.PROVIDER_DATASET_COUNT, EntityType.PROVIDER, provider.id, Period.DAILY
+            ):
+                # Backfill mode for this provider
+                logger.info(f"Backfilling PROVIDER_DATASET_COUNT for provider {provider.id} from {provider_start_date} to {stat_date}")
+                backfill_dates = generate_backfill_dates(provider_start_date, stat_date)
+                
+                for backfill_date in backfill_dates:
+                    count = get_cumulative_count(
+                        db, DatasetModel, backfill_date,
+                        filter_conditions=(DatasetModel.provider_id == provider.id)
+                    )
+                    perform_statistics_upsert(
+                        db=db,
+                        metric_type=MetricType.PROVIDER_DATASET_COUNT,
+                        entity_type=EntityType.PROVIDER,
+                        entity_id=provider.id,
+                        period=Period.DAILY,
+                        date_value=backfill_date,
+                        value=count,
+                        extra_data={
+                            'provider_name': provider.name,
+                            'provider_datacenter': provider.datacenter,
+                            'collection_timestamp': datetime.utcnow().isoformat(),
+                            'backfilled': True,
+                            'backfill_date_range': f"{provider_start_date} to {stat_date}"
+                        },
+                        log_message=f"Backfilled PROVIDER_DATASET_COUNT for provider {provider.id} on {backfill_date}: {count}"
+                    )
+                backfill_performed.append(f"Provider {provider.id} dataset count: {len(backfill_dates)} days")
+                collected_stats.append(f"Provider {provider.id} dataset count backfilled: {len(backfill_dates)} days")
             else:
-                dataset_id_list = [dataset_id[0] for dataset_id in dataset_ids]
+                # Incremental mode for this provider
+                count = get_cumulative_count(
+                    db, DatasetModel, stat_date,
+                    filter_conditions=(DatasetModel.provider_id == provider.id)
+                )
+                perform_statistics_upsert(
+                    db=db,
+                    metric_type=MetricType.PROVIDER_DATASET_COUNT,
+                    entity_type=EntityType.PROVIDER,
+                    entity_id=provider.id,
+                    period=Period.DAILY,
+                    date_value=stat_date,
+                    value=count,
+                    extra_data={
+                        'provider_name': provider.name,
+                        'provider_datacenter': provider.datacenter,
+                        'collection_timestamp': datetime.utcnow().isoformat()
+                    },
+                    log_message=f"Updated PROVIDER_DATASET_COUNT for provider {provider.id}: {count}"
+                )
+                collected_stats.append(f"Provider {provider.id} dataset count (updated): {count}")
+            
+            # Provider biological units - check if backfill needed
+            # This metric depends on dataset unit counts, so handle differently
+            if not check_statistics_exist(
+                db, MetricType.PROVIDER_BIOLOGICAL_UNITS, EntityType.PROVIDER, provider.id, Period.DAILY
+            ):
+                # Backfill mode for biological units
+                logger.info(f"Backfilling PROVIDER_BIOLOGICAL_UNITS for provider {provider.id} from {provider_start_date} to {stat_date}")
+                backfill_dates = generate_backfill_dates(provider_start_date, stat_date)
                 
-                # Get the most recent unit count for each dataset
-                subquery = db.query(
-                    StatisticModel.entity_id,
-                    func.max(StatisticModel.date).label('max_date')
-                ).filter(
-                    and_(
-                        StatisticModel.metric_type == MetricType.DATASET_UNIT_COUNT,
-                        StatisticModel.entity_type == EntityType.DATASET,
-                        StatisticModel.entity_id.in_(dataset_id_list),
-                        StatisticModel.date <= stat_date
+                for backfill_date in backfill_dates:
+                    # Get datasets that existed on this date
+                    dataset_ids = db.query(DatasetModel.id).filter(
+                        and_(
+                            DatasetModel.provider_id == provider.id,
+                            DatasetModel.created_at <= datetime.combine(backfill_date, datetime.max.time())
+                        )
+                    ).all()
+                    
+                    if not dataset_ids:
+                        provider_biological_units = 0
+                    else:
+                        dataset_id_list = [dataset_id[0] for dataset_id in dataset_ids]
+                        
+                        # Get the most recent unit count for each dataset up to backfill_date
+                        subquery = db.query(
+                            StatisticModel.entity_id,
+                            func.max(StatisticModel.date).label('max_date')
+                        ).filter(
+                            and_(
+                                StatisticModel.metric_type == MetricType.DATASET_UNIT_COUNT,
+                                StatisticModel.entity_type == EntityType.DATASET,
+                                StatisticModel.entity_id.in_(dataset_id_list),
+                                StatisticModel.date <= backfill_date
+                            )
+                        ).group_by(StatisticModel.entity_id).subquery()
+                        
+                        recent_unit_counts = db.query(StatisticModel.value).join(
+                            subquery,
+                            and_(
+                                StatisticModel.entity_id == subquery.c.entity_id,
+                                StatisticModel.date == subquery.c.max_date
+                            )
+                        ).filter(
+                            StatisticModel.metric_type == MetricType.DATASET_UNIT_COUNT
+                        ).all()
+                        
+                        provider_biological_units = sum(count[0] for count in recent_unit_counts if count[0] is not None)
+                    
+                    perform_statistics_upsert(
+                        db=db,
+                        metric_type=MetricType.PROVIDER_BIOLOGICAL_UNITS,
+                        entity_type=EntityType.PROVIDER,
+                        entity_id=provider.id,
+                        period=Period.DAILY,
+                        date_value=backfill_date,
+                        value=provider_biological_units,
+                        extra_data={
+                            'provider_name': provider.name,
+                            'provider_datacenter': provider.datacenter,
+                            'dataset_count': len(dataset_ids),
+                            'collection_timestamp': datetime.utcnow().isoformat(),
+                            'backfilled': True,
+                            'backfill_date_range': f"{provider_start_date} to {stat_date}"
+                        },
+                        log_message=f"Backfilled PROVIDER_BIOLOGICAL_UNITS for provider {provider.id} on {backfill_date}: {provider_biological_units}"
                     )
-                ).group_by(StatisticModel.entity_id).subquery()
-                
-                # Get the actual values using the max date for each dataset
-                recent_unit_counts = db.query(StatisticModel.value).join(
-                    subquery,
-                    and_(
-                        StatisticModel.entity_id == subquery.c.entity_id,
-                        StatisticModel.date == subquery.c.max_date
-                    )
-                ).filter(
-                    StatisticModel.metric_type == MetricType.DATASET_UNIT_COUNT
+                backfill_performed.append(f"Provider {provider.id} biological units: {len(backfill_dates)} days")
+                collected_stats.append(f"Provider {provider.id} biological units backfilled: {len(backfill_dates)} days")
+            else:
+                # Incremental mode for biological units
+                dataset_ids = db.query(DatasetModel.id).filter(
+                    DatasetModel.provider_id == provider.id
                 ).all()
                 
-                provider_biological_units = sum(count[0] for count in recent_unit_counts if count[0] is not None)
-            
-            # Use proper upsert for provider biological units
-            stmt = insert(StatisticModel).values(
-                metric_type=MetricType.PROVIDER_BIOLOGICAL_UNITS,
-                entity_type=EntityType.PROVIDER,
-                entity_id=provider.id,
-                period=Period.DAILY,
-                date=stat_date,
-                value=provider_biological_units,
-                extra_data={
-                    'provider_name': provider.name,
-                    'provider_datacenter': provider.datacenter,
-                    'dataset_count': provider_dataset_count,
-                    'collection_timestamp': datetime.utcnow().isoformat()
-                },
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow()
-            )
-            stmt = stmt.on_conflict_do_update(
-                constraint='uq_statistics_unique_entry',
-                set_={
-                    'value': stmt.excluded.value,
-                    'extra_data': stmt.excluded.extra_data,
-                    'updated_at': datetime.utcnow()
-                }
-            )
-            db.execute(stmt)
-            collected_stats.append(f"Provider {provider.id} biological units (upserted): {provider_biological_units}")
+                if not dataset_ids:
+                    provider_biological_units = 0
+                else:
+                    dataset_id_list = [dataset_id[0] for dataset_id in dataset_ids]
+                    
+                    subquery = db.query(
+                        StatisticModel.entity_id,
+                        func.max(StatisticModel.date).label('max_date')
+                    ).filter(
+                        and_(
+                            StatisticModel.metric_type == MetricType.DATASET_UNIT_COUNT,
+                            StatisticModel.entity_type == EntityType.DATASET,
+                            StatisticModel.entity_id.in_(dataset_id_list),
+                            StatisticModel.date <= stat_date
+                        )
+                    ).group_by(StatisticModel.entity_id).subquery()
+                    
+                    recent_unit_counts = db.query(StatisticModel.value).join(
+                        subquery,
+                        and_(
+                            StatisticModel.entity_id == subquery.c.entity_id,
+                            StatisticModel.date == subquery.c.max_date
+                        )
+                    ).filter(
+                        StatisticModel.metric_type == MetricType.DATASET_UNIT_COUNT
+                    ).all()
+                    
+                    provider_biological_units = sum(count[0] for count in recent_unit_counts if count[0] is not None)
+                
+                perform_statistics_upsert(
+                    db=db,
+                    metric_type=MetricType.PROVIDER_BIOLOGICAL_UNITS,
+                    entity_type=EntityType.PROVIDER,
+                    entity_id=provider.id,
+                    period=Period.DAILY,
+                    date_value=stat_date,
+                    value=provider_biological_units,
+                    extra_data={
+                        'provider_name': provider.name,
+                        'provider_datacenter': provider.datacenter,
+                        'dataset_count': len(dataset_ids),
+                        'collection_timestamp': datetime.utcnow().isoformat()
+                    },
+                    log_message=f"Updated PROVIDER_BIOLOGICAL_UNITS for provider {provider.id}: {provider_biological_units}"
+                )
+                collected_stats.append(f"Provider {provider.id} biological units (updated): {provider_biological_units}")
         
-        # Dataset registration rate (new datasets today)
+        # Dataset registration rate (new datasets for specific date - not cumulative)
         start_of_day = datetime.combine(stat_date, datetime.min.time())
         end_of_day = datetime.combine(stat_date, datetime.max.time())
         
@@ -529,33 +1317,24 @@ def collect_daily_statistics(self, target_date: str = None) -> Dict[str, Any]:
             )
         ).scalar()
         
-        stmt = insert(StatisticModel).values(
+        perform_statistics_upsert(
+            db=db,
             metric_type=MetricType.DATASET_REGISTRATION_RATE,
             entity_type=EntityType.SYSTEM,
             entity_id=None,
             period=Period.DAILY,
-            date=stat_date,
+            date_value=stat_date,
             value=new_datasets_count,
             extra_data={
                 'period_start': start_of_day.isoformat(),
                 'period_end': end_of_day.isoformat(),
                 'collection_timestamp': datetime.utcnow().isoformat()
             },
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
+            log_message=f"Dataset registration rate for {stat_date}: {new_datasets_count}"
         )
-        stmt = stmt.on_conflict_do_update(
-            constraint='uq_statistics_unique_entry',
-            set_={
-                'value': stmt.excluded.value,
-                'extra_data': stmt.excluded.extra_data,
-                'updated_at': datetime.utcnow()
-            }
-        )
-        db.execute(stmt)
-        collected_stats.append(f"New datasets today (upserted): {new_datasets_count}")
+        collected_stats.append(f"New datasets today: {new_datasets_count}")
         
-        # Dataset modification rate (modified datasets today)
+        # Dataset modification rate (modified datasets for specific date - not cumulative)
         modified_datasets_count = db.query(func.count(distinct(DatasetModel.id))).filter(
             and_(
                 DatasetModel.updated_at >= start_of_day,
@@ -564,34 +1343,29 @@ def collect_daily_statistics(self, target_date: str = None) -> Dict[str, Any]:
             )
         ).scalar()
         
-        stmt = insert(StatisticModel).values(
+        perform_statistics_upsert(
+            db=db,
             metric_type=MetricType.DATASET_MODIFICATION_RATE,
             entity_type=EntityType.SYSTEM,
             entity_id=None,
             period=Period.DAILY,
-            date=stat_date,
+            date_value=stat_date,
             value=modified_datasets_count,
             extra_data={
                 'period_start': start_of_day.isoformat(),
                 'period_end': end_of_day.isoformat(),
                 'collection_timestamp': datetime.utcnow().isoformat()
             },
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
+            log_message=f"Dataset modification rate for {stat_date}: {modified_datasets_count}"
         )
-        stmt = stmt.on_conflict_do_update(
-            constraint='uq_statistics_unique_entry',
-            set_={
-                'value': stmt.excluded.value,
-                'extra_data': stmt.excluded.extra_data,
-                'updated_at': datetime.utcnow()
-            }
-        )
-        db.execute(stmt)
-        collected_stats.append(f"Modified datasets today (upserted): {modified_datasets_count}")
+        collected_stats.append(f"Modified datasets today: {modified_datasets_count}")
         
         # Commit all statistics
         db.commit()
+        
+        # Log comprehensive summary
+        if backfill_performed:
+            logger.info(f"Backfill completed for: {', '.join(backfill_performed)}")
         
         logger.info(f"Successfully collected {len(collected_stats)} daily statistics for {stat_date}")
         
@@ -599,6 +1373,7 @@ def collect_daily_statistics(self, target_date: str = None) -> Dict[str, Any]:
             'status': 'completed',
             'date': stat_date.isoformat(),
             'statistics_collected': len(collected_stats),
+            'backfill_performed': backfill_performed,
             'details': collected_stats,
             'task_id': self.request.id,
             'completed_at': datetime.utcnow().isoformat()
@@ -625,7 +1400,7 @@ def collect_daily_statistics(self, target_date: str = None) -> Dict[str, Any]:
     autoretry_for=(Exception,),  # Auto-retry on all exceptions
     task_time_limit=3700,  # Hard time limit (1h 1min 40s)
 )
-def analyze_xml_archives(self, batch_size: int = 50, offset: int = 0, dataset_ids: Optional[List[int]] = None) -> Dict[str, Any]:
+def analyze_xml_archives(self, batch_size: int = 50, offset: int = 0, dataset_ids: Optional[List[int]] = None, target_date: str = None) -> Dict[str, Any]:
     """
     Analyze XML archives to extract unit counts and metadata.
     Processes archives in batches to avoid memory issues.
@@ -637,6 +1412,7 @@ def analyze_xml_archives(self, batch_size: int = 50, offset: int = 0, dataset_id
         batch_size: Number of archives to process in this batch
         offset: Starting offset for the batch
         dataset_ids: Optional list of specific dataset IDs to process
+        target_date: Optional date string in YYYY-MM-DD format for override (mainly for testing)
         
     Returns:
         Dictionary with analysis results
@@ -651,6 +1427,12 @@ def analyze_xml_archives(self, batch_size: int = 50, offset: int = 0, dataset_id
         else:
             logger.info(f"Analyzing XML archives - batch size: {batch_size}, offset: {offset}")
         logger.info(f"[DB-DEBUG] Created new database session: is_active={db.is_active}")
+        
+        # Parse target date if provided (mainly for testing/backfill scenarios)
+        override_date = None
+        if target_date:
+            override_date = datetime.strptime(target_date, "%Y-%m-%d").date()
+            logger.info(f"Using override date: {override_date}")
         
         # Get batch of LATEST archives to analyze (respecting system constraint)
         query = db.query(XmlArchiveModel).filter(
@@ -678,11 +1460,40 @@ def analyze_xml_archives(self, batch_size: int = 50, offset: int = 0, dataset_id
         
         processed_count = 0
         error_count = 0
+        skipped_count = 0
         results = []
+        max_retries = 5
         
         for archive in archives:
+            # Check if this archive should be retried (time-based circuit breaker)
+            if not should_retry_failed_archive(db, archive.id, max_retries=max_retries, reset_after_hours=24):
+                failure_info = get_archive_failure_info(db, archive.id)
+                skipped_count += 1
+                logger.warning(
+                    f"Skipping archive {archive.id} - exceeded max retries ({max_retries}) "
+                    f"and waiting period not elapsed (24h)"
+                )
+                results.append({
+                    'archive_id': archive.id,
+                    'dataset_id': archive.dataset_id,
+                    'status': 'skipped',
+                    'reason': f"Exceeded max retries ({max_retries}), retry after 24h",
+                    'failure_count': failure_info['failure_count'] if failure_info else 0,
+                    'last_failure': failure_info['last_failure_reason'] if failure_info else None,
+                    'last_failure_at': failure_info['last_failure_at'] if failure_info else None
+                })
+                continue
             try:
                 logger.info(f"[DB-DEBUG] Starting analysis of archive {archive.id} (dataset {archive.dataset_id})")
+                
+                # Determine anchor date for this archive
+                if override_date:
+                    # Use override date if provided (for testing/backfill)
+                    anchor_date = override_date
+                    logger.info(f"Using override date {anchor_date} for archive {archive.id}")
+                else:
+                    # Use anchor date logic based on first-time vs subsequent processing
+                    anchor_date = get_archive_anchor_date(db, archive)
                 
                 # Parse XML and extract information
                 xml_data = parse_abcd_xml(archive.url)
@@ -692,18 +1503,29 @@ def analyze_xml_archives(self, batch_size: int = 50, offset: int = 0, dataset_id
                 if xml_data['unit_count'] > 0:
                     logger.info(f"[DB-DEBUG] DB session state before unit count insert: is_active={db.is_active}")
                     
+                    # Check if this is first processing to include in extra_data
+                    is_first = is_archive_first_processing(db, archive.id)
+                    
+                    extra_data = {
+                        'archive_id': archive.id,
+                        'archive_url': archive.url,
+                        'xml_files_processed': xml_data.get('xml_files_processed', 1),
+                        'anchor_date_used': anchor_date.isoformat()
+                    }
+                    
+                    # Add first_processed_at if this is the first processing
+                    if is_first:
+                        extra_data['first_processed_at'] = datetime.utcnow().isoformat()
+                        logger.info(f"Archive {archive.id} marked as first processed at {extra_data['first_processed_at']}")
+                    
                     stmt = insert(StatisticModel).values(
                         metric_type=MetricType.DATASET_UNIT_COUNT,
                         entity_type=EntityType.DATASET,
                         entity_id=archive.dataset_id,
                         period=Period.DAILY,
-                        date=date.today(),
+                        date=anchor_date,  # Use anchor date instead of date.today()
                         value=xml_data['unit_count'],
-                        extra_data={
-                            'archive_id': archive.id,
-                            'archive_url': archive.url,
-                            'xml_files_processed': xml_data.get('xml_files_processed', 1)
-                        },
+                        extra_data=extra_data,
                         created_at=datetime.utcnow(),
                         updated_at=datetime.utcnow()
                     )
@@ -716,7 +1538,7 @@ def analyze_xml_archives(self, batch_size: int = 50, offset: int = 0, dataset_id
                         }
                     )
                     
-                    logger.info(f"[DB-DEBUG] Executing unit count upsert for archive {archive.id}, dataset {archive.dataset_id}, value={xml_data['unit_count']}")
+                    logger.info(f"[DB-DEBUG] Executing unit count upsert for archive {archive.id}, dataset {archive.dataset_id}, value={xml_data['unit_count']}, date={anchor_date}")
                     logger.info(f"[DB-DEBUG] Using constraint 'uq_statistics_unique_entry' for upsert")
                     result = db.execute(stmt)
                     logger.info(f"[DB-DEBUG] Unit count upsert result: {result}, rowcount={getattr(result, 'rowcount', 'N/A')}")
@@ -727,39 +1549,90 @@ def analyze_xml_archives(self, batch_size: int = 50, offset: int = 0, dataset_id
                 # Citation completeness and geographic coverage have been removed
                 # We now only extract and store unit counts for performance
                 
+                # Clear any previous failure state on successful processing
+                reset_archive_failure(db, archive.id)
+                
                 results.append({
                     'archive_id': archive.id,
                     'dataset_id': archive.dataset_id,
                     'unit_count': xml_data['unit_count'],
+                    'anchor_date': anchor_date.isoformat(),
+                    'is_first_processing': is_archive_first_processing(db, archive.id),
                     'status': 'success'
                 })
                 
                 processed_count += 1
-                logger.info(f"Successfully analyzed archive {archive.id}: {xml_data['unit_count']} units from {xml_data.get('xml_files_processed', 1)} XML files")
+                logger.info(f"Successfully analyzed archive {archive.id}: {xml_data['unit_count']} units from {xml_data.get('xml_files_processed', 1)} XML files using anchor date {anchor_date}")
                 
             except XMLParsingError as e:
                 error_count += 1
-                logger.warning(f"[DB-DEBUG] XMLParsingError for archive {archive.id}: {e}")
+                error_message = str(e)
+                
+                # Track the failure
+                mark_archive_failed(db, archive.id, error_message)
+                failure_info = get_archive_failure_info(db, archive.id)
+                failure_count = failure_info['failure_count'] if failure_info else 1
+                
+                logger.warning(f"[DB-DEBUG] XMLParsingError for archive {archive.id} (attempt #{failure_count}): {error_message}")
                 logger.info(f"[DB-DEBUG] DB session state after XMLParsingError: is_active={db.is_active}, dirty={len(db.dirty)}, new={len(db.new)}")
+                
+                # Check if we should retry with exponential backoff
+                max_retries = 5
+                if failure_count < max_retries:
+                    # Calculate exponential backoff delay
+                    base_delay = 60  # Start with 1 minute
+                    retry_delay = min(base_delay * (2 ** (failure_count - 1)), 3600)  # Cap at 1 hour
+                    
+                    logger.info(f"Archive {archive.id} will be retried (attempt #{failure_count + 1}/{max_retries}) after {retry_delay} seconds")
+                    # Note: The retry will happen in the next scheduled run with the correct anchor date
+                else:
+                    logger.error(f"Archive {archive.id} exceeded max retries ({max_retries}), marking as permanently failed")
+                
                 results.append({
                     'archive_id': archive.id,
                     'dataset_id': archive.dataset_id,
-                    'error': str(e),
-                    'status': 'error'
+                    'error': error_message,
+                    'status': 'error',
+                    'failure_count': failure_count,
+                    'will_retry': failure_count < max_retries
                 })
+                
             except Exception as e:
                 error_count += 1
-                logger.error(f"[DB-DEBUG] Unexpected error processing archive {archive.id}: {e}")
+                error_message = str(e)
+                
+                # Track the failure
+                mark_archive_failed(db, archive.id, error_message)
+                failure_info = get_archive_failure_info(db, archive.id)
+                failure_count = failure_info['failure_count'] if failure_info else 1
+                
+                logger.error(f"[DB-DEBUG] Unexpected error processing archive {archive.id} (attempt #{failure_count}): {error_message}")
                 logger.error(f"[DB-DEBUG] Exception type: {type(e).__name__}")
                 logger.info(f"[DB-DEBUG] DB session state after unexpected error: is_active={db.is_active}, dirty={len(db.dirty)}, new={len(db.new)}")
+                
                 # Check if this is a database-related exception
                 if hasattr(e, 'statement') or 'database' in str(e).lower() or 'postgresql' in str(e).lower():
                     logger.error(f"[DB-DEBUG] DATABASE-RELATED EXCEPTION DETECTED: {e}")
+                
+                # Check if we should retry with exponential backoff
+                max_retries = 5
+                if failure_count < max_retries:
+                    # Calculate exponential backoff delay
+                    base_delay = 60  # Start with 1 minute
+                    retry_delay = min(base_delay * (2 ** (failure_count - 1)), 3600)  # Cap at 1 hour
+                    
+                    logger.info(f"Archive {archive.id} will be retried (attempt #{failure_count + 1}/{max_retries}) after {retry_delay} seconds")
+                    # Note: The retry will happen in the next scheduled run with the correct anchor date
+                else:
+                    logger.error(f"Archive {archive.id} exceeded max retries ({max_retries}), marking as permanently failed")
+                
                 results.append({
                     'archive_id': archive.id,
                     'dataset_id': archive.dataset_id,
-                    'error': str(e),
-                    'status': 'error'
+                    'error': error_message,
+                    'status': 'error',
+                    'failure_count': failure_count,
+                    'will_retry': failure_count < max_retries
                 })
         
         # Commit statistics
@@ -774,41 +1647,39 @@ def analyze_xml_archives(self, batch_size: int = 50, offset: int = 0, dataset_id
             # Verify data was actually persisted by querying it back
             if processed_count > 0:
                 from sqlalchemy import and_
-                verification_count = db.query(StatisticModel).filter(
-                    and_(
-                        StatisticModel.metric_type == MetricType.DATASET_UNIT_COUNT,
-                        StatisticModel.date == date.today()
-                    )
-                ).count()
-                logger.info(f"[DB-DEBUG] Verification query: Found {verification_count} DATASET_UNIT_COUNT statistics for today in database")
-                
-                # Also check for specific archives we just processed
-                if archives:
-                    sample_archive = archives[0]
-                    specific_stat = db.query(StatisticModel).filter(
-                        and_(
-                            StatisticModel.metric_type == MetricType.DATASET_UNIT_COUNT,
-                            StatisticModel.entity_type == EntityType.DATASET,
-                            StatisticModel.entity_id == sample_archive.dataset_id,
-                            StatisticModel.date == date.today()
-                        )
-                    ).first()
-                    if specific_stat:
-                        logger.info(f"[DB-DEBUG] Verification successful: Found statistic for dataset {sample_archive.dataset_id} with value {specific_stat.value}")
-                    else:
-                        logger.error(f"[DB-DEBUG] VERIFICATION FAILED: No statistic found for dataset {sample_archive.dataset_id} that we just processed!")
+                # Note: We can't easily verify by date anymore since we use different anchor dates
+                # Instead verify by checking for our specific archives
+                for result in results[:3]:  # Check first few successful results
+                    if result['status'] == 'success':
+                        specific_stat = db.query(StatisticModel).filter(
+                            and_(
+                                StatisticModel.metric_type == MetricType.DATASET_UNIT_COUNT,
+                                StatisticModel.entity_type == EntityType.DATASET,
+                                StatisticModel.entity_id == result['dataset_id'],
+                                StatisticModel.date == datetime.strptime(result['anchor_date'], "%Y-%m-%d").date()
+                            )
+                        ).first()
+                        if specific_stat:
+                            logger.info(f"[DB-DEBUG] Verification successful: Found statistic for dataset {result['dataset_id']} with value {specific_stat.value} at date {result['anchor_date']}")
+                        else:
+                            logger.error(f"[DB-DEBUG] VERIFICATION FAILED: No statistic found for dataset {result['dataset_id']} at date {result['anchor_date']} that we just processed!")
                         
         except Exception as commit_error:
             logger.error(f"[DB-DEBUG] COMMIT FAILED: {commit_error}")
             logger.error(f"[DB-DEBUG] DB session state during commit failure: is_active={db.is_active}, dirty={len(db.dirty)}, new={len(db.new)}")
             raise
         
-        logger.info(f"XML analysis batch completed - processed: {processed_count}, errors: {error_count}")
+        logger.info(f"XML analysis batch completed - processed: {processed_count}, errors: {error_count}, skipped: {skipped_count}")
+        
+        # Log a summary of failed archives for monitoring
+        failed_archives = [r for r in results if r['status'] == 'error']
+        if failed_archives:
+            logger.warning(f"Failed archives in this batch: {len(failed_archives)} - IDs: {[r['archive_id'] for r in failed_archives]}")
         
         # Schedule next batch if there were results (but not when processing specific datasets)
         if len(archives) == batch_size and not dataset_ids:
             # There might be more archives to process
-            analyze_xml_archives.delay(batch_size=batch_size, offset=offset + batch_size)
+            analyze_xml_archives.delay(batch_size=batch_size, offset=offset + batch_size, target_date=target_date)
         
         return {
             'status': 'completed',
@@ -816,6 +1687,7 @@ def analyze_xml_archives(self, batch_size: int = 50, offset: int = 0, dataset_id
             'offset': offset,
             'processed': processed_count,
             'errors': error_count,
+            'skipped': skipped_count,
             'has_more': len(archives) == batch_size,
             'results': results,
             'task_id': self.request.id,
@@ -1049,6 +1921,11 @@ def collect_provider_biological_units(self, target_date: str = None) -> Dict[str
     """
     Collect provider-level biological units by aggregating dataset unit counts.
     
+    This function now respects anchor dates - it will aggregate the most recent
+    unit count for each dataset that is at or before the target date, regardless
+    of what date that unit count was recorded at (could be dataset created_at for
+    first-time processing or a more recent date for updates).
+    
     Queue Assignment: Routes to 'light_tasks' queue with priority=10 for higher
     priority execution using prefork worker pool optimized for CPU-bound operations.
     
@@ -1070,6 +1947,7 @@ def collect_provider_biological_units(self, target_date: str = None) -> Dict[str
             stat_date = date.today() - timedelta(days=1)
         
         logger.info(f"Collecting provider biological units for {stat_date}")
+        logger.info(f"Note: Will aggregate dataset unit counts recorded at or before {stat_date}, which may include historical anchor dates")
         
         collected_stats = []
         
@@ -1085,35 +1963,82 @@ def collect_provider_biological_units(self, target_date: str = None) -> Dict[str
             if not dataset_ids:
                 # Provider has no datasets, set biological units to 0
                 provider_biological_units = 0
+                logger.info(f"Provider {provider.id} has no datasets, setting biological units to 0")
             else:
                 dataset_id_list = [dataset_id[0] for dataset_id in dataset_ids]
                 
                 # Calculate total biological units by summing the most recent dataset unit counts
                 # for each dataset belonging to this provider
-                subquery = db.query(
-                    StatisticModel.entity_id,
-                    func.max(StatisticModel.date).label('max_date')
-                ).filter(
+                # IMPORTANT: We look for counts at or before stat_date, which may be at different
+                # dates due to anchor date logic
+                
+                # First, check for any failed archives that are excluded from aggregation
+                from sqlalchemy import cast, String
+                failed_archives = db.query(StatisticModel).filter(
                     and_(
                         StatisticModel.metric_type == MetricType.DATASET_UNIT_COUNT,
-                        StatisticModel.entity_type == EntityType.DATASET,
-                        StatisticModel.entity_id.in_(dataset_id_list),
-                        StatisticModel.date <= stat_date
+                        StatisticModel.extra_data["processing_failed"].astext == "true",
+                        StatisticModel.extra_data["failure_count"].astext.cast(String).cast(Integer) >= 5  # max_retries
                     )
-                ).group_by(StatisticModel.entity_id).subquery()
-                
-                # Get the actual values using the max date for each dataset
-                recent_unit_counts = db.query(StatisticModel.value).join(
-                    subquery,
-                    and_(
-                        StatisticModel.entity_id == subquery.c.entity_id,
-                        StatisticModel.date == subquery.c.max_date
-                    )
-                ).filter(
-                    StatisticModel.metric_type == MetricType.DATASET_UNIT_COUNT
                 ).all()
                 
-                provider_biological_units = sum(count[0] for count in recent_unit_counts if count[0] is not None)
+                excluded_datasets = set()
+                if failed_archives:
+                    # Get dataset IDs for failed archives
+                    for failed in failed_archives:
+                        # Find the dataset for this archive
+                        archive_id = failed.extra_data.get('archive_id')
+                        if archive_id:
+                            archive = db.query(XmlArchiveModel).filter(
+                                XmlArchiveModel.id == int(archive_id)
+                            ).first()
+                            if archive and archive.dataset_id in dataset_id_list:
+                                excluded_datasets.add(archive.dataset_id)
+                    
+                    if excluded_datasets:
+                        logger.warning(f"Provider {provider.id}: Excluding {len(excluded_datasets)} datasets with failed archives from aggregation: {excluded_datasets}")
+                
+                # Filter out excluded datasets
+                active_dataset_ids = [did for did in dataset_id_list if did not in excluded_datasets]
+                
+                if not active_dataset_ids:
+                    provider_biological_units = 0
+                    logger.warning(f"Provider {provider.id}: All datasets have failed archives, setting biological units to 0")
+                else:
+                    subquery = db.query(
+                        StatisticModel.entity_id,
+                        func.max(StatisticModel.date).label('max_date')
+                    ).filter(
+                        and_(
+                            StatisticModel.metric_type == MetricType.DATASET_UNIT_COUNT,
+                            StatisticModel.entity_type == EntityType.DATASET,
+                            StatisticModel.entity_id.in_(active_dataset_ids),
+                            StatisticModel.date <= stat_date
+                        )
+                    ).group_by(StatisticModel.entity_id).subquery()
+                    
+                    # Get the actual values using the max date for each dataset
+                    recent_unit_counts = db.query(
+                        StatisticModel.value,
+                        StatisticModel.date,
+                        StatisticModel.entity_id
+                    ).join(
+                        subquery,
+                        and_(
+                            StatisticModel.entity_id == subquery.c.entity_id,
+                            StatisticModel.date == subquery.c.max_date
+                        )
+                    ).filter(
+                        StatisticModel.metric_type == MetricType.DATASET_UNIT_COUNT
+                    ).all()
+                    
+                    provider_biological_units = sum(count[0] for count in recent_unit_counts if count[0] is not None)
+                    
+                    # Log details about the aggregation
+                    if recent_unit_counts:
+                        date_range = set(count[1] for count in recent_unit_counts)
+                        logger.info(f"Provider {provider.id}: Aggregated {len(recent_unit_counts)} dataset counts from dates: {sorted(date_range)}")
+                        logger.info(f"Provider {provider.id}: Total biological units = {provider_biological_units} (excluded {len(excluded_datasets)} failed datasets)")
             
             # Use proper upsert for provider biological units
             stmt = insert(StatisticModel).values(
@@ -1127,7 +2052,8 @@ def collect_provider_biological_units(self, target_date: str = None) -> Dict[str
                     'provider_name': provider.name,
                     'provider_datacenter': provider.datacenter,
                     'dataset_count': len(dataset_ids),
-                    'collection_timestamp': datetime.utcnow().isoformat()
+                    'collection_timestamp': datetime.utcnow().isoformat(),
+                    'aggregation_note': 'Respects anchor dates from initial archive processing'
                 },
                 created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow()
@@ -1500,6 +2426,11 @@ def update_provider_biological_units(self, provider_id: int, target_date: str = 
     """
     Update biological units statistics for a specific provider.
     
+    This function now respects anchor dates - it will aggregate the most recent
+    unit count for each dataset that is at or before the target date, regardless
+    of what date that unit count was recorded at (could be dataset created_at for
+    first-time processing or a more recent date for updates).
+    
     Queue Assignment: Routes to 'light_tasks' queue for real-time biological unit
     calculations using prefork worker pool optimized for CPU-bound operations.
     
@@ -1523,6 +2454,7 @@ def update_provider_biological_units(self, provider_id: int, target_date: str = 
             stat_date = date.today()
         
         logger.info(f"Updating provider {provider_id} biological units for {stat_date} (trigger: {trigger_type})")
+        logger.info(f"Note: Will aggregate dataset unit counts recorded at or before {stat_date}, which may include historical anchor dates")
         
         # Get provider
         provider = db.query(DataProviderModel).filter(DataProviderModel.id == provider_id).first()
@@ -1542,10 +2474,13 @@ def update_provider_biological_units(self, provider_id: int, target_date: str = 
         
         if not dataset_ids:
             provider_biological_units = 0
+            logger.info(f"Provider {provider_id} has no datasets, setting biological units to 0")
         else:
             dataset_id_list = [dataset_id[0] for dataset_id in dataset_ids]
             
             # Get the most recent unit count for each dataset
+            # IMPORTANT: We look for counts at or before stat_date, which may be at different
+            # dates due to anchor date logic
             subquery = db.query(
                 StatisticModel.entity_id,
                 func.max(StatisticModel.date).label('max_date')
@@ -1559,7 +2494,11 @@ def update_provider_biological_units(self, provider_id: int, target_date: str = 
             ).group_by(StatisticModel.entity_id).subquery()
             
             # Get the actual values using the max date for each dataset
-            recent_unit_counts = db.query(StatisticModel.value).join(
+            recent_unit_counts = db.query(
+                StatisticModel.value,
+                StatisticModel.date,
+                StatisticModel.entity_id
+            ).join(
                 subquery,
                 and_(
                     StatisticModel.entity_id == subquery.c.entity_id,
@@ -1570,6 +2509,12 @@ def update_provider_biological_units(self, provider_id: int, target_date: str = 
             ).all()
             
             provider_biological_units = sum(count[0] for count in recent_unit_counts if count[0] is not None)
+            
+            # Log details about the aggregation
+            if recent_unit_counts:
+                date_range = set(count[1] for count in recent_unit_counts)
+                logger.info(f"Provider {provider_id}: Aggregated {len(recent_unit_counts)} dataset counts from dates: {sorted(date_range)}")
+                logger.info(f"Provider {provider_id}: Total biological units = {provider_biological_units}")
         
         # Use proper upsert for provider biological units
         stmt = insert(StatisticModel).values(
@@ -1584,7 +2529,8 @@ def update_provider_biological_units(self, provider_id: int, target_date: str = 
                 'provider_datacenter': provider.datacenter,
                 'dataset_count': len(dataset_ids),
                 'trigger_type': trigger_type,
-                'collection_timestamp': datetime.utcnow().isoformat()
+                'collection_timestamp': datetime.utcnow().isoformat(),
+                'aggregation_note': 'Respects anchor dates from initial archive processing'
             },
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow()

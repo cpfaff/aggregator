@@ -1382,12 +1382,23 @@ async def delete_dataset(
 ):
     """
     Delete a dataset for a specific provider. Requires delete permissions.
+    
+    This performs a complete cascade deletion, removing:
+    - All statistics records for the dataset
+    - All validation jobs for the dataset's archives
+    - All XML archives
+    - All useful links
+    - The dataset itself
+    
+    After deletion, provider statistics are automatically re-aggregated.
+    
     - **provider_id**: Must be a positive integer
     - **dataset_id**: Must be a positive integer
     """
     if provider_id <= 0 or dataset_id <= 0:
         raise HTTPException(status_code=400, detail="IDs must be positive integers")
 
+    # First verify the dataset exists and belongs to this provider
     result = await db.execute(
         select(DatasetModel).where(
             DatasetModel.id == dataset_id, DatasetModel.provider_id == provider_id
@@ -1396,27 +1407,40 @@ async def delete_dataset(
     dataset_obj = result.scalar_one_or_none()
     if not dataset_obj:
         raise HTTPException(status_code=404, detail="Dataset not found")
-    await db.delete(dataset_obj)
-    await db.commit()
-
-    # Invalidate dataset and provider caches
-    invalidate_cache(f"dataset:{dataset_id}")
-    invalidate_cache("datasets")
-    invalidate_cache(f"provider:{provider_id}")
-    invalidate_cache("providers")
-
-    # Trigger comprehensive real-time statistics update for dataset deletion
-    from app.tasks.statistics_tasks import update_provider_biological_units, update_dataset_statistics
     
-    # Update provider biological units (as before)
-    update_provider_biological_units.delay(provider_id, None, "dataset_deletion")
+    # Use the cascade deletion service
+    from app.services.dataset_deletion import DatasetDeletionService
     
-    # Update provider dataset count timeline by triggering a provider-specific statistics update
-    # This ensures the timeline reflects the deletion immediately
-    from app.tasks.statistics_tasks import update_provider_dataset_count_after_deletion
-    update_provider_dataset_count_after_deletion.delay(provider_id, "dataset_deletion")
-
-    return
+    deletion_service = DatasetDeletionService(db)
+    
+    try:
+        # Perform cascade deletion
+        deletion_summary = await deletion_service.delete_dataset_cascade(
+            dataset_id=dataset_id,
+            provider_id=provider_id
+        )
+        
+        # Log the deletion summary
+        logger.info(f"Dataset {dataset_id} cascade deletion completed: {deletion_summary}")
+        
+        # Invalidate dataset and provider caches
+        invalidate_cache(f"dataset:{dataset_id}")
+        invalidate_cache("datasets")
+        invalidate_cache(f"provider:{provider_id}")
+        invalidate_cache("providers")
+        
+        # Return deletion summary for transparency
+        return {
+            "message": "Dataset and all associated data deleted successfully",
+            "deletion_summary": deletion_summary
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to delete dataset {dataset_id}: {e}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Failed to delete dataset: {str(e)}"
+        )
 
 
 # XML Archive Endpoints
