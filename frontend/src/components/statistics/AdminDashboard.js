@@ -7,14 +7,10 @@ import MultiLineTimeSeriesChart from '../ui/MultiLineTimeSeriesChart';
 import PieChart from '../ui/PieChart';
 import Alert from '../ui/Alert';
 import Breadcrumbs from '../ui/Breadcrumbs';
-import ActionMenu from '../ui/ActionMenu';
-import { 
-  Database
-} from 'lucide-react';
 
 /**
  * AdminDashboard component for comprehensive system statistics
- * Features manual statistics collection via Celery background tasks
+ * Displays real-time metrics and historical trends
  */
 function AdminDashboard() {
   const { handleTokenExpiration } = useAuth();
@@ -26,8 +22,6 @@ function AdminDashboard() {
   const [multiProviderBiologicalUnits, setMultiProviderBiologicalUnits] = useState({ data: [], providers: [] });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
-  const [isCollecting, setIsCollecting] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [biologicalUnitsScaleType, setBiologicalUnitsScaleType] = useState('log'); // Default to log for better visibility
 
@@ -195,31 +189,6 @@ function AdminDashboard() {
     }
   };
 
-  const triggerStatsCollection = async () => {
-    try {
-      setIsCollecting(true);
-      setError(''); // Clear any existing errors
-      setSuccessMessage(''); // Clear any existing success messages
-      
-      const result = await authStatsApi.triggerCollection(null, handleTokenExpiration);
-      
-      // Show success message
-      setSuccessMessage(`Statistics collection triggered successfully. ${result.message || 'Processing in background...'}`);
-      
-      // Wait a moment then refresh data
-      setTimeout(() => {
-        fetchAllStats();
-        setIsCollecting(false);
-        // Clear the success message after 5 seconds
-        setTimeout(() => setSuccessMessage(''), 5000);
-      }, 2000);
-      
-    } catch (err) {
-      console.error('Error triggering collection:', err);
-      setError('Failed to trigger statistics collection: ' + err.message);
-      setIsCollecting(false);
-    }
-  };
 
   useEffect(() => {
     fetchAllStats();
@@ -310,33 +279,12 @@ function AdminDashboard() {
         color: 'var(--text-light)',
         margin: '0 0 2rem 0'
       }}>
-        System statistics and performance metrics. Click "Collect Statistics" to update data.
+        System statistics and performance metrics with real-time data updates.
       </p>
-
-      {/* ActionMenu for admin controls */}
-      <ActionMenu
-        mode="content-relative"
-        offset={16}
-        actions={[
-          {
-            icon: <Database size={24} />,
-            label: isCollecting ? 'Collecting...' : 'Collect Statistics',
-            onClick: triggerStatsCollection,
-            color: 'var(--primary)',
-            disabled: isCollecting
-          }
-        ]}
-      />
 
       {error && (
         <Alert type="warning" style={{ marginBottom: '1.5rem' }}>
           {error}
-        </Alert>
-      )}
-      
-      {successMessage && (
-        <Alert type="success" style={{ marginBottom: '1.5rem' }}>
-          {successMessage}
         </Alert>
       )}
 

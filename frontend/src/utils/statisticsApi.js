@@ -201,24 +201,6 @@ export const authStatsApi = {
     return response.json();
   },
 
-  /**
-   * Trigger statistics collection
-   * @param {string} targetDate - Optional target date (YYYY-MM-DD)
-   * @param {Function} onTokenExpired - Token expiration handler
-   * @returns {Promise<Object>} Collection status
-   */
-  triggerCollection: async (targetDate, onTokenExpired) => {
-    const queryParams = targetDate ? `?target_date=${targetDate}` : '';
-    const response = await apiRequest(
-      `/statistics/collect${queryParams}`, 
-      { method: 'POST' }, 
-      onTokenExpired
-    );
-    if (!response.ok) {
-      throw new Error(`Failed to trigger collection: ${response.status}`);
-    }
-    return response.json();
-  },
 
   /**
    * Trigger XML analysis
