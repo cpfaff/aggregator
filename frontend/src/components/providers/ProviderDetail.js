@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { apiRequest } from '../../utils/apiUtils';
 import { Globe, Server, Plus, Search, ArrowLeft, Database, ExternalLink, Edit, Trash2, BarChart3 } from 'lucide-react';
@@ -12,12 +13,16 @@ import ProviderForm from './ProviderForm';
 import ConfirmModal from '../ui/ConfirmModal';
 import { ProviderStatistics } from '../statistics';
 
-const ProviderDetail = ({ provider, onBack, currentUser }) => {
+const ProviderDetail = ({ currentUser }) => {
+  const { id } = useParams();
+  const navigate = useNavigate();
   const { handleTokenExpiration } = useAuth();
+  const [provider, setProvider] = useState(null);
   const [datasets, setDatasets] = useState([]);
   const [filteredDatasets, setFilteredDatasets] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingProvider, setIsLoadingProvider] = useState(true);
   const [error, setError] = useState('');
   const [editingDataset, setEditingDataset] = useState(null);
   const [addingDataset, setAddingDataset] = useState(false);
@@ -26,9 +31,17 @@ const ProviderDetail = ({ provider, onBack, currentUser }) => {
   const [addingProvider, setAddingProvider] = useState(false);
   const [showStatistics, setShowStatistics] = useState(false);
 
+  // Fetch provider data when component mounts or ID changes
   useEffect(() => {
-    fetchDatasets();
-  }, [provider.id]);
+    fetchProvider();
+  }, [id]);
+
+  // Fetch datasets when provider is loaded
+  useEffect(() => {
+    if (provider) {
+      fetchDatasets();
+    }
+  }, [provider]);
 
   useEffect(() => {
     if (searchQuery.trim() === '') {
@@ -88,12 +101,40 @@ const ProviderDetail = ({ provider, onBack, currentUser }) => {
     }
   }, [searchQuery, datasets]);
 
+  const fetchProvider = async () => {
+    setIsLoadingProvider(true);
+    setError('');
+    
+    try {
+      const res = await apiRequest(`/data-providers/${id}`, {}, handleTokenExpiration);
+      
+      if (!res.ok) {
+        if (res.status === 404) {
+          setError('Provider not found');
+        } else if (res.status === 403) {
+          setError('You do not have permission to view this provider');
+        } else {
+          setError('Failed to fetch provider details');
+        }
+        setIsLoadingProvider(false);
+        return;
+      }
+      
+      const data = await res.json();
+      setProvider(data);
+      setIsLoadingProvider(false);
+    } catch (err) {
+      setError('Error fetching provider: ' + err.message);
+      setIsLoadingProvider(false);
+    }
+  };
+
   const fetchDatasets = async () => {
     setIsLoading(true);
     setError('');
     
     try {
-      const res = await apiRequest(`/data-providers/${provider.id}/data-sets`, {}, handleTokenExpiration);
+      const res = await apiRequest(`/data-providers/${id}/data-sets`, {}, handleTokenExpiration);
       
       if (!res.ok) {
         setError('Failed to fetch datasets');
@@ -106,7 +147,7 @@ const ProviderDetail = ({ provider, onBack, currentUser }) => {
       // Ensure each dataset has properly normalized data and provider_id
       const normalizedData = data.map(dataset => ({
         ...dataset,
-        provider_id: provider.id, // Ensure provider_id is set correctly
+        provider_id: id, // Ensure provider_id is set correctly
         xmlArchives: Array.isArray(dataset.xmlArchives) ? dataset.xmlArchives : [],
         usefulLinks: Array.isArray(dataset.usefulLinks) ? dataset.usefulLinks : []
       }));
@@ -121,7 +162,7 @@ const ProviderDetail = ({ provider, onBack, currentUser }) => {
 
   const deleteDataset = async (datasetId) => {
     try {
-      const res = await apiRequest(`/data-providers/${provider.id}/data-sets/${datasetId}`, {
+      const res = await apiRequest(`/data-providers/${id}/data-sets/${datasetId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json'
@@ -170,7 +211,7 @@ const ProviderDetail = ({ provider, onBack, currentUser }) => {
       // For new datasets, use the data directly from the API response and ensure provider_id
       const normalizedDataset = {
         ...updatedDataset,
-        provider_id: provider.id, // Ensure provider_id is set
+        provider_id: id, // Ensure provider_id is set
         xmlArchives: Array.isArray(updatedDataset.xmlArchives) ? updatedDataset.xmlArchives : [],
         usefulLinks: Array.isArray(updatedDataset.usefulLinks) ? updatedDataset.usefulLinks : []
       };
@@ -224,8 +265,8 @@ const ProviderDetail = ({ provider, onBack, currentUser }) => {
         return;
       }
       
-      // After successful deletion, update the UI
-      onBack();
+      // After successful deletion, navigate back to providers list
+      navigate('/providers');
       setError('');
     } catch (err) {
       console.error('Error deleting provider:', err);
@@ -237,10 +278,64 @@ const ProviderDetail = ({ provider, onBack, currentUser }) => {
 
   // Breadcrumb items
   const breadcrumbItems = [
-    { label: 'Home', onClick: () => window.location.href = '/' },
-    { label: 'Providers', onClick: onBack },
-    { label: 'Provider Detail', onClick: null }
+    { label: 'Home', onClick: () => navigate('/') },
+    { label: 'Providers', onClick: () => navigate('/providers') },
+    { label: provider?.name || 'Provider Detail', onClick: null }
   ];
+
+  // Show loading state while fetching provider
+  if (isLoadingProvider) {
+    return (
+      <div style={{ 
+        flexGrow: 1,
+        padding: '2rem 1rem',
+        width: '100%',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center'
+      }}>
+        <div style={{
+          width: '32px',
+          height: '32px',
+          border: '3px solid var(--border)',
+          borderRadius: '50%',
+          borderTopColor: 'var(--primary)',
+          animation: 'spin 1s linear infinite',
+        }}></div>
+      </div>
+    );
+  }
+
+  // Show error if provider not found
+  if (!provider && !isLoadingProvider) {
+    return (
+      <div style={{ 
+        flexGrow: 1,
+        padding: '2rem 1rem',
+        width: '100%'
+      }}>
+        <Alert type="error">
+          {error || 'Provider not found'}
+          <button 
+            onClick={() => navigate('/providers')}
+            style={{
+              marginLeft: '1rem',
+              padding: '0.25rem 0.5rem',
+              backgroundColor: 'var(--primary)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '0.25rem',
+              cursor: 'pointer'
+            }}
+          >
+            Back to Providers
+          </button>
+        </Alert>
+      </div>
+    );
+  }
+
+  if (!provider) return null;
 
   return (
     <div 
@@ -721,7 +816,7 @@ const ProviderDetail = ({ provider, onBack, currentUser }) => {
         title={editingDataset ? `Edit Dataset: ${editingDataset.title}` : 'Add Dataset'}
       >
         <DatasetForm
-          providerId={provider.id}
+          providerId={id}
           dataset={editingDataset}
           onClose={handleDatasetUpdate}
           onTokenExpired={handleTokenExpiration}
@@ -745,8 +840,8 @@ const ProviderDetail = ({ provider, onBack, currentUser }) => {
                 ...updatedProvider
               };
               
-              // We need to notify the parent component about the update
-              onBack(updatedProviderData);
+              // Update the local provider state with new data
+              setProvider(updatedProviderData);
             }
             setAddingProvider(false);
             setEditingProvider(null);
@@ -764,8 +859,8 @@ const ProviderDetail = ({ provider, onBack, currentUser }) => {
         size="large"
       >
         <ProviderStatistics 
-          providerId={provider.id}
-          providerName={provider.name}
+          providerId={id}
+          providerName={provider?.name}
         />
       </Modal>
     </div>

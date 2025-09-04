@@ -1,8 +1,21 @@
 import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { Sun, Moon } from 'lucide-react';
 
-const Header = ({ currentUser, activeView, setActiveView, logout, isDarkTheme, toggleTheme }) => {
+const Header = ({ currentUser, activeView, navigate, logout, isDarkTheme, toggleTheme }) => {
   const isLoggedIn = !!currentUser;
+  const location = useLocation();
+  
+  // Helper function to determine if a path is active
+  const isActive = (path) => {
+    if (path === '/providers' && location.pathname.startsWith('/provider/')) {
+      return true;
+    }
+    if (path === '/statistics' && location.pathname === '/admin/statistics') {
+      return false; // Don't highlight public stats when on admin stats
+    }
+    return location.pathname === path;
+  };
   
   return (
     <header style={{
@@ -20,19 +33,20 @@ const Header = ({ currentUser, activeView, setActiveView, logout, isDarkTheme, t
       WebkitBackdropFilter: 'blur(10px)',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '2rem', flex: 1 }}>
-        <h1 style={{ 
-          fontSize: '1.25rem', 
-          fontWeight: 700, 
-          margin: 0,
-          color: 'var(--text)',
-          letterSpacing: '-0.01em',
-          cursor: 'pointer',
-          flexShrink: 0,
-        }}
-        onClick={() => setActiveView(isLoggedIn ? 'providers' : 'landing')}
+        <Link 
+          to={isLoggedIn ? '/providers' : '/'}
+          style={{ 
+            fontSize: '1.25rem', 
+            fontWeight: 700, 
+            margin: 0,
+            color: 'var(--text)',
+            letterSpacing: '-0.01em',
+            textDecoration: 'none',
+            flexShrink: 0,
+          }}
         >
           Data Provider Manager
-        </h1>
+        </Link>
         
         <nav style={{ 
           display: 'flex',
@@ -41,13 +55,12 @@ const Header = ({ currentUser, activeView, setActiveView, logout, isDarkTheme, t
           flex: 1,
         }}>
           {isLoggedIn && (
-            <a 
-              href="#" 
-              onClick={(e) => { e.preventDefault(); setActiveView('providers'); }}
+            <Link 
+              to="/providers"
               style={{
                 padding: '0.5rem 0',
                 position: 'relative',
-                color: activeView === 'providers' ? 'var(--primary)' : 'var(--text-light)',
+                color: isActive('/providers') ? 'var(--primary)' : 'var(--text-light)',
                 textDecoration: 'none',
                 fontWeight: 500,
                 transition: 'all 0.2s ease',
@@ -62,23 +75,19 @@ const Header = ({ currentUser, activeView, setActiveView, logout, isDarkTheme, t
                 width: '100%',
                 height: '2px',
                 backgroundColor: 'var(--primary)',
-                transform: activeView === 'providers' ? 'scaleX(1)' : 'scaleX(0)',
+                transform: isActive('/providers') ? 'scaleX(1)' : 'scaleX(0)',
                 transformOrigin: 'left',
                 transition: 'transform 0.2s ease',
               }}></span>
-            </a>
+            </Link>
           )}
           
-          <a 
-            href="#" 
-            onClick={(e) => { 
-              e.preventDefault(); 
-              setActiveView(isLoggedIn && currentUser?.is_global_admin ? 'adminStats' : 'publicStats'); 
-            }}
+          <Link 
+            to={isLoggedIn && currentUser?.is_global_admin ? '/admin/statistics' : '/statistics'}
             style={{
               padding: '0.5rem 0',
               position: 'relative',
-              color: (activeView === 'adminStats' || activeView === 'publicStats') ? 'var(--primary)' : 'var(--text-light)',
+              color: (isActive('/statistics') || isActive('/admin/statistics')) ? 'var(--primary)' : 'var(--text-light)',
               textDecoration: 'none',
               fontWeight: 500,
               transition: 'all 0.2s ease',
@@ -93,20 +102,19 @@ const Header = ({ currentUser, activeView, setActiveView, logout, isDarkTheme, t
               width: '100%',
               height: '2px',
               backgroundColor: 'var(--primary)',
-              transform: (activeView === 'adminStats' || activeView === 'publicStats') ? 'scaleX(1)' : 'scaleX(0)',
+              transform: (isActive('/statistics') || isActive('/admin/statistics')) ? 'scaleX(1)' : 'scaleX(0)',
               transformOrigin: 'left',
               transition: 'transform 0.2s ease',
             }}></span>
-          </a>
+          </Link>
           
           {isLoggedIn && currentUser?.is_global_admin && (
-            <a 
-              href="#" 
-              onClick={(e) => { e.preventDefault(); setActiveView('userManagement'); }}
+            <Link 
+              to="/users"
               style={{
                 padding: '0.5rem 0',
                 position: 'relative',
-                color: activeView === 'userManagement' ? 'var(--primary)' : 'var(--text-light)',
+                color: isActive('/users') ? 'var(--primary)' : 'var(--text-light)',
                 textDecoration: 'none',
                 fontWeight: 500,
                 transition: 'all 0.2s ease',
@@ -121,21 +129,20 @@ const Header = ({ currentUser, activeView, setActiveView, logout, isDarkTheme, t
                 width: '100%',
                 height: '2px',
                 backgroundColor: 'var(--primary)',
-                transform: activeView === 'userManagement' ? 'scaleX(1)' : 'scaleX(0)',
+                transform: isActive('/users') ? 'scaleX(1)' : 'scaleX(0)',
                 transformOrigin: 'left',
                 transition: 'transform 0.2s ease',
               }}></span>
-            </a>
+            </Link>
           )}
           
           {isLoggedIn && (
-            <a 
-              href="#" 
-              onClick={(e) => { e.preventDefault(); setActiveView('changelog'); }}
+            <Link 
+              to="/changelog"
               style={{
                 padding: '0.5rem 0',
                 position: 'relative',
-                color: activeView === 'changelog' ? 'var(--primary)' : 'var(--text-light)',
+                color: isActive('/changelog') ? 'var(--primary)' : 'var(--text-light)',
                 textDecoration: 'none',
                 fontWeight: 500,
                 transition: 'all 0.2s ease',
@@ -150,20 +157,19 @@ const Header = ({ currentUser, activeView, setActiveView, logout, isDarkTheme, t
                 width: '100%',
                 height: '2px',
                 backgroundColor: 'var(--primary)',
-                transform: activeView === 'changelog' ? 'scaleX(1)' : 'scaleX(0)',
+                transform: isActive('/changelog') ? 'scaleX(1)' : 'scaleX(0)',
                 transformOrigin: 'left',
                 transition: 'transform 0.2s ease',
               }}></span>
-            </a>
+            </Link>
           )}
           
-          <a 
-            href="#" 
-            onClick={(e) => { e.preventDefault(); setActiveView('about'); }}
+          <Link 
+            to="/about"
             style={{
               padding: '0.5rem 0',
               position: 'relative',
-              color: activeView === 'about' ? 'var(--primary)' : 'var(--text-light)',
+              color: isActive('/about') ? 'var(--primary)' : 'var(--text-light)',
               textDecoration: 'none',
               fontWeight: 500,
               transition: 'all 0.2s ease',
@@ -178,11 +184,11 @@ const Header = ({ currentUser, activeView, setActiveView, logout, isDarkTheme, t
               width: '100%',
               height: '2px',
               backgroundColor: 'var(--primary)',
-              transform: activeView === 'about' ? 'scaleX(1)' : 'scaleX(0)',
+              transform: isActive('/about') ? 'scaleX(1)' : 'scaleX(0)',
               transformOrigin: 'left',
               transition: 'transform 0.2s ease',
             }}></span>
-          </a>
+          </Link>
         </nav>
       </div>
       
@@ -198,100 +204,86 @@ const Header = ({ currentUser, activeView, setActiveView, logout, isDarkTheme, t
               backgroundColor: 'var(--subtle-bg)',
               transition: 'all 0.2s ease',
             }}>
-              <div style={{
-                width: '24px',
-                height: '24px',
-                borderRadius: '50%',
-                backgroundColor: 'var(--primary)',
-                color: 'white',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginRight: '0.5rem',
-                fontWeight: 600,
-                fontSize: '0.75rem',
-              }}>
-                {currentUser.username ? currentUser.username.charAt(0).toUpperCase() : 'A'}
-              </div>
-              <span style={{ 
-                color: 'var(--text)', 
-                fontWeight: 500, 
+              <span style={{
                 fontSize: '0.875rem',
-                letterSpacing: '-0.01em',
+                color: 'var(--text)',
+                fontWeight: 500,
               }}>
-                {currentUser.is_global_admin ? 'Admin' : currentUser.username}
+                {currentUser?.username}
+                {currentUser?.is_global_admin && (
+                  <span style={{
+                    marginLeft: '0.5rem',
+                    fontSize: '0.75rem',
+                    color: 'var(--primary)',
+                    padding: '0.125rem 0.375rem',
+                    backgroundColor: 'var(--primary-light)',
+                    borderRadius: '0.25rem',
+                    fontWeight: 600,
+                  }}>
+                    Admin
+                  </span>
+                )}
               </span>
             </div>
-            
             <button
               onClick={logout}
               style={{
-                padding: '0.5rem 0.75rem',
-                backgroundColor: 'transparent',
-                color: 'var(--text-light)',
-                border: '1px solid var(--border)',
+                padding: '0.5rem 1rem',
                 borderRadius: '0.375rem',
-                fontSize: '0.875rem',
+                border: 'none',
+                backgroundColor: 'var(--danger)',
+                color: 'white',
                 fontWeight: 500,
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
+                fontSize: '0.875rem',
               }}
+              onMouseEnter={e => e.target.style.backgroundColor = 'var(--danger-hover)'}
+              onMouseLeave={e => e.target.style.backgroundColor = 'var(--danger)'}
             >
               Logout
             </button>
           </>
         ) : (
-          <button
-            onClick={() => setActiveView('login')}
+          <Link
+            to="/login"
             style={{
-              padding: '0.5rem 1rem',
+              padding: '0.5rem 1.5rem',
+              borderRadius: '0.375rem',
+              border: 'none',
               backgroundColor: 'var(--primary)',
               color: 'white',
-              border: 'none',
-              borderRadius: '0.375rem',
-              fontSize: '0.875rem',
               fontWeight: 500,
               cursor: 'pointer',
               transition: 'all 0.2s ease',
+              fontSize: '0.875rem',
+              textDecoration: 'none',
+              display: 'inline-block',
             }}
-            onMouseEnter={(e) => {
-              e.target.style.opacity = '0.9';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.opacity = '1';
-            }}
+            onMouseEnter={e => e.target.style.backgroundColor = 'var(--primary-hover)'}
+            onMouseLeave={e => e.target.style.backgroundColor = 'var(--primary)'}
           >
-            Sign In
-          </button>
+            Login
+          </Link>
         )}
-
-        <button 
+        
+        <button
           onClick={toggleTheme}
           style={{
-            width: '38px',
-            height: '38px',
-            padding: '0',
-            backgroundColor: 'transparent',
-            color: 'var(--text)',
-            border: '1px solid var(--border)',
+            padding: '0.5rem',
             borderRadius: '0.375rem',
-            fontSize: '0.875rem',
-            fontWeight: 500,
+            border: '1px solid var(--border)',
+            backgroundColor: 'var(--subtle-bg)',
+            color: 'var(--text)',
             cursor: 'pointer',
             transition: 'all 0.2s ease',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
           }}
-          onMouseEnter={(e) => {
-            e.target.style.backgroundColor = 'var(--subtle-bg)';
-            e.target.style.borderColor = 'var(--primary)';
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.backgroundColor = 'transparent';
-            e.target.style.borderColor = 'var(--border)';
-          }}
-          aria-label={`Switch to ${isDarkTheme ? 'light' : 'dark'} theme`}
+          onMouseEnter={e => e.target.style.backgroundColor = 'var(--hover-bg)'}
+          onMouseLeave={e => e.target.style.backgroundColor = 'var(--subtle-bg)'}
+          aria-label="Toggle theme"
         >
           {isDarkTheme ? <Sun size={18} /> : <Moon size={18} />}
         </button>

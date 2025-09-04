@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import ProviderDetail from './components/providers/ProviderDetail';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
@@ -14,10 +15,46 @@ import About from './components/public/About';
 import LandingPage from './components/public/LandingPage';
 import { AdminDashboard, PublicStatsDashboard } from './components/statistics';
 
+// Protected Route wrapper component
+function ProtectedRoute({ children }) {
+  const { token, currentUser } = useAuth();
+  const location = useLocation();
+  
+  if (!token) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+  
+  if (!currentUser) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        flex: 1 
+      }}>
+        <div>Loading user data...</div>
+      </div>
+    );
+  }
+  
+  return children;
+}
+
+// Admin-only Route wrapper
+function AdminRoute({ children }) {
+  const { currentUser } = useAuth();
+  
+  if (!currentUser?.is_global_admin) {
+    return <Navigate to="/providers" replace />;
+  }
+  
+  return children;
+}
+
 function App() {
   const { token, currentUser, logout, sessionExpired, handleTokenExpiration } = useAuth();
-  const [activeView, setActiveView] = useState('landing'); // 'landing', 'login', 'providers', 'userManagement', 'changelog', 'providerDetail', 'adminStats', 'publicStats', or 'about'
-  const [selectedProvider, setSelectedProvider] = useState(null);
+  const navigate = useNavigate();
+  const location = useLocation();
   const [isDarkTheme, setIsDarkTheme] = useState(() => {
     const savedTheme = localStorage.getItem('isDarkTheme');
     return savedTheme ? JSON.parse(savedTheme) : false;
@@ -54,89 +91,24 @@ function App() {
     initCsrf();
   }, []);
 
-  // Reset view to providers when user logs in
-  useEffect(() => {
-    if (token) {
-      setActiveView('providers');
-      setSelectedProvider(null);
-    }
-  }, [token]);
+  // Handle logout
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
 
-  // Render appropriate view based on whether user data is fully loaded
-  const renderContent = () => {
-    // Public views can be accessed without authentication
-    if (activeView === 'landing') {
-      return <LandingPage 
-        onGetStarted={() => setActiveView('login')}
-        onLearnMore={() => setActiveView('about')}
-        onViewStatistics={() => setActiveView('publicStats')}
-      />;
-    }
-    
-    if (activeView === 'publicStats') {
-      return <PublicStatsDashboard />;
-    }
-    
-    if (activeView === 'about') {
-      return <About currentUser={currentUser} />;
-    }
-    
-    // Login view - don't render content until we have both token and user data
-    if (!token || activeView === 'login') {
-      return <Login sessionExpired={sessionExpired} />;
-    }
-    
-    // If token exists but user data isn't loaded yet, show a loading state
-    if (!currentUser) {
-      return (
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center', 
-          flex: 1 
-        }}>
-          <div>Loading user data...</div>
-        </div>
-      );
-    }
-    
-    // Only render content when we have both token and user data
-    return (
-      <>
-        {activeView === 'providers' && (
-          <Providers 
-            currentUser={currentUser} 
-            onViewProviderDetails={(provider) => {
-              setSelectedProvider(provider);
-              setActiveView('providerDetail');
-            }}
-          />
-        )}
-        
-        {activeView === 'userManagement' && currentUser && currentUser.is_global_admin && (
-          <UserManagement />
-        )}
-        
-        {activeView === 'changelog' && (
-          <Changelog />
-        )}
-        
-        {activeView === 'adminStats' && currentUser && currentUser.is_global_admin && (
-          <AdminDashboard />
-        )}
-        
-        {activeView === 'providerDetail' && selectedProvider && (
-          <ProviderDetail 
-            provider={selectedProvider}
-            currentUser={currentUser}
-            onBack={() => {
-              setActiveView('providers');
-              setSelectedProvider(null);
-            }}
-          />
-        )}
-      </>
-    );
+  // Derive active view from location for Header component compatibility
+  const getActiveView = () => {
+    const path = location.pathname;
+    if (path === '/') return 'landing';
+    if (path === '/login') return 'login';
+    if (path === '/providers' || path.startsWith('/provider/')) return 'providers';
+    if (path === '/users') return 'userManagement';
+    if (path === '/changelog') return 'changelog';
+    if (path === '/statistics') return 'publicStats';
+    if (path === '/admin/statistics') return 'adminStats';
+    if (path === '/about') return 'about';
+    return 'landing';
   };
 
   return (
@@ -150,18 +122,9 @@ function App() {
     }}>
       <Header 
         currentUser={token ? currentUser : null} 
-        activeView={activeView}
-        setActiveView={(view) => {
-          setActiveView(view);
-          // Reset provider detail view when navigating away
-          if (view !== 'providerDetail') {
-            setSelectedProvider(null);
-          }
-        }}
-        logout={() => {
-          logout();
-          setActiveView('landing');
-        }}
+        activeView={getActiveView()}
+        navigate={navigate}
+        logout={handleLogout}
         isDarkTheme={isDarkTheme}
         toggleTheme={toggleTheme}
       />
@@ -171,21 +134,117 @@ function App() {
         display: 'flex', 
         flexDirection: 'column',
         width: '100%',
-        alignItems: activeView === 'landing' || activeView === 'about' || activeView === 'publicStats' || activeView === 'login' ? 'stretch' : 'center',
+        alignItems: ['/', '/about', '/statistics', '/login'].includes(location.pathname) ? 'stretch' : 'center',
       }}>
-        {(activeView === 'landing' || activeView === 'about' || activeView === 'publicStats' || activeView === 'login') ? (
-          renderContent()
-        ) : (
-          <div style={{
-            width: '100%',
-            maxWidth: '1200px',
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-          }}>
-            {renderContent()}
-          </div>
-        )}
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/" element={
+            <LandingPage 
+              onGetStarted={() => navigate('/login')}
+              onLearnMore={() => navigate('/about')}
+              onViewStatistics={() => navigate('/statistics')}
+            />
+          } />
+          
+          <Route path="/about" element={
+            <About currentUser={currentUser} />
+          } />
+          
+          <Route path="/statistics" element={
+            <PublicStatsDashboard />
+          } />
+          
+          <Route path="/login" element={
+            token ? <Navigate to="/providers" replace /> : 
+            <Login sessionExpired={sessionExpired} />
+          } />
+          
+          {/* Protected Routes */}
+          <Route path="/providers" element={
+            <ProtectedRoute>
+              <div style={{
+                width: '100%',
+                maxWidth: '1200px',
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+              }}>
+                <Providers 
+                  currentUser={currentUser} 
+                  onViewProviderDetails={(provider) => {
+                    navigate(`/provider/${provider.id}`);
+                  }}
+                />
+              </div>
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/provider/:id" element={
+            <ProtectedRoute>
+              <div style={{
+                width: '100%',
+                maxWidth: '1200px',
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+              }}>
+                <ProviderDetail 
+                  currentUser={currentUser}
+                />
+              </div>
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/changelog" element={
+            <ProtectedRoute>
+              <div style={{
+                width: '100%',
+                maxWidth: '1200px',
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+              }}>
+                <Changelog />
+              </div>
+            </ProtectedRoute>
+          } />
+          
+          {/* Admin Routes */}
+          <Route path="/users" element={
+            <ProtectedRoute>
+              <AdminRoute>
+                <div style={{
+                  width: '100%',
+                  maxWidth: '1200px',
+                  flex: 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                }}>
+                  <UserManagement />
+                </div>
+              </AdminRoute>
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/admin/statistics" element={
+            <ProtectedRoute>
+              <AdminRoute>
+                <div style={{
+                  width: '100%',
+                  maxWidth: '1200px',
+                  flex: 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                }}>
+                  <AdminDashboard />
+                </div>
+              </AdminRoute>
+            </ProtectedRoute>
+          } />
+          
+          {/* Catch-all redirect */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </div>
 
       <Footer />
