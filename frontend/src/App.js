@@ -158,7 +158,10 @@ function App() {
             setSelectedProvider(null);
           }
         }}
-        logout={logout}
+        logout={() => {
+          logout();
+          setActiveView('landing');
+        }}
         isDarkTheme={isDarkTheme}
         toggleTheme={toggleTheme}
       />
