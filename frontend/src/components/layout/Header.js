@@ -204,42 +204,43 @@ const Header = ({ currentUser, activeView, navigate, logout, isDarkTheme, toggle
               backgroundColor: 'var(--subtle-bg)',
               transition: 'all 0.2s ease',
             }}>
-              <span style={{
-                fontSize: '0.875rem',
-                color: 'var(--text)',
-                fontWeight: 500,
+              <div style={{
+                width: '24px',
+                height: '24px',
+                borderRadius: '50%',
+                backgroundColor: 'var(--primary)',
+                color: 'white',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginRight: '0.5rem',
+                fontWeight: 600,
+                fontSize: '0.75rem',
               }}>
-                {currentUser?.username}
-                {currentUser?.is_global_admin && (
-                  <span style={{
-                    marginLeft: '0.5rem',
-                    fontSize: '0.75rem',
-                    color: 'var(--primary)',
-                    padding: '0.125rem 0.375rem',
-                    backgroundColor: 'var(--primary-light)',
-                    borderRadius: '0.25rem',
-                    fontWeight: 600,
-                  }}>
-                    Admin
-                  </span>
-                )}
+                {currentUser?.username ? currentUser.username.charAt(0).toUpperCase() : 'A'}
+              </div>
+              <span style={{ 
+                color: 'var(--text)', 
+                fontWeight: 500, 
+                fontSize: '0.875rem',
+                letterSpacing: '-0.01em',
+              }}>
+                {currentUser?.is_global_admin ? 'Admin' : currentUser?.username}
               </span>
             </div>
             <button
               onClick={logout}
               style={{
-                padding: '0.5rem 1rem',
+                padding: '0.5rem 0.75rem',
+                backgroundColor: 'transparent',
+                color: 'var(--text-light)',
+                border: '1px solid var(--border)',
                 borderRadius: '0.375rem',
-                border: 'none',
-                backgroundColor: 'var(--danger)',
-                color: 'white',
+                fontSize: '0.875rem',
                 fontWeight: 500,
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
-                fontSize: '0.875rem',
               }}
-              onMouseEnter={e => e.target.style.backgroundColor = 'var(--danger-hover)'}
-              onMouseLeave={e => e.target.style.backgroundColor = 'var(--danger)'}
             >
               Logout
             </button>
@@ -248,29 +249,29 @@ const Header = ({ currentUser, activeView, navigate, logout, isDarkTheme, toggle
           <Link
             to="/login"
             style={{
-              padding: '0.5rem 1.5rem',
-              borderRadius: '0.375rem',
-              border: 'none',
+              padding: '0.5rem 1rem',
               backgroundColor: 'var(--primary)',
               color: 'white',
+              border: 'none',
+              borderRadius: '0.375rem',
+              fontSize: '0.875rem',
               fontWeight: 500,
               cursor: 'pointer',
               transition: 'all 0.2s ease',
-              fontSize: '0.875rem',
               textDecoration: 'none',
               display: 'inline-block',
             }}
-            onMouseEnter={e => e.target.style.backgroundColor = 'var(--primary-hover)'}
-            onMouseLeave={e => e.target.style.backgroundColor = 'var(--primary)'}
           >
-            Login
+            Sign In
           </Link>
         )}
         
         <button
           onClick={toggleTheme}
           style={{
-            padding: '0.5rem',
+            width: '38px',
+            height: '38px',
+            padding: '0',
             borderRadius: '0.375rem',
             border: '1px solid var(--border)',
             backgroundColor: 'var(--subtle-bg)',
