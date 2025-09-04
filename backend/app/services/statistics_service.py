@@ -500,7 +500,7 @@ class StatisticsService:
         Returns:
             Dictionary containing provider statistics
         """
-        # Get provider dataset counts
+        # Get provider dataset counts - order by ID for consistency
         provider_stats = self.db.query(
             DataProviderModel.id,
             DataProviderModel.name,
@@ -511,7 +511,7 @@ class StatisticsService:
         ).group_by(
             DataProviderModel.id, DataProviderModel.name, DataProviderModel.datacenter
         ).order_by(
-            desc(func.count(DatasetModel.id))
+            DataProviderModel.id  # Changed from dataset count to ID for consistent ordering
         ).limit(limit).all()
         
         # Format response with biological units

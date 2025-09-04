@@ -819,6 +819,9 @@ async def get_providers(
         selectinload(DataProviderModel.datasets).selectinload(DatasetModel.xmlArchives),
         selectinload(DataProviderModel.datasets).selectinload(DatasetModel.usefulLinks),
     )
+    
+    # Add consistent ordering by ID
+    query = query.order_by(DataProviderModel.id)
 
     # Execute query with pagination
     result = await db.execute(query.offset(skip).limit(limit))
