@@ -1,4 +1,4 @@
-.PHONY: help up down restart logs shell backup restore create-admin create-user migrate test format maintenance-on maintenance-off prod-up prod-down prod-restart refresh-stats stats-status stats-xml stats-daily stats-biological
+.PHONY: help up down restart logs shell backup restore create-admin create-user migrate test format maintenance-on maintenance-off prod-up prod-down prod-restart refresh-stats stats-status stats-xml stats-daily stats-biological 
 
 # Container name configuration - can be overridden
 BACKEND_CONTAINER ?= searchgfbioorg-aggregator_backend-1
@@ -6,6 +6,8 @@ FRONTEND_CONTAINER ?= searchgfbioorg-aggregator_frontend-1
 DB_CONTAINER ?= searchgfbioorg-postgres-1
 CELERY_WORKER_CONTAINER ?= searchgfbioorg-celery_worker-1
 CELERY_BEAT_CONTAINER ?= searchgfbioorg-celery_beat-1
+VALIDATION_WORKER ?= searchgfbioorg-celery_worker_validation-1
+STATS_WORKER ?= searchgfbioorg-celery_worker_stats-1
 
 # Colors for terminal output
 ifeq ($(shell tput colors 2>/dev/null || echo 0),0)
@@ -54,12 +56,19 @@ help:
 	@echo "  ${GREEN}prod-restart${NC}       Restart production services"
 	@echo ""
 	@echo "${YELLOW}Statistics Commands:${NC}"
-	@echo "  ${GREEN}refresh-stats${NC}      Refresh all statistics (XML, daily, biological)"
+	@echo "  ${GREEN}stats-collect${NC}      🚀 Run complete statistics collection (with automatic gap filling)"
 	@echo "  ${GREEN}stats-status${NC}       Show current statistics status"
-	@echo "  ${GREEN}stats-xml${NC}          Process XML archives for unit counts"
-	@echo "  ${GREEN}stats-daily${NC}        Collect daily statistics (for yesterday)"
-	@echo "  ${GREEN}stats-biological${NC}   Collect biological units (for yesterday)"
-	@echo "  ${GREEN}stats-datasets${NC}     Process specific datasets (interactive)"
+	@echo ""
+	@echo "${YELLOW}Task Management (KISS):${NC}"
+	@echo "  ${GREEN}tasks${NC}              📋 Show running background tasks"
+	@echo "  ${GREEN}tasks-cancel${NC}       🚫 Cancel a stuck/hanging task (interactive)"
+	@echo "  ${GREEN}tasks-health${NC}       🏥 Check if workers are healthy"
+	@echo ""
+	@echo "${YELLOW}Advanced Statistics (usually not needed):${NC}"
+	@echo "  ${GREEN}stats-xml${NC}          Process only XML archives"
+	@echo "  ${GREEN}stats-daily${NC}        Collect only daily statistics"
+	@echo "  ${GREEN}stats-biological${NC}   Collect only biological units"
+	@echo "  ${GREEN}stats-datasets${NC}     Process specific datasets"
 	@echo ""
 	@echo "${YELLOW}Manual Fix Commands (use TODAY's date):${NC}"
 	@echo "  ${GREEN}stats-daily-today${NC}      Fix today's daily statistics"
@@ -236,11 +245,23 @@ prod-restart:
 	fi
 
 # Statistics management commands
-refresh-stats:
-	@echo "${GREEN}Refreshing all statistics...${NC}"
-	@echo "This will collect: XML archives, daily statistics, and biological units"
+stats-collect:
+	@echo "${GREEN}Running comprehensive statistics collection with gap detection...${NC}"
+	@echo ""
+	@echo "This will:"
+	@echo "  • Detect and fill any gaps in historical data"
+	@echo "  • Collect all daily statistics up to yesterday"
+	@echo "  • Process XML archives for unit counts"
+	@echo "  • Update biological units totals"
+	@echo ""
 	@docker exec $(BACKEND_CONTAINER) python -m app.utils.refresh_statistics --all
-	@echo "${GREEN}Statistics refresh initiated. Monitor with: make logs-worker${NC}"
+	@echo ""
+	@echo "${GREEN}✓ Statistics collection initiated (includes automatic gap filling)${NC}"
+	@echo ""
+	@echo "Monitor progress with: ${YELLOW}make watch-stats${NC}"
+
+# Legacy alias for backwards compatibility
+refresh-stats: stats-collect
 
 stats-status:
 	@echo "${GREEN}Checking statistics status...${NC}"
@@ -303,3 +324,78 @@ watch-stats:
 	@echo "${GREEN}Watching statistics processing...${NC}"
 	@echo "Press Ctrl+C to stop"
 	@docker logs -f $(CELERY_WORKER_CONTAINER) | grep -E "(Successfully analyzed|Failed to download|ERROR|processed:|units from)"
+
+# ===== TASK MANAGEMENT (KISS) =====
+# Simple commands to monitor and control background tasks
+
+tasks:
+	@echo "${GREEN}📋 Checking background tasks...${NC}"
+	@echo ""
+	@docker exec $(BACKEND_CONTAINER) python -m app.utils.manage_tasks --list
+
+tasks-all:
+	@echo "${GREEN}📋 Checking ALL tasks (running + queued)...${NC}"
+	@echo ""
+	@docker exec $(BACKEND_CONTAINER) python -m app.utils.manage_tasks --list-all
+
+tasks-validation:
+	@echo "${GREEN}📋 Checking validation tasks (via logs)...${NC}"
+	@echo "Recent validation events:"
+	@echo ""
+	@docker logs $(VALIDATION_WORKER) --tail 100 2>&1 | grep -E "(Task validator|Starting validation|Validation completed|Downloaded|Found [0-9]+ XML|ERROR)" | tail -10 || echo "No recent validation activity"
+	@echo ""
+	@echo "Tip: For live monitoring use: docker logs -f $(VALIDATION_WORKER) --tail 20"
+
+tasks-health:
+	@echo "${GREEN}🏥 Checking worker health...${NC}"
+	@echo ""
+	@docker exec $(BACKEND_CONTAINER) python -m app.utils.manage_tasks --health
+
+tasks-cancel:
+	@if [ -n "$(ID)" ]; then \
+		echo "${YELLOW}🚫 Cancelling task $(ID)...${NC}"; \
+		docker exec $(BACKEND_CONTAINER) python -m app.utils.manage_tasks --cancel $(ID); \
+	else \
+		echo "${GREEN}Cancel a specific task...${NC}"; \
+		echo ""; \
+		docker exec $(BACKEND_CONTAINER) python -m app.utils.manage_tasks --list; \
+		echo ""; \
+		read -p "Enter task ID to cancel (or press Enter to abort): " task_id; \
+		if [ -n "$$task_id" ]; then \
+			docker exec $(BACKEND_CONTAINER) python -m app.utils.manage_tasks --cancel $$task_id; \
+		else \
+			echo "${YELLOW}Cancelled - no task ID provided${NC}"; \
+		fi; \
+	fi
+
+tasks-cancel-all:
+	@echo "${RED}⚠️  WARNING: This will cancel ALL running and queued tasks!${NC}"
+	@read -p "Are you sure? Type 'yes' to confirm: " confirm; \
+	if [ "$$confirm" = "yes" ]; then \
+		docker exec $(BACKEND_CONTAINER) python -m app.utils.manage_tasks --cancel-all; \
+	else \
+		echo "${YELLOW}Aborted - tasks not cancelled${NC}"; \
+	fi
+
+tasks-force-kill:
+	@echo "${RED}☠️  DANGER: This will FORCE KILL all tasks immediately!${NC}"
+	@echo "This should only be used for tasks that won't cancel normally."
+	@echo ""
+	@read -p "Are you REALLY sure? Type 'kill' to confirm: " confirm; \
+	if [ "$$confirm" = "kill" ]; then \
+		docker exec $(BACKEND_CONTAINER) python -m app.utils.manage_tasks --cancel-all --force; \
+		echo ""; \
+		echo "${YELLOW}Consider restarting workers if they become unresponsive:${NC}"; \
+		echo "  make workers-restart"; \
+	else \
+		echo "${YELLOW}Aborted - tasks not killed${NC}"; \
+	fi
+
+# Restart workers if they become unresponsive
+workers-restart:
+	@echo "${YELLOW}Restarting Celery workers...${NC}"
+	@docker restart $(STATS_WORKER)
+	@docker restart $(VALIDATION_WORKER)
+	@sleep 3
+	@echo "${GREEN}Workers restarted. Checking health...${NC}"
+	@docker exec $(BACKEND_CONTAINER) python -m app.utils.manage_tasks --health
