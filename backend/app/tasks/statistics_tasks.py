@@ -891,6 +891,93 @@ def perform_statistics_upsert(
     if log_message:
         logger.debug(log_message)
 
+def detect_statistics_gaps(
+    db: Session,
+    target_date: date,
+    max_gap_days: int = 30
+) -> List[date]:
+    """
+    Detect ALL gaps in daily statistics up to and including the target date.
+    
+    This function identifies all missing dates where statistics should exist but don't,
+    including both trailing gaps (at the end) and intermittent gaps (in the middle).
+    
+    Args:
+        db: Database session
+        target_date: The date up to which we want statistics (inclusive)
+        max_gap_days: Maximum number of days to backfill at once (safety limit)
+        
+    Returns:
+        List of dates that are missing statistics, ordered from oldest to newest
+    """
+    from sqlalchemy import and_, func, distinct
+    
+    # Find the earliest date we should have statistics for
+    earliest_dataset = db.query(func.min(DatasetModel.created_at)).scalar()
+    earliest_provider = db.query(func.min(DataProviderModel.created_at)).scalar()
+    earliest_archive = db.query(func.min(DatasetModel.created_at)).join(
+        XmlArchiveModel, XmlArchiveModel.dataset_id == DatasetModel.id
+    ).scalar()
+    
+    earliest_dates = [d for d in [earliest_dataset, earliest_provider, earliest_archive] if d]
+    
+    if not earliest_dates:
+        logger.debug("No data exists yet for gap detection")
+        return []
+    
+    earliest_date = min(earliest_dates).date()
+    
+    # Get all dates that currently have system-level statistics
+    existing_dates = db.query(distinct(StatisticModel.date)).filter(
+        and_(
+            StatisticModel.entity_type == EntityType.SYSTEM,
+            StatisticModel.period == Period.DAILY,
+            StatisticModel.metric_type.in_([
+                MetricType.DATASET_COUNT,
+                MetricType.PROVIDER_COUNT,
+                MetricType.XML_ARCHIVE_COUNT
+            ]),
+            StatisticModel.date >= earliest_date,
+            StatisticModel.date <= target_date
+        )
+    ).all()
+    
+    existing_dates_set = {row[0] for row in existing_dates}
+    
+    # Generate all dates that should have statistics
+    expected_dates = []
+    current = earliest_date
+    while current <= target_date:
+        expected_dates.append(current)
+        current += timedelta(days=1)
+    
+    # Find missing dates
+    missing_dates = [d for d in expected_dates if d not in existing_dates_set]
+    
+    if not missing_dates:
+        logger.debug(f"No gaps found in statistics up to {target_date}")
+        return []
+    
+    # Apply safety limit to prevent processing too many days at once
+    if len(missing_dates) > max_gap_days:
+        logger.warning(
+            f"Found {len(missing_dates)} missing dates, exceeds maximum of {max_gap_days}. "
+            f"Limiting to most recent {max_gap_days} days."
+        )
+        # Sort by date and take the most recent ones
+        missing_dates.sort()
+        missing_dates = missing_dates[-max_gap_days:]
+    
+    # Sort chronologically for processing
+    missing_dates.sort()
+    
+    logger.info(
+        f"Detected {len(missing_dates)} missing dates in statistics: "
+        f"from {missing_dates[0]} to {missing_dates[-1]}"
+    )
+    
+    return missing_dates
+
 @shared_task(
     bind=True,
     base=LoggingTask,  # Use custom base class for enhanced logging
@@ -908,6 +995,7 @@ def collect_daily_statistics(self, target_date: str = None) -> Dict[str, Any]:
     """
     Collect daily statistics for datasets, providers, and validation jobs.
     Implements backfill-then-update pattern using model timestamps.
+    Now includes automatic gap detection and filling.
     
     Queue Assignment: Routes to 'light_tasks' queue for lightweight statistical
     calculations using prefork worker pool optimized for CPU-bound operations.
@@ -923,56 +1011,75 @@ def collect_daily_statistics(self, target_date: str = None) -> Dict[str, Any]:
     try:
         # Parse target date
         if target_date:
-            stat_date = datetime.strptime(target_date, "%Y-%m-%d").date()
+            primary_target_date = datetime.strptime(target_date, "%Y-%m-%d").date()
         else:
-            stat_date = date.today() - timedelta(days=1)
+            primary_target_date = date.today() - timedelta(days=1)
         
-        logger.info(f"Collecting daily statistics for {stat_date}")
+        logger.info(f"Starting statistics collection with target date: {primary_target_date}")
         
-        collected_stats = []
-        backfill_performed = []
+        # Collect all dates that need processing
+        dates_to_process = []
+        gap_dates = []
+        is_initial_backfill = False
         
-        # Get the earliest creation date for system-wide metrics
-        earliest_dataset = db.query(func.min(DatasetModel.created_at)).scalar()
-        earliest_provider = db.query(func.min(DataProviderModel.created_at)).scalar()
-        # For archives, get the earliest dataset creation date that has archives
-        earliest_archive = db.query(func.min(DatasetModel.created_at)).join(
-            XmlArchiveModel, XmlArchiveModel.dataset_id == DatasetModel.id
-        ).scalar()
+        # Check if this is an initial backfill scenario (no statistics exist)
+        stats_exist = check_statistics_exist(
+            db, MetricType.DATASET_COUNT, EntityType.SYSTEM, None, Period.DAILY
+        )
         
-        # Determine the overall earliest date for system metrics
-        system_start_dates = [d for d in [earliest_dataset, earliest_provider, earliest_archive] if d]
-        system_start_date = min(system_start_dates).date() if system_start_dates else stat_date
-        
-        # System-wide statistics with backfill support
-        
-        # 1. Total datasets - check if backfill needed
-        if not check_statistics_exist(db, MetricType.DATASET_COUNT, EntityType.SYSTEM, None, Period.DAILY):
-            # Backfill mode - generate historical data
-            logger.info(f"Backfilling DATASET_COUNT from {system_start_date} to {stat_date}")
-            backfill_dates = generate_backfill_dates(system_start_date, stat_date)
+        if not stats_exist:
+            # Initial backfill scenario - process from beginning to target date
+            is_initial_backfill = True
+            logger.info("No existing statistics found - performing initial backfill")
             
-            for backfill_date in backfill_dates:
-                count = get_cumulative_count(db, DatasetModel, backfill_date)
-                perform_statistics_upsert(
-                    db=db,
-                    metric_type=MetricType.DATASET_COUNT,
-                    entity_type=EntityType.SYSTEM,
-                    entity_id=None,
-                    period=Period.DAILY,
-                    date_value=backfill_date,
-                    value=count,
-                    extra_data={
-                        'collection_timestamp': datetime.utcnow().isoformat(),
-                        'backfilled': True,
-                        'backfill_date_range': f"{system_start_date} to {stat_date}"
-                    },
-                    log_message=f"Backfilled DATASET_COUNT for {backfill_date}: {count}"
-                )
-            backfill_performed.append(f"DATASET_COUNT: {len(backfill_dates)} days")
-            collected_stats.append(f"System dataset count backfilled: {len(backfill_dates)} days")
+            # Get the earliest creation dates
+            earliest_dataset = db.query(func.min(DatasetModel.created_at)).scalar()
+            earliest_provider = db.query(func.min(DataProviderModel.created_at)).scalar()
+            earliest_archive = db.query(func.min(DatasetModel.created_at)).join(
+                XmlArchiveModel, XmlArchiveModel.dataset_id == DatasetModel.id
+            ).scalar()
+            
+            system_start_dates = [d for d in [earliest_dataset, earliest_provider, earliest_archive] if d]
+            system_start_date = min(system_start_dates).date() if system_start_dates else primary_target_date
+            
+            # Generate all dates for initial backfill
+            dates_to_process = generate_backfill_dates(system_start_date, primary_target_date)
+            logger.info(f"Initial backfill will process {len(dates_to_process)} dates from {system_start_date} to {primary_target_date}")
+            
         else:
-            # Incremental mode - only update current date
+            # Statistics exist - check for gaps
+            gap_dates = detect_statistics_gaps(db, primary_target_date)
+            
+            if gap_dates:
+                logger.info(f"Detected {len(gap_dates)} missing dates to fill before processing target date")
+                dates_to_process.extend(gap_dates)
+            
+            # Always process the primary target date last
+            dates_to_process.append(primary_target_date)
+        
+        # Process statistics collection for each date
+        total_collected_stats = []
+        total_backfill_info = []
+        dates_processed = []
+        
+        for stat_date in dates_to_process:
+            logger.info(f"Processing statistics for date: {stat_date}")
+            collected_stats = []
+            backfill_performed = []
+            
+            # Get the earliest creation date for system-wide metrics
+            earliest_dataset = db.query(func.min(DatasetModel.created_at)).scalar()
+            earliest_provider = db.query(func.min(DataProviderModel.created_at)).scalar()
+            earliest_archive = db.query(func.min(DatasetModel.created_at)).join(
+                XmlArchiveModel, XmlArchiveModel.dataset_id == DatasetModel.id
+            ).scalar()
+            
+            system_start_dates = [d for d in [earliest_dataset, earliest_provider, earliest_archive] if d]
+            system_start_date = min(system_start_dates).date() if system_start_dates else stat_date
+            
+            # System-wide statistics
+            
+            # 1. Total datasets
             count = get_cumulative_count(db, DatasetModel, stat_date)
             perform_statistics_upsert(
                 db=db,
@@ -982,38 +1089,16 @@ def collect_daily_statistics(self, target_date: str = None) -> Dict[str, Any]:
                 period=Period.DAILY,
                 date_value=stat_date,
                 value=count,
-                extra_data={'collection_timestamp': datetime.utcnow().isoformat()},
-                log_message=f"Updated DATASET_COUNT for {stat_date}: {count}"
+                extra_data={
+                    'collection_timestamp': datetime.utcnow().isoformat(),
+                    'gap_fill': stat_date in gap_dates,
+                    'initial_backfill': is_initial_backfill
+                },
+                log_message=f"{'Gap-fill' if stat_date in gap_dates else 'Updated'} DATASET_COUNT for {stat_date}: {count}"
             )
-            collected_stats.append(f"System dataset count (updated): {count}")
-        
-        # 2. Total providers - check if backfill needed
-        if not check_statistics_exist(db, MetricType.PROVIDER_COUNT, EntityType.SYSTEM, None, Period.DAILY):
-            # Backfill mode
-            logger.info(f"Backfilling PROVIDER_COUNT from {system_start_date} to {stat_date}")
-            backfill_dates = generate_backfill_dates(system_start_date, stat_date)
+            collected_stats.append(f"System dataset count: {count}")
             
-            for backfill_date in backfill_dates:
-                count = get_cumulative_count(db, DataProviderModel, backfill_date)
-                perform_statistics_upsert(
-                    db=db,
-                    metric_type=MetricType.PROVIDER_COUNT,
-                    entity_type=EntityType.SYSTEM,
-                    entity_id=None,
-                    period=Period.DAILY,
-                    date_value=backfill_date,
-                    value=count,
-                    extra_data={
-                        'collection_timestamp': datetime.utcnow().isoformat(),
-                        'backfilled': True,
-                        'backfill_date_range': f"{system_start_date} to {stat_date}"
-                    },
-                    log_message=f"Backfilled PROVIDER_COUNT for {backfill_date}: {count}"
-                )
-            backfill_performed.append(f"PROVIDER_COUNT: {len(backfill_dates)} days")
-            collected_stats.append(f"System provider count backfilled: {len(backfill_dates)} days")
-        else:
-            # Incremental mode
+            # 2. Total providers
             count = get_cumulative_count(db, DataProviderModel, stat_date)
             perform_statistics_upsert(
                 db=db,
@@ -1023,38 +1108,16 @@ def collect_daily_statistics(self, target_date: str = None) -> Dict[str, Any]:
                 period=Period.DAILY,
                 date_value=stat_date,
                 value=count,
-                extra_data={'collection_timestamp': datetime.utcnow().isoformat()},
-                log_message=f"Updated PROVIDER_COUNT for {stat_date}: {count}"
+                extra_data={
+                    'collection_timestamp': datetime.utcnow().isoformat(),
+                    'gap_fill': stat_date in gap_dates,
+                    'initial_backfill': is_initial_backfill
+                },
+                log_message=f"{'Gap-fill' if stat_date in gap_dates else 'Updated'} PROVIDER_COUNT for {stat_date}: {count}"
             )
-            collected_stats.append(f"System provider count (updated): {count}")
-        
-        # 3. Total XML archives - check if backfill needed
-        if not check_statistics_exist(db, MetricType.XML_ARCHIVE_COUNT, EntityType.SYSTEM, None, Period.DAILY):
-            # Backfill mode
-            logger.info(f"Backfilling XML_ARCHIVE_COUNT from {system_start_date} to {stat_date}")
-            backfill_dates = generate_backfill_dates(system_start_date, stat_date)
+            collected_stats.append(f"System provider count: {count}")
             
-            for backfill_date in backfill_dates:
-                count = get_cumulative_xml_archive_count(db, backfill_date)
-                perform_statistics_upsert(
-                    db=db,
-                    metric_type=MetricType.XML_ARCHIVE_COUNT,
-                    entity_type=EntityType.SYSTEM,
-                    entity_id=None,
-                    period=Period.DAILY,
-                    date_value=backfill_date,
-                    value=count,
-                    extra_data={
-                        'collection_timestamp': datetime.utcnow().isoformat(),
-                        'backfilled': True,
-                        'backfill_date_range': f"{system_start_date} to {stat_date}"
-                    },
-                    log_message=f"Backfilled XML_ARCHIVE_COUNT for {backfill_date}: {count}"
-                )
-            backfill_performed.append(f"XML_ARCHIVE_COUNT: {len(backfill_dates)} days")
-            collected_stats.append(f"System XML archive count backfilled: {len(backfill_dates)} days")
-        else:
-            # Incremental mode
+            # 3. Total XML archives
             count = get_cumulative_xml_archive_count(db, stat_date)
             perform_statistics_upsert(
                 db=db,
@@ -1064,106 +1127,82 @@ def collect_daily_statistics(self, target_date: str = None) -> Dict[str, Any]:
                 period=Period.DAILY,
                 date_value=stat_date,
                 value=count,
-                extra_data={'collection_timestamp': datetime.utcnow().isoformat()},
-                log_message=f"Updated XML_ARCHIVE_COUNT for {stat_date}: {count}"
-            )
-            collected_stats.append(f"System XML archive count (updated): {count}")
-        
-        # Validation statistics (rolling window - always current)
-        week_ago = stat_date - timedelta(days=7)
-        validation_jobs = db.query(ValidationJobModel).filter(
-            ValidationJobModel.created_at >= week_ago
-        ).all()
-        
-        if validation_jobs:
-            total_jobs = len(validation_jobs)
-            successful_jobs = len([job for job in validation_jobs 
-                                 if job.status == 'completed' and job.valid_files == job.total_files and job.total_files > 0])
-            success_rate = (successful_jobs / total_jobs) * 100 if total_jobs > 0 else 0
-            
-            avg_processing_time = 0
-            completed_jobs = [job for job in validation_jobs if job.status == 'completed']
-            if completed_jobs:
-                processing_times = [job.validation_time for job in completed_jobs 
-                                  if job.validation_time is not None]
-                if processing_times:
-                    avg_processing_time = sum(processing_times) / len(processing_times)
-            
-            # Validation metrics don't need backfill as they're rolling window metrics
-            perform_statistics_upsert(
-                db=db,
-                metric_type=MetricType.VALIDATION_SUCCESS_RATE,
-                entity_type=EntityType.SYSTEM,
-                entity_id=None,
-                period=Period.DAILY,
-                date_value=stat_date,
-                value=success_rate,
                 extra_data={
-                    'total_jobs': total_jobs,
-                    'successful_jobs': successful_jobs,
-                    'period_days': 7,
-                    'collection_timestamp': datetime.utcnow().isoformat()
+                    'collection_timestamp': datetime.utcnow().isoformat(),
+                    'gap_fill': stat_date in gap_dates,
+                    'initial_backfill': is_initial_backfill
                 },
-                log_message=f"Updated VALIDATION_SUCCESS_RATE for {stat_date}: {success_rate:.1f}%"
+                log_message=f"{'Gap-fill' if stat_date in gap_dates else 'Updated'} XML_ARCHIVE_COUNT for {stat_date}: {count}"
             )
-            collected_stats.append(f"System validation success rate (updated): {success_rate:.1f}%")
+            collected_stats.append(f"System XML archive count: {count}")
             
-            perform_statistics_upsert(
-                db=db,
-                metric_type=MetricType.VALIDATION_PROCESSING_TIME,
-                entity_type=EntityType.SYSTEM,
-                entity_id=None,
-                period=Period.DAILY,
-                date_value=stat_date,
-                value=avg_processing_time,
-                extra_data={
-                    'jobs_included': len([j for j in validation_jobs if j.validation_time is not None]),
-                    'collection_timestamp': datetime.utcnow().isoformat()
-                },
-                log_message=f"Updated VALIDATION_PROCESSING_TIME for {stat_date}: {avg_processing_time:.2f}s"
-            )
-            collected_stats.append(f"System avg processing time (updated): {avg_processing_time:.2f}s")
-        
-        # Provider-specific statistics
-        providers = db.query(DataProviderModel).all()
-        
-        for provider in providers:
-            provider_start_date = provider.created_at.date() if provider.created_at else stat_date
+            # Validation statistics (rolling window - always current)
+            week_ago = stat_date - timedelta(days=7)
+            validation_jobs = db.query(ValidationJobModel).filter(
+                ValidationJobModel.created_at >= week_ago
+            ).all()
             
-            # Provider dataset count - check if backfill needed
-            if not check_statistics_exist(
-                db, MetricType.PROVIDER_DATASET_COUNT, EntityType.PROVIDER, provider.id, Period.DAILY
-            ):
-                # Backfill mode for this provider
-                logger.info(f"Backfilling PROVIDER_DATASET_COUNT for provider {provider.id} from {provider_start_date} to {stat_date}")
-                backfill_dates = generate_backfill_dates(provider_start_date, stat_date)
+            if validation_jobs:
+                total_jobs = len(validation_jobs)
+                successful_jobs = len([job for job in validation_jobs 
+                                     if job.status == 'completed' and job.valid_files == job.total_files and job.total_files > 0])
+                success_rate = (successful_jobs / total_jobs) * 100 if total_jobs > 0 else 0
                 
-                for backfill_date in backfill_dates:
-                    count = get_cumulative_count(
-                        db, DatasetModel, backfill_date,
-                        filter_conditions=(DatasetModel.provider_id == provider.id)
-                    )
-                    perform_statistics_upsert(
-                        db=db,
-                        metric_type=MetricType.PROVIDER_DATASET_COUNT,
-                        entity_type=EntityType.PROVIDER,
-                        entity_id=provider.id,
-                        period=Period.DAILY,
-                        date_value=backfill_date,
-                        value=count,
-                        extra_data={
-                            'provider_name': provider.name,
-                            'provider_datacenter': provider.datacenter,
-                            'collection_timestamp': datetime.utcnow().isoformat(),
-                            'backfilled': True,
-                            'backfill_date_range': f"{provider_start_date} to {stat_date}"
-                        },
-                        log_message=f"Backfilled PROVIDER_DATASET_COUNT for provider {provider.id} on {backfill_date}: {count}"
-                    )
-                backfill_performed.append(f"Provider {provider.id} dataset count: {len(backfill_dates)} days")
-                collected_stats.append(f"Provider {provider.id} dataset count backfilled: {len(backfill_dates)} days")
-            else:
-                # Incremental mode for this provider
+                avg_processing_time = 0
+                completed_jobs = [job for job in validation_jobs if job.status == 'completed']
+                if completed_jobs:
+                    processing_times = [job.validation_time for job in completed_jobs 
+                                      if job.validation_time is not None]
+                    if processing_times:
+                        avg_processing_time = sum(processing_times) / len(processing_times)
+                
+                perform_statistics_upsert(
+                    db=db,
+                    metric_type=MetricType.VALIDATION_SUCCESS_RATE,
+                    entity_type=EntityType.SYSTEM,
+                    entity_id=None,
+                    period=Period.DAILY,
+                    date_value=stat_date,
+                    value=success_rate,
+                    extra_data={
+                        'total_jobs': total_jobs,
+                        'successful_jobs': successful_jobs,
+                        'period_days': 7,
+                        'collection_timestamp': datetime.utcnow().isoformat(),
+                        'gap_fill': stat_date in gap_dates
+                    },
+                    log_message=f"{'Gap-fill' if stat_date in gap_dates else 'Updated'} VALIDATION_SUCCESS_RATE for {stat_date}: {success_rate:.1f}%"
+                )
+                collected_stats.append(f"System validation success rate: {success_rate:.1f}%")
+                
+                perform_statistics_upsert(
+                    db=db,
+                    metric_type=MetricType.VALIDATION_PROCESSING_TIME,
+                    entity_type=EntityType.SYSTEM,
+                    entity_id=None,
+                    period=Period.DAILY,
+                    date_value=stat_date,
+                    value=avg_processing_time,
+                    extra_data={
+                        'jobs_included': len([j for j in validation_jobs if j.validation_time is not None]),
+                        'collection_timestamp': datetime.utcnow().isoformat(),
+                        'gap_fill': stat_date in gap_dates
+                    },
+                    log_message=f"{'Gap-fill' if stat_date in gap_dates else 'Updated'} VALIDATION_PROCESSING_TIME for {stat_date}: {avg_processing_time:.2f}s"
+                )
+                collected_stats.append(f"System avg processing time: {avg_processing_time:.2f}s")
+            
+            # Provider-specific statistics
+            providers = db.query(DataProviderModel).all()
+            
+            for provider in providers:
+                provider_start_date = provider.created_at.date() if provider.created_at else stat_date
+                
+                # Skip if provider didn't exist on this date
+                if provider_start_date > stat_date:
+                    continue
+                
+                # Provider dataset count
                 count = get_cumulative_count(
                     db, DatasetModel, stat_date,
                     filter_conditions=(DatasetModel.provider_id == provider.id)
@@ -1179,84 +1218,19 @@ def collect_daily_statistics(self, target_date: str = None) -> Dict[str, Any]:
                     extra_data={
                         'provider_name': provider.name,
                         'provider_datacenter': provider.datacenter,
-                        'collection_timestamp': datetime.utcnow().isoformat()
+                        'collection_timestamp': datetime.utcnow().isoformat(),
+                        'gap_fill': stat_date in gap_dates,
+                        'initial_backfill': is_initial_backfill
                     },
-                    log_message=f"Updated PROVIDER_DATASET_COUNT for provider {provider.id}: {count}"
+                    log_message=f"{'Gap-fill' if stat_date in gap_dates else 'Updated'} PROVIDER_DATASET_COUNT for provider {provider.id} on {stat_date}: {count}"
                 )
-                collected_stats.append(f"Provider {provider.id} dataset count (updated): {count}")
-            
-            # Provider biological units - check if backfill needed
-            # This metric depends on dataset unit counts, so handle differently
-            if not check_statistics_exist(
-                db, MetricType.PROVIDER_BIOLOGICAL_UNITS, EntityType.PROVIDER, provider.id, Period.DAILY
-            ):
-                # Backfill mode for biological units
-                logger.info(f"Backfilling PROVIDER_BIOLOGICAL_UNITS for provider {provider.id} from {provider_start_date} to {stat_date}")
-                backfill_dates = generate_backfill_dates(provider_start_date, stat_date)
                 
-                for backfill_date in backfill_dates:
-                    # Get datasets that existed on this date
-                    dataset_ids = db.query(DatasetModel.id).filter(
-                        and_(
-                            DatasetModel.provider_id == provider.id,
-                            DatasetModel.created_at <= datetime.combine(backfill_date, datetime.max.time())
-                        )
-                    ).all()
-                    
-                    if not dataset_ids:
-                        provider_biological_units = 0
-                    else:
-                        dataset_id_list = [dataset_id[0] for dataset_id in dataset_ids]
-                        
-                        # Get the most recent unit count for each dataset up to backfill_date
-                        subquery = db.query(
-                            StatisticModel.entity_id,
-                            func.max(StatisticModel.date).label('max_date')
-                        ).filter(
-                            and_(
-                                StatisticModel.metric_type == MetricType.DATASET_UNIT_COUNT,
-                                StatisticModel.entity_type == EntityType.DATASET,
-                                StatisticModel.entity_id.in_(dataset_id_list),
-                                StatisticModel.date <= backfill_date
-                            )
-                        ).group_by(StatisticModel.entity_id).subquery()
-                        
-                        recent_unit_counts = db.query(StatisticModel.value).join(
-                            subquery,
-                            and_(
-                                StatisticModel.entity_id == subquery.c.entity_id,
-                                StatisticModel.date == subquery.c.max_date
-                            )
-                        ).filter(
-                            StatisticModel.metric_type == MetricType.DATASET_UNIT_COUNT
-                        ).all()
-                        
-                        provider_biological_units = sum(count[0] for count in recent_unit_counts if count[0] is not None)
-                    
-                    perform_statistics_upsert(
-                        db=db,
-                        metric_type=MetricType.PROVIDER_BIOLOGICAL_UNITS,
-                        entity_type=EntityType.PROVIDER,
-                        entity_id=provider.id,
-                        period=Period.DAILY,
-                        date_value=backfill_date,
-                        value=provider_biological_units,
-                        extra_data={
-                            'provider_name': provider.name,
-                            'provider_datacenter': provider.datacenter,
-                            'dataset_count': len(dataset_ids),
-                            'collection_timestamp': datetime.utcnow().isoformat(),
-                            'backfilled': True,
-                            'backfill_date_range': f"{provider_start_date} to {stat_date}"
-                        },
-                        log_message=f"Backfilled PROVIDER_BIOLOGICAL_UNITS for provider {provider.id} on {backfill_date}: {provider_biological_units}"
-                    )
-                backfill_performed.append(f"Provider {provider.id} biological units: {len(backfill_dates)} days")
-                collected_stats.append(f"Provider {provider.id} biological units backfilled: {len(backfill_dates)} days")
-            else:
-                # Incremental mode for biological units
+                # Provider biological units
                 dataset_ids = db.query(DatasetModel.id).filter(
-                    DatasetModel.provider_id == provider.id
+                    and_(
+                        DatasetModel.provider_id == provider.id,
+                        DatasetModel.created_at <= datetime.combine(stat_date, datetime.max.time())
+                    )
                 ).all()
                 
                 if not dataset_ids:
@@ -1300,81 +1274,95 @@ def collect_daily_statistics(self, target_date: str = None) -> Dict[str, Any]:
                         'provider_name': provider.name,
                         'provider_datacenter': provider.datacenter,
                         'dataset_count': len(dataset_ids),
-                        'collection_timestamp': datetime.utcnow().isoformat()
+                        'collection_timestamp': datetime.utcnow().isoformat(),
+                        'gap_fill': stat_date in gap_dates,
+                        'initial_backfill': is_initial_backfill
                     },
-                    log_message=f"Updated PROVIDER_BIOLOGICAL_UNITS for provider {provider.id}: {provider_biological_units}"
+                    log_message=f"{'Gap-fill' if stat_date in gap_dates else 'Updated'} PROVIDER_BIOLOGICAL_UNITS for provider {provider.id} on {stat_date}: {provider_biological_units}"
                 )
-                collected_stats.append(f"Provider {provider.id} biological units (updated): {provider_biological_units}")
-        
-        # Dataset registration rate (new datasets for specific date - not cumulative)
-        start_of_day = datetime.combine(stat_date, datetime.min.time())
-        end_of_day = datetime.combine(stat_date, datetime.max.time())
-        
-        new_datasets_count = db.query(func.count(DatasetModel.id)).filter(
-            and_(
-                DatasetModel.created_at >= start_of_day,
-                DatasetModel.created_at <= end_of_day
+            
+            # Dataset registration and modification rates
+            start_of_day = datetime.combine(stat_date, datetime.min.time())
+            end_of_day = datetime.combine(stat_date, datetime.max.time())
+            
+            new_datasets_count = db.query(func.count(DatasetModel.id)).filter(
+                and_(
+                    DatasetModel.created_at >= start_of_day,
+                    DatasetModel.created_at <= end_of_day
+                )
+            ).scalar()
+            
+            perform_statistics_upsert(
+                db=db,
+                metric_type=MetricType.DATASET_REGISTRATION_RATE,
+                entity_type=EntityType.SYSTEM,
+                entity_id=None,
+                period=Period.DAILY,
+                date_value=stat_date,
+                value=new_datasets_count,
+                extra_data={
+                    'period_start': start_of_day.isoformat(),
+                    'period_end': end_of_day.isoformat(),
+                    'collection_timestamp': datetime.utcnow().isoformat(),
+                    'gap_fill': stat_date in gap_dates
+                },
+                log_message=f"Dataset registration rate for {stat_date}: {new_datasets_count}"
             )
-        ).scalar()
-        
-        perform_statistics_upsert(
-            db=db,
-            metric_type=MetricType.DATASET_REGISTRATION_RATE,
-            entity_type=EntityType.SYSTEM,
-            entity_id=None,
-            period=Period.DAILY,
-            date_value=stat_date,
-            value=new_datasets_count,
-            extra_data={
-                'period_start': start_of_day.isoformat(),
-                'period_end': end_of_day.isoformat(),
-                'collection_timestamp': datetime.utcnow().isoformat()
-            },
-            log_message=f"Dataset registration rate for {stat_date}: {new_datasets_count}"
-        )
-        collected_stats.append(f"New datasets today: {new_datasets_count}")
-        
-        # Dataset modification rate (modified datasets for specific date - not cumulative)
-        modified_datasets_count = db.query(func.count(distinct(DatasetModel.id))).filter(
-            and_(
-                DatasetModel.updated_at >= start_of_day,
-                DatasetModel.updated_at <= end_of_day,
-                DatasetModel.created_at < start_of_day  # Exclude new datasets
+            collected_stats.append(f"New datasets on {stat_date}: {new_datasets_count}")
+            
+            modified_datasets_count = db.query(func.count(distinct(DatasetModel.id))).filter(
+                and_(
+                    DatasetModel.updated_at >= start_of_day,
+                    DatasetModel.updated_at <= end_of_day,
+                    DatasetModel.created_at < start_of_day  # Exclude new datasets
+                )
+            ).scalar()
+            
+            perform_statistics_upsert(
+                db=db,
+                metric_type=MetricType.DATASET_MODIFICATION_RATE,
+                entity_type=EntityType.SYSTEM,
+                entity_id=None,
+                period=Period.DAILY,
+                date_value=stat_date,
+                value=modified_datasets_count,
+                extra_data={
+                    'period_start': start_of_day.isoformat(),
+                    'period_end': end_of_day.isoformat(),
+                    'collection_timestamp': datetime.utcnow().isoformat(),
+                    'gap_fill': stat_date in gap_dates
+                },
+                log_message=f"Dataset modification rate for {stat_date}: {modified_datasets_count}"
             )
-        ).scalar()
-        
-        perform_statistics_upsert(
-            db=db,
-            metric_type=MetricType.DATASET_MODIFICATION_RATE,
-            entity_type=EntityType.SYSTEM,
-            entity_id=None,
-            period=Period.DAILY,
-            date_value=stat_date,
-            value=modified_datasets_count,
-            extra_data={
-                'period_start': start_of_day.isoformat(),
-                'period_end': end_of_day.isoformat(),
-                'collection_timestamp': datetime.utcnow().isoformat()
-            },
-            log_message=f"Dataset modification rate for {stat_date}: {modified_datasets_count}"
-        )
-        collected_stats.append(f"Modified datasets today: {modified_datasets_count}")
+            collected_stats.append(f"Modified datasets on {stat_date}: {modified_datasets_count}")
+            
+            # Track what we did for this date
+            dates_processed.append(stat_date)
+            total_collected_stats.extend(collected_stats)
+            
+            if stat_date in gap_dates:
+                logger.info(f"Successfully filled gap for date: {stat_date}")
         
         # Commit all statistics
         db.commit()
         
         # Log comprehensive summary
-        if backfill_performed:
-            logger.info(f"Backfill completed for: {', '.join(backfill_performed)}")
+        summary_message = f"Successfully collected statistics for {len(dates_processed)} date(s)"
+        if gap_dates:
+            summary_message += f" (including {len(gap_dates)} gap-filled dates)"
+        if is_initial_backfill:
+            summary_message += " (initial backfill completed)"
         
-        logger.info(f"Successfully collected {len(collected_stats)} daily statistics for {stat_date}")
+        logger.info(summary_message)
         
         return {
             'status': 'completed',
-            'date': stat_date.isoformat(),
-            'statistics_collected': len(collected_stats),
-            'backfill_performed': backfill_performed,
-            'details': collected_stats,
+            'primary_target_date': primary_target_date.isoformat(),
+            'dates_processed': [d.isoformat() for d in dates_processed],
+            'gap_dates_filled': [d.isoformat() for d in gap_dates],
+            'initial_backfill': is_initial_backfill,
+            'total_dates_processed': len(dates_processed),
+            'statistics_collected': len(total_collected_stats),
             'task_id': self.request.id,
             'completed_at': datetime.utcnow().isoformat()
         }
