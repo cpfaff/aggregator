@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { authStatsApi, statsUtils } from '../../utils/statisticsApi';
 import { apiRequest } from '../../utils/apiUtils';
+import axios from 'axios';
 import StatCard from '../ui/StatCard';
 import TimeSeriesChart from '../ui/TimeSeriesChart';
 import Alert from '../ui/Alert';
@@ -17,6 +18,7 @@ function ProviderStatistics({ providerId, providerName }) {
   const [biologicalUnitsTimeSeriesData, setBiologicalUnitsTimeSeriesData] = useState([]);
   const [datasets, setDatasets] = useState([]);
   const [datasetStats, setDatasetStats] = useState({});
+  const [validationStatuses, setValidationStatuses] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [isTimeSeriesLoading, setIsTimeSeriesLoading] = useState(false);
   const [isBiologicalUnitsTimeSeriesLoading, setIsBiologicalUnitsTimeSeriesLoading] = useState(false);
@@ -63,26 +65,61 @@ function ProviderStatistics({ providerId, providerName }) {
       const datasetsData = await datasetsRes.json();
       setDatasets(datasetsData);
       
-      // Fetch statistics for each dataset
-      const statsPromises = datasetsData.map(async (dataset) => {
-        try {
-          const datasetStats = await authStatsApi.getDatasetStats(dataset.id, handleTokenExpiration);
-          return { [dataset.id]: datasetStats };
-        } catch (error) {
-          console.error(`Error fetching stats for dataset ${dataset.id}:`, error);
-          return { [dataset.id]: null };
-        }
+      // Fetch statistics and validation statuses for each dataset in parallel
+      const promises = datasetsData.map(async (dataset) => {
+        const results = await Promise.all([
+          // Fetch dataset statistics
+          authStatsApi.getDatasetStats(dataset.id, handleTokenExpiration).catch(error => {
+            console.error(`Error fetching stats for dataset ${dataset.id}:`, error);
+            return null;
+          }),
+          // Fetch validation status from the validators API (the correct source)
+          fetchValidationStatus(dataset.id).catch(error => {
+            console.error(`Error fetching validation status for dataset ${dataset.id}:`, error);
+            return null;
+          })
+        ]);
+        
+        return {
+          stats: { [dataset.id]: results[0] },
+          validation: { [dataset.id]: results[1] }
+        };
       });
       
-      const statsResults = await Promise.all(statsPromises);
-      const combinedStats = statsResults.reduce((acc, stats) => ({ ...acc, ...stats }), {});
+      const allResults = await Promise.all(promises);
+      
+      // Combine all stats
+      const combinedStats = allResults.reduce((acc, result) => ({ ...acc, ...result.stats }), {});
       setDatasetStats(combinedStats);
+      
+      // Combine all validation statuses
+      const combinedValidation = allResults.reduce((acc, result) => ({ ...acc, ...result.validation }), {});
+      setValidationStatuses(combinedValidation);
       
     } catch (err) {
       console.error('Error fetching dataset statistics:', err);
       // Don't set error for dataset stats failure, just log it
     } finally {
       setIsDatasetsLoading(false);
+    }
+  };
+
+  // Fetch validation status from the validators API (same as DatasetCard does)
+  const fetchValidationStatus = async (datasetId) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        `${process.env.REACT_APP_API_BASE_URL || ''}/api/v1/validators/datasets/${datasetId}/validation-status`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching validation status:', error);
+      return null;
     }
   };
 
@@ -385,6 +422,7 @@ function ProviderStatistics({ providerId, providerName }) {
               {datasets.map((dataset) => {
                 const stats = datasetStats[dataset.id];
                 const unitCount = stats?.unit_count;
+                const validationStatus = validationStatuses[dataset.id];
                 
                 return (
                   <div
@@ -483,7 +521,7 @@ function ProviderStatistics({ providerId, providerName }) {
                     </div>
                     
                     {/* Additional info */}
-                    {stats && (
+                    {(stats || validationStatus) && (
                       <div style={{
                         display: 'flex',
                         flexDirection: 'column',
@@ -492,36 +530,36 @@ function ProviderStatistics({ providerId, providerName }) {
                         fontSize: '0.8rem',
                         color: 'var(--text-light)'
                       }}>
-                        {stats.last_modified && (
+                        {stats?.last_modified && (
                           <div>
                             Last updated: {new Date(stats.last_modified).toLocaleDateString()}
                           </div>
                         )}
-                        {stats.validation_status && (
+                        {validationStatus && validationStatus.has_latest_archive && (
                           <div style={{
                             display: 'flex',
                             alignItems: 'center',
                             gap: '0.5rem'
                           }}>
-                            {stats.validation_status === 'completed' ? (
-                              stats.is_valid ? (
+                            {validationStatus.validation_status === 'completed' ? (
+                              validationStatus.is_valid ? (
                                 <CheckCircle size={14} style={{ color: 'var(--success)' }} />
                               ) : (
                                 <XCircle size={14} style={{ color: 'var(--error)' }} />
                               )
-                            ) : stats.validation_status === 'pending' || stats.validation_status === 'running' ? (
+                            ) : validationStatus.validation_status === 'pending' || validationStatus.validation_status === 'running' ? (
                               <Activity size={14} style={{ color: 'var(--warning)' }} />
                             ) : (
                               <Activity size={14} style={{ color: 'var(--text-light)' }} />
                             )}
                             Validation: {
-                              stats.validation_status === 'completed' 
-                                ? (stats.is_valid ? 'Valid' : 'Invalid')
-                                : stats.validation_status === 'pending' 
+                              validationStatus.validation_status === 'completed' 
+                                ? (validationStatus.is_valid ? 'Valid' : 'Invalid')
+                                : validationStatus.validation_status === 'pending' 
                                   ? 'Pending'
-                                  : stats.validation_status === 'running'
+                                  : validationStatus.validation_status === 'running'
                                     ? 'Running'
-                                    : stats.validation_status || 'Not validated'
+                                    : validationStatus.validation_status || 'Not validated'
                             }
                           </div>
                         )}
