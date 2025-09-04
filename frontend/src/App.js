@@ -7,7 +7,7 @@ import { useAuth } from './components/auth/AuthContext';
 import { applyTheme } from './styles/theme';
 import { addGlobalStyles } from './styles/globalStyles';
 import Login from './components/auth/Login';
-import Dashboard from './components/dashboard/Dashboard';
+import Providers from './components/providers/Providers';
 import UserManagement from './components/users/UserManagement';
 import Changelog from './components/changelog/Changelog';
 import About from './components/public/About';
@@ -16,7 +16,7 @@ import { AdminDashboard, PublicStatsDashboard } from './components/statistics';
 
 function App() {
   const { token, currentUser, logout, sessionExpired, handleTokenExpiration } = useAuth();
-  const [activeView, setActiveView] = useState('landing'); // 'landing', 'login', 'dashboard', 'userManagement', 'changelog', 'providerDetail', 'adminStats', 'publicStats', or 'about'
+  const [activeView, setActiveView] = useState('landing'); // 'landing', 'login', 'providers', 'userManagement', 'changelog', 'providerDetail', 'adminStats', 'publicStats', or 'about'
   const [selectedProvider, setSelectedProvider] = useState(null);
   const [isDarkTheme, setIsDarkTheme] = useState(() => {
     const savedTheme = localStorage.getItem('isDarkTheme');
@@ -54,10 +54,10 @@ function App() {
     initCsrf();
   }, []);
 
-  // Reset view to dashboard when user logs in
+  // Reset view to providers when user logs in
   useEffect(() => {
     if (token) {
-      setActiveView('dashboard');
+      setActiveView('providers');
       setSelectedProvider(null);
     }
   }, [token]);
@@ -103,8 +103,8 @@ function App() {
     // Only render content when we have both token and user data
     return (
       <>
-        {activeView === 'dashboard' && (
-          <Dashboard 
+        {activeView === 'providers' && (
+          <Providers 
             currentUser={currentUser} 
             onViewProviderDetails={(provider) => {
               setSelectedProvider(provider);
@@ -130,7 +130,7 @@ function App() {
             provider={selectedProvider}
             currentUser={currentUser}
             onBack={() => {
-              setActiveView('dashboard');
+              setActiveView('providers');
               setSelectedProvider(null);
             }}
           />

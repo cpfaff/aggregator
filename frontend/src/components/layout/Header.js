@@ -29,7 +29,7 @@ const Header = ({ currentUser, activeView, setActiveView, logout, isDarkTheme, t
           cursor: 'pointer',
           flexShrink: 0,
         }}
-        onClick={() => setActiveView(isLoggedIn ? 'dashboard' : 'landing')}
+        onClick={() => setActiveView(isLoggedIn ? 'providers' : 'landing')}
         >
           Data Provider Manager
         </h1>
@@ -43,17 +43,17 @@ const Header = ({ currentUser, activeView, setActiveView, logout, isDarkTheme, t
           {isLoggedIn && (
             <a 
               href="#" 
-              onClick={(e) => { e.preventDefault(); setActiveView('dashboard'); }}
+              onClick={(e) => { e.preventDefault(); setActiveView('providers'); }}
               style={{
                 padding: '0.5rem 0',
                 position: 'relative',
-                color: activeView === 'dashboard' ? 'var(--primary)' : 'var(--text-light)',
+                color: activeView === 'providers' ? 'var(--primary)' : 'var(--text-light)',
                 textDecoration: 'none',
                 fontWeight: 500,
                 transition: 'all 0.2s ease',
               }}
             >
-              Dashboard
+              Providers
               <span style={{
                 content: '""',
                 position: 'absolute',
@@ -62,7 +62,7 @@ const Header = ({ currentUser, activeView, setActiveView, logout, isDarkTheme, t
                 width: '100%',
                 height: '2px',
                 backgroundColor: 'var(--primary)',
-                transform: activeView === 'dashboard' ? 'scaleX(1)' : 'scaleX(0)',
+                transform: activeView === 'providers' ? 'scaleX(1)' : 'scaleX(0)',
                 transformOrigin: 'left',
                 transition: 'transform 0.2s ease',
               }}></span>

@@ -11,8 +11,8 @@ import ProviderCard from '../providers/ProviderCard';
 import ProviderForm from '../providers/ProviderForm';
 import { Plus } from 'lucide-react';
 
-// Dashboard component with improved nested form integration
-function Dashboard({ currentUser, onViewProviderDetails }) {
+// Providers component with improved nested form integration
+function Providers({ currentUser, onViewProviderDetails }) {
   const { handleTokenExpiration } = useAuth();
   const [providers, setProviders] = useState([]);
   const [editingProvider, setEditingProvider] = useState(null);
@@ -113,10 +113,10 @@ function Dashboard({ currentUser, onViewProviderDetails }) {
     closeModals();
   };
 
-  // Breadcrumb items for Dashboard
+  // Breadcrumb items for Providers
   const breadcrumbItems = [
     { label: 'Home', onClick: () => window.location.href = '/' },
-    { label: 'Dashboard', onClick: null }
+    { label: 'Providers', onClick: null }
   ];
 
   return (
@@ -246,4 +246,4 @@ function Dashboard({ currentUser, onViewProviderDetails }) {
   );
 }
 
-export default Dashboard;
+export default Providers;
