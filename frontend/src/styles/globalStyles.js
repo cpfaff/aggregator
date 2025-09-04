@@ -45,11 +45,29 @@ export const addGlobalStyles = () => {
     .slide-in-up {
       animation: slideInUp 0.4s ease-out;
     }
-    html, body { 
+    
+    /* Prevent layout shifts */
+    .content-container {
+      min-height: calc(100vh - 200px);
+      opacity: 1;
+      transition: opacity 0.15s ease-out;
+    }
+    
+    /* Stabilize navigation transitions */
+    nav a {
+      will-change: color, transform;
+    }
+    
+    html { 
       margin: 0; 
       padding: 0;
       scrollbar-width: thin;
       scrollbar-color: var(--border) var(--card-bg);
+      overflow-y: scroll; /* Always show scrollbar to prevent layout shift */
+    }
+    body {
+      margin: 0;
+      padding: 0;
     }
     * { box-sizing: border-box; }
     button:focus, input:focus, textarea:focus, select:focus {

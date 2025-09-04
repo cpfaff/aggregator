@@ -135,10 +135,9 @@ const Changelog = () => {
     <div 
       className="content-container"
       style={{ 
-        padding: '2rem', 
-        maxWidth: '1200px', 
-        margin: '0 auto', 
-        width: '100%' 
+        padding: '2rem 1rem', 
+        width: '100%',
+        flexGrow: 1,
       }}
     >
       {/* Breadcrumb navigation */}

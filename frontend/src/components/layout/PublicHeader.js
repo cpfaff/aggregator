@@ -61,33 +61,6 @@ const PublicHeader = ({ activeView, setActiveView, isDarkTheme, toggleTheme }) =
           
           <a 
             href="#" 
-            onClick={(e) => { e.preventDefault(); setActiveView('login'); }}
-            style={{
-              padding: '0.5rem 0',
-              position: 'relative',
-              color: activeView === 'login' ? 'var(--primary)' : 'var(--text-light)',
-              textDecoration: 'none',
-              fontWeight: 500,
-              transition: 'all 0.2s ease',
-            }}
-          >
-            Sign In
-            <span style={{
-              content: '""',
-              position: 'absolute',
-              bottom: 0,
-              left: 0,
-              width: '100%',
-              height: '2px',
-              backgroundColor: 'var(--primary)',
-              transform: activeView === 'login' ? 'scaleX(1)' : 'scaleX(0)',
-              transformOrigin: 'left',
-              transition: 'transform 0.2s ease',
-            }}></span>
-          </a>
-          
-          <a 
-            href="#" 
             onClick={(e) => { e.preventDefault(); setActiveView('publicStats'); }}
             style={{
               padding: '0.5rem 0',
@@ -143,6 +116,29 @@ const PublicHeader = ({ activeView, setActiveView, isDarkTheme, toggleTheme }) =
       </div>
       
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <button
+          onClick={() => setActiveView('login')}
+          style={{
+            padding: '0.5rem 1rem',
+            backgroundColor: 'var(--primary)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '0.375rem',
+            fontSize: '0.875rem',
+            fontWeight: 500,
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.opacity = '0.9';
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.opacity = '1';
+          }}
+        >
+          Sign In
+        </button>
+        
         <button 
           onClick={toggleTheme}
           style={{

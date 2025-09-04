@@ -200,8 +200,6 @@ function AdminDashboard() {
         style={{ 
           flexGrow: 1,
           padding: '2rem 1rem',
-          maxWidth: '1200px',
-          margin: '0 auto',
           width: '100%',
         }}
         className="content-container"
@@ -232,8 +230,6 @@ function AdminDashboard() {
         style={{ 
           flexGrow: 1,
           padding: '2rem 1rem',
-          maxWidth: '1200px',
-          margin: '0 auto',
           width: '100%',
         }}
         className="content-container"
@@ -249,8 +245,6 @@ function AdminDashboard() {
       style={{ 
         flexGrow: 1,
         padding: '2rem 1rem',
-        maxWidth: '1200px',
-        margin: '0 auto',
         width: '100%',
       }}
       className="content-container"

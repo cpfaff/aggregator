@@ -123,8 +123,6 @@ function Dashboard({ currentUser, onViewProviderDetails }) {
     <div style={{ 
       flexGrow: 1,
       padding: '2rem 1rem',
-      maxWidth: '1200px',
-      margin: '0 auto',
       width: '100%',
     }}
     className="content-container">

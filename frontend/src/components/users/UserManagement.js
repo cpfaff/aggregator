@@ -27,7 +27,7 @@ function UserManagement() {
   // Breadcrumb items for User Management
   const breadcrumbItems = [
     { label: 'Home', onClick: () => window.location.href = '/' },
-    { label: 'User Management', onClick: null }
+    { label: 'Users', onClick: null }
   ];
 
   const fetchProviders = async () => {
@@ -226,8 +226,6 @@ function UserManagement() {
       style={{ 
         flexGrow: 1,
         padding: '2rem 1rem',
-        maxWidth: '1200px',
-        margin: '0 auto',
         width: '100%',
       }}
       className="content-container"

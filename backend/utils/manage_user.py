@@ -48,6 +48,8 @@ def parse_arguments():
     parser.add_argument('--regular-user', '-r', action='store_true', 
                         help='Set the user as a regular user (non-admin). If not provided, will be prompted')
     parser.add_argument('--env-file', '-e', help='Path to .env file')
+    parser.add_argument('--force', '-f', action='store_true',
+                        help='Force update without confirmation if user exists (non-interactive mode)')
     args = parser.parse_args()
     
     # Handle conflicting arguments
@@ -162,7 +164,7 @@ def get_database_url(args):
     
     return database_url
 
-async def init_user(username, password, database_url, is_global_admin=True):
+async def init_user(username, password, database_url, is_global_admin=True, force=False):
     """Initialize or update a user in the database."""
     # Check if we're trying to connect to 'db' host which is the Docker service name
     # If running locally, we should use 'localhost' instead
@@ -186,10 +188,13 @@ async def init_user(username, password, database_url, is_global_admin=True):
         # Check if user exists and ask for confirmation to update
         if user:
             print(f"\nWARNING: User '{username}' already exists!")
-            confirm = input(f"Do you want to update the existing user '{username}'? (y/n): ").lower()
-            if confirm not in ['y', 'yes']:
-                print("Operation cancelled.")
-                return
+            if not force:
+                confirm = input(f"Do you want to update the existing user '{username}'? (y/n): ").lower()
+                if confirm not in ['y', 'yes']:
+                    print("Operation cancelled.")
+                    return
+            else:
+                print("Force flag detected, updating existing user without confirmation.")
         
         # Generate password hash
         salt = bcrypt.gensalt()
@@ -239,7 +244,8 @@ async def main():
         username=username,
         password=password,
         database_url=database_url,
-        is_global_admin=is_global_admin
+        is_global_admin=is_global_admin,
+        force=args.force
     )
 
 if __name__ == "__main__":

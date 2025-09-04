@@ -139,7 +139,11 @@ restore-db:
 # User management
 create-admin:
 	@echo "${GREEN}Creating new admin user...${NC}"
-	@docker exec $(BACKEND_CONTAINER) python -m utils.manage_user --global-admin
+	@if [ -n "$(USERNAME)" ] && [ -n "$(PASSWORD)" ]; then \
+		docker exec $(BACKEND_CONTAINER) python -m utils.manage_user --username $(USERNAME) --password $(PASSWORD) --global-admin --force; \
+	else \
+		docker exec -it $(BACKEND_CONTAINER) python -m utils.manage_user --global-admin; \
+	fi
 
 create-user:
 	@echo "${GREEN}Creating new regular user...${NC}"

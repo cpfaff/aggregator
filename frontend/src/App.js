@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ProviderDetail from './components/providers/ProviderDetail';
 import Header from './components/layout/Header';
-import PublicHeader from './components/layout/PublicHeader';
 import Footer from './components/layout/Footer';
 import { API_BASE, API_VERSION, apiRequest, initCsrfProtection } from './utils/apiUtils';
 import { useAuth } from './components/auth/AuthContext';
@@ -70,6 +69,7 @@ function App() {
       return <LandingPage 
         onGetStarted={() => setActiveView('login')}
         onLearnMore={() => setActiveView('about')}
+        onViewStatistics={() => setActiveView('publicStats')}
       />;
     }
     
@@ -78,7 +78,7 @@ function App() {
     }
     
     if (activeView === 'about') {
-      return <About />;
+      return <About currentUser={currentUser} />;
     }
     
     // Login view - don't render content until we have both token and user data
@@ -148,32 +148,41 @@ function App() {
       color: 'var(--text)',
       transition: 'background-color 0.3s, color 0.3s',
     }}>
-      {token && currentUser ? (
-        <Header 
-          currentUser={currentUser} 
-          activeView={activeView}
-          setActiveView={(view) => {
-            setActiveView(view);
-            // Reset provider detail view when navigating away
-            if (view !== 'providerDetail') {
-              setSelectedProvider(null);
-            }
-          }}
-          logout={logout}
-          isDarkTheme={isDarkTheme}
-          toggleTheme={toggleTheme}
-        />
-      ) : (
-        <PublicHeader
-          activeView={activeView}
-          setActiveView={setActiveView}
-          isDarkTheme={isDarkTheme}
-          toggleTheme={toggleTheme}
-        />
-      )}
+      <Header 
+        currentUser={token ? currentUser : null} 
+        activeView={activeView}
+        setActiveView={(view) => {
+          setActiveView(view);
+          // Reset provider detail view when navigating away
+          if (view !== 'providerDetail') {
+            setSelectedProvider(null);
+          }
+        }}
+        logout={logout}
+        isDarkTheme={isDarkTheme}
+        toggleTheme={toggleTheme}
+      />
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-        {renderContent()}
+      <div style={{ 
+        flex: 1, 
+        display: 'flex', 
+        flexDirection: 'column',
+        width: '100%',
+        alignItems: activeView === 'landing' || activeView === 'about' || activeView === 'publicStats' || activeView === 'login' ? 'stretch' : 'center',
+      }}>
+        {(activeView === 'landing' || activeView === 'about' || activeView === 'publicStats' || activeView === 'login') ? (
+          renderContent()
+        ) : (
+          <div style={{
+            width: '100%',
+            maxWidth: '1200px',
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+          }}>
+            {renderContent()}
+          </div>
+        )}
       </div>
 
       <Footer />

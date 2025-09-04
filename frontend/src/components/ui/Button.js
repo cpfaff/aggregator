@@ -13,6 +13,7 @@ function Button({ children, onClick, variant = 'primary', isLoading, disabled, s
       transition: 'background 0.2s, transform 0.1s',
       display: 'flex',
       alignItems: 'center',
+      justifyContent: 'center',
       gap: '0.5rem',
     };
 

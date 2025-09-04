@@ -33,7 +33,6 @@ function StatCard({
       border: '1px solid var(--border)',
       position: 'relative',
       overflow: 'hidden',
-      background: `linear-gradient(135deg, var(--card-bg) 0%, rgba(255, 255, 255, 0.05) 100%)`,
       transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
       cursor: 'default',
       ...style

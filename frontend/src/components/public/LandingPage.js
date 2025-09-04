@@ -1,7 +1,8 @@
-import React, { memo, useCallback } from 'react';
+import React, { memo, useCallback, useState, useEffect } from 'react';
 import Button from '../ui/Button';
+import StatCard from '../ui/StatCard';
 
-const LandingPage = memo(({ onGetStarted, onLearnMore }) => {
+const LandingPage = memo(({ onGetStarted, onLearnMore, onViewStatistics }) => {
   // Optimize callback functions to prevent unnecessary re-renders
   const handleGetStarted = useCallback(() => {
     onGetStarted?.();
@@ -13,13 +14,42 @@ const LandingPage = memo(({ onGetStarted, onLearnMore }) => {
 
   // Optimize hover handlers to prevent function recreation
   const handleCardHover = useCallback((e) => {
-    e.currentTarget.style.transform = 'translateY(-4px)';
-    e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)';
+    e.currentTarget.style.transform = 'translateY(-2px)';
+    e.currentTarget.style.boxShadow = '0 8px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)';
   }, []);
 
   const handleCardLeave = useCallback((e) => {
     e.currentTarget.style.transform = 'translateY(0)';
-    e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)';
+    e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04)';
+  }, []);
+
+  // Trust badge hover effects
+  const handleBadgeHover = useCallback((e) => {
+    e.currentTarget.style.transform = 'translateY(-2px)';
+    e.currentTarget.style.boxShadow = '0 6px 12px -2px rgba(0, 0, 0, 0.1)';
+  }, []);
+
+  const handleBadgeLeave = useCallback((e) => {
+    e.currentTarget.style.transform = 'translateY(0)';
+    e.currentTarget.style.boxShadow = '0 2px 4px -1px rgba(0, 0, 0, 0.05)';
+  }, []);
+
+  // State for live statistics
+  const [stats, setStats] = useState(null);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
+
+  // Fetch live statistics on component mount
+  useEffect(() => {
+    fetch('/api/v1/public-statistics/overview')
+      .then(res => res.json())
+      .then(data => {
+        setStats(data);
+        setIsLoadingStats(false);
+      })
+      .catch(() => {
+        // Fallback silently if API fails
+        setIsLoadingStats(false);
+      });
   }, []);
 
   const containerStyle = {
@@ -35,9 +65,11 @@ const LandingPage = memo(({ onGetStarted, onLearnMore }) => {
 
   const heroSectionStyle = {
     background: 'linear-gradient(135deg, var(--card-bg) 0%, var(--subtle-bg) 100%)',
-    padding: '4rem 1rem',
+    padding: '5rem 1rem 4rem 1rem',
     textAlign: 'center',
     borderBottom: '1px solid var(--border)',
+    position: 'relative',
+    overflow: 'hidden',
   };
 
   const heroContentStyle = {
@@ -53,24 +85,26 @@ const LandingPage = memo(({ onGetStarted, onLearnMore }) => {
     color: 'var(--text)',
     letterSpacing: '-0.035em',
     lineHeight: '1.1',
+    textShadow: '0 2px 4px rgba(0, 0, 0, 0.02)',
   };
 
   const subtitleStyle = {
     fontSize: 'clamp(1.125rem, 3vw, 1.375rem)',
     color: 'var(--text-light)',
     fontWeight: 400,
-    maxWidth: '700px',
-    margin: '0 auto 2.5rem auto',
-    lineHeight: '1.5',
+    maxWidth: '650px',
+    margin: '0 auto 3rem auto',
+    lineHeight: '1.6',
+    opacity: 0.9,
   };
 
   const ctaContainerStyle = {
     display: 'flex',
-    gap: '1rem',
+    gap: '1.25rem',
     justifyContent: 'center',
     alignItems: 'center',
     flexWrap: 'wrap',
-    marginBottom: '3rem',
+    marginBottom: '3.5rem',
   };
 
   const trustSignalsStyle = {
@@ -83,17 +117,19 @@ const LandingPage = memo(({ onGetStarted, onLearnMore }) => {
   };
 
   const trustBadgeStyle = {
-    padding: '0.5rem 1rem',
+    padding: '0.625rem 1.25rem',
     backgroundColor: 'var(--card-bg)',
-    borderRadius: '0.5rem',
+    borderRadius: '0.75rem',
     border: '1px solid var(--border)',
     fontSize: '0.875rem',
     fontWeight: 600,
     color: 'var(--text)',
+    boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.05)',
+    transition: 'all 0.2s ease-out',
   };
 
   const contentSectionStyle = {
-    padding: '4rem 1rem',
+    padding: '5rem 1rem',
     maxWidth: '1200px',
     margin: '0 auto',
     width: '100%',
@@ -102,76 +138,89 @@ const LandingPage = memo(({ onGetStarted, onLearnMore }) => {
   const sectionHeaderStyle = {
     fontSize: 'clamp(1.75rem, 4vw, 2.25rem)',
     fontWeight: 700,
-    marginBottom: '3rem',
+    marginBottom: '3.5rem',
     color: 'var(--text)',
     textAlign: 'center',
     letterSpacing: '-0.025em',
+    position: 'relative',
   };
 
   const cardsGridStyle = {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-    gap: '2rem',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+    gap: '2.5rem',
     marginBottom: '4rem',
   };
 
   const cardStyle = {
     backgroundColor: 'var(--card-bg)',
-    borderRadius: '1rem',
-    padding: '2.5rem',
+    borderRadius: '1.25rem',
+    padding: '2.75rem 2.25rem',
     border: '1px solid var(--border)',
-    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04)',
     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
     cursor: 'default',
     textAlign: 'center',
+    position: 'relative',
+    overflow: 'hidden',
   };
 
   const cardIconStyle = {
-    width: '60px',
-    height: '60px',
+    width: '64px',
+    height: '64px',
     backgroundColor: 'var(--primary)',
-    borderRadius: '1rem',
+    borderRadius: '1.25rem',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    margin: '0 auto 1.5rem auto',
+    margin: '0 auto 1.75rem auto',
     fontSize: '1.5rem',
     color: 'white',
     fontWeight: 600,
+    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)',
+    position: 'relative',
+    zIndex: 1,
   };
 
   const cardTitleStyle = {
     fontSize: '1.5rem',
     fontWeight: 600,
-    marginBottom: '1rem',
+    marginBottom: '1.125rem',
     color: 'var(--text)',
+    lineHeight: '1.3',
   };
 
   const cardTextStyle = {
     color: 'var(--text-light)',
-    lineHeight: '1.6',
+    lineHeight: '1.65',
     fontSize: '1rem',
+    opacity: 0.9,
   };
 
   const socialProofSectionStyle = {
     backgroundColor: 'var(--subtle-bg)',
-    padding: '4rem 1rem',
+    padding: '5rem 1rem',
     textAlign: 'center',
+    borderTop: '1px solid var(--border)',
+    borderBottom: '1px solid var(--border)',
   };
 
   const statsContainerStyle = {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-    gap: '2rem',
-    maxWidth: '800px',
-    margin: '2rem auto',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+    gap: '2.5rem',
+    maxWidth: '900px',
+    margin: '2.5rem auto',
   };
 
   const statItemStyle = {
-    padding: '1.5rem',
+    padding: '2rem',
     backgroundColor: 'var(--card-bg)',
-    borderRadius: '0.75rem',
+    borderRadius: '1rem',
     border: '1px solid var(--border)',
+    boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.05)',
+    transition: 'transform 0.2s ease-out, box-shadow 0.2s ease-out',
+    cursor: 'default',
   };
 
   const statNumberStyle = {
@@ -191,7 +240,7 @@ const LandingPage = memo(({ onGetStarted, onLearnMore }) => {
   };
 
   const processSectionStyle = {
-    padding: '4rem 1rem',
+    padding: '5rem 1rem',
     maxWidth: '1200px',
     margin: '0 auto',
     width: '100%',
@@ -199,8 +248,8 @@ const LandingPage = memo(({ onGetStarted, onLearnMore }) => {
 
   const processStepsStyle = {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-    gap: '2rem',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+    gap: '3rem',
     marginBottom: '3rem',
   };
 
@@ -210,17 +259,19 @@ const LandingPage = memo(({ onGetStarted, onLearnMore }) => {
   };
 
   const stepNumberStyle = {
-    width: '50px',
-    height: '50px',
+    width: '56px',
+    height: '56px',
     backgroundColor: 'var(--primary)',
     borderRadius: '50%',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    margin: '0 auto 1.5rem auto',
+    margin: '0 auto 1.75rem auto',
     fontSize: '1.25rem',
     fontWeight: 700,
     color: 'white',
+    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
+    border: '3px solid rgba(255, 255, 255, 0.2)',
   };
 
   const stepTitleStyle = {
@@ -237,9 +288,11 @@ const LandingPage = memo(({ onGetStarted, onLearnMore }) => {
 
   const finalCtaSectionStyle = {
     background: 'linear-gradient(135deg, var(--primary) 0%, #1d4ed8 100%)',
-    padding: '4rem 1rem',
+    padding: '5rem 1rem',
     textAlign: 'center',
     color: 'white',
+    position: 'relative',
+    overflow: 'hidden',
   };
 
   const finalCtaContentStyle = {
@@ -261,35 +314,6 @@ const LandingPage = memo(({ onGetStarted, onLearnMore }) => {
     lineHeight: '1.6',
   };
 
-  const pathwaysStyle = {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-    gap: '2rem',
-    marginBottom: '2rem',
-  };
-
-  const pathwayStyle = {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: '1rem',
-    padding: '2rem',
-    border: '1px solid rgba(255, 255, 255, 0.2)',
-    backdropFilter: 'blur(10px)',
-    WebkitBackdropFilter: 'blur(10px)',
-  };
-
-  const pathwayTitleStyle = {
-    fontSize: '1.25rem',
-    fontWeight: 600,
-    marginBottom: '1rem',
-    color: 'white',
-  };
-
-  const pathwayDescStyle = {
-    fontSize: '0.9375rem',
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginBottom: '1.5rem',
-    lineHeight: '1.5',
-  };
 
   const contactInfoStyle = {
     fontSize: '0.9375rem',
@@ -303,10 +327,10 @@ const LandingPage = memo(({ onGetStarted, onLearnMore }) => {
       <section style={heroSectionStyle}>
         <div style={heroContentStyle}>
           <h1 style={titleStyle}>
-            Accelerate Research with Professional Data Management
+            Data Provider Manager
           </h1>
           <p style={subtitleStyle}>
-            Join Germany's leading biodiversity data infrastructure supporting 10+ research centers and thousands of datasets through GFBio's comprehensive platform.
+            A platform for managing biodiversity datasets and connecting research data with the GFBio infrastructure.
           </p>
           
           <div style={ctaContainerStyle}>
@@ -324,7 +348,7 @@ const LandingPage = memo(({ onGetStarted, onLearnMore }) => {
                 WebkitTapHighlightColor: 'transparent',
               }}
             >
-              Get Started
+              Sign In
             </Button>
             <Button 
               onClick={handleLearnMore}
@@ -345,16 +369,27 @@ const LandingPage = memo(({ onGetStarted, onLearnMore }) => {
           </div>
 
           <div style={trustSignalsStyle}>
-            <div style={trustBadgeStyle}>GFBio e.V.</div>
-            <div style={trustBadgeStyle}>NFDI4Biodiversity</div>
-            <div style={trustBadgeStyle}>DFG Funded</div>
+            <div 
+              style={trustBadgeStyle}
+              onMouseEnter={handleBadgeHover}
+              onMouseLeave={handleBadgeLeave}
+            >
+              GFBio e.V.
+            </div>
+            <div 
+              style={trustBadgeStyle}
+              onMouseEnter={handleBadgeHover}
+              onMouseLeave={handleBadgeLeave}
+            >
+              NFDI4Biodiversity
+            </div>
           </div>
         </div>
       </section>
 
       {/* Value Propositions */}
       <section style={contentSectionStyle}>
-        <h2 style={sectionHeaderStyle}>Why Leading Researchers Choose Our Platform</h2>
+        <h2 style={sectionHeaderStyle}>Core Features</h2>
         
         <div style={cardsGridStyle}>
           <div 
@@ -362,10 +397,15 @@ const LandingPage = memo(({ onGetStarted, onLearnMore }) => {
             onMouseEnter={handleCardHover}
             onMouseLeave={handleCardLeave}
           >
-            <div style={cardIconStyle}>✓</div>
-            <h3 style={cardTitleStyle}>Ensure Data Quality</h3>
+            <div style={cardIconStyle}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9 2V8H15M9 2H4V22H20V8M9 2H15L20 8" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M7 13H17M7 17H17" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+            </div>
+            <h3 style={cardTitleStyle}>Self-Service Registry</h3>
             <p style={cardTextStyle}>
-              Automated ABCD XML validation ensures your datasets meet international standards, saving hours of manual review while maintaining research integrity.
+              Institutional dataset management platform supporting BioCASe providers with ABCD (Access to Biological Collection Data) format for biological collections.
             </p>
           </div>
 
@@ -374,10 +414,16 @@ const LandingPage = memo(({ onGetStarted, onLearnMore }) => {
             onMouseEnter={handleCardHover}
             onMouseLeave={handleCardLeave}
           >
-            <div style={cardIconStyle}>🔍</div>
-            <h3 style={cardTitleStyle}>Accelerate Discovery</h3>
+            <div style={cardIconStyle}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9 12L11 14L15 10" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="white" strokeWidth="2"/>
+                <path d="M3 12H8M16 12H21M12 3V8M12 16V21" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+            </div>
+            <h3 style={cardTitleStyle}>Validation & Analytics</h3>
             <p style={cardTextStyle}>
-              Seamless integration with GFBio's search infrastructure makes your research discoverable to thousands of scientists worldwide.
+              Automated ABCD standard validation ensuring data quality, plus comprehensive dataset statistics including biological unit counts and metrics.
             </p>
           </div>
 
@@ -386,126 +432,91 @@ const LandingPage = memo(({ onGetStarted, onLearnMore }) => {
             onMouseEnter={handleCardHover}
             onMouseLeave={handleCardLeave}
           >
-            <div style={cardIconStyle}>📊</div>
-            <h3 style={cardTitleStyle}>Maintain Compliance</h3>
+            <div style={cardIconStyle}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="11" cy="11" r="8" stroke="white" strokeWidth="2"/>
+                <path d="M21 21L16.65 16.65" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                <circle cx="8" cy="8" r="2" stroke="white" strokeWidth="1.5"/>
+                <circle cx="14" cy="8" r="2" stroke="white" strokeWidth="1.5"/>
+                <circle cx="11" cy="14" r="2" stroke="white" strokeWidth="1.5"/>
+                <path d="M8 8L14 8M8 8L11 14M14 8L11 14" stroke="white" strokeWidth="1" strokeLinecap="round"/>
+              </svg>
+            </div>
+            <h3 style={cardTitleStyle}>Network Discovery</h3>
             <p style={cardTextStyle}>
-              Built-in FAIR principles compliance and professional infrastructure ensure your research meets funding requirements and institutional standards.
+              Publish your datasets to the GFBio network infrastructure, enhancing visibility and accessibility for the research community.
             </p>
           </div>
         </div>
       </section>
 
-      {/* Social Proof */}
+      {/* Platform Overview with Live Statistics */}
       <section style={socialProofSectionStyle}>
         <div style={heroContentStyle}>
-          <h2 style={sectionHeaderStyle}>Trusted by the Research Community</h2>
-          <div style={statsContainerStyle}>
-            <div style={statItemStyle}>
-              <div style={statNumberStyle}>10+</div>
-              <div style={statLabelStyle}>Data Centers</div>
-            </div>
-            <div style={statItemStyle}>
-              <div style={statNumberStyle}>1000s</div>
-              <div style={statLabelStyle}>Datasets Managed</div>
-            </div>
-            <div style={statItemStyle}>
-              <div style={statNumberStyle}>24/7</div>
-              <div style={statLabelStyle}>Infrastructure</div>
-            </div>
+          <h2 style={sectionHeaderStyle}>Platform Overview</h2>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+            gap: '2rem',
+            marginBottom: '2rem'
+          }}>
+            <StatCard
+              title="Data Providers"
+              value={stats?.total_providers || 0}
+              isLoading={isLoadingStats}
+              color="var(--success)"
+            />
+            
+            <StatCard
+              title="Data Centers"
+              value={stats?.total_datacenters || 0}
+              isLoading={isLoadingStats}
+              color="var(--warning)"
+            />
+            
+            <StatCard
+              title="Total Datasets"
+              value={stats?.total_datasets || 0}
+              isLoading={isLoadingStats}
+              color="var(--primary)"
+            />
+          </div>
+          
+          {/* Link to full statistics dashboard - centered */}
+          <div style={{ 
+            display: 'flex',
+            justifyContent: 'center',
+            marginTop: '2rem',
+          }}>
+            <Button
+              onClick={() => onViewStatistics && onViewStatistics()}
+              variant="default"
+              style={{
+                padding: '0.75rem 1.5rem',
+                fontSize: '0.95rem',
+                backgroundColor: 'transparent',
+                color: 'var(--primary)',
+                border: '2px solid var(--primary)',
+                borderRadius: '0.5rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                fontWeight: 600,
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = 'var(--primary)';
+                e.target.style.color = 'white';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = 'transparent';
+                e.target.style.color = 'var(--primary)';
+              }}
+            >
+              View Detailed Statistics →
+            </Button>
           </div>
         </div>
       </section>
 
-      {/* How It Works */}
-      <section style={processSectionStyle}>
-        <h2 style={sectionHeaderStyle}>Get Started in Three Simple Steps</h2>
-        
-        <div style={processStepsStyle}>
-          <div style={processStepStyle}>
-            <div style={stepNumberStyle}>1</div>
-            <h3 style={stepTitleStyle}>Register Your Institution</h3>
-            <p style={stepDescStyle}>
-              Quick registration process with institutional verification and access credentials setup.
-            </p>
-          </div>
-
-          <div style={processStepStyle}>
-            <div style={stepNumberStyle}>2</div>
-            <h3 style={stepTitleStyle}>Submit Your Datasets</h3>
-            <p style={stepDescStyle}>
-              Upload datasets with automatic validation and metadata enrichment for maximum discoverability.
-            </p>
-          </div>
-
-          <div style={processStepStyle}>
-            <div style={stepNumberStyle}>3</div>
-            <h3 style={stepTitleStyle}>Enable Research Discovery</h3>
-            <p style={stepDescStyle}>
-              Your data becomes instantly searchable through GFBio's infrastructure, connecting with researchers globally.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Final CTA */}
-      <section style={finalCtaSectionStyle}>
-        <div style={finalCtaContentStyle}>
-          <h2 style={finalCtaTitleStyle}>Ready to Advance Your Research?</h2>
-          <p style={finalCtaTextStyle}>
-            Join the growing community of researchers leveraging professional data management to accelerate scientific discovery.
-          </p>
-
-          <div style={pathwaysStyle}>
-            <div style={pathwayStyle}>
-              <h3 style={pathwayTitleStyle}>For Researchers</h3>
-              <p style={pathwayDescStyle}>
-                Individual researchers looking to make their data discoverable and compliant with FAIR principles.
-              </p>
-              <Button 
-                onClick={handleGetStarted}
-                variant="primary"
-                style={{
-                  backgroundColor: 'white',
-                  color: 'var(--primary)',
-                  width: '100%',
-                  minHeight: '48px',
-                  touchAction: 'manipulation',
-                  WebkitTapHighlightColor: 'transparent',
-                }}
-              >
-                Start Research Account
-              </Button>
-            </div>
-
-            <div style={pathwayStyle}>
-              <h3 style={pathwayTitleStyle}>For Institutions</h3>
-              <p style={pathwayDescStyle}>
-                Data centers and institutions requiring professional infrastructure and institutional-level management.
-              </p>
-              <Button 
-                onClick={handleLearnMore}
-                variant="default"
-                style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                  color: 'white',
-                  border: '1px solid rgba(255, 255, 255, 0.3)',
-                  width: '100%',
-                  minHeight: '48px',
-                  touchAction: 'manipulation',
-                  WebkitTapHighlightColor: 'transparent',
-                }}
-              >
-                Contact Sales
-              </Button>
-            </div>
-          </div>
-
-          <div style={contactInfoStyle}>
-            <strong>Need Help?</strong> Contact our support team at info@gfbio.org<br/>
-            Available Monday-Friday, 9:00-17:00 CET
-          </div>
-        </div>
-      </section>
     </div>
   );
 });
