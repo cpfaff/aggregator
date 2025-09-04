@@ -23,7 +23,8 @@ function TimeSeriesChart({
   isLoading = false,
   error = null,
   title = '',
-  subtitle = ''
+  subtitle = '',
+  integerOnly = false
 }) {
   // Always call hooks at the top level to avoid conditional hook calls
   // Memoize axis domain calculations to prevent flickering during refreshes
@@ -269,13 +270,18 @@ function TimeSeriesChart({
               axisLine={false}
               tick={{ fill: 'var(--text-light)' }}
               domain={yDomain}
+              allowDecimals={!integerOnly}
               tickFormatter={(value) => {
-                if (value >= 1000000) {
-                  return `${(value / 1000000).toFixed(1)}M`;
-                } else if (value >= 1000) {
-                  return `${(value / 1000).toFixed(1)}K`;
+                // For integer-only mode, skip non-integer values
+                if (integerOnly && !Number.isInteger(value)) {
+                  return '';
                 }
-                return value;
+                if (value >= 1000000) {
+                  return `${(value / 1000000).toFixed(integerOnly ? 0 : 1)}M`;
+                } else if (value >= 1000) {
+                  return `${(value / 1000).toFixed(integerOnly ? 0 : 1)}K`;
+                }
+                return integerOnly ? value.toString() : value;
               }}
             />
             {showTooltip && <Tooltip content={<CustomTooltip />} />}

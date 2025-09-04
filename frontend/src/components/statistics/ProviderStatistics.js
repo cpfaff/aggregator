@@ -588,6 +588,7 @@ function ProviderStatistics({ providerId, providerName }) {
           height={300}
           isLoading={isTimeSeriesLoading}
           error={timeSeriesData.length === 0 ? 'No historical data available' : null}
+          integerOnly={true}
         />
         
         {/* Biological Units Timeline */}

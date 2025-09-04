@@ -356,6 +356,7 @@ function AdminDashboard() {
           subtitle="Growth in total datasets over time"
           color="var(--primary)"
           height={350}
+          integerOnly={true}
         />
 
         {/* Data Center Distribution */}

@@ -335,6 +335,7 @@ function PublicStatsDashboard() {
           subtitle="Growth in total datasets over time"
           color="var(--primary)"
           height={400}
+          integerOnly={true}
         />
 
         {/* Data Center Distribution */}
