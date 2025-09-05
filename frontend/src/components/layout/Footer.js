@@ -136,28 +136,14 @@ const Footer = () => {
               </div>
               <div>
                 <a 
-                  href="/documentation" 
+                  href="http://aggregator.localhost/api/docs"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   style={linkStyle}
                   onMouseEnter={e => e.currentTarget.style.color = 'var(--primary)'}
                   onMouseLeave={e => e.currentTarget.style.color = 'var(--text-light)'}>
                   <ChevronRight size={14} />
                   API Documentation
-                </a>
-                <a 
-                  href="/training" 
-                  style={linkStyle}
-                  onMouseEnter={e => e.currentTarget.style.color = 'var(--primary)'}
-                  onMouseLeave={e => e.currentTarget.style.color = 'var(--text-light)'}>
-                  <ChevronRight size={14} />
-                  Training Materials
-                </a>
-                <a 
-                  href="/faq" 
-                  style={linkStyle}
-                  onMouseEnter={e => e.currentTarget.style.color = 'var(--primary)'}
-                  onMouseLeave={e => e.currentTarget.style.color = 'var(--text-light)'}>
-                  <ChevronRight size={14} />
-                  FAQ's
                 </a>
                 <a 
                   href="/changelog" 
@@ -202,7 +188,7 @@ const Footer = () => {
                 Need help with data integration, API usage, or platform features?
               </p>
               <a 
-                href="mailto:support@gfbio.org"
+                href="mailto:info@gfbio.org"
                 style={{
                   ...linkStyle,
                   display: 'inline-flex',
@@ -223,7 +209,7 @@ const Footer = () => {
                   e.currentTarget.style.transform = 'translateY(0)';
                 }}>
                 <Mail size={16} />
-                support@gfbio.org
+                info@gfbio.org
               </a>
               <div style={{
                 display: 'flex',
@@ -308,7 +294,9 @@ const Footer = () => {
               flexWrap: 'wrap'
             }}>
               <a 
-                href="/terms" 
+                href="https://www.gfbio.org/terms-of-use/"
+                target="_blank"
+                rel="noopener noreferrer"
                 style={{
                   color: 'var(--text-light)',
                   textDecoration: 'none',
@@ -325,7 +313,9 @@ const Footer = () => {
               </a>
               <span style={{ color: 'var(--border)', fontSize: '0.75rem' }}>•</span>
               <a 
-                href="/legal" 
+                href="https://www.gfbio.org/legal-notice/"
+                target="_blank"
+                rel="noopener noreferrer"
                 style={{
                   color: 'var(--text-light)',
                   textDecoration: 'none',
@@ -342,7 +332,9 @@ const Footer = () => {
               </a>
               <span style={{ color: 'var(--border)', fontSize: '0.75rem' }}>•</span>
               <a 
-                href="/privacy" 
+                href="https://www.gfbio.org/privacy-policy/"
+                target="_blank"
+                rel="noopener noreferrer"
                 style={{
                   color: 'var(--text-light)',
                   textDecoration: 'none',

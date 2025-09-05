@@ -223,13 +223,13 @@ function Login({ sessionExpired, onViewPublicStats }) {
           }}>
             Need help? Contact{' '}
             <a 
-              href="mailto:support@gfbio.org"
+              href="mailto:info@gfbio.org"
               style={{
                 color: 'var(--primary)',
                 textDecoration: 'none',
               }}
             >
-              support@gfbio.org
+              info@gfbio.org
             </a>
           </p>
         </div>
