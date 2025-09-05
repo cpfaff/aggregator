@@ -50,17 +50,26 @@ def cache_response(prefix, ttl_seconds=None):
             # Skip Request and AsyncSession objects
             from fastapi import Request
             from sqlalchemy.ext.asyncio import AsyncSession
+            from app.models.user import UserModel
+            
             key_parts.extend(
                 [
                     str(arg)
                     for arg in args
                     if not isinstance(arg, Request)
                     and not isinstance(arg, AsyncSession)
+                    and not isinstance(arg, UserModel)
                 ]
             )
+            
+            # Include user identity in cache key for user-specific caching
             for k, v in sorted(kwargs.items()):
-                if k not in ["db", "request", "current_user"]:
+                if k == "current_user" and hasattr(v, "username"):
+                    # Include username in cache key to make it user-specific
+                    key_parts.append(f"user:{v.username}")
+                elif k not in ["db", "request", "current_user"]:
                     key_parts.append(f"{k}:{v}")
+            
             cache_key = ":".join(key_parts)
 
             cached_result = cache.get(cache_key)
