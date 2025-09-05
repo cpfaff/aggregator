@@ -197,7 +197,7 @@ def provider_permission(operation: str = "read"):
 # ------------------- Create FastAPI app and routers -------------------
 app = FastAPI(
     title="Dataset Management API",
-    version="1.9.0",
+    version="2.0.0",
     openapi_url="/api/openapi.json",
     docs_url="/api/docs",
     redoc_url="/api/redoc",

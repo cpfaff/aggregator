@@ -5,6 +5,32 @@ const Changelog = () => {
   // Changelog entries based on actual project development
   const changelogEntries = [
     {
+      version: '2.0.0',
+      date: 'September 5, 2025',
+      changes: [
+        'Implemented comprehensive statistics dashboard system with real-time data visualization',
+        'Added biological units tracking and visualization across providers with timeline charts',
+        'Introduced advanced search filters for providers and users list views',
+        'Created modern conversion-optimized landing page with improved user engagement',
+        'Enhanced form validation with comprehensive toast notification system',
+        'Implemented dual Celery worker architecture with intelligent queue routing',
+        'Added real-time event-driven statistics updates for live data monitoring',
+        'Redesigned footer with improved layout, alignment and professional styling',
+        'Migrated navigation from state-based to React Router for better performance',
+        'Added task management utilities for monitoring and controlling background jobs',
+        'Improved cache system with user-specific provider endpoint caching',
+        'Enhanced validation status display across provider statistics views',
+        'Fixed statistics timeline discrepancies with automatic gap detection and filling',
+        'Optimized database queries with GROUP BY aggregation for public endpoints',
+        'Resolved biological units counting issues in ABCD archives processing',
+        'Transformed changelog into modern timeline design with improved UX',
+        'Streamlined UI components across dashboard, statistics and public pages',
+        'Fixed logout flow to redirect to landing page for better user experience',
+        'Enhanced CI/CD infrastructure with improved deployment reliability',
+        'Refined About page with professional content and contact information'
+      ]
+    },
+    {
       version: '1.9.0',
       date: 'July 31, 2025',
       changes: [
