@@ -1,360 +1,89 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Trash2 } from 'lucide-react';
 import { apiRequest } from '../../utils/apiUtils';
-import ConfirmModal from '../../components/ui/ConfirmModal';
-
-// Re-using the Alert and Button components from your project structure
-function Alert({ type = 'error', children }) {
-  return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'flex-start',
-      padding: '1rem',
-      borderRadius: '0.5rem',
-      marginBottom: '1rem',
-      gap: '0.75rem',
-      backgroundColor: type === 'error' ? '#fee2e2' : '#dcfce7',
-      color: type === 'error' ? 'var(--error)' : 'var(--success)',
-      borderLeft: `4px solid ${type === 'error' ? 'var(--error)' : 'var(--success)'}`,
-    }}>
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-        {type === 'error' ? (
-          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
-        ) : (
-          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-        )}
-      </svg>
-      {children}
-    </div>
-  );
-}
-
-function Button({ children, onClick, variant = 'primary', isLoading, disabled, style, ...props }) {
-  const getButtonStyle = () => {
-    const baseStyle = {
-      height: '2.75rem',
-      padding: '0 1.5rem',
-      borderRadius: '0.5rem',
-      fontWeight: 500,
-      fontSize: '1rem',
-      cursor: 'pointer',
-      transition: 'background 0.2s, transform 0.1s',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '0.5rem',
-    };
-
-    if (variant === 'primary') {
-      return {
-        ...baseStyle,
-        backgroundColor: 'var(--primary)',
-        color: 'white',
-        border: 'none',
-      };
-    } else if (variant === 'danger') {
-      return {
-        ...baseStyle,
-        backgroundColor: 'transparent',
-        color: 'var(--error)',
-        border: '1px solid var(--border)',
-      };
-    } else {
-      return {
-        ...baseStyle,
-        backgroundColor: 'transparent',
-        color: 'var(--text-light)',
-        border: '1px solid var(--border)',
-      };
-    }
-  };
-  
-  return (
-    <button 
-      style={{...getButtonStyle(), ...(style || {})}} 
-      onClick={onClick}
-      disabled={isLoading || disabled}
-      {...props}
-    >
-      {isLoading && (
-        <span style={{
-          display: 'inline-block',
-          width: '16px',
-          height: '16px',
-          border: '2px solid rgba(255, 255, 255, 0.3)',
-          borderRadius: '50%',
-          borderTopColor: '#fff',
-          animation: 'spin 1s linear infinite',
-        }}></span>
-      )}
-      {children}
-    </button>
-  );
-}
+import useFormValidation from '../../utils/useFormValidation';
+import validationRules from '../../utils/validationRules';
+import { getArrayFieldName, flattenArrayForValidation } from '../../utils/arrayValidation';
+import FormField from '../ui/FormField';
+import Alert from '../ui/Alert';
+import Button from '../ui/Button';
+import ConfirmModal from '../ui/ConfirmModal';
+import { showToast } from '../ui/Toast';
 
 function DatasetForm({ providerId, dataset, onClose, onTokenExpired }) {
   const isEditing = dataset != null;
-  const [formState, setFormState] = useState({
-    source: dataset ? dataset.source : '',
-    title: dataset ? dataset.title : '',
-    landingPageUrl: dataset ? dataset.landingPageUrl : '',
-    xmlArchives: dataset && dataset.xmlArchives ? [...dataset.xmlArchives] : [],
-    usefulLinks: dataset && dataset.usefulLinks ? [...dataset.usefulLinks] : [],
-  });
-  const [originalData, setOriginalData] = useState({
-    xmlArchives: dataset && dataset.xmlArchives ? [...dataset.xmlArchives] : [],
-    usefulLinks: dataset && dataset.usefulLinks ? [...dataset.usefulLinks] : [],
-  });
-  const [validationErrors, setValidationErrors] = useState({});
   const [confirmAction, setConfirmAction] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Helper to update form state with validation
-  const updateFormField = (field, value) => {
-    setFormState(prev => ({
-      ...prev,
-      [field]: value
-    }));
-    
-    // Clear validation error when field is updated
-    if (validationErrors[field]) {
-      setValidationErrors(prev => ({
-        ...prev,
-        [field]: null
-      }));
-    }
-  };
-
-  // XML Archive operations
-  const addXmlArchive = () => {
-    setFormState(prev => ({
-      ...prev,
-      xmlArchives: [
-        ...prev.xmlArchives,
-        { id: null, url: '', isLatest: false }
+  // Create validation schema that handles both static and dynamic fields
+  const createValidationSchema = (xmlArchives, usefulLinks) => {
+    const schema = {
+      source: [
+        validationRules.required('Source is required'),
+        validationRules.maxLength(200, 'Source must be less than 200 characters')
+      ],
+      title: [
+        validationRules.required('Title is required'),
+        validationRules.maxLength(300, 'Title must be less than 300 characters')
+      ],
+      landingPageUrl: [
+        validationRules.conditional(
+          (values) => values.landingPageUrl && values.landingPageUrl.trim() !== '',
+          validationRules.url('Please enter a valid URL')
+        )
       ]
-    }));
-  };
+    };
 
-  const updateXmlArchive = (index, field, value) => {
-    setFormState(prev => {
-      const updatedArchives = [...prev.xmlArchives];
-      
-      // If marking this item as latest, uncheck all other XML archives
-      if (field === 'isLatest' && value === true) {
-        // Uncheck all other XML archives
-        updatedArchives.forEach((archive, idx) => {
-          if (idx !== index) {
-            updatedArchives[idx] = {
-              ...archive,
-              isLatest: false
-            };
-          }
-        });
-        
-        // Set current archive as latest
-        updatedArchives[index] = {
-          ...updatedArchives[index],
-          [field]: value
-        };
-        
-        return {
-          ...prev,
-          xmlArchives: updatedArchives
-        };
-      } else {
-        // For other fields or unchecking, just update normally
-        updatedArchives[index] = {
-          ...updatedArchives[index],
-          [field]: value
-        };
-        
-        return {
-          ...prev,
-          xmlArchives: updatedArchives
-        };
-      }
+    // Add validation for each XML archive
+    xmlArchives.forEach((_, index) => {
+      schema[getArrayFieldName('xmlArchives', index, 'url')] = [
+        validationRules.required('URL is required'),
+        validationRules.url('Please enter a valid URL')
+      ];
     });
-    
-    // Clear validation errors
-    const errorKey = `xml_${index}_${field}`;
-    if (validationErrors[errorKey]) {
-      setValidationErrors(prev => ({
-        ...prev,
-        [errorKey]: null
-      }));
-    }
-  };
 
-  const removeXmlArchive = (index) => {
-    const archive = formState.xmlArchives[index];
-    const displayUrl = archive.url || `Archive ${index + 1}`;
-    
-    // Force the confirmAction state to update
-    setConfirmAction(null);  // First clear it
-    
-    // Then set it with a slight delay to ensure state update
-    setTimeout(() => {
-      setConfirmAction({
-        message: `Are you sure you want to remove XML Archive "${displayUrl}"? This action cannot be undone.`,
-        onConfirm: () => {
-          setFormState(prev => ({
-            ...prev,
-            xmlArchives: prev.xmlArchives.filter((_, idx) => idx !== index)
-          }));
-          setConfirmAction(null);
-        },
-        onCancel: () => setConfirmAction(null),
-      });
-    }, 10);
-  };
-
-  // Useful Links operations
-  const addUsefulLink = () => {
-    setFormState(prev => ({
-      ...prev,
-      usefulLinks: [
-        ...prev.usefulLinks,
-        { id: null, title: '', url: '', isLatest: false }
-      ]
-    }));
-  };
-
-  const updateUsefulLink = (index, field, value) => {
-    setFormState(prev => {
-      const updatedLinks = [...prev.usefulLinks];
-      
-      // If marking this item as latest, uncheck all other useful links
-      if (field === 'isLatest' && value === true) {
-        // Uncheck all other useful links
-        updatedLinks.forEach((link, idx) => {
-          if (idx !== index) {
-            updatedLinks[idx] = {
-              ...link,
-              isLatest: false
-            };
-          }
-        });
-        
-        // Set current link as latest
-        updatedLinks[index] = {
-          ...updatedLinks[index],
-          [field]: value
-        };
-        
-        return {
-          ...prev,
-          usefulLinks: updatedLinks
-        };
-      } else {
-        // For other fields or unchecking, just update normally
-        updatedLinks[index] = {
-          ...updatedLinks[index],
-          [field]: value
-        };
-        
-        return {
-          ...prev,
-          usefulLinks: updatedLinks
-        };
-      }
+    // Add validation for each useful link
+    usefulLinks.forEach((_, index) => {
+      schema[getArrayFieldName('usefulLinks', index, 'title')] = [
+        validationRules.required('Title is required'),
+        validationRules.maxLength(200, 'Title must be less than 200 characters')
+      ];
+      schema[getArrayFieldName('usefulLinks', index, 'url')] = [
+        validationRules.required('URL is required'),
+        validationRules.url('Please enter a valid URL')
+      ];
     });
-    
-    // Clear validation errors
-    const errorKey = `link_${index}_${field}`;
-    if (validationErrors[errorKey]) {
-      setValidationErrors(prev => ({
-        ...prev,
-        [errorKey]: null
-      }));
-    }
+
+    return schema;
   };
 
-  const removeUsefulLink = (index) => {
-    const link = formState.usefulLinks[index];
-    const displayName = link.title || `Link ${index + 1}`;
-    
-    // Force the confirmAction state to update
-    setConfirmAction(null);  // First clear it
-    
-    // Then set it with a slight delay to ensure state update
-    setTimeout(() => {
-      setConfirmAction({
-        message: `Are you sure you want to remove Useful Link "${displayName}"? This action cannot be undone.`,
-        onConfirm: () => {
-          setFormState(prev => ({
-            ...prev,
-            usefulLinks: prev.usefulLinks.filter((_, idx) => idx !== index)
-          }));
-          setConfirmAction(null);
-        },
-        onCancel: () => setConfirmAction(null),
-      });
-    }, 10);
-  };
-
-  // Form validation
-  const validateForm = () => {
-    const errors = {};
-    
-    // Validate dataset fields
-    if (!formState.source.trim()) {
-      errors.source = 'Source is required';
-    }
-    if (!formState.title.trim()) {
-      errors.title = 'Title is required';
-    }
-    
-    // Validate XML archives
-    formState.xmlArchives.forEach((archive, archIndex) => {
-      if (!archive.url.trim()) {
-        errors[`xml_${archIndex}_url`] = 'URL is required';
-      }
-    });
-    
-    // Validate useful links
-    formState.usefulLinks.forEach((link, linkIndex) => {
-      if (!link.title.trim()) {
-        errors[`link_${linkIndex}_title`] = 'Title is required';
-      }
-      if (!link.url.trim()) {
-        errors[`link_${linkIndex}_url`] = 'URL is required';
-      }
-    });
-    
-    setValidationErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  // Form submission
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  // Form submission handler
+  const handleFormSubmit = async (values) => {
     setIsLoading(true);
     setError('');
     
-    if (!validateForm()) {
-      setError('Please fix the validation errors before submitting.');
-      setIsLoading(false);
-      return;
-    }
-    
     try {
+      // Reconstruct arrays from flattened values
+      const xmlArchives = form.values.xmlArchives || [];
+      const usefulLinks = form.values.usefulLinks || [];
+      
       // Filter out any empty items
-      const filteredXmlArchives = formState.xmlArchives.filter(archive => 
-        archive.url.trim() !== ''
+      const filteredXmlArchives = xmlArchives.filter(archive => 
+        archive.url && archive.url.trim() !== ''
       );
       
-      const filteredUsefulLinks = formState.usefulLinks.filter(link => 
-        link.title.trim() !== '' && 
-        link.url.trim() !== ''
+      const filteredUsefulLinks = usefulLinks.filter(link => 
+        link.title && link.title.trim() !== '' && 
+        link.url && link.url.trim() !== ''
       );
       
       // Create sanitized form data object
       const sanitizedFormData = {
-        source: formState.source,
-        title: formState.title,
-        landingPageUrl: formState.landingPageUrl && formState.landingPageUrl.trim() !== '' 
-          ? formState.landingPageUrl 
+        source: values.source,
+        title: values.title,
+        landingPageUrl: values.landingPageUrl && values.landingPageUrl.trim() !== '' 
+          ? values.landingPageUrl 
           : null
       };
       
@@ -405,10 +134,15 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired }) {
       };
       
       setIsLoading(false);
+      showToast(
+        isEditing 
+          ? `Dataset "${normalizedDataset.title}" updated successfully!`
+          : `Dataset "${normalizedDataset.title}" created successfully!`,
+        'success'
+      );
       onClose(normalizedDataset);
     } catch (err) {
       // Only set error if it's not a token expiration error
-      // Token expiration is handled by the onTokenExpired callback
       if (!err.message || !err.message.includes('Session expired')) {
         setError('Error saving dataset: ' + err.message);
       }
@@ -416,118 +150,216 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired }) {
     }
   };
 
-  // Field error display helper
-  const getFieldErrorMessage = (fieldName) => {
-    return validationErrors[fieldName] ? (
-      <div style={{
-        fontSize: '0.75rem',
-        color: 'var(--error)',
-        marginTop: '0.25rem',
-      }}>
-        {validationErrors[fieldName]}
-      </div>
-    ) : null;
+  // Initialize form with initial values
+  const initialValues = {
+    source: dataset?.source || '',
+    title: dataset?.title || '',
+    landingPageUrl: dataset?.landingPageUrl || '',
+    xmlArchives: dataset?.xmlArchives || [],
+    usefulLinks: dataset?.usefulLinks || []
   };
 
-  // Check if there's a confirmation action in progress
-  const hasConfirmAction = confirmAction !== null;
+  // Flatten initial array values
+  const flattenedInitialValues = {
+    ...initialValues,
+    ...flattenArrayForValidation('xmlArchives', initialValues.xmlArchives),
+    ...flattenArrayForValidation('usefulLinks', initialValues.usefulLinks)
+  };
+
+  // Initialize form validation hook
+  const form = useFormValidation(
+    flattenedInitialValues,
+    createValidationSchema(initialValues.xmlArchives, initialValues.usefulLinks),
+    handleFormSubmit
+  );
+
+  // XML Archive operations
+  const addXmlArchive = () => {
+    const newArchives = [...(form.values.xmlArchives || []), { id: null, url: '', isLatest: false }];
+    form.setFieldValue('xmlArchives', newArchives);
+    
+    // Update validation schema with the new array
+    const newSchema = createValidationSchema(newArchives, form.values.usefulLinks || []);
+    // Note: We'd need to enhance useFormValidation to support dynamic schema updates
+    // For now, we'll handle validation manually for new fields
+  };
+
+  const updateXmlArchive = (index, field, value) => {
+    const updatedArchives = [...(form.values.xmlArchives || [])];
+    
+    // If marking this item as latest, uncheck all other XML archives
+    if (field === 'isLatest' && value === true) {
+      updatedArchives.forEach((archive, idx) => {
+        if (idx !== index) {
+          updatedArchives[idx] = { ...archive, isLatest: false };
+        }
+      });
+    }
+    
+    updatedArchives[index] = { ...updatedArchives[index], [field]: value };
+    form.setFieldValue('xmlArchives', updatedArchives);
+    
+    // Also update the flattened field for validation
+    const fieldName = getArrayFieldName('xmlArchives', index, field);
+    form.setFieldValue(fieldName, value);
+    
+    // Manually validate the field immediately
+    if (field === 'url') {
+      const validators = [
+        validationRules.required('URL is required'),
+        validationRules.url('Please enter a valid URL')
+      ];
+      
+      let error = null;
+      for (const validator of validators) {
+        error = validator(value);
+        if (error) break;
+      }
+      
+      if (error) {
+        form.setFieldError(fieldName, error);
+      } else {
+        form.setFieldError(fieldName, null);
+      }
+    }
+  };
+
+  const removeXmlArchive = (index) => {
+    const archive = form.values.xmlArchives[index];
+    const displayUrl = archive.url || `Archive ${index + 1}`;
+    
+    setConfirmAction({
+      message: `Are you sure you want to remove XML Archive "${displayUrl}"? This action cannot be undone.`,
+      onConfirm: () => {
+        const newArchives = form.values.xmlArchives.filter((_, idx) => idx !== index);
+        form.setFieldValue('xmlArchives', newArchives);
+        setConfirmAction(null);
+      },
+      onCancel: () => setConfirmAction(null),
+    });
+  };
+
+  // Useful Links operations
+  const addUsefulLink = () => {
+    const newLinks = [...(form.values.usefulLinks || []), { id: null, title: '', url: '', isLatest: false }];
+    form.setFieldValue('usefulLinks', newLinks);
+  };
+
+  const updateUsefulLink = (index, field, value) => {
+    const updatedLinks = [...(form.values.usefulLinks || [])];
+    
+    // If marking this item as latest, uncheck all other useful links
+    if (field === 'isLatest' && value === true) {
+      updatedLinks.forEach((link, idx) => {
+        if (idx !== index) {
+          updatedLinks[idx] = { ...link, isLatest: false };
+        }
+      });
+    }
+    
+    updatedLinks[index] = { ...updatedLinks[index], [field]: value };
+    form.setFieldValue('usefulLinks', updatedLinks);
+    
+    // Also update the flattened field for validation
+    const fieldName = getArrayFieldName('usefulLinks', index, field);
+    form.setFieldValue(fieldName, value);
+    
+    // Manually validate the field immediately
+    if (field === 'url') {
+      const validators = [
+        validationRules.required('URL is required'),
+        validationRules.url('Please enter a valid URL')
+      ];
+      
+      let error = null;
+      for (const validator of validators) {
+        error = validator(value);
+        if (error) break;
+      }
+      
+      if (error) {
+        form.setFieldError(fieldName, error);
+      } else {
+        form.setFieldError(fieldName, null);
+      }
+    } else if (field === 'title') {
+      const validators = [
+        validationRules.required('Title is required'),
+        validationRules.maxLength(200, 'Title must be less than 200 characters')
+      ];
+      
+      let error = null;
+      for (const validator of validators) {
+        error = validator(value);
+        if (error) break;
+      }
+      
+      if (error) {
+        form.setFieldError(fieldName, error);
+      } else {
+        form.setFieldError(fieldName, null);
+      }
+    }
+  };
+
+  const removeUsefulLink = (index) => {
+    const link = form.values.usefulLinks[index];
+    const displayName = link.title || `Link ${index + 1}`;
+    
+    setConfirmAction({
+      message: `Are you sure you want to remove Useful Link "${displayName}"? This action cannot be undone.`,
+      onConfirm: () => {
+        const newLinks = form.values.usefulLinks.filter((_, idx) => idx !== index);
+        form.setFieldValue('usefulLinks', newLinks);
+        setConfirmAction(null);
+      },
+      onCancel: () => setConfirmAction(null),
+    });
+  };
 
   return (
     <div>
       {error && <Alert type="error">{error}</Alert>}
       
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: '1rem' }}>
-          <label style={{ 
-            display: 'block', 
-            fontSize: '0.875rem', 
-            fontWeight: 500, 
-            marginBottom: '0.5rem', 
-            color: 'var(--text)',
-          }}>
-            Source
-          </label>
-          <input
-            type="text"
-            value={formState.source || ''}
-            onChange={(e) => updateFormField('source', e.target.value)}
-            required
-            placeholder="Enter dataset source"
-            style={{
-              display: 'block',
-              width: '100%',
-              padding: '0.625rem 0.75rem',
-              fontSize: '0.875rem',
-              borderRadius: '0.5rem',
-              border: `1px solid ${validationErrors.source ? 'var(--error)' : 'var(--border)'}`,
-              backgroundColor: 'var(--card-bg)',
-              color: 'var(--text)',
-              transition: 'border-color 0.2s',
-            }}
-          />
-          {getFieldErrorMessage('source')}
-        </div>
+      <form onSubmit={form.handleSubmit}>
+        <FormField
+          type="text"
+          name="source"
+          label="Source"
+          value={form.values.source}
+          onChange={form.handleChange}
+          onBlur={form.handleBlur}
+          error={form.errors.source}
+          touched={form.touched.source}
+          placeholder="Enter dataset source"
+          required
+        />
         
-        <div style={{ marginBottom: '1rem' }}>
-          <label style={{ 
-            display: 'block', 
-            fontSize: '0.875rem', 
-            fontWeight: 500, 
-            marginBottom: '0.5rem', 
-            color: 'var(--text)',
-          }}>
-            Title
-          </label>
-          <input
-            type="text"
-            value={formState.title || ''}
-            onChange={(e) => updateFormField('title', e.target.value)}
-            required
-            placeholder="Enter dataset title"
-            style={{
-              display: 'block',
-              width: '100%',
-              padding: '0.625rem 0.75rem',
-              fontSize: '0.875rem',
-              borderRadius: '0.5rem',
-              border: `1px solid ${validationErrors.title ? 'var(--error)' : 'var(--border)'}`,
-              backgroundColor: 'var(--card-bg)',
-              color: 'var(--text)',
-              transition: 'border-color 0.2s',
-            }}
-          />
-          {getFieldErrorMessage('title')}
-        </div>
+        <FormField
+          type="text"
+          name="title"
+          label="Title"
+          value={form.values.title}
+          onChange={form.handleChange}
+          onBlur={form.handleBlur}
+          error={form.errors.title}
+          touched={form.touched.title}
+          placeholder="Enter dataset title"
+          required
+        />
         
-        <div style={{ marginBottom: '1.5rem' }}>
-          <label style={{ 
-            display: 'block', 
-            fontSize: '0.875rem', 
-            fontWeight: 500, 
-            marginBottom: '0.5rem', 
-            color: 'var(--text)',
-          }}>
-            Landing Page URL
-          </label>
-          <input
-            type="url"
-            value={formState.landingPageUrl || ''}
-            onChange={(e) => updateFormField('landingPageUrl', e.target.value)}
-            placeholder="https://example.com/dataset"
-            style={{
-              display: 'block',
-              width: '100%',
-              padding: '0.625rem 0.75rem',
-              fontSize: '0.875rem',
-              borderRadius: '0.5rem',
-              border: `1px solid ${validationErrors.landingPageUrl ? 'var(--error)' : 'var(--border)'}`,
-              backgroundColor: 'var(--card-bg)',
-              color: 'var(--text)',
-              transition: 'border-color 0.2s',
-            }}
-          />
-          {getFieldErrorMessage('landingPageUrl')}
-        </div>
+        <FormField
+          type="url"
+          name="landingPageUrl"
+          label="Landing Page URL"
+          value={form.values.landingPageUrl}
+          onChange={form.handleChange}
+          onBlur={form.handleBlur}
+          error={form.errors.landingPageUrl}
+          touched={form.touched.landingPageUrl}
+          placeholder="https://example.com/dataset"
+          helpText="Optional: The dataset's landing page URL"
+        />
         
         {/* XML Archives Section */}
         <div style={{ margin: '1rem 0' }}>
@@ -561,7 +393,7 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired }) {
             </Button>
           </div>
           
-          {formState.xmlArchives.length === 0 ? (
+          {(!form.values.xmlArchives || form.values.xmlArchives.length === 0) ? (
             <div style={{ 
               padding: '1rem', 
               backgroundColor: 'var(--subtle-bg)', 
@@ -574,99 +406,94 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired }) {
               No XML archives added
             </div>
           ) : (
-            formState.xmlArchives.map((archive, archIndex) => (
-              <div 
-                key={archIndex} 
-                style={{ 
-                  padding: '1rem', 
-                  backgroundColor: 'var(--subtle-bg)', 
-                  borderRadius: '0.5rem', 
-                  marginBottom: '0.75rem',
-                }}
-              >
-                <div style={{ marginBottom: '0.75rem' }}>
-                  <label style={{ 
-                    display: 'block', 
-                    fontSize: '0.875rem', 
-                    fontWeight: 500, 
-                    marginBottom: '0.5rem', 
-                    color: 'var(--text)',
-                  }}>
-                    URL
-                  </label>
-                  <input
+            form.values.xmlArchives.map((archive, archIndex) => {
+              const urlFieldName = getArrayFieldName('xmlArchives', archIndex, 'url');
+              return (
+                <div 
+                  key={archIndex} 
+                  style={{ 
+                    padding: '1rem', 
+                    backgroundColor: 'var(--subtle-bg)', 
+                    borderRadius: '0.5rem', 
+                    marginBottom: '0.75rem',
+                  }}
+                >
+                  <FormField
                     type="url"
+                    name={urlFieldName}
+                    label="URL"
                     value={archive.url || ''}
                     onChange={(e) => updateXmlArchive(archIndex, 'url', e.target.value)}
+                    onBlur={(e) => {
+                      // Create a synthetic event for the form's handleBlur
+                      const syntheticEvent = {
+                        target: {
+                          name: urlFieldName,
+                          value: e.target.value
+                        }
+                      };
+                      form.handleBlur(syntheticEvent);
+                    }}
+                    error={form.errors[urlFieldName]}
+                    touched={form.touched[urlFieldName]}
                     placeholder="https://example.com/archive.xml"
-                    style={{
-                      display: 'block',
-                      width: '100%',
-                      padding: '0.625rem 0.75rem',
-                      fontSize: '0.875rem',
-                      borderRadius: '0.5rem',
-                      border: `1px solid ${validationErrors[`xml_${archIndex}_url`] ? 'var(--error)' : 'var(--border)'}`,
-                      backgroundColor: 'var(--card-bg)',
-                      color: 'var(--text)',
-                      transition: 'border-color 0.2s',
-                    }}
+                    required
                   />
-                  {getFieldErrorMessage(`xml_${archIndex}_url`)}
-                </div>
-                
-                <div style={{ marginBottom: '0.75rem' }}>
-                  <label style={{ 
-                    display: 'flex', 
-                    paddingLeft: '0.2rem',
-                    alignItems: 'center',
-                    fontSize: '0.875rem', 
-                    fontWeight: 500, 
-                    color: 'var(--text)',
-                  }}>
-                    <input
-                      type="checkbox"
-                      checked={archive.isLatest}
-                      onChange={(e) => updateXmlArchive(archIndex, 'isLatest', e.target.checked)}
-                      style={{
-                        width: '1rem',
-                        height: '1rem',
-                        borderRadius: '0.25rem',
-                        marginRight: '0.5rem',
-                        accentColor: 'var(--primary)',
-                      }}
-                    />
-                    Is Latest Version
-                  </label>
-                </div>
-                
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      removeXmlArchive(archIndex);
-                    }}
-                    style={{
-                      width: '36px',
-                      height: '36px',
-                      backgroundColor: 'var(--card-bg)',
-                      color: 'var(--error)',
-                      border: 'none',
-                      borderRadius: '0.375rem',
-                      cursor: 'pointer',
-                      display: 'flex',
+                  
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <label style={{ 
+                      display: 'flex', 
+                      paddingLeft: '0.2rem',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      transition: 'all 0.2s',
-                      padding: 0
-                    }}
-                    aria-label="Remove XML Archive"
-                  >
-                    <Trash2 size={18} />
-                  </button>
+                      fontSize: '0.875rem', 
+                      fontWeight: 500, 
+                      color: 'var(--text)',
+                    }}>
+                      <input
+                        type="checkbox"
+                        checked={archive.isLatest}
+                        onChange={(e) => updateXmlArchive(archIndex, 'isLatest', e.target.checked)}
+                        style={{
+                          width: '1rem',
+                          height: '1rem',
+                          borderRadius: '0.25rem',
+                          marginRight: '0.5rem',
+                          accentColor: 'var(--primary)',
+                        }}
+                      />
+                      Is Latest Version
+                    </label>
+                  </div>
+                  
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        removeXmlArchive(archIndex);
+                      }}
+                      style={{
+                        width: '36px',
+                        height: '36px',
+                        backgroundColor: 'var(--card-bg)',
+                        color: 'var(--error)',
+                        border: 'none',
+                        borderRadius: '0.375rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all 0.2s',
+                        padding: 0
+                      }}
+                      aria-label="Remove XML Archive"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
         
@@ -702,7 +529,7 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired }) {
             </Button>
           </div>
           
-          {formState.usefulLinks.length === 0 ? (
+          {(!form.values.usefulLinks || form.values.usefulLinks.length === 0) ? (
             <div style={{ 
               padding: '1rem', 
               backgroundColor: 'var(--subtle-bg)', 
@@ -715,129 +542,117 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired }) {
               No useful links added
             </div>
           ) : (
-            formState.usefulLinks.map((link, linkIndex) => (
-              <div 
-                key={linkIndex} 
-                style={{ 
-                  padding: '1rem', 
-                  backgroundColor: 'var(--subtle-bg)', 
-                  borderRadius: '0.5rem', 
-                  marginBottom: '0.75rem',
-                }}
-              >
-                <div style={{ marginBottom: '0.75rem' }}>
-                  <label style={{ 
-                    display: 'block', 
-                    fontSize: '0.875rem', 
-                    fontWeight: 500, 
-                    marginBottom: '0.5rem', 
-                    color: 'var(--text)',
-                  }}>
-                    Title
-                  </label>
-                  <input
+            form.values.usefulLinks.map((link, linkIndex) => {
+              const titleFieldName = getArrayFieldName('usefulLinks', linkIndex, 'title');
+              const urlFieldName = getArrayFieldName('usefulLinks', linkIndex, 'url');
+              return (
+                <div 
+                  key={linkIndex} 
+                  style={{ 
+                    padding: '1rem', 
+                    backgroundColor: 'var(--subtle-bg)', 
+                    borderRadius: '0.5rem', 
+                    marginBottom: '0.75rem',
+                  }}
+                >
+                  <FormField
                     type="text"
+                    name={titleFieldName}
+                    label="Title"
                     value={link.title || ''}
                     onChange={(e) => updateUsefulLink(linkIndex, 'title', e.target.value)}
-                    placeholder="Enter link title"
-                    style={{
-                      display: 'block',
-                      width: '100%',
-                      padding: '0.625rem 0.75rem',
-                      fontSize: '0.875rem',
-                      borderRadius: '0.5rem',
-                      border: `1px solid ${validationErrors[`link_${linkIndex}_title`] ? 'var(--error)' : 'var(--border)'}`,
-                      backgroundColor: 'var(--card-bg)',
-                      color: 'var(--text)',
-                      transition: 'border-color 0.2s',
+                    onBlur={(e) => {
+                      // Create a synthetic event for the form's handleBlur
+                      const syntheticEvent = {
+                        target: {
+                          name: titleFieldName,
+                          value: e.target.value
+                        }
+                      };
+                      form.handleBlur(syntheticEvent);
                     }}
+                    error={form.errors[titleFieldName]}
+                    touched={form.touched[titleFieldName]}
+                    placeholder="Enter link title"
+                    required
                   />
-                  {getFieldErrorMessage(`link_${linkIndex}_title`)}
-                </div>
-                
-                <div style={{ marginBottom: '0.75rem' }}>
-                  <label style={{ 
-                    display: 'block', 
-                    fontSize: '0.875rem', 
-                    fontWeight: 500, 
-                    marginBottom: '0.5rem', 
-                    color: 'var(--text)',
-                  }}>
-                    URL
-                  </label>
-                  <input
+                  
+                  <FormField
                     type="url"
+                    name={urlFieldName}
+                    label="URL"
                     value={link.url || ''}
                     onChange={(e) => updateUsefulLink(linkIndex, 'url', e.target.value)}
+                    onBlur={(e) => {
+                      // Create a synthetic event for the form's handleBlur
+                      const syntheticEvent = {
+                        target: {
+                          name: urlFieldName,
+                          value: e.target.value
+                        }
+                      };
+                      form.handleBlur(syntheticEvent);
+                    }}
+                    error={form.errors[urlFieldName]}
+                    touched={form.touched[urlFieldName]}
                     placeholder="https://example.com/resource"
-                    style={{
-                      display: 'block',
-                      width: '100%',
-                      padding: '0.625rem 0.75rem',
-                      fontSize: '0.875rem',
-                      borderRadius: '0.5rem',
-                      border: `1px solid ${validationErrors[`link_${linkIndex}_url`] ? 'var(--error)' : 'var(--border)'}`,
-                      backgroundColor: 'var(--card-bg)',
-                      color: 'var(--text)',
-                      transition: 'border-color 0.2s',
-                    }}
+                    required
                   />
-                  {getFieldErrorMessage(`link_${linkIndex}_url`)}
-                </div>
-                
-                <div style={{ marginBottom: '0.75rem' }}>
-                  <label style={{ 
-                    display: 'flex', 
-                    paddingLeft: '0.2rem',
-                    alignItems: 'center',
-                    fontSize: '0.875rem', 
-                    fontWeight: 500, 
-                    color: 'var(--text)',
-                  }}>
-                    <input
-                      type="checkbox"
-                      checked={link.isLatest}
-                      onChange={(e) => updateUsefulLink(linkIndex, 'isLatest', e.target.checked)}
-                      style={{
-                        width: '1rem',
-                        height: '1rem',
-                        borderRadius: '0.25rem',
-                        marginRight: '0.5rem',
-                        accentColor: 'var(--primary)',
-                      }}
-                    />
-                    Is Latest Version
-                  </label>
-                </div>
-                
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      removeUsefulLink(linkIndex);
-                    }}
-                    style={{
-                      width: '36px',
-                      height: '36px',
-                      backgroundColor: 'var(--card-bg)',
-                      color: 'var(--error)',
-                      border: 'none',
-                      borderRadius: '0.375rem',
-                      cursor: 'pointer',
-                      display: 'flex',
+                  
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <label style={{ 
+                      display: 'flex', 
+                      paddingLeft: '0.2rem',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      transition: 'all 0.2s',
-                      padding: 0
-                    }}
-                    aria-label="Remove Useful Link"
-                  >
-                    <Trash2 size={18} />
-                  </button>
+                      fontSize: '0.875rem', 
+                      fontWeight: 500, 
+                      color: 'var(--text)',
+                    }}>
+                      <input
+                        type="checkbox"
+                        checked={link.isLatest}
+                        onChange={(e) => updateUsefulLink(linkIndex, 'isLatest', e.target.checked)}
+                        style={{
+                          width: '1rem',
+                          height: '1rem',
+                          borderRadius: '0.25rem',
+                          marginRight: '0.5rem',
+                          accentColor: 'var(--primary)',
+                        }}
+                      />
+                      Is Latest Version
+                    </label>
+                  </div>
+                  
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        removeUsefulLink(linkIndex);
+                      }}
+                      style={{
+                        width: '36px',
+                        height: '36px',
+                        backgroundColor: 'var(--card-bg)',
+                        color: 'var(--error)',
+                        border: 'none',
+                        borderRadius: '0.375rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all 0.2s',
+                        padding: 0
+                      }}
+                      aria-label="Remove Useful Link"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
         
@@ -864,17 +679,17 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired }) {
         </div>
       </form>
       
-      {/* The confirmation modal must be rendered at the top level */}
-      {hasConfirmAction && (
+      {/* The confirmation modal */}
+      {confirmAction && (
         <ConfirmModal
-          isOpen={hasConfirmAction}
+          isOpen={true}
           title="Confirm Removal"
-          message={confirmAction?.message}
+          message={confirmAction.message}
           confirmText="Delete"
           cancelText="Cancel"
           confirmVariant="danger"
-          onConfirm={confirmAction?.onConfirm}
-          onCancel={confirmAction?.onCancel}
+          onConfirm={confirmAction.onConfirm}
+          onCancel={confirmAction.onCancel}
         />
       )}
     </div>

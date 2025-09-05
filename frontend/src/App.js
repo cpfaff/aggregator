@@ -14,6 +14,7 @@ import Changelog from './components/changelog/Changelog';
 import About from './components/public/About';
 import LandingPage from './components/public/LandingPage';
 import { AdminDashboard, PublicStatsDashboard } from './components/statistics';
+import { ToastContainer } from './components/ui/Toast';
 
 // Protected Route wrapper component
 function ProtectedRoute({ children }) {
@@ -248,6 +249,7 @@ function App() {
       </div>
 
       <Footer />
+      <ToastContainer />
     </div>
   );
 }

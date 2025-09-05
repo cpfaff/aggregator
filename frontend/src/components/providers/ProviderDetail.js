@@ -12,6 +12,7 @@ import DatasetForm from '../datasets/DatasetForm';
 import ProviderForm from './ProviderForm';
 import ConfirmModal from '../ui/ConfirmModal';
 import { ProviderStatistics } from '../statistics';
+import { showToast } from '../ui/Toast';
 
 const ProviderDetail = ({ currentUser }) => {
   const { id } = useParams();
@@ -188,9 +189,11 @@ const ProviderDetail = ({ currentUser }) => {
       }
       
       // After successful deletion, update the UI
+      const deletedDataset = datasets.find(d => d.id === datasetId);
       setDatasets(datasets.filter(d => d.id !== datasetId));
       setConfirmDelete(null);
       setError('');
+      showToast(`Dataset "${deletedDataset?.title}" deleted successfully!`, 'success');
     } catch (err) {
       console.error('Error deleting dataset:', err);
       if (!err.message?.includes('Session expired')) {
@@ -266,6 +269,7 @@ const ProviderDetail = ({ currentUser }) => {
       }
       
       // After successful deletion, navigate back to providers list
+      showToast(`Provider "${provider?.name}" deleted successfully!`, 'success');
       navigate('/providers');
       setError('');
     } catch (err) {

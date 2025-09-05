@@ -10,6 +10,7 @@ import ActionMenu from '../ui/ActionMenu';
 import ProviderCard from '../providers/ProviderCard';
 import ProviderForm from '../providers/ProviderForm';
 import { Plus } from 'lucide-react';
+import { showToast } from '../ui/Toast';
 
 // Providers component with improved nested form integration
 function Providers({ currentUser, onViewProviderDetails }) {
@@ -79,9 +80,11 @@ function Providers({ currentUser, onViewProviderDetails }) {
       }
       
       // Remove from local state and close modal
+      const deletedProvider = providers.find(p => p.id === id);
       setProviders(providers.filter(p => p.id !== id));
       setConfirmDelete(null);
       setError('');
+      showToast(`Provider "${deletedProvider?.name}" deleted successfully!`, 'success');
     } catch (err) {
       console.error('Error deleting provider:', err);
       if (!err.message?.includes('Session expired')) {

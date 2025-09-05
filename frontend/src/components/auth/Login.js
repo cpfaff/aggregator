@@ -1,26 +1,30 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { API_BASE, API_VERSION, initCsrfProtection } from '../../utils/apiUtils';
+import useFormValidation from '../../utils/useFormValidation';
+import validationRules from '../../utils/validationRules';
+import FormField from '../ui/FormField';
 import Alert from '../ui/Alert';
+import { showToast } from '../ui/Toast';
 
 // Login component
 function Login({ sessionExpired, onViewPublicStats }) {
   const { login, isLoading, setIsLoading, sessionExpired: authSessionExpired, setSessionExpired } = useAuth();
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  
+  // Define validation schema
+  const validationSchema = {
+    username: [
+      validationRules.required('Username is required'),
+      validationRules.minLength(3, 'Username must be at least 3 characters')
+    ],
+    password: [
+      validationRules.required('Password is required'),
+      validationRules.minLength(6, 'Password must be at least 6 characters')
+    ]
+  };
 
-  // Clear session expired message when user starts typing
-  useEffect(() => {
-    if ((sessionExpired || authSessionExpired) && (username || password)) {
-      setError('');
-      setSessionExpired(false);
-    }
-  }, [username, password, sessionExpired, authSessionExpired, setSessionExpired]);
-
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setError('');
+  // Form submission handler
+  const handleFormSubmit = async (values) => {
     setIsLoading(true);
     
     try {
@@ -34,12 +38,15 @@ function Login({ sessionExpired, onViewPublicStats }) {
           'Content-Type': 'application/x-www-form-urlencoded',
           'X-CSRF-Token': localStorage.getItem('csrfToken')
         },
-        body: new URLSearchParams({ username, password }),
+        body: new URLSearchParams(values),
         credentials: 'include', // Important for CSRF cookies
       });
       
       if (!res.ok) {
-        setError('Invalid username or password');
+        form.setFieldErrors({ 
+          username: ' ', // Space to show error styling
+          password: 'Invalid username or password'
+        });
         setIsLoading(false);
         return;
       }
@@ -49,11 +56,33 @@ function Login({ sessionExpired, onViewPublicStats }) {
       // Use the context's login function
       await login(data.access_token, data.refresh_token, data.expires_in);
       setIsLoading(false);
+      showToast('Successfully logged in!', 'success');
     } catch (err) {
-      setError('Network error. Please check your connection');
+      form.setFieldErrors({ 
+        username: ' ', // Space to show error styling
+        password: 'Network error. Please check your connection'
+      });
       setIsLoading(false);
     }
   };
+
+  // Initialize form validation hook
+  const form = useFormValidation(
+    {
+      username: '',
+      password: ''
+    },
+    validationSchema,
+    handleFormSubmit
+  );
+
+  // Clear session expired message when user starts typing
+  useEffect(() => {
+    if ((sessionExpired || authSessionExpired) && (form.values.username || form.values.password)) {
+      setSessionExpired(false);
+    }
+  }, [form.values.username, form.values.password, sessionExpired, authSessionExpired, setSessionExpired]);
+
 
   return (
     <div style={{ 
@@ -84,75 +113,50 @@ function Login({ sessionExpired, onViewPublicStats }) {
           Sign In
         </h1>
         
-        {error && <Alert type="error">{error}</Alert>}
-        {(sessionExpired || authSessionExpired) && <Alert type="error">Your session has expired. Please sign in again.</Alert>}
+        {(sessionExpired || authSessionExpired) && (
+          <Alert type="error">Your session has expired. Please sign in again.</Alert>
+        )}
         
-        <form onSubmit={handleLogin}>
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ 
-              display: 'block', 
-              fontSize: '0.875rem', 
-              fontWeight: 500, 
-              marginBottom: '0.5rem', 
-              color: 'var(--text)',
-            }} htmlFor="username">
-              Username
-            </label>
-            <input
-              id="username"
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-              placeholder="Enter your username"
-              autoComplete="username"
-              disabled={isLoading}
-              style={{
-                display: 'block',
-                width: '100%',
-                padding: '0.75rem 1rem',
-                fontSize: '1rem',
-                borderRadius: '0.5rem',
-                border: '1px solid var(--border)',
-                backgroundColor: 'var(--card-bg)',
-                color: 'var(--text)',
-                transition: 'border-color 0.2s',
-              }}
-            />
-          </div>
+        <form onSubmit={form.handleSubmit}>
+          <FormField
+            type="text"
+            name="username"
+            label="Username"
+            value={form.values.username}
+            onChange={form.handleChange}
+            onBlur={form.handleBlur}
+            error={form.errors.username}
+            touched={form.touched.username}
+            placeholder="Enter your username"
+            autoComplete="username"
+            disabled={isLoading}
+            required
+            style={{
+              padding: '0.75rem 1rem',
+              fontSize: '1rem',
+            }}
+          />
           
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{ 
-              display: 'block', 
-              fontSize: '0.875rem', 
-              fontWeight: 500, 
-              marginBottom: '0.5rem', 
-              color: 'var(--text)',
-            }} htmlFor="password">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              placeholder="Enter your password"
-              autoComplete="current-password"
-              disabled={isLoading}
-              style={{
-                display: 'block',
-                width: '100%',
-                padding: '0.75rem 1rem',
-                fontSize: '1rem',
-                borderRadius: '0.5rem',
-                border: '1px solid var(--border)',
-                backgroundColor: 'var(--card-bg)',
-                color: 'var(--text)',
-                transition: 'border-color 0.2s',
-              }}
-            />
-          </div>
+          <FormField
+            type="password"
+            name="password"
+            label="Password"
+            value={form.values.password}
+            onChange={form.handleChange}
+            onBlur={form.handleBlur}
+            error={form.errors.password}
+            touched={form.touched.password}
+            placeholder="Enter your password"
+            autoComplete="current-password"
+            disabled={isLoading}
+            required
+            showPasswordToggle={true}
+            style={{
+              padding: '0.75rem 1rem',
+              fontSize: '1rem',
+              marginBottom: '1.5rem'
+            }}
+          />
           
           <button
             type="submit"

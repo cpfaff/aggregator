@@ -2,12 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { Edit, Trash2, Plus } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { apiRequest } from '../../utils/apiUtils';
+import useFormValidation from '../../utils/useFormValidation';
+import validationRules from '../../utils/validationRules';
+import FormField from '../ui/FormField';
 import Alert from '../ui/Alert';
 import Button from '../ui/Button';
 import Modal from '../ui/Modal';
 import ConfirmModal from '../ui/ConfirmModal';
 import Breadcrumbs from '../ui/Breadcrumbs';
 import ActionMenu from '../ui/ActionMenu';
+import { showToast } from '../ui/Toast';
 
 // UserManagement component
 function UserManagement() {
@@ -20,8 +24,8 @@ function UserManagement() {
   const [providers, setProviders] = useState([]);
   const [selectedProvider, setSelectedProvider] = useState('');
   const [selectedRole, setSelectedRole] = useState('admin'); // Set default role to 'admin'
-  const [formData, setFormData] = useState({ username: '', password: '', is_global_admin: false, provider_roles: {} });
-  const [oldPassword, setOldPassword] = useState('');
+  const [isFormLoading, setIsFormLoading] = useState(false);
+  const [formError, setFormError] = useState('');
   const [confirmDeleteUser, setConfirmDeleteUser] = useState(null);
 
   // Breadcrumb items for User Management
@@ -51,29 +55,54 @@ function UserManagement() {
     fetchProviders();
   }, []);
 
+  // Define validation schema
+  const getValidationSchema = (isEditing, isCurrentUser) => {
+    const schema = {
+      username: isEditing ? [] : [
+        validationRules.required('Username is required'),
+        validationRules.minLength(3, 'Username must be at least 3 characters'),
+        validationRules.maxLength(50, 'Username must be less than 50 characters'),
+        validationRules.pattern(/^[a-zA-Z0-9_-]+$/, 'Username can only contain letters, numbers, hyphens, and underscores')
+      ],
+      password: isEditing ? [
+        validationRules.conditional(
+          (values) => values.password && values.password.trim() !== '',
+          validationRules.minLength(8, 'Password must be at least 8 characters')
+        )
+      ] : [
+        validationRules.required('Password is required'),
+        validationRules.minLength(8, 'Password must be at least 8 characters')
+      ]
+    };
+
+    // Add oldPassword validation if editing current user's password
+    if (isEditing && isCurrentUser) {
+      schema.oldPassword = [
+        validationRules.conditional(
+          (values) => values.password && values.password.trim() !== '',
+          validationRules.required('Current password is required to update your password')
+        )
+      ];
+    }
+
+    return schema;
+  };
+
   const handleAddProviderRole = () => {
     if (selectedProvider && selectedRole) {
-      setFormData(prev => ({
-        ...prev,
-        provider_roles: {
-          ...prev.provider_roles,
-          [selectedProvider]: selectedRole
-        }
-      }));
+      form.setFieldValue('provider_roles', {
+        ...form.values.provider_roles,
+        [selectedProvider]: selectedRole
+      });
       setSelectedProvider('');
       setSelectedRole('admin'); // Reset role to default after adding
     }
   };
 
   const handleRemoveProviderRole = (providerId) => {
-    setFormData(prev => {
-      const newRoles = { ...prev.provider_roles };
-      delete newRoles[providerId];
-      return {
-        ...prev,
-        provider_roles: newRoles
-      };
-    });
+    const newRoles = { ...form.values.provider_roles };
+    delete newRoles[providerId];
+    form.setFieldValue('provider_roles', newRoles);
   };
 
   const fetchUsers = async () => {
@@ -102,22 +131,23 @@ function UserManagement() {
     fetchUsers();
   }, []);
 
-  const handleSaveUser = async (formData) => {
-    setIsLoading(true);
-    setError('');
+  // Form submission handler
+  const handleFormSubmit = async (values) => {
+    setIsFormLoading(true);
+    setFormError('');
     
     try {
       let res;
       if (editingUser) {
         // Create a copy of the user data for the update
         const userData = { 
-          is_global_admin: formData.is_global_admin,
-          provider_roles: formData.provider_roles
+          is_global_admin: values.is_global_admin,
+          provider_roles: values.provider_roles
         };
         
         // Only include password if it's not empty
-        if (formData.password && formData.password.trim() !== '') {
-          userData.password = formData.password;
+        if (values.password && values.password.trim() !== '') {
+          userData.password = values.password;
         }
         
         let requestOptions = {
@@ -135,7 +165,7 @@ function UserManagement() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               user: userData,
-              old_password: oldPassword
+              old_password: values.oldPassword
             })
           };
         }
@@ -145,7 +175,7 @@ function UserManagement() {
         res = await apiRequest('/users', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData)
+          body: JSON.stringify(values)
         }, handleTokenExpiration);
       }
       
@@ -157,24 +187,65 @@ function UserManagement() {
         } catch (e) {
           // If we can't parse the error response, use the default message
         }
-        setError(errorMessage);
-        setIsLoading(false);
+        setFormError(errorMessage);
+        setIsFormLoading(false);
         return;
       }
       
       setEditingUser(null);
       setAddingUser(false);
       fetchUsers();
-      setIsLoading(false);
+      setIsFormLoading(false);
+      showToast(
+        editingUser 
+          ? `User "${values.username}" updated successfully!`
+          : `User "${values.username}" created successfully!`,
+        'success'
+      );
     } catch (err) {
       // Only set error if it's not a token expiration error
       // Token expiration is handled by the onTokenExpired callback
       if (!err.message || !err.message.includes('Session expired')) {
-        setError('Error saving user: ' + err.message);
+        setFormError('Error saving user: ' + err.message);
       }
-      setIsLoading(false);
+      setIsFormLoading(false);
     }
   };
+
+  // Initialize form validation hook - need to reinitialize when switching between add/edit
+  const initialFormValues = editingUser ? {
+    username: editingUser.username,
+    password: '',
+    oldPassword: '',
+    is_global_admin: editingUser.is_global_admin,
+    provider_roles: editingUser.provider_roles || {}
+  } : {
+    username: '',
+    password: '',
+    oldPassword: '',
+    is_global_admin: false,
+    provider_roles: {}
+  };
+  
+  const form = useFormValidation(
+    initialFormValues,
+    getValidationSchema(!!editingUser, editingUser && currentUser && currentUser.username === editingUser.username),
+    handleFormSubmit
+  );
+  
+  // Update form values when editingUser changes
+  useEffect(() => {
+    if (editingUser) {
+      form.setFieldValue('username', editingUser.username);
+      form.setFieldValue('password', '');
+      form.setFieldValue('oldPassword', '');
+      form.setFieldValue('is_global_admin', editingUser.is_global_admin);
+      form.setFieldValue('provider_roles', editingUser.provider_roles || {});
+    } else if (addingUser && !editingUser) {
+      // Reset form for new user
+      form.resetForm();
+    }
+  }, [editingUser, addingUser]);
 
   const handleDeleteUser = async (username) => {
     setIsLoading(true);
@@ -200,6 +271,7 @@ function UserManagement() {
       
       fetchUsers();
       setIsLoading(false);
+      showToast(`User "${username}" deleted successfully!`, 'success');
     } catch (err) {
       setError('Error deleting user: ' + err.message);
       setIsLoading(false);
@@ -208,13 +280,8 @@ function UserManagement() {
 
   const handleEdit = (user) => {
     setEditingUser(user);
-    setFormData({ 
-      username: user.username, 
-      password: '', 
-      is_global_admin: user.is_global_admin, 
-      provider_roles: user.provider_roles || {} 
-    });
     setAddingUser(true);
+    // Form values will be set automatically by useFormValidation hook
   };
 
   const handleDelete = (username) => {
@@ -261,7 +328,6 @@ function UserManagement() {
             onClick: () => { 
               setAddingUser(true); 
               setEditingUser(null); 
-              setFormData({ username: '', password: '', is_global_admin: false, provider_roles: {} }); 
             },
             color: 'var(--primary)'
           }
@@ -302,7 +368,6 @@ function UserManagement() {
           <Button onClick={() => { 
             setAddingUser(true); 
             setEditingUser(null); 
-            setFormData({ username: '', password: '', is_global_admin: false, provider_roles: {} }); 
           }}>
             Add User
           </Button>
@@ -508,152 +573,77 @@ function UserManagement() {
       
       <Modal
         isOpen={addingUser}
-        onClose={() => { setAddingUser(false); setEditingUser(null); }}
+        onClose={() => { setAddingUser(false); setEditingUser(null); form.resetForm(); }}
         title={editingUser ? `Edit User: ${editingUser.username}` : 'Add User'}
       >
         <div>
-          {error && <Alert type="error">{error}</Alert>}
+          {formError && <Alert type="error">{formError}</Alert>}
           
-          <form onSubmit={(e) => { e.preventDefault(); handleSaveUser(formData); }}>
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ 
-                display: 'block', 
-                fontSize: '0.875rem', 
-                fontWeight: 500, 
-                marginBottom: '0.5rem', 
-                color: 'var(--text)',
-              }}>
-                Username
-              </label>
-              <input
-                type="text"
-                value={formData.username}
-                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                required
-                disabled={!!editingUser}
-                placeholder="Enter username"
-                autoComplete="username"
-                style={{
-                  display: 'block',
-                  width: '100%',
-                  padding: '0.625rem 0.75rem',
-                  fontSize: '0.875rem',
-                  borderRadius: '0.5rem',
-                  border: '1px solid var(--border)',
-                  backgroundColor: 'var(--card-bg)',
-                  color: 'var(--text)',
-                  transition: 'border-color 0.2s',
-                }}
-              />
-              {editingUser && (
-                <div style={{
-                  fontSize: '0.75rem',
-                  color: 'var(--text-light)',
-                  marginTop: '0.25rem',
-                }}>
-                  Username cannot be changed
-                </div>
-              )}
-            </div>
+          <form onSubmit={form.handleSubmit}>
+            <FormField
+              type="text"
+              name="username"
+              label="Username"
+              value={form.values.username}
+              onChange={form.handleChange}
+              onBlur={form.handleBlur}
+              error={form.errors.username}
+              touched={form.touched.username}
+              placeholder="Enter username"
+              autoComplete="username"
+              disabled={!!editingUser}
+              required={!editingUser}
+              helpText={editingUser ? "Username cannot be changed" : "Choose a unique username (3-50 characters)"}
+            />
             
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ 
-                display: 'block', 
-                fontSize: '0.875rem', 
-                fontWeight: 500, 
-                marginBottom: '0.5rem', 
-                color: 'var(--text)',
-              }}>
-                Password
-              </label>
-              <input
-                type="password"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                required={!editingUser}
-                placeholder={editingUser ? "Leave blank to keep current password" : "Enter password"}
-                autoComplete="current-password"
-                style={{
-                  display: 'block',
-                  width: '100%',
-                  padding: '0.625rem 0.75rem',
-                  fontSize: '0.875rem',
-                  borderRadius: '0.5rem',
-                  border: '1px solid var(--border)',
-                  backgroundColor: 'var(--card-bg)',
-                  color: 'var(--text)',
-                  transition: 'border-color 0.2s',
-                }}
-              />
-            </div>
+            <FormField
+              type="password"
+              name="password"
+              label="Password"
+              value={form.values.password}
+              onChange={form.handleChange}
+              onBlur={form.handleBlur}
+              error={form.errors.password}
+              touched={form.touched.password}
+              placeholder={editingUser ? "Leave blank to keep current password" : "Enter password"}
+              autoComplete="new-password"
+              required={!editingUser}
+              helpText={editingUser ? "Only fill if you want to change the password" : "Minimum 8 characters"}
+              showPasswordToggle={true}
+            />
             
             {/* Add Old Password field if editing the current user */}
-            {editingUser && currentUser && currentUser.username === editingUser.username && formData.password && (
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ 
-                  display: 'block', 
-                  fontSize: '0.875rem', 
-                  fontWeight: 500, 
-                  marginBottom: '0.5rem', 
-                  color: 'var(--text)',
-                }}>
-                  Current Password (required to update your password)
-                </label>
-                <input
-                  type="password"
-                  value={oldPassword}
-                  onChange={(e) => setOldPassword(e.target.value)}
-                  required={!!formData.password}
-                  placeholder="Enter your current password"
-                  autoComplete="current-password"
-                  style={{
-                    display: 'block',
-                    width: '100%',
-                    padding: '0.625rem 0.75rem',
-                    fontSize: '0.875rem',
-                    borderRadius: '0.5rem',
-                    border: '1px solid var(--border)',
-                    backgroundColor: 'var(--card-bg)',
-                    color: 'var(--text)',
-                    transition: 'border-color 0.2s',
-                  }}
-                />
-              </div>
+            {editingUser && currentUser && currentUser.username === editingUser.username && form.values.password && (
+              <FormField
+                type="password"
+                name="oldPassword"
+                label="Current Password"
+                value={form.values.oldPassword}
+                onChange={form.handleChange}
+                onBlur={form.handleBlur}
+                error={form.errors.oldPassword}
+                touched={form.touched.oldPassword}
+                placeholder="Enter your current password"
+                autoComplete="current-password"
+                required={true}
+                helpText="Required to update your password"
+                showPasswordToggle={true}
+              />
             )}
             
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ 
-                display: 'flex', 
-                alignItems: 'center',
-                fontSize: '0.875rem', 
-                fontWeight: 500, 
-                color: 'var(--text)',
-              }}>
-                <input
-                  type="checkbox"
-                  checked={formData.is_global_admin}
-                  onChange={(e) => setFormData({ ...formData, is_global_admin: e.target.checked })}
-                  style={{
-                    width: '1rem',
-                    height: '1rem',
-                    borderRadius: '0.25rem',
-                    marginRight: '0.5rem',
-                    accentColor: 'var(--primary)',
-                  }}
-                />
-                Global Admin
-              </label>
-              <div style={{
-                fontSize: '0.75rem',
-                color: 'var(--text-light)',
-                marginTop: '0.25rem',
-                marginLeft: '1.5rem',
-              }}>
-                Global admins have full access to all providers and user management
-              </div>
-            </div>
+            <FormField
+              type="checkbox"
+              name="is_global_admin"
+              label="Global Admin"
+              checked={form.values.is_global_admin}
+              onChange={form.handleChange}
+              onBlur={form.handleBlur}
+              error={form.errors.is_global_admin}
+              touched={form.touched.is_global_admin}
+              helpText="Global admins have full access to all providers and user management"
+            />
             
-            {!formData.is_global_admin && (
+            {!form.values.is_global_admin && (
               <div style={{ marginBottom: '1.5rem' }}>
                 <label style={{ 
                   display: 'block', 
@@ -666,7 +656,7 @@ function UserManagement() {
                 </label>
                 
                 <div style={{ marginBottom: '1rem' }}>
-                  {Object.entries(formData.provider_roles).map(([providerId, role]) => {
+                  {Object.entries(form.values.provider_roles).map(([providerId, role]) => {
                     const provider = providers.find(p => p.id.toString() === providerId);
                     return (
                       <div 
@@ -774,16 +764,16 @@ function UserManagement() {
               <Button
                 variant="secondary"
                 type="button"
-                onClick={() => { setEditingUser(null); setAddingUser(false); }}
+                onClick={() => { setEditingUser(null); setAddingUser(false); form.resetForm(); }}
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
-                isLoading={isLoading}
-                disabled={isLoading}
+                isLoading={isFormLoading}
+                disabled={isFormLoading}
               >
-                {editingUser ? (isLoading ? 'Updating...' : 'Update User') : (isLoading ? 'Creating...' : 'Create User')}
+                {editingUser ? (isFormLoading ? 'Updating...' : 'Update User') : (isFormLoading ? 'Creating...' : 'Create User')}
               </Button>
             </div>
           </form>
