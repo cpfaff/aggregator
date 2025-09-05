@@ -248,7 +248,7 @@ function App() {
         </Routes>
       </div>
 
-      <Footer />
+      {location.pathname !== '/login' && <Footer />}
       <ToastContainer />
     </div>
   );

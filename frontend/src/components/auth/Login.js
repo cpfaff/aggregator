@@ -87,21 +87,30 @@ function Login({ sessionExpired, onViewPublicStats }) {
   return (
     <div style={{ 
       display: 'flex', 
+      flexDirection: 'column',
       justifyContent: 'center', 
       alignItems: 'center', 
-      flex: 1,
-      padding: '4rem 24px',
+      height: '100vh',
+      padding: '2rem',
       backgroundColor: 'var(--background)',
       transition: 'background-color 0.3s',
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      overflow: 'hidden',
     }}>
       <div style={{
         backgroundColor: 'var(--card-bg)',
         borderRadius: '0.75rem',
         padding: '2rem',
         width: '400px',
-        maxWidth: '100%',
+        maxWidth: '90%',
         boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
         transition: 'background-color 0.3s',
+        position: 'relative',
+        margin: 'auto 0',
       }}>
         <h1 style={{ 
           fontSize: '1.5rem', 
@@ -192,6 +201,51 @@ function Login({ sessionExpired, onViewPublicStats }) {
             {isLoading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
+        
+        {/* Optional help text */}
+        <div style={{
+          marginTop: '2rem',
+          paddingTop: '2rem',
+          borderTop: '1px solid var(--border)',
+          textAlign: 'center',
+        }}>
+          <p style={{
+            fontSize: '0.875rem',
+            color: 'var(--text-light)',
+            margin: 0,
+          }}>
+            Access for registered data providers only
+          </p>
+          <p style={{
+            fontSize: '0.875rem',
+            color: 'var(--text-light)',
+            marginTop: '0.5rem',
+          }}>
+            Need help? Contact{' '}
+            <a 
+              href="mailto:support@gfbio.org"
+              style={{
+                color: 'var(--primary)',
+                textDecoration: 'none',
+              }}
+            >
+              support@gfbio.org
+            </a>
+          </p>
+        </div>
+      </div>
+      
+      {/* Minimal footer info */}
+      <div style={{
+        position: 'absolute',
+        bottom: '2rem',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        fontSize: '0.75rem',
+        color: 'var(--text-light)',
+        opacity: 0.6,
+      }}>
+        © {new Date().getFullYear()} GFBio e.V. All rights reserved.
       </div>
     </div>
   );
