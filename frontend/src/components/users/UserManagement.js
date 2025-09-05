@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Edit, Trash2, Plus } from 'lucide-react';
+import { Edit, Trash2, Plus, Search } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { apiRequest } from '../../utils/apiUtils';
 import useFormValidation from '../../utils/useFormValidation';
@@ -17,6 +17,8 @@ import { showToast } from '../ui/Toast';
 function UserManagement() {
   const { handleTokenExpiration, user: currentUser } = useAuth();
   const [users, setUsers] = useState([]);
+  const [filteredUsers, setFilteredUsers] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [editingUser, setEditingUser] = useState(null);
   const [addingUser, setAddingUser] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -54,6 +56,39 @@ function UserManagement() {
     fetchUsers();
     fetchProviders();
   }, []);
+
+  // Filter users based on search query
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setFilteredUsers(users);
+    } else {
+      const query = searchQuery.toLowerCase();
+      const filtered = users.filter(user => {
+        // Filter on username
+        if (user.username && user.username.toLowerCase().includes(query)) {
+          return true;
+        }
+        // Filter on provider roles
+        if (user.provider_roles) {
+          for (const [providerId, role] of Object.entries(user.provider_roles)) {
+            const provider = providers.find(p => p.id.toString() === providerId);
+            if (provider && provider.shortName && provider.shortName.toLowerCase().includes(query)) {
+              return true;
+            }
+            if (role && role.toLowerCase().includes(query)) {
+              return true;
+            }
+          }
+        }
+        // Filter on global admin status
+        if (user.is_global_admin && 'global admin'.includes(query)) {
+          return true;
+        }
+        return false;
+      });
+      setFilteredUsers(filtered);
+    }
+  }, [searchQuery, users, providers]);
 
   // Define validation schema
   const getValidationSchema = (isEditing, isCurrentUser) => {
@@ -338,6 +373,79 @@ function UserManagement() {
       
       {error && <Alert type="error">{error}</Alert>}
       
+      {/* Search filter - only show when there are more than 6 users */}
+      {users.length > 6 && (
+        <div style={{
+          position: 'relative',
+          width: '100%',
+          marginBottom: '1.25rem',
+        }}>
+          <Search 
+            size={18} 
+            style={{
+              position: 'absolute',
+              left: '0.75rem',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              color: 'var(--text-light)'
+            }}
+          />
+          <input
+            type="text"
+            placeholder="Search users..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{
+              width: '100%',
+              height: '2.75rem',
+              padding: '0.5rem 0.75rem 0.5rem 2.5rem',
+              fontSize: '0.875rem',
+              borderRadius: '0.5rem',
+              border: '1px solid var(--border)',
+              backgroundColor: 'var(--card-bg)',
+              color: 'var(--text)',
+              outline: 'none',
+              transition: 'border-color 0.2s, box-shadow 0.2s',
+            }}
+            onFocus={(e) => {
+              e.target.style.borderColor = 'var(--primary)';
+              e.target.style.boxShadow = '0 0 0 2px rgba(var(--primary-rgb), 0.2)';
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = 'var(--border)';
+              e.target.style.boxShadow = 'none';
+            }}
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              style={{
+                position: 'absolute',
+                right: '0.75rem',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                fontSize: '1.25rem',
+                lineHeight: 1,
+                color: 'var(--text-light)',
+                cursor: 'pointer',
+                padding: '0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '1.5rem',
+                height: '1.5rem',
+                borderRadius: '50%',
+              }}
+              aria-label="Clear search"
+            >
+              &times;
+            </button>
+          )}
+        </div>
+      )}
+      
       {isLoading && !addingUser ? (
         <div style={{ 
           display: 'flex', 
@@ -373,13 +481,15 @@ function UserManagement() {
           </Button>
         </div>
       ) : (
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
-          gap: '1.5rem',
-          marginBottom: '2rem',
-        }}>
-          {users.map((user) => (
+        <>
+          {filteredUsers.length > 0 ? (
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
+              gap: '1.5rem',
+              marginBottom: '2rem',
+            }}>
+              {filteredUsers.map((user) => (
             <div 
               key={user.username} 
               style={{
@@ -558,7 +668,21 @@ function UserManagement() {
               </div>
             </div>
           ))}
-        </div>
+            </div>
+          ) : (
+            <div style={{
+              padding: '2rem',
+              textAlign: 'center',
+              backgroundColor: 'var(--subtle-bg)',
+              borderRadius: '0.75rem',
+              color: 'var(--text-light)',
+            }}>
+              <p style={{ margin: 0, fontSize: '1rem' }}>
+                No users match your search criteria. Try a different search term.
+              </p>
+            </div>
+          )}
+        </>
       )}
       
       {confirmDeleteUser && (

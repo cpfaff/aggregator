@@ -9,13 +9,15 @@ import Breadcrumbs from '../ui/Breadcrumbs';
 import ActionMenu from '../ui/ActionMenu';
 import ProviderCard from '../providers/ProviderCard';
 import ProviderForm from '../providers/ProviderForm';
-import { Plus } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import { showToast } from '../ui/Toast';
 
 // Providers component with improved nested form integration
 function Providers({ currentUser, onViewProviderDetails }) {
   const { handleTokenExpiration } = useAuth();
   const [providers, setProviders] = useState([]);
+  const [filteredProviders, setFilteredProviders] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [editingProvider, setEditingProvider] = useState(null);
   const [addingProvider, setAddingProvider] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -51,6 +53,35 @@ function Providers({ currentUser, onViewProviderDetails }) {
   useEffect(() => {
     fetchProviders();
   }, []);
+
+  // Filter providers based on search query
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setFilteredProviders(providers);
+    } else {
+      const query = searchQuery.toLowerCase();
+      const filtered = providers.filter(provider => {
+        // Filter on name
+        if (provider.name && provider.name.toLowerCase().includes(query)) {
+          return true;
+        }
+        // Filter on shortName
+        if (provider.shortName && provider.shortName.toLowerCase().includes(query)) {
+          return true;
+        }
+        // Filter on datacenter
+        if (provider.datacenter && provider.datacenter.toLowerCase().includes(query)) {
+          return true;
+        }
+        // Filter on id
+        if (provider.id && provider.id.toString().includes(query)) {
+          return true;
+        }
+        return false;
+      });
+      setFilteredProviders(filtered);
+    }
+  }, [searchQuery, providers]);
 
   const deleteProvider = async (id) => {
     try {
@@ -167,6 +198,79 @@ function Providers({ currentUser, onViewProviderDetails }) {
       
       {error && <Alert type="error">{error}</Alert>}
       
+      {/* Search filter - only show when there are more than 6 providers */}
+      {providers.length > 6 && (
+        <div style={{
+          position: 'relative',
+          width: '100%',
+          marginBottom: '1.25rem',
+        }}>
+          <Search 
+            size={18} 
+            style={{
+              position: 'absolute',
+              left: '0.75rem',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              color: 'var(--text-light)'
+            }}
+          />
+          <input
+            type="text"
+            placeholder="Search providers..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{
+              width: '100%',
+              height: '2.75rem',
+              padding: '0.5rem 0.75rem 0.5rem 2.5rem',
+              fontSize: '0.875rem',
+              borderRadius: '0.5rem',
+              border: '1px solid var(--border)',
+              backgroundColor: 'var(--card-bg)',
+              color: 'var(--text)',
+              outline: 'none',
+              transition: 'border-color 0.2s, box-shadow 0.2s',
+            }}
+            onFocus={(e) => {
+              e.target.style.borderColor = 'var(--primary)';
+              e.target.style.boxShadow = '0 0 0 2px rgba(var(--primary-rgb), 0.2)';
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = 'var(--border)';
+              e.target.style.boxShadow = 'none';
+            }}
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              style={{
+                position: 'absolute',
+                right: '0.75rem',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                fontSize: '1.25rem',
+                lineHeight: 1,
+                color: 'var(--text-light)',
+                cursor: 'pointer',
+                padding: '0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '1.5rem',
+                height: '1.5rem',
+                borderRadius: '50%',
+              }}
+              aria-label="Clear search"
+            >
+              &times;
+            </button>
+          )}
+        </div>
+      )}
+      
       {isLoading && !addingProvider && !editingProvider ? (
         <div style={{ 
           display: 'flex', 
@@ -201,23 +305,39 @@ function Providers({ currentUser, onViewProviderDetails }) {
           )}
         </div>
       ) : (
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
-          gap: '1.5rem',
-          marginBottom: '2rem',
-        }}>
-        {providers.map((provider) => (
-  <ProviderCard 
-    key={provider.id}
-    provider={provider}
-    currentUser={currentUser}
-    onEdit={(provider) => { setEditingProvider(provider); setAddingProvider(true); }}
-    onDelete={(provider) => setConfirmDelete(provider)}
-    onViewDetails={onViewProviderDetails}
-  />
-))}
-        </div>
+        <>
+          {filteredProviders.length > 0 ? (
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
+              gap: '1.5rem',
+              marginBottom: '2rem',
+            }}>
+              {filteredProviders.map((provider) => (
+                <ProviderCard 
+                  key={provider.id}
+                  provider={provider}
+                  currentUser={currentUser}
+                  onEdit={(provider) => { setEditingProvider(provider); setAddingProvider(true); }}
+                  onDelete={(provider) => setConfirmDelete(provider)}
+                  onViewDetails={onViewProviderDetails}
+                />
+              ))}
+            </div>
+          ) : (
+            <div style={{
+              padding: '2rem',
+              textAlign: 'center',
+              backgroundColor: 'var(--subtle-bg)',
+              borderRadius: '0.75rem',
+              color: 'var(--text-light)',
+            }}>
+              <p style={{ margin: 0, fontSize: '1rem' }}>
+                No providers match your search criteria. Try a different search term.
+              </p>
+            </div>
+          )}
+        </>
       )}
       
       {confirmDelete && (
