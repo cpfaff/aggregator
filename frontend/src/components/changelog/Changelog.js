@@ -149,64 +149,225 @@ const Changelog = () => {
       />
       
       <div style={{ 
-        marginBottom: '2rem',
-        marginTop: '1rem' 
+        marginBottom: '3rem',
+        marginTop: '1rem',
+        textAlign: 'center'
       }}>
         <h2 style={{ 
-          fontSize: '1.5rem', 
-          fontWeight: 600, 
+          fontSize: '2rem', 
+          fontWeight: 700, 
           color: 'var(--text)',
+          marginBottom: '0.5rem'
         }}>
-          Changelog
+          History
         </h2>
+        <p style={{
+          fontSize: '1rem',
+          color: 'var(--text-light)',
+          margin: 0,
+          maxWidth: '600px',
+          marginLeft: 'auto',
+          marginRight: 'auto',
+          lineHeight: '1.5'
+        }}>
+          Track the evolution of the Data Provider Manager platform through our release history
+        </p>
       </div>
       
+      {/* Timeline Container */}
       <div style={{
-        backgroundColor: 'var(--card-bg)',
-        borderRadius: '0.75rem',
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-        border: '1px solid var(--border)',
-        overflow: 'hidden',
+        position: 'relative',
+        maxWidth: '900px',
+        margin: '0 auto',
+        paddingBottom: '2rem'
       }}>
-        {changelogEntries.map((entry, entryIndex) => (
-          <div 
-            key={entry.version}
-            style={{
-              padding: '1.5rem',
-              borderBottom: entryIndex !== changelogEntries.length - 1 ? '1px solid var(--border)' : 'none',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h3 style={{ 
-                fontSize: '1.125rem', 
-                fontWeight: 600, 
-                margin: 0,
-                color: 'var(--text)',
+        {/* Timeline Line */}
+        <div style={{
+          position: 'absolute',
+          left: window.innerWidth <= 768 ? '24px' : '50%',
+          transform: window.innerWidth <= 768 ? 'translateX(-50%)' : 'translateX(-50%)',
+          width: '2px',
+          height: '100%',
+          background: 'linear-gradient(to bottom, var(--primary) 0%, var(--border) 100%)',
+          zIndex: 1
+        }} />
+        
+        {changelogEntries.map((entry, entryIndex) => {
+          const isMobile = window.innerWidth <= 768;
+          return (
+            <div 
+              key={entry.version}
+              style={{
+                position: 'relative',
+                marginBottom: '3rem',
+                display: 'flex',
+                alignItems: 'flex-start',
+                flexDirection: isMobile ? 'row' : (entryIndex % 2 === 0 ? 'row' : 'row-reverse'),
+                gap: isMobile ? '1rem' : '2rem'
+              }}
+            >
+              {/* Timeline Indicator */}
+              <div style={{
+                position: 'absolute',
+                left: isMobile ? '24px' : '50%',
+                transform: isMobile ? 'translateX(-50%)' : 'translateX(-50%)',
+                width: '24px',
+                height: '24px',
+                borderRadius: '50%',
+                backgroundColor: 'var(--primary)',
+                border: '4px solid var(--card-bg)',
+                boxShadow: '0 0 0 2px var(--primary)',
+                zIndex: 2,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
               }}>
-                Version {entry.version}
-              </h3>
-              <span style={{ 
-                fontSize: '0.875rem',
-                color: 'var(--text-light)',
-                fontWeight: 500
-              }}>
-                {entry.date}
-              </span>
+                <div style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  backgroundColor: 'white'
+                }} />
+              </div>
+              
+              {/* Content Card */}
+              <div style={{
+                flex: 1,
+                maxWidth: isMobile ? 'none' : '420px',
+                marginLeft: isMobile ? '60px' : '0',
+                backgroundColor: 'var(--card-bg)',
+                borderRadius: '12px',
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+                border: '1px solid var(--border)',
+                padding: isMobile ? '1.5rem' : '2rem',
+                position: 'relative',
+                transition: 'all 0.3s ease',
+                cursor: 'default'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 6px 24px rgba(0, 0, 0, 0.1)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.08)';
+              }}
+              >
+                {/* Card Arrow - hidden on mobile */}
+                {!isMobile && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '24px',
+                    [entryIndex % 2 === 0 ? 'right' : 'left']: '-8px',
+                    width: '16px',
+                    height: '16px',
+                    backgroundColor: 'var(--card-bg)',
+                    border: '1px solid var(--border)',
+                    borderRight: entryIndex % 2 === 0 ? '1px solid var(--border)' : 'none',
+                    borderTop: entryIndex % 2 === 0 ? '1px solid var(--border)' : 'none',
+                    borderLeft: entryIndex % 2 === 0 ? 'none' : '1px solid var(--border)',
+                    borderBottom: entryIndex % 2 === 0 ? 'none' : '1px solid var(--border)',
+                    transform: `rotate(${entryIndex % 2 === 0 ? '-45deg' : '135deg'})`,
+                    zIndex: 1
+                  }} />
+                )}
+                
+                {/* Mobile-specific arrow */}
+                {isMobile && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '24px',
+                    left: '-8px',
+                    width: '16px',
+                    height: '16px',
+                    backgroundColor: 'var(--card-bg)',
+                    border: '1px solid var(--border)',
+                    borderRight: 'none',
+                    borderTop: 'none',
+                    transform: 'rotate(135deg)',
+                    zIndex: 1
+                  }} />
+                )}
+                
+                {/* Version Header */}
+                <div style={{ 
+                  marginBottom: '1.5rem',
+                  textAlign: isMobile ? 'left' : (entryIndex % 2 === 0 ? 'right' : 'left')
+                }}>
+                  <h3 style={{ 
+                    fontSize: isMobile ? '1.25rem' : '1.5rem', 
+                    fontWeight: 700, 
+                    margin: 0,
+                    color: 'var(--primary)',
+                    marginBottom: '0.5rem'
+                  }}>
+                    v{entry.version}
+                  </h3>
+                  <div style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    backgroundColor: 'var(--primary-light, var(--bg-light))',
+                    color: 'var(--primary)',
+                    padding: '0.375rem 0.75rem',
+                    borderRadius: '20px',
+                    fontSize: '0.875rem',
+                    fontWeight: 600,
+                    border: '1px solid var(--primary)',
+                  }}>
+                    {entry.date}
+                  </div>
+                </div>
+                
+                {/* Changes List */}
+                <div style={{
+                  textAlign: 'left'
+                }}>
+                  <h4 style={{
+                    fontSize: '1rem',
+                    fontWeight: 600,
+                    color: 'var(--text)',
+                    marginBottom: '1rem',
+                    margin: 0,
+                    marginBottom: '1rem'
+                  }}>
+                    What's New
+                  </h4>
+                  <ul style={{ 
+                    margin: 0, 
+                    paddingLeft: '0', 
+                    color: 'var(--text)',
+                    listStyle: 'none'
+                  }}>
+                    {entry.changes.map((change, index) => (
+                      <li key={index} style={{ 
+                        marginBottom: '0.75rem',
+                        position: 'relative',
+                        paddingLeft: '1.5rem',
+                        lineHeight: '1.5',
+                        fontSize: isMobile ? '0.9rem' : '1rem'
+                      }}>
+                        <div style={{
+                          position: 'absolute',
+                          left: '0',
+                          top: isMobile ? '0.4rem' : '0.5rem',
+                          width: '6px',
+                          height: '6px',
+                          borderRadius: '50%',
+                          backgroundColor: 'var(--primary)',
+                          opacity: 0.7
+                        }} />
+                        {change}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+              
+              {/* Empty space for alternating layout - hidden on mobile */}
+              {!isMobile && <div style={{ flex: 1, maxWidth: '420px' }} />}
             </div>
-            
-            <ul style={{ 
-              margin: 0, 
-              paddingLeft: '1.5rem', 
-              color: 'var(--text)'
-            }}>
-              {entry.changes.map((change, index) => (
-                <li key={index} style={{ marginBottom: '0.5rem' }}>
-                  {change}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
