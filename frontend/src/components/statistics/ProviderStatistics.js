@@ -600,6 +600,7 @@ function ProviderStatistics({ providerId, providerName }) {
           height={300}
           isLoading={isBiologicalUnitsTimeSeriesLoading}
           error={biologicalUnitsTimeSeriesData.length === 0 ? 'No biological units data available' : null}
+          integerOnly={true}
         />
       </div>
     </div>

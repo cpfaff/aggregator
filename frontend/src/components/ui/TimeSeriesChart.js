@@ -10,6 +10,43 @@ import {
 } from 'recharts';
 
 /**
+ * Calculate a "nice" upper bound for the y-axis that prevents
+ * small changes from appearing dramatic
+ * @param {number} maxValue - The maximum value in the data
+ * @returns {number} A "nice" round number for the upper bound
+ */
+function getNiceUpperBound(maxValue) {
+  // For very small values, ensure minimum range
+  if (maxValue <= 5) return 10;
+  if (maxValue <= 10) return 15;
+  if (maxValue <= 15) return 20;
+  if (maxValue <= 20) return 25;
+  if (maxValue <= 25) return 30;
+  if (maxValue <= 30) return 40;
+  if (maxValue <= 40) return 50;
+  if (maxValue <= 50) return 60;
+  if (maxValue <= 60) return 75;
+  if (maxValue <= 75) return 100;
+  
+  // For larger values, round up to nearest nice number
+  const magnitude = Math.pow(10, Math.floor(Math.log10(maxValue)));
+  const normalized = maxValue / magnitude;
+  
+  let niceFactor;
+  if (normalized <= 1.5) niceFactor = 1.5;
+  else if (normalized <= 2) niceFactor = 2;
+  else if (normalized <= 2.5) niceFactor = 2.5;
+  else if (normalized <= 3) niceFactor = 3;
+  else if (normalized <= 4) niceFactor = 4;
+  else if (normalized <= 5) niceFactor = 5;
+  else if (normalized <= 6) niceFactor = 6;
+  else if (normalized <= 7.5) niceFactor = 7.5;
+  else niceFactor = 10;
+  
+  return niceFactor * magnitude;
+}
+
+/**
  * TimeSeriesChart component for displaying time-series data
  */
 function TimeSeriesChart({ 
@@ -37,10 +74,37 @@ function TimeSeriesChart({
     const yValues = data.map(item => item[dataKey]).filter(val => typeof val === 'number');
     const minY = Math.min(...yValues);
     const maxY = Math.max(...yValues);
-    const padding = (maxY - minY) * 0.1; // 10% padding
     
+    // For integer-only charts (like dataset counts), use nice bounds
+    // to prevent small changes from appearing dramatic
+    if (integerOnly) {
+      const range = maxY - minY;
+      const niceUpper = getNiceUpperBound(maxY);
+      
+      // For high baseline values (min > 50), start from a nice round number below min
+      // This avoids wasting chart space when all values are high
+      if (minY > 50) {
+        // Find a nice lower bound that's below minY but not too far
+        let niceLower = Math.floor(minY / 10) * 10 - 10; // Round down to nearest 10, then subtract 10
+        if (niceLower < 0) niceLower = 0;
+        
+        // Ensure we have enough range to show variations
+        const minRange = 20;
+        if (niceUpper - niceLower < minRange) {
+          niceUpper = niceLower + minRange;
+        }
+        
+        return [niceLower, niceUpper];
+      }
+      
+      // For smaller values or bigger ranges, start from 0 for clarity
+      return [0, niceUpper];
+    }
+    
+    // For continuous data, use padding approach
+    const padding = (maxY - minY) * 0.1; // 10% padding
     return [Math.max(0, minY - padding), maxY + padding];
-  }, [data, dataKey]);
+  }, [data, dataKey, integerOnly]);
   
   // Memoize processed data to ensure stable object references
   const memoizedData = useMemo(() => data, [data]);
@@ -347,6 +411,7 @@ export default React.memo(TimeSeriesChart, (prevProps, nextProps) => {
     prevProps.isLoading === nextProps.isLoading &&
     prevProps.error === nextProps.error &&
     prevProps.title === nextProps.title &&
-    prevProps.subtitle === nextProps.subtitle
+    prevProps.subtitle === nextProps.subtitle &&
+    prevProps.integerOnly === nextProps.integerOnly
   );
 });

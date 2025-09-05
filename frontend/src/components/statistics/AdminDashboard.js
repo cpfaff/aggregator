@@ -392,6 +392,7 @@ function AdminDashboard() {
           subtitle="Total biological units across all providers over time"
           color="var(--success)"
           height={350}
+          integerOnly={true}
         />
       </div>
 
