@@ -89,8 +89,8 @@ function Login({ sessionExpired, onViewPublicStats }) {
       display: 'flex', 
       justifyContent: 'center', 
       alignItems: 'center', 
-      minHeight: '100vh',
-      padding: '24px',
+      flex: 1,
+      padding: '4rem 24px',
       backgroundColor: 'var(--background)',
       transition: 'background-color 0.3s',
     }}>

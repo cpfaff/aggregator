@@ -199,7 +199,7 @@ const LandingPage = memo(({ onGetStarted, onLearnMore, onViewStatistics }) => {
 
   const socialProofSectionStyle = {
     backgroundColor: 'var(--subtle-bg)',
-    padding: '5rem 1rem',
+    padding: '5rem 1rem 3rem',
     textAlign: 'center',
     borderTop: '1px solid var(--border)',
     borderBottom: '1px solid var(--border)',
