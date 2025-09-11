@@ -1001,7 +1001,7 @@ def collect_daily_statistics(self, target_date: str = None) -> Dict[str, Any]:
     calculations using prefork worker pool optimized for CPU-bound operations.
     
     Args:
-        target_date: Date string in YYYY-MM-DD format (defaults to yesterday)
+        target_date: Date string in YYYY-MM-DD format (defaults to today)
         
     Returns:
         Dictionary with collection results
@@ -1013,7 +1013,7 @@ def collect_daily_statistics(self, target_date: str = None) -> Dict[str, Any]:
         if target_date:
             primary_target_date = datetime.strptime(target_date, "%Y-%m-%d").date()
         else:
-            primary_target_date = date.today() - timedelta(days=1)
+            primary_target_date = date.today()
         
         logger.info(f"Starting statistics collection with target date: {primary_target_date}")
         
@@ -1918,7 +1918,7 @@ def collect_provider_biological_units(self, target_date: str = None) -> Dict[str
     priority execution using prefork worker pool optimized for CPU-bound operations.
     
     Args:
-        target_date: Date string in YYYY-MM-DD format (defaults to yesterday)
+        target_date: Date string in YYYY-MM-DD format (defaults to today)
         
     Returns:
         Dictionary with collection results
@@ -1932,7 +1932,7 @@ def collect_provider_biological_units(self, target_date: str = None) -> Dict[str
         if target_date:
             stat_date = datetime.strptime(target_date, "%Y-%m-%d").date()
         else:
-            stat_date = date.today() - timedelta(days=1)
+            stat_date = date.today()
         
         logger.info(f"Collecting provider biological units for {stat_date}")
         logger.info(f"Note: Will aggregate dataset unit counts recorded at or before {stat_date}, which may include historical anchor dates")
