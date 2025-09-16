@@ -978,6 +978,81 @@ def detect_statistics_gaps(
     
     return missing_dates
 
+def detect_missing_biological_unit_aggregations(
+    db: Session,
+    max_gap_days: int = 30
+) -> List[date]:
+    """
+    Detect ALL dates where dataset unit counts exist but biological unit aggregations are missing.
+    
+    This function identifies dates where we have dataset-level unit counts (possibly from
+    anchor dates) but haven't yet aggregated them into provider-level biological units.
+    
+    This is critical for handling the anchor date pattern: when XML archives are processed
+    for the first time, their unit counts are anchored at the dataset's created_at date.
+    Without this function, those historical unit counts would never be aggregated into
+    provider-level biological units, causing timeline gaps and sudden jumps.
+    
+    Unlike detect_statistics_gaps, this function:
+    - Looks at ALL dates, not just those before target_date
+    - Specifically checks for missing biological unit aggregations
+    - Handles the temporal mismatch between unit count creation and aggregation
+    
+    Args:
+        db: Database session
+        max_gap_days: Maximum number of days to backfill at once (safety limit)
+        
+    Returns:
+        List of dates that need biological unit aggregation
+    """
+    from sqlalchemy import and_, func, distinct
+    
+    # Find all dates that have dataset unit counts
+    # Exclude the failure marker date (1970-01-01)
+    dates_with_unit_counts = db.query(distinct(StatisticModel.date)).filter(
+        and_(
+            StatisticModel.metric_type == MetricType.DATASET_UNIT_COUNT,
+            StatisticModel.entity_type == EntityType.DATASET,
+            StatisticModel.date > date(1970, 1, 1),  # Exclude failure markers
+        )
+    ).all()
+    
+    unit_count_dates = {row[0] for row in dates_with_unit_counts}
+    
+    if not unit_count_dates:
+        return []
+    
+    # Find dates that already have provider biological unit aggregations
+    dates_with_bio_units = db.query(distinct(StatisticModel.date)).filter(
+        and_(
+            StatisticModel.metric_type == MetricType.PROVIDER_BIOLOGICAL_UNITS,
+            StatisticModel.entity_type == EntityType.PROVIDER,
+        )
+    ).all()
+    
+    bio_unit_dates = {row[0] for row in dates_with_bio_units}
+    
+    # Find missing dates (have unit counts but no biological units)
+    missing_dates = sorted(unit_count_dates - bio_unit_dates)
+    
+    if not missing_dates:
+        return []
+    
+    # Apply safety limit - process oldest dates first to maintain timeline continuity
+    if len(missing_dates) > max_gap_days:
+        logger.warning(
+            f"Found {len(missing_dates)} missing biological unit aggregations, "
+            f"limiting to {max_gap_days} oldest dates for safety."
+        )
+        missing_dates = missing_dates[:max_gap_days]
+    
+    logger.info(
+        f"Detected {len(missing_dates)} dates needing biological unit aggregation: "
+        f"from {missing_dates[0]} to {missing_dates[-1]}"
+    )
+    
+    return missing_dates
+
 @shared_task(
     bind=True,
     base=LoggingTask,  # Use custom base class for enhanced logging
@@ -1257,7 +1332,10 @@ def collect_daily_statistics(self, target_date: str = None) -> Dict[str, Any]:
                             StatisticModel.date == subquery.c.max_date
                         )
                     ).filter(
-                        StatisticModel.metric_type == MetricType.DATASET_UNIT_COUNT
+                        and_(
+                            StatisticModel.metric_type == MetricType.DATASET_UNIT_COUNT,
+                            StatisticModel.entity_type == EntityType.DATASET
+                        )
                     ).all()
                     
                     provider_biological_units = sum(count[0] for count in recent_unit_counts if count[0] is not None)
@@ -1346,12 +1424,31 @@ def collect_daily_statistics(self, target_date: str = None) -> Dict[str, Any]:
         # Commit all statistics
         db.commit()
         
+        # After main statistics collection, check for missing biological unit aggregations
+        # This handles the case where dataset unit counts are anchored at historical dates
+        missing_bio_unit_dates = detect_missing_biological_unit_aggregations(db, max_gap_days=30)
+        
+        if missing_bio_unit_dates:
+            logger.info(f"Processing {len(missing_bio_unit_dates)} missing biological unit aggregations")
+            
+            # Queue biological unit collection for missing dates
+            from celery import current_app
+            for missing_date in missing_bio_unit_dates:
+                current_app.send_task(
+                    'statistics.collect_provider_biological_units',
+                    kwargs={'target_date': missing_date.strftime("%Y-%m-%d")}
+                )
+            
+            logger.info(f"Queued biological unit collection for {len(missing_bio_unit_dates)} historical dates")
+        
         # Log comprehensive summary
         summary_message = f"Successfully collected statistics for {len(dates_processed)} date(s)"
         if gap_dates:
             summary_message += f" (including {len(gap_dates)} gap-filled dates)"
         if is_initial_backfill:
             summary_message += " (initial backfill completed)"
+        if missing_bio_unit_dates:
+            summary_message += f" (queued {len(missing_bio_unit_dates)} biological unit backfills)"
         
         logger.info(summary_message)
         
@@ -1363,6 +1460,7 @@ def collect_daily_statistics(self, target_date: str = None) -> Dict[str, Any]:
             'initial_backfill': is_initial_backfill,
             'total_dates_processed': len(dates_processed),
             'statistics_collected': len(total_collected_stats),
+            'biological_unit_backfills_queued': len(missing_bio_unit_dates) if missing_bio_unit_dates else 0,
             'task_id': self.request.id,
             'completed_at': datetime.utcnow().isoformat()
         }
@@ -1451,6 +1549,7 @@ def analyze_xml_archives(self, batch_size: int = 50, offset: int = 0, dataset_id
         skipped_count = 0
         results = []
         max_retries = 5
+        historical_dates_to_aggregate = set()  # Track unique historical dates that need aggregation
         
         for archive in archives:
             # Check if this archive should be retried (time-based circuit breaker)
@@ -1551,6 +1650,12 @@ def analyze_xml_archives(self, batch_size: int = 50, offset: int = 0, dataset_id
                 
                 processed_count += 1
                 logger.info(f"Successfully analyzed archive {archive.id}: {xml_data['unit_count']} units from {xml_data.get('xml_files_processed', 1)} XML files using anchor date {anchor_date}")
+                
+                # Track historical dates that need biological unit aggregation
+                # This ensures biological units are distributed across the timeline properly
+                if anchor_date != date.today() and xml_data['unit_count'] > 0:
+                    historical_dates_to_aggregate.add(anchor_date)
+                    logger.info(f"Will queue biological unit aggregation for historical anchor date {anchor_date} (after batch completes)")
                 
             except XMLParsingError as e:
                 error_count += 1
@@ -1664,10 +1769,64 @@ def analyze_xml_archives(self, batch_size: int = 50, offset: int = 0, dataset_id
         if failed_archives:
             logger.warning(f"Failed archives in this batch: {len(failed_archives)} - IDs: {[r['archive_id'] for r in failed_archives]}")
         
+        # Queue biological unit aggregation for unique historical dates (once per date, not per archive)
+        if historical_dates_to_aggregate:
+            from celery import current_app
+            logger.info(f"Queueing biological unit aggregation for {len(historical_dates_to_aggregate)} unique historical dates: {sorted(historical_dates_to_aggregate)}")
+            for hist_date in sorted(historical_dates_to_aggregate):
+                current_app.send_task(
+                    'statistics.collect_provider_biological_units',
+                    kwargs={'target_date': hist_date.strftime("%Y-%m-%d")}
+                )
+                logger.info(f"Queued biological unit aggregation for {hist_date}")
+        
         # Schedule next batch if there were results (but not when processing specific datasets)
+        is_last_batch = len(archives) < batch_size or dataset_ids
+        
         if len(archives) == batch_size and not dataset_ids:
             # There might be more archives to process
             analyze_xml_archives.delay(batch_size=batch_size, offset=offset + batch_size, target_date=target_date)
+        elif is_last_batch:
+            # This is the last batch - trigger complete re-aggregation of biological units
+            # This ensures all archives have been processed before aggregation
+            from celery import current_app
+            
+            # First, re-aggregate all historical dates that might have been filled incompletely
+            # This fixes the race condition where aggregation ran before XML processing completed
+            logger.info("Last XML batch completed - triggering complete biological units re-aggregation")
+            
+            # Get the date range that needs re-aggregation
+            earliest_dataset = db.query(func.min(DatasetModel.created_at)).scalar()
+            if earliest_dataset:
+                start_date = earliest_dataset.date()
+                end_date = date.today()
+                
+                # Queue re-aggregation for each date to ensure complete timeline
+                current_date = start_date
+                dates_to_aggregate = []
+                while current_date <= end_date:
+                    dates_to_aggregate.append(current_date)
+                    current_date += timedelta(days=1)
+                
+                logger.info(f"Queueing biological units re-aggregation for {len(dates_to_aggregate)} dates from {start_date} to {end_date}")
+                
+                # Queue in batches to avoid overwhelming the system
+                for i in range(0, len(dates_to_aggregate), 7):  # Process a week at a time
+                    batch_dates = dates_to_aggregate[i:i+7]
+                    for batch_date in batch_dates:
+                        current_app.send_task(
+                            'statistics.collect_provider_biological_units',
+                            kwargs={'target_date': batch_date.strftime("%Y-%m-%d")}
+                        )
+                    logger.info(f"Queued biological units aggregation for dates {batch_dates[0]} to {batch_dates[-1]}")
+            else:
+                # Fallback to just today if no datasets exist
+                today = date.today()
+                logger.info(f"No datasets found, queueing biological units collection for {today}")
+                current_app.send_task(
+                    'statistics.collect_provider_biological_units',
+                    kwargs={'target_date': today.strftime("%Y-%m-%d")}
+                )
         
         return {
             'status': 'completed',
@@ -2014,10 +2173,10 @@ def collect_provider_biological_units(self, target_date: str = None) -> Dict[str
                         subquery,
                         and_(
                             StatisticModel.entity_id == subquery.c.entity_id,
-                            StatisticModel.date == subquery.c.max_date
+                            StatisticModel.date == subquery.c.max_date,
+                            StatisticModel.metric_type == MetricType.DATASET_UNIT_COUNT,
+                            StatisticModel.entity_type == EntityType.DATASET
                         )
-                    ).filter(
-                        StatisticModel.metric_type == MetricType.DATASET_UNIT_COUNT
                     ).all()
                     
                     provider_biological_units = sum(count[0] for count in recent_unit_counts if count[0] is not None)
@@ -2490,10 +2649,10 @@ def update_provider_biological_units(self, provider_id: int, target_date: str = 
                 subquery,
                 and_(
                     StatisticModel.entity_id == subquery.c.entity_id,
-                    StatisticModel.date == subquery.c.max_date
+                    StatisticModel.date == subquery.c.max_date,
+                    StatisticModel.metric_type == MetricType.DATASET_UNIT_COUNT,
+                    StatisticModel.entity_type == EntityType.DATASET
                 )
-            ).filter(
-                StatisticModel.metric_type == MetricType.DATASET_UNIT_COUNT
             ).all()
             
             provider_biological_units = sum(count[0] for count in recent_unit_counts if count[0] is not None)

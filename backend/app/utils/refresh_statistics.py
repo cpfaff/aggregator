@@ -207,11 +207,19 @@ def main():
         daily_task = queue_daily_statistics(use_today=args.today)
         tasks.append(daily_task)
     
-    if args.all or args.biological:
+    # Only queue biological units if NOT doing XML processing
+    # When XML processing is done, it will handle biological units aggregation
+    if args.biological and not (args.all or args.xml):
         if args.today:
             print("\n⚠️  Using TODAY for biological units (manual fix mode)")
         bio_task = queue_biological_units(use_today=args.today)
         tasks.append(bio_task)
+    elif args.all:
+        # For --all, we need to ensure proper sequencing
+        print("\n📊 Note: Biological units will be collected after ALL tasks complete")
+        print("    This ensures XML archives are fully processed before aggregation")
+    elif args.xml:
+        print("\n📊 Note: Biological units will be collected after XML archives are processed")
     
     if tasks:
         print(f"\n✓ Queued {len(tasks)} total tasks")
