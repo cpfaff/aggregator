@@ -116,13 +116,9 @@ def validate_archive(self, archive_id: int, job_id: Optional[int] = None) -> Dic
             job.validation_time = summary.get("total_time", 0)
         
         db.commit()
-        
+
         logger.info(f"Validation completed for archive {archive_id} (job ID: {job.id})")
-        
-        # Trigger real-time validation statistics update
-        from app.tasks.statistics_tasks import update_validation_statistics
-        update_validation_statistics.delay(job.id, "completion")
-        
+
         return {
             "job_id": job.id,
             "archive_id": archive_id,
@@ -140,11 +136,7 @@ def validate_archive(self, archive_id: int, job_id: Optional[int] = None) -> Dic
             job.completed_at = datetime.utcnow()
             job.results = {"error": str(e)}
             db.commit()
-            
-            # Trigger real-time validation statistics update even for failed jobs
-            from app.tasks.statistics_tasks import update_validation_statistics
-            update_validation_statistics.delay(job.id, "failure")
-        
+
         logger.exception(f"Error validating archive {archive_id}: {e}")
         raise
         

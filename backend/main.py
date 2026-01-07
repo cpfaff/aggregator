@@ -1275,11 +1275,14 @@ async def create_dataset(
     invalidate_cache(f"provider:{provider_id}")
     invalidate_cache("providers")
 
-    # Trigger real-time statistics update for the new dataset
-    from app.tasks.statistics_tasks import update_dataset_statistics
-    update_dataset_statistics.delay(dataset_obj.id, "creation")
+    # Trigger snapshot collection for any archives created with this dataset
+    dataset_result = result.scalar_one()
+    if dataset_result.xmlArchives:
+        from app.tasks.snapshot_tasks import collect_single_archive_snapshot
+        for archive in dataset_result.xmlArchives:
+            collect_single_archive_snapshot.delay(archive.id)
 
-    return result.scalar_one()
+    return dataset_result
 
 
 @csrf_protect.validate_csrf
@@ -1364,9 +1367,8 @@ async def update_dataset(
     invalidate_cache(f"provider:{provider_id}")
     invalidate_cache("providers")
 
-    # Trigger real-time statistics update for the modified dataset
-    from app.tasks.statistics_tasks import update_dataset_statistics
-    update_dataset_statistics.delay(dataset_id, "modification")
+    # Note: Statistics are collected via scheduled snapshot task (daily at 2:00 AM)
+    # No real-time statistics update needed
 
     return result.scalar_one()
 
@@ -1526,9 +1528,9 @@ async def create_xml_archive(
     from app.tasks.validator_tasks import validate_archive
     validate_archive.delay(xml_obj.id)
 
-    # Trigger real-time statistics update for the dataset (archive analysis)
-    from app.tasks.statistics_tasks import update_dataset_statistics
-    update_dataset_statistics.delay(dataset_id, "archive_analysis")
+    # Trigger snapshot collection for this archive to capture unit count immediately
+    from app.tasks.snapshot_tasks import collect_single_archive_snapshot
+    collect_single_archive_snapshot.delay(xml_obj.id)
 
     return xml_obj
 

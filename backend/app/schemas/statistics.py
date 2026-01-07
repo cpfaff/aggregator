@@ -1,79 +1,13 @@
 """
 Statistics schemas for API request/response validation.
+
+Simplified schemas for the snapshot-based statistics system.
 """
 from datetime import datetime
 from datetime import date as date_type
-from typing import Optional, List, Dict, Any, Union
-from enum import Enum
+from typing import Optional, List, Dict, Any
 
-from pydantic import BaseModel, Field, validator, ConfigDict
-
-from app.models.statistics import MetricType, EntityType, Period
-
-
-class StatisticBase(BaseModel):
-    """Base schema for statistics."""
-    metric_type: str = Field(..., description="Type of metric being recorded")
-    entity_type: str = Field(..., description="Type of entity this statistic relates to")
-    entity_id: Optional[int] = Field(None, description="ID of the specific entity (null for system-wide metrics)")
-    period: str = Field(..., description="Time period aggregation")
-    date: date_type = Field(..., description="Date this statistic represents")
-    value: float = Field(..., ge=0, description="Numeric value of the metric")
-    extra_data: Optional[Dict[str, Any]] = Field(None, description="Additional context data")
-    
-    @validator('metric_type')
-    def validate_metric_type(cls, v):
-        """Validate metric_type against enum values."""
-        valid_types = [e.value for e in MetricType]
-        if v not in valid_types:
-            raise ValueError(f'metric_type must be one of: {", ".join(valid_types)}')
-        return v
-    
-    @validator('entity_type')
-    def validate_entity_type(cls, v):
-        """Validate entity_type against enum values."""
-        valid_types = [e.value for e in EntityType]
-        if v not in valid_types:
-            raise ValueError(f'entity_type must be one of: {", ".join(valid_types)}')
-        return v
-    
-    @validator('period')
-    def validate_period(cls, v):
-        """Validate period against enum values."""
-        valid_periods = [e.value for e in Period]
-        if v not in valid_periods:
-            raise ValueError(f'period must be one of: {", ".join(valid_periods)}')
-        return v
-    
-    @validator('entity_id')
-    def validate_entity_id_consistency(cls, v, values):
-        """Validate entity_id consistency with entity_type."""
-        entity_type = values.get('entity_type')
-        if entity_type == EntityType.SYSTEM and v is not None:
-            raise ValueError('entity_id must be null for system-wide metrics')
-        if entity_type != EntityType.SYSTEM and v is None:
-            raise ValueError('entity_id is required for non-system metrics')
-        return v
-
-
-class StatisticCreate(StatisticBase):
-    """Schema for creating statistics."""
-    pass
-
-
-class StatisticUpdate(BaseModel):
-    """Schema for updating statistics."""
-    value: Optional[float] = Field(None, ge=0, description="Updated numeric value")
-    extra_data: Optional[Dict[str, Any]] = Field(None, description="Updated context data")
-
-
-class StatisticResponse(StatisticBase):
-    """Schema for statistic responses."""
-    id: int = Field(..., description="Unique identifier")
-    created_at: datetime = Field(..., description="When this statistic was recorded")
-    updated_at: datetime = Field(..., description="When this statistic was last updated")
-    
-    model_config = ConfigDict(from_attributes=True)
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class TimeSeriesPoint(BaseModel):
@@ -91,18 +25,6 @@ class TimeSeriesResponse(BaseModel):
     period: str = Field(..., description="Time period aggregation")
     data_points: List[TimeSeriesPoint] = Field(..., description="Time series data points")
     total_points: int = Field(..., description="Total number of data points")
-
-
-class StatisticsQuery(BaseModel):
-    """Query parameters for statistics endpoints."""
-    metric_types: Optional[List[str]] = Field(None, description="Filter by metric types")
-    entity_types: Optional[List[str]] = Field(None, description="Filter by entity types")
-    entity_ids: Optional[List[int]] = Field(None, description="Filter by entity IDs")
-    periods: Optional[List[str]] = Field(None, description="Filter by periods")
-    start_date: Optional[date_type] = Field(None, description="Start date for date range filter")
-    end_date: Optional[date_type] = Field(None, description="End date for date range filter")
-    limit: Optional[int] = Field(100, ge=1, le=1000, description="Maximum results")
-    offset: Optional[int] = Field(0, ge=0, description="Results offset for pagination")
 
 
 class OverviewStats(BaseModel):
@@ -152,25 +74,3 @@ class GrowthMetrics(BaseModel):
     datasets_timeline: List[TimeSeriesPoint] = Field(..., description="Dataset growth over time")
     providers_timeline: List[TimeSeriesPoint] = Field(..., description="Provider growth over time")
     validation_timeline: List[TimeSeriesPoint] = Field(..., description="Validation activity over time")
-
-
-# Metric type descriptions for API documentation
-METRIC_DESCRIPTIONS = {
-    MetricType.DATASET_COUNT: "Total number of datasets in the system",
-    MetricType.DATASET_REGISTRATION_RATE: "Rate of new dataset registrations per period",
-    MetricType.DATASET_MODIFICATION_RATE: "Rate of dataset modifications per period",
-    MetricType.DATASET_UNIT_COUNT: "Number of units (specimens, observations) in a dataset",
-    MetricType.PROVIDER_COUNT: "Total number of data providers",
-    MetricType.PROVIDER_DATASET_COUNT: "Number of datasets per provider",
-    MetricType.PROVIDER_ACTIVITY_SCORE: "Activity score based on provider engagement",
-    MetricType.PROVIDER_BIOLOGICAL_UNITS: "Total biological units across all datasets per provider",
-    MetricType.VALIDATION_SUCCESS_RATE: "Percentage of successful validation jobs",
-    MetricType.VALIDATION_ERROR_RATE: "Percentage of failed validation jobs",
-    MetricType.VALIDATION_PROCESSING_TIME: "Average time to complete validation jobs",
-    MetricType.VALIDATION_JOB_COUNT: "Total number of validation jobs",
-    MetricType.ABCD_COMPLIANCE_RATE: "Percentage of XML files compliant with ABCD schema",
-    MetricType.XML_ARCHIVE_COUNT: "Total number of XML archive files",
-    MetricType.SYSTEM_STORAGE_SIZE: "Total storage used by the system",
-    MetricType.SYSTEM_PROCESSING_LOAD: "System processing load metrics",
-    MetricType.SYSTEM_API_RESPONSE_TIME: "Average API response time",
-}

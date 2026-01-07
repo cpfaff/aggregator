@@ -111,16 +111,10 @@ function AdminDashboard() {
 
   const fetchTimeSeries = async () => {
     try {
-      const params = {
-        metricType: 'dataset_count',
-        entityType: 'system',
-        period: 'daily',
-        limit: 30
-      };
-      
-      const data = await authStatsApi.getTimeSeries(params, handleTokenExpiration);
-      const formattedData = statsUtils.formatTimeSeriesForChart(data.data_points);
-      
+      // Use the same timeline endpoint as the public dashboard
+      const data = await publicStatsApi.getTimeline({ period: 'monthly', months: 12 });
+      const formattedData = statsUtils.formatTimeSeriesForChart(data.datasets_timeline || []);
+
       // Only update if data has actually changed to prevent chart re-renders
       setTimeSeriesData(prev => {
         const prevDataStr = JSON.stringify(prev);
@@ -130,7 +124,7 @@ function AdminDashboard() {
         }
         return prev;
       });
-      
+
     } catch (err) {
       console.error('Error fetching time-series:', err);
       // Don't set error for time-series failure

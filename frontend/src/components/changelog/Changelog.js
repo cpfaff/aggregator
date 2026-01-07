@@ -5,6 +5,15 @@ const Changelog = () => {
   // Changelog entries based on actual project development
   const changelogEntries = [
     {
+      version: '2.0.1',
+      date: 'January 7, 2026',
+      changes: [
+        'Simplified statistics system with append-only snapshot architecture',
+        'Reduced codebase by ~4,000 lines while improving reliability',
+        'Added forward-fill logic for graceful handling of collection failures'
+      ]
+    },
+    {
       version: '2.0.0',
       date: 'September 5, 2025',
       changes: [

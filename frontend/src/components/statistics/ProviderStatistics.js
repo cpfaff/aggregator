@@ -126,18 +126,15 @@ function ProviderStatistics({ providerId, providerName }) {
   const fetchTimeSeries = async () => {
     try {
       setIsTimeSeriesLoading(true);
-      
+
       const params = {
-        metricType: 'provider_dataset_count',
-        entityType: 'provider',
-        entityId: providerId,
-        period: 'daily',
-        limit: 30
+        period: 'monthly',
+        months: 12
       };
-      
-      const data = await authStatsApi.getTimeSeries(params, handleTokenExpiration);
+
+      const data = await authStatsApi.getProviderDatasetsTimeline(providerId, params, handleTokenExpiration);
       const formattedData = statsUtils.formatTimeSeriesForChart(data.data_points);
-      
+
       // Only update if data has actually changed to prevent chart re-renders
       setTimeSeriesData(prev => {
         const prevDataStr = JSON.stringify(prev);
@@ -147,7 +144,7 @@ function ProviderStatistics({ providerId, providerName }) {
         }
         return prev;
       });
-      
+
     } catch (err) {
       console.error('Error fetching provider time-series:', err);
       // Don't set error for time-series failure, just log it
@@ -159,18 +156,15 @@ function ProviderStatistics({ providerId, providerName }) {
   const fetchBiologicalUnitsTimeSeries = async () => {
     try {
       setIsBiologicalUnitsTimeSeriesLoading(true);
-      
+
       const params = {
-        metricType: 'provider_biological_units',
-        entityType: 'provider',
-        entityId: providerId,
         period: 'daily',
         limit: 30
       };
-      
-      const data = await authStatsApi.getTimeSeries(params, handleTokenExpiration);
+
+      const data = await authStatsApi.getProviderBiologicalUnitsTimeline(providerId, params, handleTokenExpiration);
       const formattedData = statsUtils.formatTimeSeriesForChart(data.data_points);
-      
+
       // Only update if data has actually changed to prevent chart re-renders
       setBiologicalUnitsTimeSeriesData(prev => {
         const prevDataStr = JSON.stringify(prev);
@@ -180,7 +174,7 @@ function ProviderStatistics({ providerId, providerName }) {
         }
         return prev;
       });
-      
+
     } catch (err) {
       console.error('Error fetching biological units time-series:', err);
       // Don't set error for time-series failure, just log it
