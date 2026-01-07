@@ -132,6 +132,56 @@ export const authStatsApi = {
   },
 
   /**
+   * Get provider datasets timeline
+   * @param {number} providerId - Provider ID
+   * @param {Object} params - Query parameters
+   * @param {Function} onTokenExpired - Token expiration handler
+   * @returns {Promise<Object>} Provider datasets timeline data
+   */
+  getProviderDatasetsTimeline: async (providerId, params, onTokenExpired) => {
+    const queryParams = new URLSearchParams({
+      period: params.period || 'monthly',
+      months: params.months || 12
+    });
+
+    const response = await apiRequest(
+      `/statistics/providers/${providerId}/datasets-timeline?${queryParams}`,
+      {},
+      onTokenExpired
+    );
+    if (!response.ok) {
+      throw new Error(`Failed to fetch provider ${providerId} datasets timeline: ${response.status}`);
+    }
+    return response.json();
+  },
+
+  /**
+   * Get provider biological units timeline
+   * @param {number} providerId - Provider ID
+   * @param {Object} params - Query parameters
+   * @param {Function} onTokenExpired - Token expiration handler
+   * @returns {Promise<Object>} Provider biological units timeline data
+   */
+  getProviderBiologicalUnitsTimeline: async (providerId, params, onTokenExpired) => {
+    const queryParams = new URLSearchParams({
+      period: params.period || 'daily',
+      limit: params.limit || 30,
+      ...(params.startDate && { start_date: params.startDate }),
+      ...(params.endDate && { end_date: params.endDate })
+    });
+
+    const response = await apiRequest(
+      `/statistics/providers/${providerId}/biological-units-timeline?${queryParams}`,
+      {},
+      onTokenExpired
+    );
+    if (!response.ok) {
+      throw new Error(`Failed to fetch provider ${providerId} biological units timeline: ${response.status}`);
+    }
+    return response.json();
+  },
+
+  /**
    * Get time-series data
    * @param {Object} params - Query parameters
    * @param {Function} onTokenExpired - Token expiration handler

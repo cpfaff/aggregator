@@ -41,7 +41,7 @@ function PublicStatsDashboard() {
       const [overview, providers, timeline] = await Promise.all([
         publicStatsApi.getOverview(),
         publicStatsApi.getProviders(),
-        publicStatsApi.getTimeline({ period: 'daily', months: 1 })
+        publicStatsApi.getTimeline({ period: 'monthly', months: 12 })
       ]);
       
       setOverviewStats(overview);

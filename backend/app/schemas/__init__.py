@@ -29,13 +29,8 @@ from app.schemas.common import (
     PaginatedUsers
 )
 from app.schemas.statistics import (
-    StatisticBase,
-    StatisticCreate,
-    StatisticUpdate,
-    StatisticResponse,
     TimeSeriesPoint,
     TimeSeriesResponse,
-    StatisticsQuery,
     OverviewStats,
     ProviderStats,
     DatasetStats,
@@ -46,7 +41,7 @@ from app.schemas.statistics import (
 __all__ = [
     "User",
     "UserCreate",
-    "UserUpdate", 
+    "UserUpdate",
     "UserPermissions",
     "DataProvider",
     "ProviderAssociation",
@@ -61,13 +56,8 @@ __all__ = [
     "PaginatedProviders",
     "PaginatedDatasets",
     "PaginatedUsers",
-    "StatisticBase",
-    "StatisticCreate",
-    "StatisticUpdate",
-    "StatisticResponse",
     "TimeSeriesPoint",
     "TimeSeriesResponse",
-    "StatisticsQuery",
     "OverviewStats",
     "ProviderStats",
     "DatasetStats",

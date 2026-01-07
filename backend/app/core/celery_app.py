@@ -28,7 +28,7 @@ celery_app = Celery(
     "fastapi_celery",
     broker=settings.CELERY_BROKER_URL,
     backend=settings.CELERY_RESULT_BACKEND,
-    include=["app.tasks", "app.tasks.validator_tasks", "app.tasks.statistics_tasks"],  # Import task modules here
+    include=["app.tasks", "app.tasks.validator_tasks", "app.tasks.snapshot_tasks"],
 )
 
 # Queue definitions
@@ -72,36 +72,15 @@ celery_app.conf.update(
     }
 )
 
-# Optional: Define custom periodic tasks
+# Periodic tasks schedule - simplified to single snapshot collection
+from celery.schedules import crontab
+
 celery_app.conf.beat_schedule = {
-    # Daily statistics collection - runs every day at 1 AM UTC
-    "collect-daily-statistics": {
-        "task": "statistics.collect_daily_stats",
-        "schedule": 3600.0 * 24,  # 24 hours
-        "options": {"expires": 3600}  # Task expires after 1 hour
-    },
-    # Weekly statistics aggregation - runs every Monday at 2 AM UTC  
-    "aggregate-weekly-statistics": {
-        "task": "statistics.aggregate_weekly_stats",
-        "schedule": 3600.0 * 24 * 7,  # Weekly
-        "options": {"expires": 7200}  # Task expires after 2 hours
-    },
-    # Monthly statistics aggregation - runs on 1st of each month at 3 AM UTC
-    "aggregate-monthly-statistics": {
-        "task": "statistics.aggregate_monthly_stats", 
-        "schedule": 3600.0 * 24 * 30,  # Monthly (approximate)
-        "options": {"expires": 7200}  # Task expires after 2 hours
-    },
-    # XML archive analysis - runs every 6 hours to process new archives
-    "analyze-xml-archives": {
-        "task": "statistics.analyze_xml_archives",
-        "schedule": 3600.0 * 6,  # Every 6 hours
+    # Archive snapshot collection - runs daily at 2:00 AM to capture unit counts
+    # This single task replaces all the complex statistics tasks
+    "collect-archive-snapshots": {
+        "task": "snapshots.collect_archive_snapshots",
+        "schedule": crontab(hour=2, minute=0),  # Daily at 2:00 AM
         "options": {"expires": 10800}  # Task expires after 3 hours
-    },
-    # Provider biological units collection - runs daily at 1:30 AM UTC (after daily stats)
-    "collect-provider-biological-units": {
-        "task": "statistics.collect_provider_biological_units",
-        "schedule": 3600.0 * 24,  # Daily
-        "options": {"expires": 3600}  # Task expires after 1 hour
     },
 }
