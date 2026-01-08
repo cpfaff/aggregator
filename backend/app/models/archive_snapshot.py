@@ -6,7 +6,7 @@ snapshots of archive analysis results.
 """
 from datetime import datetime
 from sqlalchemy import Column, Integer, DateTime, ForeignKey, Index
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 
 from app.models.base import Base
 
@@ -42,7 +42,13 @@ class ArchiveSnapshotModel(Base):
     unit_count = Column(Integer, nullable=False, default=0)
 
     # Relationship back to archive
-    archive = relationship("XmlArchiveModel", backref="snapshots")
+    # passive_deletes=True tells SQLAlchemy to let the database handle CASCADE delete
+    # instead of trying to set archive_id to NULL (which fails due to NOT NULL constraint)
+    archive = relationship(
+        "XmlArchiveModel",
+        backref=backref("snapshots", passive_deletes=True),
+        passive_deletes=True
+    )
 
     __table_args__ = (
         # Index for efficient "latest per archive" queries
