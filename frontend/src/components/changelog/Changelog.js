@@ -1,77 +1,78 @@
 import React from 'react';
 import Breadcrumbs from '../ui/Breadcrumbs';
 
+/**
+ * CHANGELOG CONTENT GUIDELINES
+ * ============================
+ *
+ * Rule 1: Maximum 5 bullet points per release
+ *         - Forces prioritization of the most important user-facing changes
+ *         - Group minor fixes into "Various bug fixes and performance improvements"
+ *
+ * Rule 2: User-focused language
+ *         - Describe WHAT users can do, not HOW it was built
+ *         - Good: "New statistics dashboard with real-time charts"
+ *         - Bad: "Implemented React component with Redux state management"
+ *
+ * Rule 3: No internal implementation details
+ *         - No technology names (Celery, Docker, React, Alembic, JWT, etc.)
+ *         - No infrastructure details (CI/CD, GitLab, database queries, caching)
+ *         - No security implementation specifics (token refresh, auth context)
+ *         - No internal tooling (Makefile, task management, test suites)
+ *
+ * Rule 4: No DevOps or deployment information
+ *         - Users don't need to know about deployments, migrations, or pipelines
+ *
+ * Rule 5: Combine related items
+ *         - Instead of 5 separate bug fixes, use "Various bug fixes and improvements"
+ */
+
 const Changelog = () => {
-  // Changelog entries based on actual project development
   const changelogEntries = [
     {
       version: '2.0.1',
       date: 'January 7, 2026',
       changes: [
-        'Simplified statistics system with append-only snapshot architecture',
-        'Reduced codebase by ~4,000 lines while improving reliability',
-        'Added forward-fill logic for graceful handling of collection failures'
+        'Simplified statistics system with improved reliability',
+        'Performance improvements and codebase optimization',
+        'Improved handling of data collection errors'
       ]
     },
     {
       version: '2.0.0',
       date: 'September 5, 2025',
       changes: [
-        'Implemented comprehensive statistics dashboard system with real-time data visualization',
-        'Added biological units tracking and visualization across providers with timeline charts',
-        'Introduced advanced search filters for providers and users list views',
-        'Created modern conversion-optimized landing page with improved user engagement',
-        'Enhanced form validation with comprehensive toast notification system',
-        'Implemented dual Celery worker architecture with intelligent queue routing',
-        'Added real-time event-driven statistics updates for live data monitoring',
-        'Redesigned footer with improved layout, alignment and professional styling',
-        'Migrated navigation from state-based to React Router for better performance',
-        'Added task management utilities for monitoring and controlling background jobs',
-        'Improved cache system with user-specific provider endpoint caching',
-        'Enhanced validation status display across provider statistics views',
-        'Fixed statistics timeline discrepancies with automatic gap detection and filling',
-        'Optimized database queries with GROUP BY aggregation for public endpoints',
-        'Resolved biological units counting issues in ABCD archives processing',
-        'Transformed changelog into modern timeline design with improved UX',
-        'Streamlined UI components across dashboard, statistics and public pages',
-        'Fixed logout flow to redirect to landing page for better user experience',
-        'Enhanced CI/CD infrastructure with improved deployment reliability',
-        'Refined About page with professional content and contact information'
+        'New statistics dashboard with real-time data visualization',
+        'Added biological units tracking with timeline charts',
+        'Advanced search filters for providers and users',
+        'Redesigned landing page and footer',
+        'Various bug fixes and performance improvements'
       ]
     },
     {
       version: '1.9.0',
       date: 'July 31, 2025',
       changes: [
-        'Added data center classification system to distinguish between official GFBio data centers and regular data providers',
-        'Portal administrators can now designate providers as official data centers through the admin interface',
-        'Enhanced data provider management with improved categorization for better organization',
-        'Strengthened deployment infrastructure with automated database backup system',
-        'Improved database migration reliability with enhanced error handling and rollback capabilities',
-        'Optimized CI/CD pipeline for more robust and consistent deployments'
+        'Added data center classification to distinguish official GFBio data centers from regular providers',
+        'Portal administrators can now designate providers as official data centers',
+        'Improved system reliability and stability'
       ]
     },
     {
       version: '1.8.0',
       date: 'April 15, 2025',
       changes: [
-        'Fixed issue with validation jobs getting stuck in pending state',
-        'Improved handling of Celery task IDs to prevent mismatches',
+        'Fixed validation jobs getting stuck in pending state',
         'Added support for force-revalidation of datasets',
-        'Enhanced validation status tracking with obsolete state detection',
-        'Improved validation error messages with better formatting and examples',
-        'Fixed inconsistencies in displayed validation timestamps'
+        'Improved validation error messages and status tracking'
       ]
     },
     {
       version: '1.7.0',
       date: 'April 10, 2025',
       changes: [
-        'Added maintenance mode feature for smoother service updates and deployments',
-        'Improved CI/CD pipeline for production deployments with GitLab',
-        'Enhanced docker-compose configuration with maintenance container',
-        'Added Makefile commands for enabling/disabling maintenance mode',
-        'Updated environment variable handling for better deployment flexibility'
+        'Added maintenance mode for smoother service updates',
+        'Improved deployment reliability'
       ]
     },
     {
@@ -79,45 +80,35 @@ const Changelog = () => {
       date: 'March 25, 2025',
       changes: [
         'Added XML validation system with support for ABCD schemas (2.06, 2.1, 3.0)',
-        'Implemented validation job model for tracking validation progress and results',
-        'Created API versioning structure for better maintainability',
-        'Added validation results modal to display validation details in frontend',
-        'Implemented asynchronous validation task processing with Celery',
-        'Enhanced database performance with additional indexes on relationship columns',
-        'Updated Docker configuration to support validator microservice'
+        'Validation progress and results now tracked per dataset',
+        'New validation results modal in the interface',
+        'Improved database performance'
       ]
     },
     {
       version: '1.5.1',
       date: 'March 18, 2025',
       changes: [
-        'Added timestamp tracking for providers and datasets with created_at and updated_at fields',
-        'Implemented "Last updated" information display on provider and dataset cards',
-        'Added database migration to support timestamp fields',
-        'Improved UI with subtle timestamp display that maintains visual hierarchy'
+        'Added "Last updated" timestamps on provider and dataset cards',
+        'Improved visual hierarchy of timestamp display'
       ]
     },
     {
       version: '1.5.0',
       date: 'March 17, 2025',
       changes: [
-        'Improved cache invalidation strategy for better data consistency across the application',
-        'Fixed issues with provider overview not immediately reflecting new datasets',
-        'Enhanced data synchronization between related entities (providers, datasets, XML archives, and useful links)',
-        'Optimized backend performance with more efficient cache management',
-        'Fixed UI inconsistencies when creating or updating related entities',
-        'Refactored frontend codebase with improved component organization and structure'
+        'Improved data consistency — changes now reflect immediately across the application',
+        'Fixed provider overview not showing newly added datasets',
+        'Various UI improvements and bug fixes'
       ]
     },
     {
       version: '1.4.0',
       date: 'March 14, 2025',
       changes: [
-        'Enhanced ActionMenu component with content-relative positioning for improved usability',
-        'Fixed dataset deletion functionality to correctly respect provider-admin permissions',
-        'Improved UI design consistency across provider and dataset detail views',
-        'Added proper role-based access control for editing and deleting datasets',
-        'Optimized layout and positioning for action buttons across all views'
+        'Improved action menu positioning for better usability',
+        'Fixed dataset deletion permissions for provider admins',
+        'UI consistency improvements across detail views'
       ]
     },
     {
@@ -125,31 +116,27 @@ const Changelog = () => {
       date: 'March 13, 2025',
       changes: [
         'Added Changelog page to track application updates',
-        'Implemented "single latest" selection logic for XML archives and useful links',
+        'Improved selection logic for XML archives and useful links',
         'Enhanced breadcrumb navigation with dark mode support',
-        'Improved UI spacing and minor visual refinements across dashboard components'
+        'Minor visual refinements across dashboard'
       ]
     },
     {
       version: '1.2.0',
       date: 'March 5, 2025',
       changes: [
-        'Implemented global AuthContext for centralized authentication management',
-        'Added automatic token refresh to prevent session timeouts',
-        'Improved event-based token synchronization across components',
-        'Created floating ActionMenu component for quick access to common actions',
-        'Enhanced user experience with better session expiration handling'
+        'Improved session handling — no more unexpected logouts',
+        'Added floating action menu for quick access to common actions',
+        'Better session expiration handling'
       ]
     },
     {
       version: '1.1.0',
       date: 'February 28, 2025',
       changes: [
-        'Standardized API endpoints to use consistent kebab-case convention',
-        'Improved error handling and feedback in form submissions',
-        'Added comprehensive test suite for backend API',
-        'Enhanced data organization with separate provider data sources',
-        'Fixed bugs in provider associations and resource handling'
+        'Standardized API endpoints for consistency',
+        'Improved error handling and form feedback',
+        'Fixed bugs in provider associations'
       ]
     },
     {
@@ -157,11 +144,9 @@ const Changelog = () => {
       date: 'February 24, 2025',
       changes: [
         'Initial release of Data Provider Manager',
-        'Implemented JWT-based user authentication and authorization',
-        'Created provider and dataset management system',
-        'Added XML archive and useful links management functionality',
-        'Set up database migrations with Alembic',
-        'Implemented Docker-based deployment configuration'
+        'User authentication and authorization',
+        'Provider, dataset, and XML archive management',
+        'Useful links management functionality'
       ]
     }
   ];
@@ -184,10 +169,8 @@ const Changelog = () => {
       />
       
       <div style={{
-        marginBottom: '3rem',
-        marginTop: '1rem',
         maxWidth: '1200px',
-        margin: '1rem auto 3rem auto'
+        margin: '1rem auto 2rem auto'
       }}>
         <h2 style={{
           fontSize: '1.5rem',
@@ -359,9 +342,8 @@ const Changelog = () => {
                     fontSize: '1rem',
                     fontWeight: 600,
                     color: 'var(--text)',
-                    marginBottom: '1rem',
                     margin: 0,
-                    marginBottom: '1rem'
+                    marginBottom: '16px'
                   }}>
                     What's New
                   </h4>
