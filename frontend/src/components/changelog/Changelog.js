@@ -169,10 +169,8 @@ const Changelog = () => {
       />
       
       <div style={{
-        marginBottom: '3rem',
-        marginTop: '1rem',
         maxWidth: '1200px',
-        margin: '1rem auto 3rem auto'
+        margin: '1rem auto 2rem auto'
       }}>
         <h2 style={{
           fontSize: '1.5rem',

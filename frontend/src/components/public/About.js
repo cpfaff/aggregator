@@ -11,7 +11,7 @@ const About = ({ currentUser }) => {
   const styles = {
     container: {
       flexGrow: 1,
-      padding: currentUser ? '2rem 1rem 4rem' : '3rem 1rem 4rem',
+      padding: '2rem 1rem 4rem',
       maxWidth: '1200px',
       margin: '0 auto',
       width: '100%',
