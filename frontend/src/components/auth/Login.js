@@ -126,7 +126,7 @@ function Login({ sessionExpired, onViewPublicStats }) {
           <Alert type="error">Your session has expired. Please sign in again.</Alert>
         )}
         
-        <form onSubmit={form.handleSubmit}>
+        <form onSubmit={form.handleSubmit} noValidate>
           <FormField
             type="text"
             name="username"
@@ -139,13 +139,12 @@ function Login({ sessionExpired, onViewPublicStats }) {
             placeholder="Enter your username"
             autoComplete="username"
             disabled={isLoading}
-            required
             style={{
               padding: '0.75rem 1rem',
               fontSize: '1rem',
             }}
           />
-          
+
           <FormField
             type="password"
             name="password"
@@ -158,21 +157,20 @@ function Login({ sessionExpired, onViewPublicStats }) {
             placeholder="Enter your password"
             autoComplete="current-password"
             disabled={isLoading}
-            required
             showPasswordToggle={true}
             style={{
               padding: '0.75rem 1rem',
               fontSize: '1rem',
-              marginBottom: '1.5rem'
             }}
           />
-          
+
           <button
             type="submit"
             disabled={isLoading}
             style={{
               width: '100%',
               padding: '0.75rem 1rem',
+              marginTop: '0.5rem',
               backgroundColor: 'var(--primary)',
               color: 'white',
               border: 'none',

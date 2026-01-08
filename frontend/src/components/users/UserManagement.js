@@ -709,7 +709,7 @@ function UserManagement() {
         <div>
           {formError && <Alert type="error">{formError}</Alert>}
           
-          <form onSubmit={form.handleSubmit}>
+          <form onSubmit={form.handleSubmit} noValidate>
             <FormField
               type="text"
               name="username"

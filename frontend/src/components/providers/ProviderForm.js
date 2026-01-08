@@ -126,7 +126,7 @@ function ProviderForm({ provider, onClose, onTokenExpired, currentUser }) {
     <div>
       {error && <Alert type="error">{error}</Alert>}
       
-      <form onSubmit={form.handleSubmit}>
+      <form onSubmit={form.handleSubmit} noValidate>
         <FormField
           type="text"
           name="datacenter"

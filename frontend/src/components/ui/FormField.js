@@ -280,7 +280,7 @@ const FormField = ({
         )}
         <div style={{ position: 'relative' }}>
           <input
-            type={type}
+            type={type === 'url' || type === 'email' ? 'text' : type}
             id={fieldId}
             name={name}
             value={value || ''}
@@ -289,9 +289,6 @@ const FormField = ({
             disabled={disabled}
             placeholder={placeholder}
             autoComplete={autoComplete}
-            required={required}
-            min={min}
-            max={max}
             step={step}
             accept={accept}
             aria-invalid={showError}
