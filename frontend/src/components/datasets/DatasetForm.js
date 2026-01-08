@@ -321,7 +321,7 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired }) {
     <div>
       {error && <Alert type="error">{error}</Alert>}
       
-      <form onSubmit={form.handleSubmit}>
+      <form onSubmit={form.handleSubmit} noValidate>
         <FormField
           type="text"
           name="source"
