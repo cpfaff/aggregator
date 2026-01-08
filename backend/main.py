@@ -1089,7 +1089,15 @@ async def update_provider(
     invalidate_cache(f"provider:{provider_id}")
     invalidate_cache("providers")
 
-    return result.scalar_one()
+    # Trigger snapshot collection for any archives to capture unit count
+    provider_result = result.scalar_one()
+    if provider.datasets is not None:
+        from app.tasks.snapshot_tasks import collect_single_archive_snapshot
+        for dataset in provider_result.datasets:
+            for archive in dataset.xmlArchives:
+                collect_single_archive_snapshot.delay(archive.id)
+
+    return provider_result
 
 
 @csrf_protect.validate_csrf
@@ -1367,10 +1375,16 @@ async def update_dataset(
     invalidate_cache(f"provider:{provider_id}")
     invalidate_cache("providers")
 
-    # Note: Statistics are collected via scheduled snapshot task (daily at 2:00 AM)
-    # No real-time statistics update needed
+    # Trigger snapshot collection for any new archives to capture unit count
+    dataset_result = result.scalar_one()
+    if dataset.xmlArchives is not None:
+        from app.tasks.snapshot_tasks import collect_single_archive_snapshot
+        for archive in dataset_result.xmlArchives:
+            # Only trigger for archives that don't have snapshots yet
+            # The task will handle the isLatest check
+            collect_single_archive_snapshot.delay(archive.id)
 
-    return result.scalar_one()
+    return dataset_result
 
 
 @csrf_protect.validate_csrf
