@@ -183,14 +183,15 @@ const Changelog = () => {
         ]} 
       />
       
-      <div style={{ 
+      <div style={{
         marginBottom: '3rem',
         marginTop: '1rem',
-        textAlign: 'center'
+        maxWidth: '1200px',
+        margin: '1rem auto 3rem auto'
       }}>
-        <h2 style={{ 
-          fontSize: '2rem', 
-          fontWeight: 700, 
+        <h2 style={{
+          fontSize: '1.5rem',
+          fontWeight: 600,
           color: 'var(--text)',
           marginBottom: '0.5rem'
         }}>
@@ -200,19 +201,16 @@ const Changelog = () => {
           fontSize: '1rem',
           color: 'var(--text-light)',
           margin: 0,
-          maxWidth: '600px',
-          marginLeft: 'auto',
-          marginRight: 'auto',
           lineHeight: '1.5'
         }}>
-          Track the evolution of the Data Provider Manager platform through our release history
+          Track the evolution of the platform through our release history.
         </p>
       </div>
       
       {/* Timeline Container */}
       <div style={{
         position: 'relative',
-        maxWidth: '900px',
+        maxWidth: '1200px',
         margin: '0 auto',
         paddingBottom: '2rem'
       }}>
@@ -268,7 +266,7 @@ const Changelog = () => {
               {/* Content Card */}
               <div style={{
                 flex: 1,
-                maxWidth: isMobile ? 'none' : '420px',
+                maxWidth: isMobile ? 'none' : '520px',
                 marginLeft: isMobile ? '60px' : '0',
                 backgroundColor: 'var(--card-bg)',
                 borderRadius: '12px',
@@ -399,7 +397,7 @@ const Changelog = () => {
               </div>
               
               {/* Empty space for alternating layout - hidden on mobile */}
-              {!isMobile && <div style={{ flex: 1, maxWidth: '420px' }} />}
+              {!isMobile && <div style={{ flex: 1, maxWidth: '520px' }} />}
             </div>
           );
         })}

@@ -25,6 +25,13 @@ const About = ({ currentUser }) => {
       fontSize: '1.5rem',
       fontWeight: 600,
       color: 'var(--text)',
+      marginBottom: '0.5rem',
+    },
+    pageHeaderSubtitle: {
+      fontSize: '1rem',
+      color: 'var(--text-light)',
+      margin: 0,
+      lineHeight: '1.5',
     },
     heroSection: {
       textAlign: 'center',
@@ -51,9 +58,10 @@ const About = ({ currentUser }) => {
       padding: '2.5rem',
       border: '1px solid var(--border)',
       boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+      marginBottom: '1.5rem',
     },
     sectionTitle: {
-      fontSize: '1.5rem',
+      fontSize: '1.25rem',
       fontWeight: 600,
       marginBottom: '1.5rem',
       color: 'var(--text)',
@@ -63,47 +71,35 @@ const About = ({ currentUser }) => {
       lineHeight: '1.7',
       marginBottom: '1rem',
     },
-    subsectionTitle: {
-      fontSize: '1.2rem',
-      fontWeight: 600,
+    calloutBox: {
+      backgroundColor: 'rgba(59, 130, 246, 0.08)',
+      borderLeft: '4px solid var(--primary)',
+      padding: '1rem 1.25rem',
+      borderRadius: '0 8px 8px 0',
+      marginTop: '1.5rem',
+      marginBottom: '0',
+    },
+    calloutContent: {
+      display: 'flex',
+      alignItems: 'flex-start',
+      gap: '0.75rem',
+    },
+    calloutIcon: {
+      flexShrink: 0,
+      width: '20px',
+      height: '20px',
+      color: 'var(--primary)',
+      marginTop: '2px',
+    },
+    calloutText: {
       color: 'var(--text)',
-      marginBottom: '0.75rem',
-      marginTop: '2rem',
+      lineHeight: '1.6',
+      margin: 0,
+      fontSize: '0.95rem',
     },
     link: {
       color: 'var(--primary)',
       textDecoration: 'none',
-    },
-    contactSection: {
-      marginTop: '2.5rem',
-      paddingTop: '2rem',
-      borderTop: '1px solid var(--border)',
-    },
-    contactGrid: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-      gap: '2rem',
-      marginTop: '1rem',
-    },
-    contactItem: {
-      marginBottom: '1rem',
-    },
-    contactLabel: {
-      display: 'block',
-      color: 'var(--text)',
-      marginBottom: '0.5rem',
-      fontWeight: 600,
-    },
-    contactText: {
-      margin: '0.25rem 0',
-      color: 'var(--text-light)',
-      lineHeight: '1.5',
-    },
-    textMuted: {
-      fontSize: '0.9rem',
-      color: 'var(--text-light)',
-      display: 'block',
-      marginTop: '0.25rem',
     },
   };
 
@@ -116,6 +112,9 @@ const About = ({ currentUser }) => {
       {currentUser ? (
         <div style={styles.pageHeader}>
           <h2 style={styles.pageHeaderTitle}>About</h2>
+          <p style={styles.pageHeaderSubtitle}>
+            Learn about the Data Provider Manager and the organization behind it.
+          </p>
         </div>
       ) : (
         <header style={styles.heroSection}>
@@ -126,10 +125,8 @@ const About = ({ currentUser }) => {
         </header>
       )}
 
-      {/* Single Content Card */}
+      {/* Main Content Card */}
       <section style={styles.contentCard}>
-        <h2 style={styles.sectionTitle}>About This Service</h2>
-        
         <p style={styles.text}>
           The Data Provider Manager serves as the central registry for
           institutional providers to enter the GFBio Search and Harvesting
@@ -137,48 +134,35 @@ const About = ({ currentUser }) => {
           certified data centers and partner institutions across Germany
           following FAIR data principles.
         </p>
-        
+
         <p style={styles.text}>
           This service is operated by <strong>GFBio e.V.</strong> (Gesellschaft
-          für Biologische Daten e.V.) as part of
-          <strong>NFDI4Biodiversity</strong> and Germany's National Research
+          für Biologische Daten e.V.) as part of <strong>NFDI4Biodiversity</strong> and Germany's National Research
           Data Infrastructure, supporting the biological sciences community
           with professional data management infrastructure.
         </p>
 
-        <p style={styles.text}>
+        <p style={{...styles.text, marginBottom: 0}}>
           This platform is designed for data centers, scientific societies, and
-          institutions managing biological collections data. When you are interested in 
+          institutions managing biological collections data. When you are interested in
           publishing data with us get in touch with us.
         </p>
-        
-        <p style={styles.text}>
-          <strong>Note for Individual Researchers:</strong> To search and access biodiversity data, 
-          please use the public <a href="https://search.gfbio.org" target="_blank" rel="noopener noreferrer" style={styles.link}>
-          GFBio Search Portal</a> which provides access to all registered collections.
-        </p>
 
-        {/* Contact & Legal Section within the same card */}
-        <div style={styles.contactSection}>
-          <h3 style={styles.subsectionTitle}>Contact & Legal Information</h3>
-          
-          <div style={styles.contactGrid}>
-            <div style={styles.contactItem}>
-              <strong style={styles.contactLabel}>GFBio e.V.</strong>
-              <p style={styles.contactText}>
-                Unicom 2, Haus 2-4<br/>
-                Mary-Somerville-Str. 2<br/>
-                28359 Bremen<br/>
-                Germany
-              </p>
-              <span style={styles.textMuted}>
-                Website: <a href="https://www.gfbio.org" target="_blank" rel="noopener noreferrer" style={styles.link}>www.gfbio.org</a><br/>
-                Email: <a href="mailto:info@gfbio.org" style={styles.link}>info@gfbio.org</a>
-              </span>
-            </div>
+        {/* Callout box for individual researchers */}
+        <div style={styles.calloutBox}>
+          <div style={styles.calloutContent}>
+            <svg style={styles.calloutIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p style={styles.calloutText}>
+              <strong>Note for Individual Researchers:</strong> To search and access biodiversity data,
+              please use the public <a href="https://search.gfbio.org" target="_blank" rel="noopener noreferrer" style={styles.link}>
+              GFBio Search Portal</a> which provides access to all registered collections.
+            </p>
           </div>
         </div>
       </section>
+
     </div>
   );
 };

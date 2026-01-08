@@ -246,29 +246,27 @@ function AdminDashboard() {
       <Breadcrumbs items={breadcrumbItems} />
       
       {/* Page title and actions */}
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center',
-        marginBottom: '1rem',
+      <div style={{
+        marginBottom: '2rem',
+        marginTop: '1rem',
       }}>
         <h2 style={{
           fontSize: '1.5rem',
           fontWeight: 600,
-          marginLeft: '0.1rem',
           color: 'var(--text)',
-          margin: 0
+          marginBottom: '0.5rem',
         }}>
           Statistics
         </h2>
+        <p style={{
+          fontSize: '1rem',
+          color: 'var(--text-light)',
+          margin: 0,
+          lineHeight: '1.5',
+        }}>
+          System statistics and performance metrics with real-time data updates.
+        </p>
       </div>
-      
-      <p style={{
-        color: 'var(--text-light)',
-        margin: '0 0 2rem 0'
-      }}>
-        System statistics and performance metrics with real-time data updates.
-      </p>
 
       {error && (
         <Alert type="warning" style={{ marginBottom: '1.5rem' }}>

@@ -1,10 +1,7 @@
 import React from 'react';
-import { 
-  Github,
+import {
   Mail,
   ExternalLink,
-  BookOpen,
-  HelpCircle,
   ChevronRight
 } from 'lucide-react';
 
@@ -79,15 +76,15 @@ const Footer = () => {
           }}>
             {/* About Section */}
             <div>
-              <h3 style={{ 
-                fontSize: '1.5rem', 
+              <h3 style={{
+                fontSize: '1.25rem',
                 marginBottom: '1.25rem',
                 fontWeight: '700',
                 color: 'var(--text)',
                 letterSpacing: '-0.025em',
                 lineHeight: '1.2'
               }}>
-                GFBio DPM 
+                GFBio DPM
               </h3>
               <p style={{ 
                 fontSize: '0.9375rem', 
@@ -99,12 +96,12 @@ const Footer = () => {
                 A biological data registry facilitating discovery, access, and 
                 integration of biological and environmental research data from the German Federation for Biological Data.
               </p>
-              <div style={{ 
+              <div style={{
                 fontSize: '0.8125rem',
                 color: 'var(--text-light)',
                 marginTop: '2rem'
               }}>
-                <div style={{ marginBottom: '0.75rem', color: 'var(--text)', fontWeight: '600' }}>Funded by</div>
+                <div style={sectionTitleStyle}>Funded by</div>
                 <div style={{
                   backgroundColor: 'var(--subtle-bg, var(--card-bg))',
                   padding: '0.75rem 1.25rem',
@@ -130,12 +127,9 @@ const Footer = () => {
                 background: 'linear-gradient(to bottom, transparent, var(--border), transparent)',
                 display: window.innerWidth > 768 ? 'block' : 'none'
               }}></div>
-              <div style={sectionTitleStyle}>
-                <BookOpen size={16} />
-                <span>Resources</span>
-              </div>
+              <div style={sectionTitleStyle}>Resources</div>
               <div>
-                <a 
+                <a
                   href="http://aggregator.localhost/api/docs"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -145,21 +139,31 @@ const Footer = () => {
                   <ChevronRight size={14} />
                   API Documentation
                 </a>
-                <a 
-                  href="/changelog" 
+                <a
+                  href="/changelog"
                   style={linkStyle}
                   onMouseEnter={e => e.currentTarget.style.color = 'var(--primary)'}
                   onMouseLeave={e => e.currentTarget.style.color = 'var(--text-light)'}>
                   <ChevronRight size={14} />
                   Changelog
                 </a>
-                <a 
-                  href="/about" 
+                <a
+                  href="/about"
                   style={linkStyle}
                   onMouseEnter={e => e.currentTarget.style.color = 'var(--primary)'}
                   onMouseLeave={e => e.currentTarget.style.color = 'var(--text-light)'}>
                   <ChevronRight size={14} />
                   About
+                </a>
+                <a
+                  href="https://github.com/gfbio"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={linkStyle}
+                  onMouseEnter={e => e.currentTarget.style.color = 'var(--primary)'}
+                  onMouseLeave={e => e.currentTarget.style.color = 'var(--text-light)'}>
+                  <ChevronRight size={14} />
+                  GitHub
                 </a>
               </div>
             </div>
@@ -175,101 +179,65 @@ const Footer = () => {
                 background: 'linear-gradient(to bottom, transparent, var(--border), transparent)',
                 display: window.innerWidth > 768 ? 'block' : 'none'
               }}></div>
-              <div style={sectionTitleStyle}>
-                <HelpCircle size={16} />
-                <span>Contact & Support</span>
-              </div>
-              <p style={{ 
+              <div style={sectionTitleStyle}>Contact & Support</div>
+              <p style={{
                 fontSize: '0.9375rem',
                 color: 'var(--text-light)',
-                marginBottom: '1.5rem',
+                marginBottom: '1.25rem',
                 lineHeight: '1.6'
               }}>
                 Need help with data integration, API usage, or platform features?
               </p>
-              <a 
-                href="mailto:info@gfbio.org"
-                style={{
-                  ...linkStyle,
-                  display: 'inline-flex',
-                  marginBottom: '1.5rem',
-                  color: 'var(--primary)',
-                  fontWeight: '600',
-                  padding: '0.5rem 0.75rem',
-                  borderRadius: '0.375rem',
-                  backgroundColor: 'rgba(var(--primary-rgb, 59, 130, 246), 0.08)',
-                  border: '1px solid rgba(var(--primary-rgb, 59, 130, 246), 0.15)'
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.backgroundColor = 'rgba(var(--primary-rgb, 59, 130, 246), 0.12)';
-                  e.currentTarget.style.transform = 'translateY(-1px)';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.backgroundColor = 'rgba(var(--primary-rgb, 59, 130, 246), 0.08)';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                }}>
-                <Mail size={16} />
-                info@gfbio.org
-              </a>
-              <div style={{
-                display: 'flex',
-                gap: '0.75rem',
-                marginTop: '0'
-              }}>
-                <a 
-                  href="https://github.com/gfbio"
-                  target="_blank"
-                  rel="noopener noreferrer"
+              {/* Contact links grouped together */}
+              <div style={{ marginBottom: '1.5rem' }}>
+                <a
+                  href="mailto:info@gfbio.org"
                   style={{
-                    color: 'var(--text-light)',
-                    transition: 'all 0.2s ease',
-                    padding: '0.5rem',
-                    borderRadius: '0.375rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    border: '1px solid var(--border)'
+                    ...linkStyle,
+                    marginBottom: '0.5rem'
                   }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.color = 'var(--primary)';
-                    e.currentTarget.style.backgroundColor = 'var(--subtle-bg, var(--card-bg))';
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.color = 'var(--text-light)';
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                    e.currentTarget.style.transform = 'translateY(0)';
-                  }}
-                  aria-label="GitHub">
-                  <Github size={18} />
+                  onMouseEnter={e => e.currentTarget.style.color = 'var(--primary)'}
+                  onMouseLeave={e => e.currentTarget.style.color = 'var(--text-light)'}>
+                  <Mail size={16} />
+                  info@gfbio.org
                 </a>
-                <a 
+                <a
                   href="https://www.gfbio.org"
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{
-                    color: 'var(--text-light)',
-                    transition: 'all 0.2s ease',
-                    padding: '0.5rem',
-                    borderRadius: '0.375rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    border: '1px solid var(--border)'
+                    ...linkStyle,
+                    marginBottom: '0'
                   }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.color = 'var(--primary)';
-                    e.currentTarget.style.backgroundColor = 'var(--subtle-bg, var(--card-bg))';
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.color = 'var(--text-light)';
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                    e.currentTarget.style.transform = 'translateY(0)';
-                  }}
-                  aria-label="GFBio Website">
-                  <ExternalLink size={18} />
+                  onMouseEnter={e => e.currentTarget.style.color = 'var(--primary)'}
+                  onMouseLeave={e => e.currentTarget.style.color = 'var(--text-light)'}>
+                  <ExternalLink size={16} />
+                  www.gfbio.org
                 </a>
+              </div>
+              {/* Organization Address */}
+              <div style={{
+                marginTop: '1.5rem',
+                paddingTop: '1.25rem',
+                borderTop: '1px solid var(--border)'
+              }}>
+                <div style={{
+                  color: 'var(--text)',
+                  fontWeight: '600',
+                  fontSize: '0.875rem',
+                  marginBottom: '0.5rem'
+                }}>
+                  GFBio e.V.
+                </div>
+                <div style={{
+                  fontSize: '0.8125rem',
+                  color: 'var(--text-light)',
+                  lineHeight: '1.6'
+                }}>
+                  Unicom 2, Haus 2-4<br/>
+                  Mary-Somerville-Str. 2<br/>
+                  28359 Bremen, Germany
+                </div>
               </div>
             </div>
           </div>

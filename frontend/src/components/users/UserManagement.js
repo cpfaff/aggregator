@@ -337,20 +337,26 @@ function UserManagement() {
 
 
       {/* Page title and actions */}
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center',
-        marginBottom: '1rem',
+      <div style={{
+        marginBottom: '2rem',
+        marginTop: '1rem',
       }}>
-        <h2 style={{ 
-          fontSize: '1.5rem', 
-          fontWeight: 600, 
-          marginLeft: '0.1rem',
+        <h2 style={{
+          fontSize: '1.5rem',
+          fontWeight: 600,
           color: 'var(--text)',
+          marginBottom: '0.5rem',
         }}>
-         Users 
+          Users
         </h2>
+        <p style={{
+          fontSize: '1rem',
+          color: 'var(--text-light)',
+          margin: 0,
+          lineHeight: '1.5',
+        }}>
+          Manage user accounts and role assignments.
+        </p>
       </div>
     
       
