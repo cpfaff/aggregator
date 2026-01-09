@@ -82,8 +82,8 @@ const Header = ({ currentUser, activeView, navigate, logout, isDarkTheme, toggle
             </Link>
           )}
           
-          <Link 
-            to={isLoggedIn && currentUser?.is_global_admin ? '/admin/statistics' : '/statistics'}
+          <Link
+            to={isLoggedIn ? '/admin/statistics' : '/statistics'}
             style={{
               padding: '0.5rem 0',
               position: 'relative',
