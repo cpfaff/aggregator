@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { apiRequest } from '../../utils/apiUtils';
-import { Globe, Server, Plus, Search, ArrowLeft, Database, ExternalLink, Edit, Trash2, BarChart3 } from 'lucide-react';
+import { Globe, Server, Plus, Search, ArrowLeft, Database, ExternalLink, Edit, Trash2, CheckCircle, TrendingUp } from 'lucide-react';
 import Alert from '../ui/Alert';
 import Modal from '../ui/Modal';
 import Breadcrumbs from '../ui/Breadcrumbs';
@@ -13,6 +13,7 @@ import ProviderForm from './ProviderForm';
 import ConfirmModal from '../ui/ConfirmModal';
 import { ProviderStatistics } from '../statistics';
 import { showToast } from '../ui/Toast';
+import { authStatsApi } from '../../utils/statisticsApi';
 
 const ProviderDetail = ({ currentUser }) => {
   const { id } = useParams();
@@ -31,16 +32,28 @@ const ProviderDetail = ({ currentUser }) => {
   const [editingProvider, setEditingProvider] = useState(null);
   const [addingProvider, setAddingProvider] = useState(false);
   const [showStatistics, setShowStatistics] = useState(false);
+  const [providerStats, setProviderStats] = useState(null);
+
+  // Fetch provider stats
+  const fetchProviderStats = async () => {
+    try {
+      const stats = await authStatsApi.getProviderStats(id, handleTokenExpiration);
+      setProviderStats(stats);
+    } catch (err) {
+      console.error('Error fetching provider stats:', err);
+    }
+  };
 
   // Fetch provider data when component mounts or ID changes
   useEffect(() => {
     fetchProvider();
   }, [id]);
 
-  // Fetch datasets when provider is loaded
+  // Fetch datasets and stats when provider is loaded
   useEffect(() => {
     if (provider) {
       fetchDatasets();
+      fetchProviderStats();
     }
   }, [provider]);
 
@@ -474,6 +487,38 @@ const ProviderDetail = ({ currentUser }) => {
                 </span>
               </div>
 
+              {/* Validation success rate */}
+              {providerStats?.validation_success_rate !== undefined && providerStats?.validation_success_rate !== null && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center'
+                }}>
+                  <CheckCircle
+                    size={15}
+                    style={{
+                      color: 'var(--success)',
+                      marginRight: '0.75rem',
+                      flexShrink: 0
+                    }}
+                  />
+                  <span style={{
+                    fontSize: '0.8125rem',
+                    color: 'var(--text)',
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}>
+                    <span style={{
+                      fontWeight: 600,
+                      color: providerStats.validation_success_rate > 0 ? 'var(--text)' : 'var(--text-light)',
+                      marginRight: '0.375rem'
+                    }}>
+                      {providerStats.validation_success_rate.toFixed(1)}%
+                    </span>
+                    validation success rate
+                  </span>
+                </div>
+              )}
+
               {/* Action button inside accent bar */}
               <div style={{ marginTop: '0.5rem' }}>
                 <button
@@ -499,8 +544,8 @@ const ProviderDetail = ({ currentUser }) => {
                     e.currentTarget.style.backgroundColor = 'var(--card-bg)';
                   }}
                 >
-                  <BarChart3 size={14} />
-                  View Statistics
+                  <TrendingUp size={14} />
+                  View Trends
                 </button>
               </div>
             </div>
@@ -855,11 +900,11 @@ const ProviderDetail = ({ currentUser }) => {
         />
       </Modal>
 
-      {/* Provider Statistics Modal */}
+      {/* Provider Trends Modal */}
       <Modal
         isOpen={showStatistics}
         onClose={() => setShowStatistics(false)}
-        title="Provider Statistics"
+        title="Trends"
         size="large"
       >
         <ProviderStatistics 

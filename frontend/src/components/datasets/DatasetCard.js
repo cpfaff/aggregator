@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Database, ExternalLink, FileText, Globe, Edit, Trash2, Archive, CheckCircle, XCircle, AlertCircle, RefreshCw } from 'lucide-react';
+import { Database, ExternalLink, FileText, Globe, Edit, Trash2, Archive, CheckCircle, XCircle, AlertCircle, RefreshCw, Dna } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import axios from 'axios';
 import ValidationResultsModal from './ValidationResultsModal';
+import { authStatsApi } from '../../utils/statisticsApi';
 
 const DatasetCard = ({ dataset, onEdit, onDelete }) => {
-  const { currentUser } = useAuth();
+  const { currentUser, handleTokenExpiration } = useAuth();
   const [validationStatus, setValidationStatus] = useState(null);
   const [isValidating, setIsValidating] = useState(false);
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [pollingInterval, setPollingInterval] = useState(null);
+  const [datasetStats, setDatasetStats] = useState(null);
 
   // Debug logging
   console.log('Dataset Provider ID:', dataset.provider_id);
@@ -25,12 +27,13 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
   // Debug the result
   console.log('Can Delete:', canDelete);
   
-  // Fetch validation status when component mounts
+  // Fetch validation status and dataset stats when component mounts
   useEffect(() => {
     if (dataset && dataset.id) {
       fetchValidationStatus();
+      fetchDatasetStats();
     }
-    
+
     // Clear any existing polling interval when component unmounts
     return () => {
       if (pollingInterval) {
@@ -38,6 +41,17 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
       }
     };
   }, [dataset]);
+
+  // Function to fetch dataset statistics (for biological units count)
+  const fetchDatasetStats = async () => {
+    try {
+      const stats = await authStatsApi.getDatasetStats(dataset.id, handleTokenExpiration);
+      setDatasetStats(stats);
+    } catch (error) {
+      console.error('Error fetching dataset stats:', error);
+      // Don't show error to user, just log it - stats are optional
+    }
+  };
   
   // Function to fetch validation status
   const fetchValidationStatus = async () => {
@@ -398,6 +412,38 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
                     {(Array.isArray(dataset.usefulLinks) && dataset.usefulLinks.length === 1) ? 'link' : 'links'}
                   </span>
                 </div>
+
+                {/* Biological Units */}
+                {datasetStats?.unit_count !== undefined && datasetStats?.unit_count !== null && (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}>
+                    <Dna
+                      size={15}
+                      style={{
+                        color: 'var(--primary)',
+                        marginRight: '0.75rem',
+                        flexShrink: 0
+                      }}
+                    />
+                    <span style={{
+                      fontSize: '0.8125rem',
+                      color: 'var(--text)',
+                      display: 'flex',
+                      alignItems: 'center',
+                    }}>
+                      <span style={{
+                        fontWeight: 600,
+                        color: datasetStats.unit_count > 0 ? 'var(--text)' : 'var(--text-light)',
+                        marginRight: '0.375rem'
+                      }}>
+                        {datasetStats.unit_count.toLocaleString()}
+                      </span>
+                      {datasetStats.unit_count === 1 ? 'biological unit' : 'biological units'}
+                    </span>
+                  </div>
+                )}
 
                 {/* Sample count (if exists in the data) */}
                 {dataset.sampleCount !== undefined && (
