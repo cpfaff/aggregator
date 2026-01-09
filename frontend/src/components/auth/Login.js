@@ -10,6 +10,7 @@ import { showToast } from '../ui/Toast';
 // Login component
 function Login({ sessionExpired, onViewPublicStats }) {
   const { login, isLoading, setIsLoading, sessionExpired: authSessionExpired, setSessionExpired } = useAuth();
+  const [loginError, setLoginError] = React.useState('');
   
   // Define validation schema
   const validationSchema = {
@@ -26,42 +27,37 @@ function Login({ sessionExpired, onViewPublicStats }) {
   // Form submission handler
   const handleFormSubmit = async (values) => {
     setIsLoading(true);
-    
+    setLoginError('');
+
     try {
       // Get CSRF token first
       await initCsrfProtection();
-      
+
       // We don't use apiRequest here because we're getting the token
       const res = await fetch(`${API_BASE}${API_VERSION}/auth-token`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
           'X-CSRF-Token': localStorage.getItem('csrfToken')
         },
         body: new URLSearchParams(values),
         credentials: 'include', // Important for CSRF cookies
       });
-      
+
       if (!res.ok) {
-        form.setFieldErrors({ 
-          username: ' ', // Space to show error styling
-          password: 'Invalid username or password'
-        });
+        setLoginError('Invalid username or password. Please try again.');
         setIsLoading(false);
         return;
       }
-      
+
       const data = await res.json();
-      
+
       // Use the context's login function
       await login(data.access_token, data.refresh_token, data.expires_in);
       setIsLoading(false);
       showToast('Successfully logged in!', 'success');
     } catch (err) {
-      form.setFieldErrors({ 
-        username: ' ', // Space to show error styling
-        password: 'Network error. Please check your connection'
-      });
+      setLoginError('Network error. Please check your connection and try again.');
       setIsLoading(false);
     }
   };
@@ -76,12 +72,15 @@ function Login({ sessionExpired, onViewPublicStats }) {
     handleFormSubmit
   );
 
-  // Clear session expired message when user starts typing
+  // Clear session expired message and login error when user starts typing
   useEffect(() => {
     if ((sessionExpired || authSessionExpired) && (form.values.username || form.values.password)) {
       setSessionExpired(false);
     }
-  }, [form.values.username, form.values.password, sessionExpired, authSessionExpired, setSessionExpired]);
+    if (loginError && (form.values.username || form.values.password)) {
+      setLoginError('');
+    }
+  }, [form.values.username, form.values.password, sessionExpired, authSessionExpired, setSessionExpired, loginError]);
 
 
   return (
@@ -125,7 +124,11 @@ function Login({ sessionExpired, onViewPublicStats }) {
         {(sessionExpired || authSessionExpired) && (
           <Alert type="error">Your session has expired. Please sign in again.</Alert>
         )}
-        
+
+        {loginError && (
+          <Alert type="error">{loginError}</Alert>
+        )}
+
         <form onSubmit={form.handleSubmit} noValidate>
           <FormField
             type="text"

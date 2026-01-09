@@ -27,10 +27,11 @@ function ConfirmModal({
   if (!isOpen) return null;
   
   return (
-    <Modal 
-      isOpen={true} 
+    <Modal
+      isOpen={true}
       onClose={onCancel}
       title={title}
+      zIndex={1100}
       footer={
         <>
           <button 

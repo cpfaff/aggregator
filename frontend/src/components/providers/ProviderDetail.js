@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { apiRequest } from '../../utils/apiUtils';
-import { Globe, Server, Plus, Search, ArrowLeft, Database, ExternalLink, Edit, Trash2, BarChart3 } from 'lucide-react';
+import { Globe, Server, Plus, Search, ArrowLeft, Database, ExternalLink, Edit, Trash2, CheckCircle, TrendingUp } from 'lucide-react';
 import Alert from '../ui/Alert';
 import Modal from '../ui/Modal';
 import Breadcrumbs from '../ui/Breadcrumbs';
@@ -13,6 +13,7 @@ import ProviderForm from './ProviderForm';
 import ConfirmModal from '../ui/ConfirmModal';
 import { ProviderStatistics } from '../statistics';
 import { showToast } from '../ui/Toast';
+import { authStatsApi } from '../../utils/statisticsApi';
 
 const ProviderDetail = ({ currentUser }) => {
   const { id } = useParams();
@@ -31,16 +32,31 @@ const ProviderDetail = ({ currentUser }) => {
   const [editingProvider, setEditingProvider] = useState(null);
   const [addingProvider, setAddingProvider] = useState(false);
   const [showStatistics, setShowStatistics] = useState(false);
+  const [providerStats, setProviderStats] = useState(null);
+  const [datasetFormIsDirty, setDatasetFormIsDirty] = useState(false);
+  const [providerFormIsDirty, setProviderFormIsDirty] = useState(false);
+  const [confirmDiscardChanges, setConfirmDiscardChanges] = useState(null);
+
+  // Fetch provider stats
+  const fetchProviderStats = async () => {
+    try {
+      const stats = await authStatsApi.getProviderStats(id, handleTokenExpiration);
+      setProviderStats(stats);
+    } catch (err) {
+      console.error('Error fetching provider stats:', err);
+    }
+  };
 
   // Fetch provider data when component mounts or ID changes
   useEffect(() => {
     fetchProvider();
   }, [id]);
 
-  // Fetch datasets when provider is loaded
+  // Fetch datasets and stats when provider is loaded
   useEffect(() => {
     if (provider) {
       fetchDatasets();
+      fetchProviderStats();
     }
   }, [provider]);
 
@@ -287,6 +303,42 @@ const ProviderDetail = ({ currentUser }) => {
     { label: provider?.name || 'Provider Detail', onClick: null }
   ];
 
+  // Handle dataset modal close with unsaved changes check
+  const handleDatasetModalClose = () => {
+    if (datasetFormIsDirty) {
+      setConfirmDiscardChanges({ type: 'dataset' });
+    } else {
+      setAddingDataset(false);
+      setEditingDataset(null);
+      setDatasetFormIsDirty(false);
+    }
+  };
+
+  // Handle provider modal close with unsaved changes check
+  const handleProviderModalClose = () => {
+    if (providerFormIsDirty) {
+      setConfirmDiscardChanges({ type: 'provider' });
+    } else {
+      setAddingProvider(false);
+      setEditingProvider(null);
+      setProviderFormIsDirty(false);
+    }
+  };
+
+  // Confirm discard changes
+  const handleConfirmDiscard = () => {
+    if (confirmDiscardChanges?.type === 'dataset') {
+      setAddingDataset(false);
+      setEditingDataset(null);
+      setDatasetFormIsDirty(false);
+    } else if (confirmDiscardChanges?.type === 'provider') {
+      setAddingProvider(false);
+      setEditingProvider(null);
+      setProviderFormIsDirty(false);
+    }
+    setConfirmDiscardChanges(null);
+  };
+
   // Show loading state while fetching provider
   if (isLoadingProvider) {
     return (
@@ -401,109 +453,141 @@ const ProviderDetail = ({ currentUser }) => {
         </div>
 
         {/* Stats section */}
-        <div style={{ 
-          position: 'relative',
+        <div style={{
           marginTop: '1.5rem',
           marginBottom: '1.5rem',
           paddingLeft: '0.25rem'
         }}>
-          {/* Vertical border */}
-          <div style={{
-            position: 'absolute',
-            top: 0,
-            bottom: 0,
-            left: '0.25rem',
-            width: '1.5px',
-            backgroundColor: 'var(--text-light)',
-            opacity: 0.4,
-            zIndex: 0
-          }}></div>
-          
-          <div style={{ 
-            fontSize: '0.8125rem', 
-            textTransform: 'uppercase', 
-            fontWeight: 600, 
-            color: 'var(--text-light)',
-            marginBottom: '0.75rem',
-            letterSpacing: '0.025em',
-            display: 'flex',
-            alignItems: 'center',
-            paddingLeft: '0.75rem',
-            position: 'relative',
-            zIndex: 1
-          }}>
-            Stats
-          </div>
-          
-          <div style={{ 
-            paddingLeft: '1.5rem',
-            position: 'relative',
-            zIndex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '0.5rem'
-          }}>
-            {/* Datasets count */}
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center'
+          {/* Stats content with accent bar */}
+          <div style={{ position: 'relative' }}>
+            {/* Vertical border */}
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              bottom: 0,
+              left: '0.25rem',
+              width: '1.5px',
+              backgroundColor: 'var(--text-light)',
+              opacity: 0.4,
+              zIndex: 0
+            }}></div>
+
+            <div style={{
+              fontSize: '0.8125rem',
+              textTransform: 'uppercase',
+              fontWeight: 600,
+              color: 'var(--text-light)',
+              marginBottom: '0.75rem',
+              letterSpacing: '0.025em',
+              display: 'flex',
+              alignItems: 'center',
+              paddingLeft: '0.75rem',
+              position: 'relative',
+              zIndex: 1
             }}>
-              <Database 
-                size={15} 
-                style={{ 
-                  color: datasets.length > 0 ? 'var(--primary)' : 'var(--text-light)', 
-                  marginRight: '0.75rem', 
-                  flexShrink: 0 
-                }} 
-              />
-              <span style={{ 
-                fontSize: '0.8125rem', 
-                color: 'var(--text)',
-                display: 'flex',
-                alignItems: 'center',
-              }}>
-                <span style={{ 
-                  fontWeight: 600, 
-                  color: datasets.length > 0 ? 'var(--text)' : 'var(--text-light)',
-                  marginRight: '0.375rem'
-                }}>
-                  {datasets.length}
-                </span> 
-                {datasets.length === 1 ? 'dataset' : 'datasets'}
-              </span>
+              Stats
             </div>
 
-            {/* Statistics link */}
-            <button
-              onClick={() => setShowStatistics(true)}
-              style={{
+            <div style={{
+              paddingLeft: '1.5rem',
+              position: 'relative',
+              zIndex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.5rem'
+            }}>
+              {/* Datasets count */}
+              <div style={{
                 display: 'flex',
-                alignItems: 'center',
-                background: 'none',
-                border: 'none',
-                padding: 0,
-                fontSize: '0.8125rem',
-                color: 'var(--primary)',
-                cursor: 'pointer',
-                textDecoration: 'none',
-                transition: 'opacity 0.2s',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.opacity = '0.8';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.opacity = '1';
-              }}
-            >
-              <BarChart3 
-                size={15} 
-                style={{ 
-                  marginRight: '0.75rem', 
-                  flexShrink: 0 
-                }} 
-              />
-              View detailed statistics
-            </button>
+                alignItems: 'center'
+              }}>
+                <Database
+                  size={15}
+                  style={{
+                    color: 'var(--primary)',
+                    marginRight: '0.75rem',
+                    flexShrink: 0
+                  }}
+                />
+                <span style={{
+                  fontSize: '0.8125rem',
+                  color: 'var(--text)',
+                  display: 'flex',
+                  alignItems: 'center',
+                }}>
+                  <span style={{
+                    fontWeight: 600,
+                    color: datasets.length > 0 ? 'var(--text)' : 'var(--text-light)',
+                    marginRight: '0.375rem'
+                  }}>
+                    {datasets.length}
+                  </span>
+                  {datasets.length === 1 ? 'dataset' : 'datasets'}
+                </span>
+              </div>
+
+              {/* Validation success rate */}
+              {providerStats?.validation_success_rate !== undefined && providerStats?.validation_success_rate !== null && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center'
+                }}>
+                  <CheckCircle
+                    size={15}
+                    style={{
+                      color: 'var(--success)',
+                      marginRight: '0.75rem',
+                      flexShrink: 0
+                    }}
+                  />
+                  <span style={{
+                    fontSize: '0.8125rem',
+                    color: 'var(--text)',
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}>
+                    <span style={{
+                      fontWeight: 600,
+                      color: providerStats.validation_success_rate > 0 ? 'var(--text)' : 'var(--text-light)',
+                      marginRight: '0.375rem'
+                    }}>
+                      {providerStats.validation_success_rate.toFixed(1)}%
+                    </span>
+                    validation success rate
+                  </span>
+                </div>
+              )}
+
+              {/* Action button inside accent bar */}
+              <div style={{ marginTop: '0.5rem' }}>
+                <button
+                  onClick={() => setShowStatistics(true)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.375rem',
+                    padding: '0.375rem 0.75rem',
+                    border: '1.5px solid var(--primary)',
+                    borderRadius: '0.5rem',
+                    backgroundColor: 'var(--card-bg)',
+                    fontSize: '0.75rem',
+                    fontWeight: 500,
+                    color: 'var(--primary)',
+                    cursor: 'pointer',
+                    transition: 'all 150ms ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--subtle-bg)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--card-bg)';
+                  }}
+                >
+                  <TrendingUp size={14} />
+                  View Trends
+                </button>
+              </div>
+            </div>
           </div>
         </div>
         
@@ -813,10 +897,23 @@ const ProviderDetail = ({ currentUser }) => {
         />
       )}
       
+      {/* Unsaved changes confirmation modal */}
+      {confirmDiscardChanges && (
+        <ConfirmModal
+          isOpen={true}
+          title="Discard changes?"
+          message="You have unsaved changes. Are you sure you want to close this form?"
+          confirmText="Discard"
+          cancelText="Keep Editing"
+          onConfirm={handleConfirmDiscard}
+          onCancel={() => setConfirmDiscardChanges(null)}
+        />
+      )}
+
       {/* Dataset form modal */}
       <Modal
         isOpen={addingDataset}
-        onClose={() => { setAddingDataset(false); setEditingDataset(null); }}
+        onClose={handleDatasetModalClose}
         title={editingDataset ? `Edit Dataset: ${editingDataset.title}` : 'Add Dataset'}
       >
         <DatasetForm
@@ -824,13 +921,14 @@ const ProviderDetail = ({ currentUser }) => {
           dataset={editingDataset}
           onClose={handleDatasetUpdate}
           onTokenExpired={handleTokenExpiration}
+          onDirtyChange={setDatasetFormIsDirty}
         />
       </Modal>
       
       {/* Modal for editing provider */}
       <Modal
         isOpen={addingProvider}
-        onClose={() => { setAddingProvider(false); setEditingProvider(null); }}
+        onClose={handleProviderModalClose}
         title={`Edit Provider: ${editingProvider?.name || ""}`}
       >
         <ProviderForm
@@ -843,23 +941,25 @@ const ProviderDetail = ({ currentUser }) => {
                 ...provider,
                 ...updatedProvider
               };
-              
+
               // Update the local provider state with new data
               setProvider(updatedProviderData);
             }
             setAddingProvider(false);
             setEditingProvider(null);
+            setProviderFormIsDirty(false);
           }}
           onTokenExpired={handleTokenExpiration}
           currentUser={currentUser}
+          onDirtyChange={setProviderFormIsDirty}
         />
       </Modal>
 
-      {/* Provider Statistics Modal */}
+      {/* Provider Trends Modal */}
       <Modal
         isOpen={showStatistics}
         onClose={() => setShowStatistics(false)}
-        title="Provider Statistics"
+        title="Trends"
         size="large"
       >
         <ProviderStatistics 

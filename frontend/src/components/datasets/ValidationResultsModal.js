@@ -68,23 +68,30 @@ const styles = {
   qualityScore: {
     display: 'inline-flex',
     alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: '140px',
     padding: '0.5rem 1rem',
     borderRadius: '1rem',
     fontWeight: 500,
     fontSize: '0.875rem',
     whiteSpace: 'nowrap',
+    borderWidth: '1px',
+    borderStyle: 'solid',
   },
   qualityScoreHigh: {
-    backgroundColor: '#dcfce7',
-    color: 'var(--success)',
+    backgroundColor: 'var(--badge-green-bg)',
+    borderColor: 'var(--badge-green-border)',
+    color: 'var(--badge-green-text)',
   },
   qualityScoreMedium: {
-    backgroundColor: '#ffedd5',
-    color: 'var(--warning)',
+    backgroundColor: 'var(--badge-amber-bg)',
+    borderColor: 'var(--badge-amber-border)',
+    color: 'var(--badge-amber-text)',
   },
   qualityScoreLow: {
-    backgroundColor: '#fee2e2',
-    color: 'var(--error)',
+    backgroundColor: 'var(--badge-red-bg)',
+    borderColor: 'var(--badge-red-border)',
+    color: 'var(--badge-red-text)',
   },
   schemaHeader: {
     display: 'flex',
@@ -279,9 +286,10 @@ const ValidationResultsModal = ({ isOpen, onClose, validationResults }) => {
   };
 
   // Get quality class based on score
+  // Thresholds: >=80% green (good), 50-79% amber (warning), <50% red (poor)
   const getQualityClass = (score) => {
-    if (score >= 90) return styles.qualityScoreHigh;
-    if (score >= 70) return styles.qualityScoreMedium;
+    if (score >= 80) return styles.qualityScoreHigh;
+    if (score >= 50) return styles.qualityScoreMedium;
     return styles.qualityScoreLow;
   };
 
@@ -664,9 +672,10 @@ const ValidationResultsModal = ({ isOpen, onClose, validationResults }) => {
 };
 
 // Helper function to determine color based on quality score
+// Thresholds: >=80% green (good), 50-79% amber (warning), <50% red (poor)
 const getQualityColor = (score) => {
-  if (score >= 90) return 'var(--success)';
-  if (score >= 70) return 'var(--warning)';
+  if (score >= 80) return 'var(--success)';
+  if (score >= 50) return 'var(--warning)';
   return 'var(--error)';
 };
 

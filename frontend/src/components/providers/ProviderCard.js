@@ -189,17 +189,17 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
               zIndex: 1
             }}>
               {/* Datasets */}
-              <div style={{ 
-                display: 'flex', 
+              <div style={{
+                display: 'flex',
                 alignItems: 'center'
               }}>
-                <Database 
-                  size={15} 
-                  style={{ 
-                    color: (provider.datasets && provider.datasets.length > 0) ? 'var(--primary)' : 'var(--text-light)', 
-                    marginRight: '0.75rem', 
-                    flexShrink: 0 
-                  }} 
+                <Database
+                  size={15}
+                  style={{
+                    color: 'var(--primary)',
+                    marginRight: '0.75rem',
+                    flexShrink: 0
+                  }}
                 />
                 <span style={{ 
                   fontSize: '0.8125rem', 
@@ -257,58 +257,72 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
             }}>
               {/* Website */}
               {provider.url && (
-                <a 
+                <a
                   href={provider.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ 
+                  style={{
                     display: 'flex',
-                    alignItems: 'center', 
+                    alignItems: 'center',
                     fontSize: '0.8125rem',
-                    color: 'var(--primary)',
+                    color: 'var(--text)',
                     textDecoration: 'none',
                     fontWeight: 500,
                     marginBottom: provider.biocaseUrl ? '0.75rem' : 0
                   }}
-                  onClick={(e) => e.stopPropagation()} // Prevent card click
+                  onClick={(e) => e.stopPropagation()}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = 'var(--primary)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = 'var(--text)';
+                  }}
                 >
-                  <Globe 
-                    size={15} 
-                    style={{ 
-                      marginRight: '0.75rem', 
-                      flexShrink: 0 
-                    }} 
+                  <Globe
+                    size={15}
+                    style={{
+                      marginRight: '0.75rem',
+                      flexShrink: 0,
+                      color: 'var(--primary)'
+                    }}
                   />
                   Website
-                  <ExternalLink size={11} style={{ marginLeft: '0.25rem' }} />
+                  <ExternalLink size={11} style={{ marginLeft: '0.25rem', opacity: 0.5 }} />
                 </a>
               )}
               
               {/* BioCASe URL */}
               {provider.biocaseUrl && (
-                <a 
+                <a
                   href={provider.biocaseUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ 
+                  style={{
                     display: 'flex',
-                    alignItems: 'center', 
+                    alignItems: 'center',
                     fontSize: '0.8125rem',
-                    color: 'var(--primary)',
+                    color: 'var(--text)',
                     textDecoration: 'none',
                     fontWeight: 500,
                   }}
-                  onClick={(e) => e.stopPropagation()} // Prevent card click
+                  onClick={(e) => e.stopPropagation()}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = 'var(--primary)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = 'var(--text)';
+                  }}
                 >
-                  <Server 
-                    size={15} 
-                    style={{ 
-                      marginRight: '0.75rem', 
-                      flexShrink: 0 
-                    }} 
+                  <Server
+                    size={15}
+                    style={{
+                      marginRight: '0.75rem',
+                      flexShrink: 0,
+                      color: 'var(--primary)'
+                    }}
                   />
                   BioCASe
-                  <ExternalLink size={11} style={{ marginLeft: '0.25rem' }} />
+                  <ExternalLink size={11} style={{ marginLeft: '0.25rem', opacity: 0.5 }} />
                 </a>
               )}
               

@@ -23,6 +23,8 @@ function Providers({ currentUser, onViewProviderDetails }) {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [formIsDirty, setFormIsDirty] = useState(false);
+  const [confirmDiscardChanges, setConfirmDiscardChanges] = useState(false);
 
   const fetchProviders = async () => {
     setIsLoading(true);
@@ -127,6 +129,22 @@ function Providers({ currentUser, onViewProviderDetails }) {
   const closeModals = () => {
     setEditingProvider(null);
     setAddingProvider(false);
+    setFormIsDirty(false);
+  };
+
+  // Handle modal close with unsaved changes check
+  const handleModalClose = () => {
+    if (formIsDirty) {
+      setConfirmDiscardChanges(true);
+    } else {
+      closeModals();
+    }
+  };
+
+  // Confirm discard changes
+  const handleConfirmDiscard = () => {
+    setConfirmDiscardChanges(false);
+    closeModals();
   };
 
   const handleProviderUpdate = (updatedProvider) => {
@@ -358,10 +376,22 @@ function Providers({ currentUser, onViewProviderDetails }) {
           onCancel={() => setConfirmDelete(null)}
         />
       )}
-      
+
+      {confirmDiscardChanges && (
+        <ConfirmModal
+          isOpen={true}
+          title="Discard changes?"
+          message="You have unsaved changes. Are you sure you want to close this form?"
+          confirmText="Discard"
+          cancelText="Keep Editing"
+          onConfirm={handleConfirmDiscard}
+          onCancel={() => setConfirmDiscardChanges(false)}
+        />
+      )}
+
       <Modal
         isOpen={addingProvider}
-        onClose={closeModals}
+        onClose={handleModalClose}
         title={editingProvider ? `Edit Provider: ${editingProvider.name}` : 'Add Provider'}
       >
         <ProviderForm
@@ -369,6 +399,7 @@ function Providers({ currentUser, onViewProviderDetails }) {
           onClose={handleProviderUpdate}
           onTokenExpired={handleTokenExpiration}
           currentUser={currentUser}
+          onDirtyChange={setFormIsDirty}
         />
       </Modal>
     </div>

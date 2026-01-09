@@ -5,13 +5,15 @@ import validationRules from '../../utils/validationRules';
 import FormField from '../ui/FormField';
 import Button from '../ui/Button';
 import Alert from '../ui/Alert';
+import ConfirmModal from '../ui/ConfirmModal';
 import { showToast } from '../ui/Toast';
 
 // Simplified ProviderForm component focused only on core provider information
-function ProviderForm({ provider, onClose, onTokenExpired, currentUser }) {
+function ProviderForm({ provider, onClose, onTokenExpired, currentUser, onDirtyChange }) {
   const isEditing = provider != null;
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState('');
+  const [confirmDiscardChanges, setConfirmDiscardChanges] = React.useState(false);
 
   // Define validation schema
   const validationSchema = {
@@ -122,6 +124,13 @@ function ProviderForm({ provider, onClose, onTokenExpired, currentUser }) {
     handleFormSubmit
   );
 
+  // Notify parent of dirty state changes
+  React.useEffect(() => {
+    if (onDirtyChange) {
+      onDirtyChange(form.isDirty);
+    }
+  }, [form.isDirty, onDirtyChange]);
+
   return (
     <div>
       {error && <Alert type="error">{error}</Alert>}
@@ -208,15 +217,21 @@ function ProviderForm({ provider, onClose, onTokenExpired, currentUser }) {
           />
         )}
         
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'flex-end', 
+        <div style={{
+          display: 'flex',
+          justifyContent: 'flex-end',
           gap: '0.75rem',
-          marginTop: '1.5rem', 
+          marginTop: '1.5rem',
         }}>
           <Button
             variant="secondary"
-            onClick={() => onClose(null)}
+            onClick={() => {
+              if (form.isDirty) {
+                setConfirmDiscardChanges(true);
+              } else {
+                onClose(null);
+              }
+            }}
             type="button"
           >
             Cancel
@@ -230,6 +245,21 @@ function ProviderForm({ provider, onClose, onTokenExpired, currentUser }) {
           </Button>
         </div>
       </form>
+
+      {confirmDiscardChanges && (
+        <ConfirmModal
+          isOpen={true}
+          title="Discard changes?"
+          message="You have unsaved changes. Are you sure you want to close this form?"
+          confirmText="Discard"
+          cancelText="Keep Editing"
+          onConfirm={() => {
+            setConfirmDiscardChanges(false);
+            onClose(null);
+          }}
+          onCancel={() => setConfirmDiscardChanges(false)}
+        />
+      )}
     </div>
   );
 }

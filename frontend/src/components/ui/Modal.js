@@ -1,7 +1,7 @@
 import React from 'react';
 
 // Enhanced Modal component with proper scrollbar styling
-function Modal({ isOpen, onClose, title, children, footer }) {
+function Modal({ isOpen, onClose, title, children, footer, zIndex = 1000 }) {
   React.useEffect(() => {
     if (isOpen) {
       // Save the current body overflow style
@@ -31,8 +31,8 @@ function Modal({ isOpen, onClose, title, children, footer }) {
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        zIndex: 1000,
-      }} 
+        zIndex: zIndex,
+      }}
       onClick={onClose}
     >
       <div 

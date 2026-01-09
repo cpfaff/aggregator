@@ -10,11 +10,12 @@ import Button from '../ui/Button';
 import ConfirmModal from '../ui/ConfirmModal';
 import { showToast } from '../ui/Toast';
 
-function DatasetForm({ providerId, dataset, onClose, onTokenExpired }) {
+function DatasetForm({ providerId, dataset, onClose, onTokenExpired, onDirtyChange }) {
   const isEditing = dataset != null;
   const [confirmAction, setConfirmAction] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [confirmDiscardChanges, setConfirmDiscardChanges] = useState(false);
 
   // Create validation schema that handles both static and dynamic fields
   const createValidationSchema = (xmlArchives, usefulLinks) => {
@@ -172,6 +173,13 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired }) {
     createValidationSchema(initialValues.xmlArchives, initialValues.usefulLinks),
     handleFormSubmit
   );
+
+  // Notify parent of dirty state changes
+  useEffect(() => {
+    if (onDirtyChange) {
+      onDirtyChange(form.isDirty);
+    }
+  }, [form.isDirty, onDirtyChange]);
 
   // XML Archive operations
   const addXmlArchive = () => {
@@ -656,15 +664,21 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired }) {
           )}
         </div>
         
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'flex-end', 
+        <div style={{
+          display: 'flex',
+          justifyContent: 'flex-end',
           gap: '0.75rem',
-          marginTop: '1.5rem', 
+          marginTop: '1.5rem',
         }}>
           <Button
             variant="secondary"
-            onClick={() => onClose(null)}
+            onClick={() => {
+              if (form.isDirty) {
+                setConfirmDiscardChanges(true);
+              } else {
+                onClose(null);
+              }
+            }}
             type="button"
           >
             Cancel
@@ -678,8 +692,8 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired }) {
           </Button>
         </div>
       </form>
-      
-      {/* The confirmation modal */}
+
+      {/* The confirmation modal for item removal */}
       {confirmAction && (
         <ConfirmModal
           isOpen={true}
@@ -690,6 +704,22 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired }) {
           confirmVariant="danger"
           onConfirm={confirmAction.onConfirm}
           onCancel={confirmAction.onCancel}
+        />
+      )}
+
+      {/* Discard changes confirmation modal */}
+      {confirmDiscardChanges && (
+        <ConfirmModal
+          isOpen={true}
+          title="Discard changes?"
+          message="You have unsaved changes. Are you sure you want to close this form?"
+          confirmText="Discard"
+          cancelText="Keep Editing"
+          onConfirm={() => {
+            setConfirmDiscardChanges(false);
+            onClose(null);
+          }}
+          onCancel={() => setConfirmDiscardChanges(false)}
         />
       )}
     </div>

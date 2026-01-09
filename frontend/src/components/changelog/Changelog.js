@@ -30,6 +30,17 @@ import Breadcrumbs from '../ui/Breadcrumbs';
 const Changelog = () => {
   const changelogEntries = [
     {
+      version: '2.0.2',
+      date: 'January 9, 2026',
+      changes: [
+        'Added unsaved changes confirmation when closing forms',
+        'Redesigned validation statistics with new Trends modal',
+        'Improved visual consistency across page headers',
+        'Enhanced login error display with clearer messages',
+        'Various bug fixes and stability improvements'
+      ]
+    },
+    {
       version: '2.0.1',
       date: 'January 7, 2026',
       changes: [

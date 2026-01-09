@@ -200,7 +200,7 @@ export const ToastContainer = () => {
           />
         </div>
       ))}
-      <style jsx>{`
+      <style>{`
         @keyframes slideIn {
           from {
             transform: translateX(100%);
@@ -211,7 +211,7 @@ export const ToastContainer = () => {
             opacity: 1;
           }
         }
-        
+
         @keyframes slideOut {
           from {
             transform: translateX(0);
