@@ -229,17 +229,15 @@ function App() {
           
           <Route path="/admin/statistics" element={
             <ProtectedRoute>
-              <AdminRoute>
-                <div style={{
-                  width: '100%',
-                  maxWidth: '1200px',
-                  flex: 1,
-                  display: 'flex',
-                  flexDirection: 'column',
-                }}>
-                  <AdminDashboard />
-                </div>
-              </AdminRoute>
+              <div style={{
+                width: '100%',
+                maxWidth: '1200px',
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+              }}>
+                <AdminDashboard />
+              </div>
             </ProtectedRoute>
           } />
           
