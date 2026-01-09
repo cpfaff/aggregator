@@ -300,226 +300,251 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
           gap: '1.25rem',
         }}>
           {/* Stats section with flatter design */}
-          <div style={{ position: 'relative' }}>
-            {/* Vertical border for the section */}
-            <div style={{
-              position: 'absolute',
-              top: 0,
-              bottom: 0,
-              left: '0.25rem',
-              width: '1.5px',
-              backgroundColor: 'var(--text-light)',
-              opacity: 0.4,
-              zIndex: 0
-            }}></div>
-            
-            <div style={{ 
-              fontSize: '0.8125rem', 
-              textTransform: 'uppercase', 
-              fontWeight: 600, 
-              color: 'var(--text-light)',
-              marginBottom: '0.75rem',
-              letterSpacing: '0.025em',
-              display: 'flex',
-              alignItems: 'center',
-              paddingLeft: '0.75rem',
-              position: 'relative',
-              zIndex: 1
-            }}>
-              Stats
-            </div>
-            
-            <div style={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
-              gap: '0.75rem',
-              paddingLeft: '1.5rem',
-              position: 'relative',
-              zIndex: 1
-            }}>
-              {/* Archives */}
-              <div style={{ 
-                display: 'flex', 
+          <div>
+            {/* Stats content with accent bar */}
+            <div style={{ position: 'relative' }}>
+              {/* Vertical border for the section */}
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                bottom: 0,
+                left: '0.25rem',
+                width: '1.5px',
+                backgroundColor: 'var(--text-light)',
+                opacity: 0.4,
+                zIndex: 0
+              }}></div>
+
+              <div style={{
+                fontSize: '0.8125rem',
+                textTransform: 'uppercase',
+                fontWeight: 600,
+                color: 'var(--text-light)',
+                marginBottom: '0.75rem',
+                letterSpacing: '0.025em',
+                display: 'flex',
                 alignItems: 'center',
+                paddingLeft: '0.75rem',
+                position: 'relative',
+                zIndex: 1
               }}>
-                <FileText 
-                  size={15} 
-                  style={{ 
-                    color: (Array.isArray(dataset.xmlArchives) && dataset.xmlArchives.length > 0) ? 'var(--primary)' : 'var(--text-light)', 
-                    marginRight: '0.75rem', 
-                    flexShrink: 0 
-                  }} 
-                />
-                <span style={{ 
-                  fontSize: '0.8125rem', 
-                  color: 'var(--text)',
+                Stats
+              </div>
+
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.75rem',
+                paddingLeft: '1.5rem',
+                position: 'relative',
+                zIndex: 1
+              }}>
+                {/* Archives */}
+                <div style={{
                   display: 'flex',
                   alignItems: 'center',
                 }}>
-                  <span style={{ 
-                    fontWeight: 600, 
-                    color: (Array.isArray(dataset.xmlArchives) && dataset.xmlArchives.length > 0) ? 'var(--text)' : 'var(--text-light)',
-                    marginRight: '0.375rem'
-                  }}>
-                    {Array.isArray(dataset.xmlArchives) ? dataset.xmlArchives.length : 0}
-                  </span> 
-                  {(Array.isArray(dataset.xmlArchives) && dataset.xmlArchives.length === 1) ? 'archive' : 'archives'}
-                </span>
-              </div>
-              
-              {/* Useful Links */}
-              <div style={{ 
-                display: 'flex', 
-                alignItems: 'center',
-              }}>
-                <Globe 
-                  size={15} 
-                  style={{ 
-                    color: (Array.isArray(dataset.usefulLinks) && dataset.usefulLinks.length > 0) ? 'var(--primary)' : 'var(--text-light)', 
-                    marginRight: '0.75rem', 
-                    flexShrink: 0 
-                  }} 
-                />
-                <span style={{ 
-                  fontSize: '0.8125rem', 
-                  color: 'var(--text)',
-                  display: 'flex',
-                  alignItems: 'center',
-                }}>
-                  <span style={{ 
-                    fontWeight: 600, 
-                    color: (Array.isArray(dataset.usefulLinks) && dataset.usefulLinks.length > 0) ? 'var(--text)' : 'var(--text-light)',
-                    marginRight: '0.375rem'
-                  }}>
-                    {Array.isArray(dataset.usefulLinks) ? dataset.usefulLinks.length : 0}
-                  </span> 
-                  {(Array.isArray(dataset.usefulLinks) && dataset.usefulLinks.length === 1) ? 'link' : 'links'}
-                </span>
-              </div>
-              
-              {/* Sample count (if exists in the data) */}
-              {dataset.sampleCount !== undefined && (
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center',
-                }}>
-                  <Database 
-                    size={15} 
-                    style={{ 
-                      color: dataset.sampleCount > 0 ? 'var(--primary)' : 'var(--text-light)', 
-                      marginRight: '0.75rem', 
-                      flexShrink: 0 
-                    }} 
+                  <FileText
+                    size={15}
+                    style={{
+                      color: 'var(--primary)',
+                      marginRight: '0.75rem',
+                      flexShrink: 0
+                    }}
                   />
-                  <span style={{ 
-                    fontSize: '0.8125rem', 
+                  <span style={{
+                    fontSize: '0.8125rem',
                     color: 'var(--text)',
                     display: 'flex',
                     alignItems: 'center',
                   }}>
-                    <span style={{ 
-                      fontWeight: 600, 
-                      color: dataset.sampleCount > 0 ? 'var(--text)' : 'var(--text-light)',
+                    <span style={{
+                      fontWeight: 600,
+                      color: (Array.isArray(dataset.xmlArchives) && dataset.xmlArchives.length > 0) ? 'var(--text)' : 'var(--text-light)',
                       marginRight: '0.375rem'
                     }}>
-                      {dataset.sampleCount?.toLocaleString() || 0}
-                    </span> 
-                    samples
+                      {Array.isArray(dataset.xmlArchives) ? dataset.xmlArchives.length : 0}
+                    </span>
+                    {(Array.isArray(dataset.xmlArchives) && dataset.xmlArchives.length === 1) ? 'archive' : 'archives'}
                   </span>
                 </div>
-              )}
-              
-              {/* Validation Status (New) */}
-              {validationStatus && validationStatus.has_latest_archive && (
-                <div style={{ 
-                  display: 'flex', 
+
+                {/* Useful Links */}
+                <div style={{
+                  display: 'flex',
                   alignItems: 'center',
                 }}>
-                  {validationStatus.validation_status === 'completed' ? (
-                    validationStatus.is_valid ? (
-                      <CheckCircle 
-                        size={15} 
-                        style={{ 
-                          color: 'var(--success)', 
-                          marginRight: '0.75rem', 
-                          flexShrink: 0 
-                        }} 
-                      />
-                    ) : (
-                      <XCircle 
-                        size={15} 
-                        style={{ 
-                          color: 'var(--error)', 
-                          marginRight: '0.75rem', 
-                          flexShrink: 0 
-                        }} 
-                      />
-                    )
-                  ) : validationStatus.validation_status === 'pending' || validationStatus.validation_status === 'running' ? (
-                    <RefreshCw 
-                      size={15} 
-                      style={{ 
-                        color: 'var(--primary)', 
-                        marginRight: '0.75rem', 
-                        flexShrink: 0,
-                        animation: 'spin 2s linear infinite'
-                      }} 
-                    />
-                  ) : (
-                    <AlertCircle 
-                      size={15} 
-                      style={{ 
-                        color: 'var(--text-light)', 
-                        marginRight: '0.75rem', 
-                        flexShrink: 0 
-                      }} 
-                    />
-                  )}
-                  <span style={{ 
-                    fontSize: '0.8125rem', 
+                  <Globe
+                    size={15}
+                    style={{
+                      color: 'var(--primary)',
+                      marginRight: '0.75rem',
+                      flexShrink: 0
+                    }}
+                  />
+                  <span style={{
+                    fontSize: '0.8125rem',
                     color: 'var(--text)',
                     display: 'flex',
                     alignItems: 'center',
                   }}>
-                    <span style={{ 
-                      fontWeight: 600, 
-                      marginRight: '0.375rem',
-                      color: validationStatus.validation_status === 'completed' 
-                        ? (validationStatus.is_valid ? 'var(--success)' : 'var(--error)') 
-                        : validationStatus.validation_status === 'pending' || validationStatus.validation_status === 'running'
-                          ? 'var(--primary)' 
-                          : 'var(--text-light)',
+                    <span style={{
+                      fontWeight: 600,
+                      color: (Array.isArray(dataset.usefulLinks) && dataset.usefulLinks.length > 0) ? 'var(--text)' : 'var(--text-light)',
+                      marginRight: '0.375rem'
                     }}>
-                      {validationStatus.validation_status === 'completed' 
-                        ? (validationStatus.is_valid 
-                          ? `Valid (${validationStatus.quality_score?.toFixed(1)}%)` 
-                          : 'Invalid') 
-                        : validationStatus.validation_status === 'pending' 
-                          ? 'Pending' 
-                          : validationStatus.validation_status === 'running'
-                            ? 'Running'
-                            : 'Not validated'}
+                      {Array.isArray(dataset.usefulLinks) ? dataset.usefulLinks.length : 0}
                     </span>
-                    {validationStatus.validation_status === 'completed' && (
-                      <button
-                        onClick={openValidationModal}
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          color: 'var(--primary)',
-                          cursor: 'pointer',
-                          padding: '0 0 0 0.5rem',
-                          fontSize: '0.75rem',
-                          textDecoration: 'underline'
-                        }}
-                      >
-                        Details
-                      </button>
-                    )}
+                    {(Array.isArray(dataset.usefulLinks) && dataset.usefulLinks.length === 1) ? 'link' : 'links'}
                   </span>
                 </div>
-              )}
+
+                {/* Sample count (if exists in the data) */}
+                {dataset.sampleCount !== undefined && (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}>
+                    <Database
+                      size={15}
+                      style={{
+                        color: 'var(--primary)',
+                        marginRight: '0.75rem',
+                        flexShrink: 0
+                      }}
+                    />
+                    <span style={{
+                      fontSize: '0.8125rem',
+                      color: 'var(--text)',
+                      display: 'flex',
+                      alignItems: 'center',
+                    }}>
+                      <span style={{
+                        fontWeight: 600,
+                        color: dataset.sampleCount > 0 ? 'var(--text)' : 'var(--text-light)',
+                        marginRight: '0.375rem'
+                      }}>
+                        {dataset.sampleCount?.toLocaleString() || 0}
+                      </span>
+                      samples
+                    </span>
+                  </div>
+                )}
+
+                {/* Validation Status */}
+                {validationStatus && validationStatus.has_latest_archive && (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}>
+                    {validationStatus.validation_status === 'completed' ? (
+                      validationStatus.is_valid ? (
+                        <CheckCircle
+                          size={15}
+                          style={{
+                            color: 'var(--success)',
+                            marginRight: '0.75rem',
+                            flexShrink: 0
+                          }}
+                        />
+                      ) : (
+                        <XCircle
+                          size={15}
+                          style={{
+                            color: 'var(--error)',
+                            marginRight: '0.75rem',
+                            flexShrink: 0
+                          }}
+                        />
+                      )
+                    ) : validationStatus.validation_status === 'pending' || validationStatus.validation_status === 'running' ? (
+                      <RefreshCw
+                        size={15}
+                        style={{
+                          color: 'var(--primary)',
+                          marginRight: '0.75rem',
+                          flexShrink: 0,
+                          animation: 'spin 2s linear infinite'
+                        }}
+                      />
+                    ) : (
+                      <AlertCircle
+                        size={15}
+                        style={{
+                          color: 'var(--text-light)',
+                          marginRight: '0.75rem',
+                          flexShrink: 0
+                        }}
+                      />
+                    )}
+                    <span style={{
+                      fontSize: '0.8125rem',
+                      color: 'var(--text)',
+                      display: 'flex',
+                      alignItems: 'center',
+                    }}>
+                      <span style={{
+                        fontWeight: 600,
+                        color: validationStatus.validation_status === 'completed'
+                          ? (validationStatus.is_valid ? 'var(--success)' : 'var(--error)')
+                          : validationStatus.validation_status === 'pending' || validationStatus.validation_status === 'running'
+                            ? 'var(--primary)'
+                            : 'var(--text-light)',
+                      }}>
+                        {validationStatus.validation_status === 'completed'
+                          ? (validationStatus.is_valid
+                            ? `Valid (${validationStatus.quality_score?.toFixed(1)}%)`
+                            : 'Invalid')
+                          : validationStatus.validation_status === 'pending'
+                            ? 'Pending'
+                            : validationStatus.validation_status === 'running'
+                              ? 'Running'
+                              : 'Not validated'}
+                      </span>
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
+
+            {/* Action button outside accent bar */}
+            {validationStatus && validationStatus.has_latest_archive && validationStatus.validation_status === 'completed' && (
+              <div style={{
+                marginTop: '1rem',
+                paddingLeft: '0.5rem',
+              }}>
+                <button
+                  onClick={openValidationModal}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.375rem',
+                    padding: '0.375rem 0.75rem',
+                    border: '1px solid var(--ghost-btn-border)',
+                    borderRadius: '0.375rem',
+                    background: 'transparent',
+                    fontSize: '0.8125rem',
+                    fontWeight: 500,
+                    color: 'var(--ghost-btn-text)',
+                    cursor: 'pointer',
+                    transition: 'all 150ms ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = 'var(--ghost-btn-hover-text)';
+                    e.currentTarget.style.borderColor = 'var(--ghost-btn-hover-border)';
+                    e.currentTarget.style.backgroundColor = 'var(--ghost-btn-hover-bg)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = 'var(--ghost-btn-text)';
+                    e.currentTarget.style.borderColor = 'var(--ghost-btn-border)';
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  <FileText size={14} />
+                  View Validation Details
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Links section with flatter design */}
@@ -559,29 +584,36 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
             }}>
               {/* Landing Page */}
               {dataset.landingPageUrl ? (
-                <a 
+                <a
                   href={dataset.landingPageUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ 
+                  style={{
                     display: 'flex',
-                    alignItems: 'center', 
+                    alignItems: 'center',
                     fontSize: '0.8125rem',
-                    color: 'var(--primary)',
+                    color: 'var(--text)',
                     textDecoration: 'none',
                     fontWeight: 500,
                   }}
-                  onClick={(e) => e.stopPropagation()} // Prevent card click
+                  onClick={(e) => e.stopPropagation()}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = 'var(--primary)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = 'var(--text)';
+                  }}
                 >
-                  <Globe 
-                    size={15} 
-                    style={{ 
-                      marginRight: '0.75rem', 
-                      flexShrink: 0 
-                    }} 
+                  <Globe
+                    size={15}
+                    style={{
+                      marginRight: '0.75rem',
+                      flexShrink: 0,
+                      color: 'var(--primary)'
+                    }}
                   />
                   Landing page
-                  <ExternalLink size={11} style={{ marginLeft: '0.25rem' }} />
+                  <ExternalLink size={11} style={{ marginLeft: '0.25rem', opacity: 0.5 }} />
                 </a>
               ) : (
                 <div style={{ 

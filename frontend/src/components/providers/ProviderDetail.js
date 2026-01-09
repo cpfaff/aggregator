@@ -401,108 +401,115 @@ const ProviderDetail = ({ currentUser }) => {
         </div>
 
         {/* Stats section */}
-        <div style={{ 
-          position: 'relative',
+        <div style={{
           marginTop: '1.5rem',
           marginBottom: '1.5rem',
           paddingLeft: '0.25rem'
         }}>
-          {/* Vertical border */}
-          <div style={{
-            position: 'absolute',
-            top: 0,
-            bottom: 0,
-            left: '0.25rem',
-            width: '1.5px',
-            backgroundColor: 'var(--text-light)',
-            opacity: 0.4,
-            zIndex: 0
-          }}></div>
-          
-          <div style={{ 
-            fontSize: '0.8125rem', 
-            textTransform: 'uppercase', 
-            fontWeight: 600, 
-            color: 'var(--text-light)',
-            marginBottom: '0.75rem',
-            letterSpacing: '0.025em',
-            display: 'flex',
-            alignItems: 'center',
-            paddingLeft: '0.75rem',
-            position: 'relative',
-            zIndex: 1
-          }}>
-            Stats
-          </div>
-          
-          <div style={{ 
-            paddingLeft: '1.5rem',
-            position: 'relative',
-            zIndex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '0.5rem'
-          }}>
-            {/* Datasets count */}
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center'
+          {/* Stats content with accent bar */}
+          <div style={{ position: 'relative' }}>
+            {/* Vertical border */}
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              bottom: 0,
+              left: '0.25rem',
+              width: '1.5px',
+              backgroundColor: 'var(--text-light)',
+              opacity: 0.4,
+              zIndex: 0
+            }}></div>
+
+            <div style={{
+              fontSize: '0.8125rem',
+              textTransform: 'uppercase',
+              fontWeight: 600,
+              color: 'var(--text-light)',
+              marginBottom: '0.75rem',
+              letterSpacing: '0.025em',
+              display: 'flex',
+              alignItems: 'center',
+              paddingLeft: '0.75rem',
+              position: 'relative',
+              zIndex: 1
             }}>
-              <Database 
-                size={15} 
-                style={{ 
-                  color: datasets.length > 0 ? 'var(--primary)' : 'var(--text-light)', 
-                  marginRight: '0.75rem', 
-                  flexShrink: 0 
-                }} 
-              />
-              <span style={{ 
-                fontSize: '0.8125rem', 
-                color: 'var(--text)',
-                display: 'flex',
-                alignItems: 'center',
-              }}>
-                <span style={{ 
-                  fontWeight: 600, 
-                  color: datasets.length > 0 ? 'var(--text)' : 'var(--text-light)',
-                  marginRight: '0.375rem'
-                }}>
-                  {datasets.length}
-                </span> 
-                {datasets.length === 1 ? 'dataset' : 'datasets'}
-              </span>
+              Stats
             </div>
 
-            {/* Statistics link */}
+            <div style={{
+              paddingLeft: '1.5rem',
+              position: 'relative',
+              zIndex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.5rem'
+            }}>
+              {/* Datasets count */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center'
+              }}>
+                <Database
+                  size={15}
+                  style={{
+                    color: 'var(--primary)',
+                    marginRight: '0.75rem',
+                    flexShrink: 0
+                  }}
+                />
+                <span style={{
+                  fontSize: '0.8125rem',
+                  color: 'var(--text)',
+                  display: 'flex',
+                  alignItems: 'center',
+                }}>
+                  <span style={{
+                    fontWeight: 600,
+                    color: datasets.length > 0 ? 'var(--text)' : 'var(--text-light)',
+                    marginRight: '0.375rem'
+                  }}>
+                    {datasets.length}
+                  </span>
+                  {datasets.length === 1 ? 'dataset' : 'datasets'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Action button outside accent bar */}
+          <div style={{
+            marginTop: '1rem',
+            paddingLeft: '0.5rem',
+          }}>
             <button
               onClick={() => setShowStatistics(true)}
               style={{
-                display: 'flex',
+                display: 'inline-flex',
                 alignItems: 'center',
-                background: 'none',
-                border: 'none',
-                padding: 0,
+                gap: '0.375rem',
+                padding: '0.375rem 0.75rem',
+                border: '1px solid var(--ghost-btn-border)',
+                borderRadius: '0.375rem',
+                background: 'transparent',
                 fontSize: '0.8125rem',
-                color: 'var(--primary)',
+                fontWeight: 500,
+                color: 'var(--ghost-btn-text)',
                 cursor: 'pointer',
-                textDecoration: 'none',
-                transition: 'opacity 0.2s',
+                transition: 'all 150ms ease',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.opacity = '0.8';
+                e.currentTarget.style.color = 'var(--ghost-btn-hover-text)';
+                e.currentTarget.style.borderColor = 'var(--ghost-btn-hover-border)';
+                e.currentTarget.style.backgroundColor = 'var(--ghost-btn-hover-bg)';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.opacity = '1';
+                e.currentTarget.style.color = 'var(--ghost-btn-text)';
+                e.currentTarget.style.borderColor = 'var(--ghost-btn-border)';
+                e.currentTarget.style.backgroundColor = 'transparent';
               }}
             >
-              <BarChart3 
-                size={15} 
-                style={{ 
-                  marginRight: '0.75rem', 
-                  flexShrink: 0 
-                }} 
-              />
-              View detailed statistics
+              <BarChart3 size={14} />
+              View Statistics
             </button>
           </div>
         </div>
