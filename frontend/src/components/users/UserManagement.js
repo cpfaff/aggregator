@@ -29,6 +29,7 @@ function UserManagement() {
   const [isFormLoading, setIsFormLoading] = useState(false);
   const [formError, setFormError] = useState('');
   const [confirmDeleteUser, setConfirmDeleteUser] = useState(null);
+  const [confirmDiscardChanges, setConfirmDiscardChanges] = useState(false);
 
   // Breadcrumb items for User Management
   const breadcrumbItems = [
@@ -321,6 +322,25 @@ function UserManagement() {
 
   const handleDelete = (username) => {
     setConfirmDeleteUser({ username });
+  };
+
+  // Handle modal close with unsaved changes check
+  const handleModalClose = () => {
+    if (form.isDirty) {
+      setConfirmDiscardChanges(true);
+    } else {
+      setAddingUser(false);
+      setEditingUser(null);
+      form.resetForm();
+    }
+  };
+
+  // Confirm discard changes
+  const handleConfirmDiscard = () => {
+    setConfirmDiscardChanges(false);
+    setAddingUser(false);
+    setEditingUser(null);
+    form.resetForm();
   };
 
   return (
@@ -696,14 +716,27 @@ function UserManagement() {
           isOpen={true}
           title="Delete User"
           message={`Are you sure you want to delete "${confirmDeleteUser.username}"? This action cannot be undone.`}
+          confirmText="Delete"
           onConfirm={() => { handleDeleteUser(confirmDeleteUser.username); setConfirmDeleteUser(null); }}
           onCancel={() => setConfirmDeleteUser(null)}
+        />
+      )}
+
+      {confirmDiscardChanges && (
+        <ConfirmModal
+          isOpen={true}
+          title="Discard changes?"
+          message="You have unsaved changes. Are you sure you want to close this form?"
+          confirmText="Discard"
+          cancelText="Keep Editing"
+          onConfirm={handleConfirmDiscard}
+          onCancel={() => setConfirmDiscardChanges(false)}
         />
       )}
       
       <Modal
         isOpen={addingUser}
-        onClose={() => { setAddingUser(false); setEditingUser(null); form.resetForm(); }}
+        onClose={handleModalClose}
         title={editingUser ? `Edit User: ${editingUser.username}` : 'Add User'}
       >
         <div>
@@ -894,7 +927,7 @@ function UserManagement() {
               <Button
                 variant="secondary"
                 type="button"
-                onClick={() => { setEditingUser(null); setAddingUser(false); form.resetForm(); }}
+                onClick={handleModalClose}
               >
                 Cancel
               </Button>

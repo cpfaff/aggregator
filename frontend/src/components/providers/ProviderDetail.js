@@ -33,6 +33,9 @@ const ProviderDetail = ({ currentUser }) => {
   const [addingProvider, setAddingProvider] = useState(false);
   const [showStatistics, setShowStatistics] = useState(false);
   const [providerStats, setProviderStats] = useState(null);
+  const [datasetFormIsDirty, setDatasetFormIsDirty] = useState(false);
+  const [providerFormIsDirty, setProviderFormIsDirty] = useState(false);
+  const [confirmDiscardChanges, setConfirmDiscardChanges] = useState(null);
 
   // Fetch provider stats
   const fetchProviderStats = async () => {
@@ -299,6 +302,42 @@ const ProviderDetail = ({ currentUser }) => {
     { label: 'Providers', onClick: () => navigate('/providers') },
     { label: provider?.name || 'Provider Detail', onClick: null }
   ];
+
+  // Handle dataset modal close with unsaved changes check
+  const handleDatasetModalClose = () => {
+    if (datasetFormIsDirty) {
+      setConfirmDiscardChanges({ type: 'dataset' });
+    } else {
+      setAddingDataset(false);
+      setEditingDataset(null);
+      setDatasetFormIsDirty(false);
+    }
+  };
+
+  // Handle provider modal close with unsaved changes check
+  const handleProviderModalClose = () => {
+    if (providerFormIsDirty) {
+      setConfirmDiscardChanges({ type: 'provider' });
+    } else {
+      setAddingProvider(false);
+      setEditingProvider(null);
+      setProviderFormIsDirty(false);
+    }
+  };
+
+  // Confirm discard changes
+  const handleConfirmDiscard = () => {
+    if (confirmDiscardChanges?.type === 'dataset') {
+      setAddingDataset(false);
+      setEditingDataset(null);
+      setDatasetFormIsDirty(false);
+    } else if (confirmDiscardChanges?.type === 'provider') {
+      setAddingProvider(false);
+      setEditingProvider(null);
+      setProviderFormIsDirty(false);
+    }
+    setConfirmDiscardChanges(null);
+  };
 
   // Show loading state while fetching provider
   if (isLoadingProvider) {
@@ -858,10 +897,23 @@ const ProviderDetail = ({ currentUser }) => {
         />
       )}
       
+      {/* Unsaved changes confirmation modal */}
+      {confirmDiscardChanges && (
+        <ConfirmModal
+          isOpen={true}
+          title="Discard changes?"
+          message="You have unsaved changes. Are you sure you want to close this form?"
+          confirmText="Discard"
+          cancelText="Keep Editing"
+          onConfirm={handleConfirmDiscard}
+          onCancel={() => setConfirmDiscardChanges(null)}
+        />
+      )}
+
       {/* Dataset form modal */}
       <Modal
         isOpen={addingDataset}
-        onClose={() => { setAddingDataset(false); setEditingDataset(null); }}
+        onClose={handleDatasetModalClose}
         title={editingDataset ? `Edit Dataset: ${editingDataset.title}` : 'Add Dataset'}
       >
         <DatasetForm
@@ -869,13 +921,14 @@ const ProviderDetail = ({ currentUser }) => {
           dataset={editingDataset}
           onClose={handleDatasetUpdate}
           onTokenExpired={handleTokenExpiration}
+          onDirtyChange={setDatasetFormIsDirty}
         />
       </Modal>
       
       {/* Modal for editing provider */}
       <Modal
         isOpen={addingProvider}
-        onClose={() => { setAddingProvider(false); setEditingProvider(null); }}
+        onClose={handleProviderModalClose}
         title={`Edit Provider: ${editingProvider?.name || ""}`}
       >
         <ProviderForm
@@ -888,15 +941,17 @@ const ProviderDetail = ({ currentUser }) => {
                 ...provider,
                 ...updatedProvider
               };
-              
+
               // Update the local provider state with new data
               setProvider(updatedProviderData);
             }
             setAddingProvider(false);
             setEditingProvider(null);
+            setProviderFormIsDirty(false);
           }}
           onTokenExpired={handleTokenExpiration}
           currentUser={currentUser}
+          onDirtyChange={setProviderFormIsDirty}
         />
       </Modal>
 

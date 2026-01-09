@@ -15,10 +15,20 @@ const useFormValidation = (initialValues = {}, validationSchema = {}, onSubmit) 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
 
-  // Track if form has been modified
+  // Deep comparison helper for objects
+  const isEqual = (a, b) => {
+    if (a === b) return true;
+    if (typeof a !== typeof b) return false;
+    if (typeof a === 'object' && a !== null && b !== null) {
+      return JSON.stringify(a) === JSON.stringify(b);
+    }
+    return false;
+  };
+
+  // Track if form has been modified (with deep comparison for objects)
   useEffect(() => {
     const hasChanges = Object.keys(values).some(
-      key => values[key] !== initialValues[key]
+      key => !isEqual(values[key], initialValues[key])
     );
     setIsDirty(hasChanges);
   }, [values, initialValues]);
@@ -64,23 +74,24 @@ const useFormValidation = (initialValues = {}, validationSchema = {}, onSubmit) 
   }, [validationSchema, values, validateField]);
 
   // Handle field value change
-  const handleChange = useCallback((e) => {
+  const handleChange = useCallback(async (e) => {
     const { name, value, type, checked } = e.target;
     const fieldValue = type === 'checkbox' ? checked : value;
-    
+
     setValues(prev => ({
       ...prev,
       [name]: fieldValue
     }));
 
-    // Clear error when user starts typing
-    if (errors[name]) {
+    // Re-validate on change if field has been touched (for real-time feedback)
+    if (touched[name]) {
+      const error = await validateField(name, fieldValue);
       setErrors(prev => ({
         ...prev,
-        [name]: null
+        [name]: error
       }));
     }
-  }, [errors]);
+  }, [touched, validateField]);
 
   // Handle field blur - validate on blur
   const handleBlur = useCallback(async (e) => {
