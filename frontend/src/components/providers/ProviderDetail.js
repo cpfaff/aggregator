@@ -473,44 +473,37 @@ const ProviderDetail = ({ currentUser }) => {
                   {datasets.length === 1 ? 'dataset' : 'datasets'}
                 </span>
               </div>
-            </div>
-          </div>
 
-          {/* Action button outside accent bar */}
-          <div style={{
-            marginTop: '1rem',
-            paddingLeft: '0.5rem',
-          }}>
-            <button
-              onClick={() => setShowStatistics(true)}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.375rem',
-                padding: '0.375rem 0.75rem',
-                border: '1px solid var(--ghost-btn-border)',
-                borderRadius: '0.375rem',
-                background: 'transparent',
-                fontSize: '0.8125rem',
-                fontWeight: 500,
-                color: 'var(--ghost-btn-text)',
-                cursor: 'pointer',
-                transition: 'all 150ms ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = 'var(--ghost-btn-hover-text)';
-                e.currentTarget.style.borderColor = 'var(--ghost-btn-hover-border)';
-                e.currentTarget.style.backgroundColor = 'var(--ghost-btn-hover-bg)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = 'var(--ghost-btn-text)';
-                e.currentTarget.style.borderColor = 'var(--ghost-btn-border)';
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }}
-            >
-              <BarChart3 size={14} />
-              View Statistics
-            </button>
+              {/* Action button inside accent bar */}
+              <div style={{ marginTop: '0.5rem' }}>
+                <button
+                  onClick={() => setShowStatistics(true)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.375rem',
+                    padding: '0.375rem 0.75rem',
+                    border: '1.5px solid var(--primary)',
+                    borderRadius: '0.5rem',
+                    backgroundColor: 'var(--card-bg)',
+                    fontSize: '0.75rem',
+                    fontWeight: 500,
+                    color: 'var(--primary)',
+                    cursor: 'pointer',
+                    transition: 'all 150ms ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--subtle-bg)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--card-bg)';
+                  }}
+                >
+                  <BarChart3 size={14} />
+                  View Statistics
+                </button>
+              </div>
+            </div>
           </div>
         </div>
         

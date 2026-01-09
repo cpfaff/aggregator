@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Database, ExternalLink, FileText, Globe, Edit, Trash2, Archive, CheckCircle, XCircle, AlertCircle, RefreshCw, ShieldCheck } from 'lucide-react';
+import { Database, ExternalLink, FileText, Globe, Edit, Trash2, Archive, CheckCircle, XCircle, AlertCircle, RefreshCw } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import axios from 'axios';
 import ValidationResultsModal from './ValidationResultsModal';
@@ -430,122 +430,201 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
                     </span>
                   </div>
                 )}
-
-                {/* Validation Status */}
-                {validationStatus && validationStatus.has_latest_archive && (
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                  }}>
-                    {validationStatus.validation_status === 'completed' ? (
-                      validationStatus.is_valid ? (
-                        <CheckCircle
-                          size={15}
-                          style={{
-                            color: 'var(--success)',
-                            marginRight: '0.75rem',
-                            flexShrink: 0
-                          }}
-                        />
-                      ) : (
-                        <XCircle
-                          size={15}
-                          style={{
-                            color: 'var(--error)',
-                            marginRight: '0.75rem',
-                            flexShrink: 0
-                          }}
-                        />
-                      )
-                    ) : validationStatus.validation_status === 'pending' || validationStatus.validation_status === 'running' ? (
-                      <RefreshCw
-                        size={15}
-                        style={{
-                          color: 'var(--primary)',
-                          marginRight: '0.75rem',
-                          flexShrink: 0,
-                          animation: 'spin 2s linear infinite'
-                        }}
-                      />
-                    ) : (
-                      <AlertCircle
-                        size={15}
-                        style={{
-                          color: 'var(--text-light)',
-                          marginRight: '0.75rem',
-                          flexShrink: 0
-                        }}
-                      />
-                    )}
-                    <span style={{
-                      fontSize: '0.8125rem',
-                      color: 'var(--text)',
-                      display: 'flex',
-                      alignItems: 'center',
-                    }}>
-                      <span style={{
-                        fontWeight: 600,
-                        color: validationStatus.validation_status === 'completed'
-                          ? (validationStatus.is_valid ? 'var(--success)' : 'var(--error)')
-                          : validationStatus.validation_status === 'pending' || validationStatus.validation_status === 'running'
-                            ? 'var(--primary)'
-                            : 'var(--text-light)',
-                      }}>
-                        {validationStatus.validation_status === 'completed'
-                          ? (validationStatus.is_valid
-                            ? `Valid (${validationStatus.quality_score?.toFixed(1)}%)`
-                            : 'Invalid')
-                          : validationStatus.validation_status === 'pending'
-                            ? 'Pending'
-                            : validationStatus.validation_status === 'running'
-                              ? 'Running'
-                              : 'Not validated'}
-                      </span>
-                    </span>
-                  </div>
-                )}
               </div>
             </div>
-
-            {/* Action button outside accent bar */}
-            {validationStatus && validationStatus.has_latest_archive && validationStatus.validation_status === 'completed' && (
-              <div style={{
-                marginTop: '1rem',
-                paddingLeft: '0.5rem',
-              }}>
-                <button
-                  onClick={openValidationModal}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.375rem',
-                    padding: '0.375rem 0.75rem',
-                    border: '1px solid var(--ghost-btn-border)',
-                    borderRadius: '0.375rem',
-                    background: 'transparent',
-                    fontSize: '0.8125rem',
-                    fontWeight: 500,
-                    color: 'var(--ghost-btn-text)',
-                    cursor: 'pointer',
-                    transition: 'all 150ms ease',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.color = 'var(--ghost-btn-hover-text)';
-                    e.currentTarget.style.borderColor = 'var(--ghost-btn-hover-border)';
-                    e.currentTarget.style.backgroundColor = 'var(--ghost-btn-hover-bg)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.color = 'var(--ghost-btn-text)';
-                    e.currentTarget.style.borderColor = 'var(--ghost-btn-border)';
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                  }}
-                >
-                  <FileText size={14} />
-                  View Validation Details
-                </button>
-              </div>
-            )}
           </div>
+
+          {/* VALIDATION section - dedicated section for all validation UI */}
+          {validationStatus && validationStatus.has_latest_archive && (
+            <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '1rem', position: 'relative' }}>
+              {/* Vertical border for the section */}
+              <div style={{
+                position: 'absolute',
+                top: '1rem',
+                bottom: 0,
+                left: '0.25rem',
+                width: '1.5px',
+                backgroundColor: 'var(--text-light)',
+                opacity: 0.4,
+                zIndex: 0
+              }}></div>
+
+              <div style={{
+                fontSize: '0.8125rem',
+                textTransform: 'uppercase',
+                fontWeight: 600,
+                color: 'var(--text-light)',
+                marginBottom: '0.75rem',
+                letterSpacing: '0.025em',
+                display: 'flex',
+                alignItems: 'center',
+                paddingLeft: '0.75rem',
+                position: 'relative',
+                zIndex: 1
+              }}>
+                Validation
+              </div>
+
+              <div style={{
+                paddingLeft: '1.5rem',
+                position: 'relative',
+                zIndex: 1
+              }}>
+                {/* Validation Status - shows previous result during re-validation for stability */}
+                {(() => {
+                  const isRunning = isValidating || validationStatus.validation_status === 'pending' || validationStatus.validation_status === 'running';
+                  const hasPreviousResult = validationStatus.is_valid !== undefined && validationStatus.is_valid !== null;
+
+                  // Determine what to display: previous result if available, otherwise current status
+                  const showValid = hasPreviousResult ? validationStatus.is_valid : false;
+                  const showScore = hasPreviousResult && validationStatus.is_valid;
+                  const showNotValidated = !hasPreviousResult && validationStatus.validation_status !== 'completed';
+
+                  return (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      marginBottom: '1rem',
+                    }}>
+                      {hasPreviousResult || validationStatus.validation_status === 'completed' ? (
+                        showValid ? (
+                          <CheckCircle
+                            size={15}
+                            style={{
+                              color: 'var(--success)',
+                              marginRight: '0.75rem',
+                              flexShrink: 0
+                            }}
+                          />
+                        ) : (
+                          <XCircle
+                            size={15}
+                            style={{
+                              color: 'var(--error)',
+                              marginRight: '0.75rem',
+                              flexShrink: 0
+                            }}
+                          />
+                        )
+                      ) : (
+                        <AlertCircle
+                          size={15}
+                          style={{
+                            color: 'var(--text-light)',
+                            marginRight: '0.75rem',
+                            flexShrink: 0
+                          }}
+                        />
+                      )}
+                      <span style={{
+                        fontSize: '0.8125rem',
+                        color: 'var(--text)',
+                        display: 'flex',
+                        alignItems: 'center',
+                      }}>
+                        <span style={{
+                          fontWeight: 600,
+                          color: hasPreviousResult || validationStatus.validation_status === 'completed'
+                            ? (showValid ? 'var(--success)' : 'var(--error)')
+                            : 'var(--text-light)',
+                        }}>
+                          {hasPreviousResult || validationStatus.validation_status === 'completed'
+                            ? (showValid
+                              ? `Valid (${validationStatus.quality_score?.toFixed(1)}%)`
+                              : 'Invalid')
+                            : 'Not validated'}
+                        </span>
+                      </span>
+                    </div>
+                  );
+                })()}
+
+                {/* Action buttons - both always visible, disabled during validation */}
+                {(() => {
+                  const isRunning = isValidating || validationStatus.validation_status === 'pending' || validationStatus.validation_status === 'running';
+                  const hasPreviousResult = validationStatus.is_valid !== undefined && validationStatus.is_valid !== null;
+                  const showViewDetails = hasPreviousResult || validationStatus.validation_status === 'completed';
+
+                  return (
+                    <div style={{
+                      display: 'flex',
+                      gap: '0.5rem',
+                      flexWrap: 'wrap',
+                    }}>
+                      <button
+                        onClick={triggerValidation}
+                        disabled={isRunning}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.375rem',
+                          padding: '0.375rem 0.75rem',
+                          border: '1.5px solid var(--primary)',
+                          borderRadius: '0.5rem',
+                          backgroundColor: 'var(--card-bg)',
+                          fontSize: '0.75rem',
+                          fontWeight: 500,
+                          color: 'var(--primary)',
+                          cursor: isRunning ? 'not-allowed' : 'pointer',
+                          transition: 'all 150ms ease',
+                          opacity: isRunning ? 0.5 : 1,
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!e.currentTarget.disabled) {
+                            e.currentTarget.style.backgroundColor = 'var(--subtle-bg)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'var(--card-bg)';
+                        }}
+                        aria-label={isRunning ? 'Re-validating dataset...' : 'Re-validate dataset'}
+                      >
+                        <RefreshCw
+                          size={14}
+                          style={{
+                            animation: isRunning ? 'spin 2s linear infinite' : 'none'
+                          }}
+                        />
+                        Re-validate
+                      </button>
+                      {showViewDetails && (
+                        <button
+                          onClick={openValidationModal}
+                          disabled={isRunning}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.375rem',
+                            padding: '0.375rem 0.75rem',
+                            border: '1.5px solid var(--primary)',
+                            borderRadius: '0.5rem',
+                            backgroundColor: 'var(--card-bg)',
+                            fontSize: '0.75rem',
+                            fontWeight: 500,
+                            color: 'var(--primary)',
+                            cursor: isRunning ? 'not-allowed' : 'pointer',
+                            transition: 'all 150ms ease',
+                            opacity: isRunning ? 0.5 : 1,
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isRunning) {
+                              e.currentTarget.style.backgroundColor = 'var(--subtle-bg)';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'var(--card-bg)';
+                          }}
+                        >
+                          <FileText size={14} />
+                          View Details
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
 
           {/* Links section with flatter design */}
           <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '1rem', position: 'relative' }}>
@@ -640,7 +719,7 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
       </div>
       
       {/* ACTIONS AREA */}
-      <div style={{ 
+      <div style={{
         display: 'flex',
         padding: '0.75rem 1.25rem',
         gap: '0.625rem',
@@ -650,47 +729,9 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
         boxSizing: 'border-box',
         borderTop: '1px solid var(--border)',
         backgroundColor: 'var(--card-bg)',
-        justifyContent: 'space-between',
+        justifyContent: 'flex-end',
       }}>
-        {/* Secondary actions on the left */}
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          {validationStatus && validationStatus.has_latest_archive && (
-            <button
-              onClick={triggerValidation}
-              disabled={isValidating || validationStatus.validation_status === 'pending' || validationStatus.validation_status === 'running'}
-              style={{
-                width: '36px',
-                height: '36px',
-                backgroundColor: 'var(--subtle-bg)',
-                color: 'var(--primary)',
-                border: 'none',
-                borderRadius: '0.375rem',
-                cursor: (isValidating || validationStatus.validation_status === 'pending' || validationStatus.validation_status === 'running') ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'all 0.2s',
-                padding: 0,
-                opacity: (isValidating || validationStatus.validation_status === 'pending' || validationStatus.validation_status === 'running') ? 0.7 : 1
-              }}
-              aria-label={isValidating ? 'Validating dataset...' : 'Validate dataset'}
-              title={isValidating ? 'Validating dataset...' : 'Validate dataset'}
-            >
-              {(isValidating || validationStatus.validation_status === 'pending' || validationStatus.validation_status === 'running') ? (
-                <RefreshCw 
-                  size={18} 
-                  style={{ 
-                    animation: 'spin 2s linear infinite'
-                  }} 
-                />
-              ) : (
-                <ShieldCheck size={18} />
-              )}
-            </button>
-          )}
-        </div>
-        
-        {/* Secondary actions on the right */}
+        {/* Action buttons on the right */}
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button 
             onClick={handleEditClick}
