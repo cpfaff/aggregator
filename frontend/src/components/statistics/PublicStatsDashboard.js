@@ -4,17 +4,19 @@ import StatCard from '../ui/StatCard';
 import TimeSeriesChart from '../ui/TimeSeriesChart';
 import PieChart from '../ui/PieChart';
 import Alert from '../ui/Alert';
-import { 
-  Database, 
+import {
+  Database,
   Users,
   Server
 } from 'lucide-react';
+import { useResponsiveGrid } from '../../hooks/useMediaQuery';
 
 /**
  * PublicStatsDashboard component for external users to view registry statistics
  * Features real-time auto-refresh every 60 seconds with manual controls
  */
 function PublicStatsDashboard() {
+  const { isMobile, isTablet, getGridColumns } = useResponsiveGrid();
   const [overviewStats, setOverviewStats] = useState(null);
   const [providerStats, setProviderStats] = useState([]);
   const [timelineData, setTimelineData] = useState([]);
@@ -289,7 +291,7 @@ function PublicStatsDashboard() {
       {overviewStats && (
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+          gridTemplateColumns: getGridColumns(300),
           gap: '2rem',
           marginBottom: '4rem'
         }}>
@@ -324,7 +326,7 @@ function PublicStatsDashboard() {
       {/* Charts Section */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)',
+        gridTemplateColumns: isMobile || isTablet ? '1fr' : 'minmax(0, 2fr) minmax(0, 1fr)',
         gap: '2.5rem',
         marginBottom: '4rem'
       }}>

@@ -12,10 +12,12 @@ import ConfirmModal from '../ui/ConfirmModal';
 import Breadcrumbs from '../ui/Breadcrumbs';
 import ActionMenu from '../ui/ActionMenu';
 import { showToast } from '../ui/Toast';
+import { useResponsiveGrid } from '../../hooks/useMediaQuery';
 
 // UserManagement component
 function UserManagement() {
   const { handleTokenExpiration, user: currentUser } = useAuth();
+  const { getGridColumns } = useResponsiveGrid();
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -509,9 +511,9 @@ function UserManagement() {
       ) : (
         <>
           {filteredUsers.length > 0 ? (
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: getGridColumns(300),
               gap: '1.5rem',
               marginBottom: '2rem',
             }}>
@@ -653,11 +655,11 @@ function UserManagement() {
                 flexShrink: 0, // Prevent footer from shrinking
                 boxSizing: 'border-box'
               }}>
-                <button 
+                <button
                   onClick={() => handleEdit(user)}
                   style={{
-                    width: '36px',
-                    height: '36px',
+                    width: '44px',
+                    height: '44px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -669,14 +671,16 @@ function UserManagement() {
                     transition: 'all 0.2s',
                     padding: 0
                   }}
+                  aria-label={`Edit user: ${user.username}`}
+                  title="Edit user"
                 >
-                  <Edit size={16} />
+                  <Edit size={20} />
                 </button>
-                <button 
+                <button
                   onClick={() => handleDelete(user.username)}
                   style={{
-                    width: '36px',
-                    height: '36px',
+                    width: '44px',
+                    height: '44px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -688,8 +692,10 @@ function UserManagement() {
                     transition: 'all 0.2s',
                     padding: 0
                   }}
+                  aria-label={`Delete user: ${user.username}`}
+                  title="Delete user"
                 >
-                  <Trash2 size={16} />
+                  <Trash2 size={20} />
                 </button>
               </div>
             </div>

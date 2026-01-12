@@ -4,8 +4,11 @@ import {
   ExternalLink,
   ChevronRight
 } from 'lucide-react';
+import { useIsMobile, useIsTablet } from '../../hooks/useMediaQuery';
 
 const Footer = () => {
+  const isMobile = useIsMobile();
+  const isTablet = useIsTablet();
   const currentYear = new Date().getFullYear();
 
   const footerMainStyle = {
@@ -47,6 +50,7 @@ const Footer = () => {
     letterSpacing: '0.05em'
   };
 
+  // Natural visual appearance - touch target handled by .touch-target-link class
   const linkStyle = {
     color: 'var(--text-light)',
     textDecoration: 'none',
@@ -55,10 +59,10 @@ const Footer = () => {
     alignItems: 'center',
     gap: '0.5rem',
     marginBottom: '0.75rem',
-    transition: 'all 0.2s ease',
+    transition: 'color 0.2s ease',
     cursor: 'pointer',
     lineHeight: '1.5',
-    paddingLeft: '0.25rem'
+    paddingLeft: '0.25rem',
   };
 
   return (
@@ -68,10 +72,10 @@ const Footer = () => {
       {/* Main Footer Section */}
       <div style={footerMainStyle}>
         <div style={containerStyle}>
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-            gap: window.innerWidth <= 768 ? '3rem' : '4rem',
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: isMobile ? '1fr' : isTablet ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
+            gap: isMobile ? '3rem' : '4rem',
             alignItems: 'start'
           }}>
             {/* About Section */}
@@ -125,7 +129,7 @@ const Footer = () => {
                 bottom: '0',
                 width: '1px',
                 background: 'linear-gradient(to bottom, transparent, var(--border), transparent)',
-                display: window.innerWidth > 768 ? 'block' : 'none'
+                display: isMobile ? 'none' : 'block'
               }}></div>
               <div style={sectionTitleStyle}>Resources</div>
               <div>
@@ -133,6 +137,7 @@ const Footer = () => {
                   href="http://aggregator.localhost/api/docs"
                   target="_blank"
                   rel="noopener noreferrer"
+                  className="touch-target-link"
                   style={linkStyle}
                   onMouseEnter={e => e.currentTarget.style.color = 'var(--primary)'}
                   onMouseLeave={e => e.currentTarget.style.color = 'var(--text-light)'}>
@@ -141,6 +146,7 @@ const Footer = () => {
                 </a>
                 <a
                   href="/changelog"
+                  className="touch-target-link"
                   style={linkStyle}
                   onMouseEnter={e => e.currentTarget.style.color = 'var(--primary)'}
                   onMouseLeave={e => e.currentTarget.style.color = 'var(--text-light)'}>
@@ -149,6 +155,7 @@ const Footer = () => {
                 </a>
                 <a
                   href="/about"
+                  className="touch-target-link"
                   style={linkStyle}
                   onMouseEnter={e => e.currentTarget.style.color = 'var(--primary)'}
                   onMouseLeave={e => e.currentTarget.style.color = 'var(--text-light)'}>
@@ -159,6 +166,7 @@ const Footer = () => {
                   href="https://github.com/gfbio"
                   target="_blank"
                   rel="noopener noreferrer"
+                  className="touch-target-link"
                   style={linkStyle}
                   onMouseEnter={e => e.currentTarget.style.color = 'var(--primary)'}
                   onMouseLeave={e => e.currentTarget.style.color = 'var(--text-light)'}>
@@ -177,7 +185,7 @@ const Footer = () => {
                 bottom: '0',
                 width: '1px',
                 background: 'linear-gradient(to bottom, transparent, var(--border), transparent)',
-                display: window.innerWidth > 768 ? 'block' : 'none'
+                display: isMobile ? 'none' : 'block'
               }}></div>
               <div style={sectionTitleStyle}>Contact & Support</div>
               <p style={{
@@ -192,6 +200,7 @@ const Footer = () => {
               <div style={{ marginBottom: '1.5rem' }}>
                 <a
                   href="mailto:info@gfbio.org"
+                  className="touch-target-link"
                   style={{
                     ...linkStyle,
                     marginBottom: '0.5rem'
@@ -205,6 +214,7 @@ const Footer = () => {
                   href="https://www.gfbio.org"
                   target="_blank"
                   rel="noopener noreferrer"
+                  className="touch-target-link"
                   style={{
                     ...linkStyle,
                     marginBottom: '0'
@@ -257,61 +267,64 @@ const Footer = () => {
             {/* Legal Links */}
             <div style={{
               display: 'flex',
-              gap: '2rem',
+              gap: isMobile ? '0.5rem' : '1.5rem',
               alignItems: 'center',
               flexWrap: 'wrap'
             }}>
-              <a 
+              <a
                 href="https://www.gfbio.org/terms-of-use/"
                 target="_blank"
                 rel="noopener noreferrer"
+                className="touch-target-link"
                 style={{
                   color: 'var(--text-light)',
                   textDecoration: 'none',
                   fontSize: '0.8125rem',
                   transition: 'color 0.2s ease',
-                  display: 'flex',
+                  display: 'inline-flex',
                   alignItems: 'center',
                   gap: '0.25rem',
-                  fontWeight: '500'
+                  fontWeight: '500',
                 }}
                 onMouseEnter={e => e.currentTarget.style.color = 'var(--primary)'}
                 onMouseLeave={e => e.currentTarget.style.color = 'var(--text-light)'}>
                 Terms of Use
               </a>
-              <span style={{ color: 'var(--border)', fontSize: '0.75rem' }}>•</span>
-              <a 
+              <span style={{ color: 'var(--border)', fontSize: '0.75rem', display: isMobile ? 'none' : 'inline' }}>•</span>
+              <a
                 href="https://www.gfbio.org/legal-notice/"
                 target="_blank"
                 rel="noopener noreferrer"
+                className="touch-target-link"
                 style={{
                   color: 'var(--text-light)',
                   textDecoration: 'none',
                   fontSize: '0.8125rem',
                   transition: 'color 0.2s ease',
-                  display: 'flex',
+                  display: 'inline-flex',
                   alignItems: 'center',
                   gap: '0.25rem',
-                  fontWeight: '500'
+                  fontWeight: '500',
                 }}
                 onMouseEnter={e => e.currentTarget.style.color = 'var(--primary)'}
                 onMouseLeave={e => e.currentTarget.style.color = 'var(--text-light)'}>
                 Legal Notice
               </a>
-              <span style={{ color: 'var(--border)', fontSize: '0.75rem' }}>•</span>
-              <a 
+              <span style={{ color: 'var(--border)', fontSize: '0.75rem', display: isMobile ? 'none' : 'inline' }}>•</span>
+              <a
                 href="https://www.gfbio.org/privacy-policy/"
                 target="_blank"
                 rel="noopener noreferrer"
+                className="touch-target-link"
                 style={{
                   color: 'var(--text-light)',
                   textDecoration: 'none',
                   fontSize: '0.8125rem',
                   transition: 'color 0.2s ease',
-                  display: 'flex',
+                  display: 'inline-flex',
                   alignItems: 'center',
                   gap: '0.25rem',
-                  fontWeight: '500'
+                  fontWeight: '500',
                 }}
                 onMouseEnter={e => e.currentTarget.style.color = 'var(--primary)'}
                 onMouseLeave={e => e.currentTarget.style.color = 'var(--text-light)'}>

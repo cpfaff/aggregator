@@ -11,10 +11,12 @@ import ProviderCard from '../providers/ProviderCard';
 import ProviderForm from '../providers/ProviderForm';
 import { Plus, Search } from 'lucide-react';
 import { showToast } from '../ui/Toast';
+import { useResponsiveGrid } from '../../hooks/useMediaQuery';
 
 // Providers component with improved nested form integration
 function Providers({ currentUser, onViewProviderDetails }) {
   const { handleTokenExpiration } = useAuth();
+  const { getGridColumns } = useResponsiveGrid();
   const [providers, setProviders] = useState([]);
   const [filteredProviders, setFilteredProviders] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -331,9 +333,9 @@ function Providers({ currentUser, onViewProviderDetails }) {
       ) : (
         <>
           {filteredProviders.length > 0 ? (
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: getGridColumns(300),
               gap: '1.5rem',
               marginBottom: '2rem',
             }}>
