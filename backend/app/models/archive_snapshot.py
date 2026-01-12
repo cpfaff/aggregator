@@ -5,7 +5,7 @@ This implements a true append-only storage pattern for point-in-time
 snapshots of archive analysis results.
 """
 from datetime import datetime
-from sqlalchemy import Column, Integer, DateTime, ForeignKey, Index
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Index
 from sqlalchemy.orm import relationship, backref
 
 from app.models.base import Base
@@ -25,6 +25,8 @@ class ArchiveSnapshotModel(Base):
         archive_id: Foreign key to xml_archives table
         recorded_at: When this snapshot was taken
         unit_count: Number of biological units (<Unit> elements) in the archive
+        http_etag: ETag header from the last download (for change detection)
+        http_last_modified: Last-Modified header from the last download
     """
     __tablename__ = "archive_snapshots"
 
@@ -40,6 +42,10 @@ class ArchiveSnapshotModel(Base):
         default=datetime.utcnow
     )
     unit_count = Column(Integer, nullable=False, default=0)
+
+    # HTTP headers for change detection (stored from last download)
+    http_etag = Column(String, nullable=True)
+    http_last_modified = Column(String, nullable=True)
 
     # Relationship back to archive
     # passive_deletes=True tells SQLAlchemy to let the database handle CASCADE delete
@@ -70,4 +76,6 @@ class ArchiveSnapshotModel(Base):
             "archive_id": self.archive_id,
             "recorded_at": self.recorded_at.isoformat() if self.recorded_at else None,
             "unit_count": self.unit_count,
+            "http_etag": self.http_etag,
+            "http_last_modified": self.http_last_modified,
         }
