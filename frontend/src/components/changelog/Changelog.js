@@ -189,7 +189,7 @@ const Changelog = () => {
           color: 'var(--text)',
           marginBottom: '0.5rem'
         }}>
-          History
+          Changelog
         </h2>
         <p style={{
           fontSize: '1rem',
