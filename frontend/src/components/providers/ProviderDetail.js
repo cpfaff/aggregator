@@ -14,11 +14,13 @@ import ConfirmModal from '../ui/ConfirmModal';
 import { ProviderStatistics } from '../statistics';
 import { showToast } from '../ui/Toast';
 import { authStatsApi } from '../../utils/statisticsApi';
+import { useResponsiveGrid } from '../../hooks/useMediaQuery';
 
 const ProviderDetail = ({ currentUser }) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { handleTokenExpiration } = useAuth();
+  const { getGridColumns } = useResponsiveGrid();
   const [provider, setProvider] = useState(null);
   const [datasets, setDatasets] = useState([]);
   const [filteredDatasets, setFilteredDatasets] = useState([]);
@@ -836,9 +838,9 @@ const ProviderDetail = ({ currentUser }) => {
           </div>
 
           {filteredDatasets.length > 0 ? (
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', 
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: getGridColumns(320),
               gap: '1.5rem',
               marginBottom: '1.5rem'
             }}>

@@ -371,8 +371,8 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
             onEdit(provider);
           }}
           style={{
-            width: '36px',
-            height: '36px',
+            width: '44px',
+            height: '44px',
             backgroundColor: 'var(--subtle-bg)',
             color: 'var(--text-light)',
             border: 'none',
@@ -387,7 +387,7 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
           aria-label={`Edit provider: ${provider.name}`}
           title="Edit provider"
         >
-          <Edit size={18} />
+          <Edit size={20} />
         </button>
         
         {/* Delete Button - only visible to global admins */}
@@ -395,8 +395,8 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
           <button 
             onClick={handleDeleteClick}
             style={{
-              width: '36px',
-              height: '36px',
+              width: '44px',
+              height: '44px',
               backgroundColor: 'var(--subtle-bg)',
               color: 'var(--error)',
               border: 'none',
@@ -411,7 +411,7 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
             aria-label={`Delete provider: ${provider.name}`}
             title="Delete provider"
           >
-            <Trash2 size={18} />
+            <Trash2 size={20} />
           </button>
         )}
       </div>

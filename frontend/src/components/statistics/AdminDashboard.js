@@ -7,6 +7,7 @@ import MultiLineTimeSeriesChart from '../ui/MultiLineTimeSeriesChart';
 import PieChart from '../ui/PieChart';
 import Alert from '../ui/Alert';
 import Breadcrumbs from '../ui/Breadcrumbs';
+import { useResponsiveGrid } from '../../hooks/useMediaQuery';
 
 /**
  * AdminDashboard component for comprehensive system statistics
@@ -14,6 +15,7 @@ import Breadcrumbs from '../ui/Breadcrumbs';
  */
 function AdminDashboard() {
   const { handleTokenExpiration } = useAuth();
+  const { isMobile, isTablet, getGridColumns } = useResponsiveGrid();
   const [overviewStats, setOverviewStats] = useState(null);
   const [qualityMetrics, setQualityMetrics] = useState(null);
   const [datacenterStats, setDatacenterStats] = useState([]);
@@ -278,7 +280,7 @@ function AdminDashboard() {
       {overviewStats && (
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gridTemplateColumns: getGridColumns(280),
           gap: '1.5rem',
           marginBottom: '2rem'
         }}>
@@ -337,7 +339,7 @@ function AdminDashboard() {
       {/* Charts Grid */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: '2fr 1fr',
+        gridTemplateColumns: isMobile || isTablet ? '1fr' : '2fr 1fr',
         gap: '1.5rem',
         marginBottom: '2rem'
       }}>

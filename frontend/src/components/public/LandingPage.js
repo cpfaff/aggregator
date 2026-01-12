@@ -1,8 +1,11 @@
 import React, { memo, useCallback, useState, useEffect } from 'react';
 import Button from '../ui/Button';
 import StatCard from '../ui/StatCard';
+import { useResponsiveGrid } from '../../hooks/useMediaQuery';
 
 const LandingPage = memo(({ onGetStarted, onLearnMore, onViewStatistics }) => {
+  const { getGridColumns } = useResponsiveGrid();
+
   // Optimize callback functions to prevent unnecessary re-renders
   const handleGetStarted = useCallback(() => {
     onGetStarted?.();
@@ -147,7 +150,7 @@ const LandingPage = memo(({ onGetStarted, onLearnMore, onViewStatistics }) => {
 
   const cardsGridStyle = {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+    gridTemplateColumns: getGridColumns(320),
     gap: '2.5rem',
     marginBottom: '4rem',
   };
@@ -207,7 +210,7 @@ const LandingPage = memo(({ onGetStarted, onLearnMore, onViewStatistics }) => {
 
   const statsContainerStyle = {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+    gridTemplateColumns: getGridColumns(220),
     gap: '2.5rem',
     maxWidth: '900px',
     margin: '2.5rem auto',
@@ -248,7 +251,7 @@ const LandingPage = memo(({ onGetStarted, onLearnMore, onViewStatistics }) => {
 
   const processStepsStyle = {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+    gridTemplateColumns: getGridColumns(300),
     gap: '3rem',
     marginBottom: '3rem',
   };
@@ -456,7 +459,7 @@ const LandingPage = memo(({ onGetStarted, onLearnMore, onViewStatistics }) => {
           <h2 style={sectionHeaderStyle}>Platform Overview</h2>
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+            gridTemplateColumns: getGridColumns(300),
             gap: '2rem',
             marginBottom: '2rem'
           }}>

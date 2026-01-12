@@ -779,11 +779,11 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
       }}>
         {/* Action buttons on the right */}
         <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button 
+          <button
             onClick={handleEditClick}
             style={{
-              width: '36px',
-              height: '36px',
+              width: '44px',
+              height: '44px',
               backgroundColor: 'var(--subtle-bg)',
               color: 'var(--text-light)',
               border: 'none',
@@ -798,15 +798,15 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
             aria-label={`Edit dataset: ${dataset.title}`}
             title="Edit dataset"
           >
-            <Edit size={18} />
+            <Edit size={20} />
           </button>
           
           {canDelete && (
-            <button 
+            <button
               onClick={handleDeleteClick}
               style={{
-                width: '36px',
-                height: '36px',
+                width: '44px',
+                height: '44px',
                 backgroundColor: 'var(--subtle-bg)',
                 color: 'var(--error)',
                 border: 'none',
@@ -821,7 +821,7 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
               aria-label={`Delete dataset: ${dataset.title}`}
               title="Delete dataset"
             >
-              <Trash2 size={18} />
+              <Trash2 size={20} />
             </button>
           )}
         </div>
