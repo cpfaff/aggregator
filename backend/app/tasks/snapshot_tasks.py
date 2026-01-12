@@ -42,6 +42,28 @@ class XMLParsingError(Exception):
     pass
 
 
+def _normalize_etag(etag: Optional[str]) -> Optional[str]:
+    """
+    Normalize an ETag for comparison.
+
+    Strips weak validator prefix (W/) and surrounding quotes, as servers
+    may vary in how they format ETags.
+
+    Args:
+        etag: Raw ETag header value
+
+    Returns:
+        Normalized ETag string, or None if input is None/empty
+    """
+    if not etag:
+        return None
+    # Strip weak validator prefix and quotes
+    normalized = etag.strip()
+    if normalized.startswith('W/'):
+        normalized = normalized[2:]
+    return normalized.strip('"')
+
+
 def check_archive_changed(
     archive_url: str,
     previous_etag: Optional[str] = None,
@@ -65,9 +87,12 @@ def check_archive_changed(
 
     Note:
         If HEAD request fails or headers are missing, assumes changed (safe default).
+        There is a small race condition window between this check and the actual
+        download where the archive could change - this is acceptable for our use case
+        as we prioritize avoiding unnecessary downloads over perfect consistency.
     """
     try:
-        response = requests.head(archive_url, timeout=30, allow_redirects=True)
+        response = requests.head(archive_url, timeout=10, allow_redirects=True)
         response.raise_for_status()
 
         current_metadata = HttpMetadata(
@@ -81,8 +106,12 @@ def check_archive_changed(
             return True, current_metadata
 
         # Compare ETag first (most reliable - content-based)
-        if previous_etag and current_metadata.etag:
-            if previous_etag == current_metadata.etag:
+        # Normalize ETags to handle weak validators (W/) and quote variations
+        prev_etag_normalized = _normalize_etag(previous_etag)
+        curr_etag_normalized = _normalize_etag(current_metadata.etag)
+
+        if prev_etag_normalized and curr_etag_normalized:
+            if prev_etag_normalized == curr_etag_normalized:
                 logger.debug(f"ETag match for {archive_url}, skipping download")
                 return False, current_metadata
             else:
@@ -350,7 +379,9 @@ def collect_archive_snapshots():
         archives_to_process = [a for a in archives if a.id not in existing_archive_ids]
 
         # Build a map of archive_id -> latest snapshot for HTTP metadata lookup
-        # This is more efficient than querying per archive in the loop
+        # This is more efficient than querying per archive in the loop.
+        # Note: For very large archive collections (10k+), consider chunked processing
+        # to reduce memory usage. Current scale (~100-200 archives) is fine.
         latest_snapshot_subq = (
             db.query(
                 ArchiveSnapshotModel.archive_id,
