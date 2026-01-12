@@ -4,13 +4,14 @@ Simplified archive snapshot collection tasks.
 This module replaces the complex statistics_tasks.py with a simple,
 focused implementation for collecting archive snapshots.
 
-Total: ~100 lines (vs 2,988 in the old system)
+Includes HTTP-based change detection to skip unchanged archives.
 """
 import logging
 import tempfile
 import zipfile
 import xml.etree.ElementTree as ET
-from typing import Dict, Any
+from dataclasses import dataclass
+from typing import Dict, Any, Optional
 
 import requests
 from celery import shared_task
@@ -22,12 +23,91 @@ from app.models.archive_snapshot import ArchiveSnapshotModel
 logger = logging.getLogger(__name__)
 
 
+@dataclass
+class HttpMetadata:
+    """HTTP metadata from archive download for change detection."""
+    etag: Optional[str] = None
+    last_modified: Optional[str] = None
+
+
+@dataclass
+class ArchiveParseResult:
+    """Result of parsing an archive including HTTP metadata."""
+    unit_count: int
+    http_metadata: HttpMetadata
+
+
 class XMLParsingError(Exception):
     """Raised when XML parsing fails."""
     pass
 
 
-def parse_archive_xml(xml_url: str) -> int:
+def check_archive_changed(
+    archive_url: str,
+    previous_etag: Optional[str] = None,
+    previous_last_modified: Optional[str] = None,
+) -> tuple[bool, HttpMetadata]:
+    """
+    Check if an archive has changed using HTTP HEAD request.
+
+    Compares ETag and Last-Modified headers against stored values
+    to determine if the archive needs to be re-downloaded.
+
+    Args:
+        archive_url: URL of the archive to check
+        previous_etag: ETag from the last download (if any)
+        previous_last_modified: Last-Modified from the last download (if any)
+
+    Returns:
+        Tuple of (changed: bool, current_metadata: HttpMetadata)
+        - changed is True if archive should be downloaded
+        - current_metadata contains the current ETag/Last-Modified headers
+
+    Note:
+        If HEAD request fails or headers are missing, assumes changed (safe default).
+    """
+    try:
+        response = requests.head(archive_url, timeout=30, allow_redirects=True)
+        response.raise_for_status()
+
+        current_metadata = HttpMetadata(
+            etag=response.headers.get("etag"),
+            last_modified=response.headers.get("last-modified"),
+        )
+
+        # No previous data = assume changed (first run)
+        if not previous_etag and not previous_last_modified:
+            logger.debug(f"No previous metadata for {archive_url}, will download")
+            return True, current_metadata
+
+        # Compare ETag first (most reliable - content-based)
+        if previous_etag and current_metadata.etag:
+            if previous_etag == current_metadata.etag:
+                logger.debug(f"ETag match for {archive_url}, skipping download")
+                return False, current_metadata
+            else:
+                logger.debug(f"ETag changed for {archive_url}, will download")
+                return True, current_metadata
+
+        # Fall back to Last-Modified comparison
+        if previous_last_modified and current_metadata.last_modified:
+            if previous_last_modified == current_metadata.last_modified:
+                logger.debug(f"Last-Modified match for {archive_url}, skipping download")
+                return False, current_metadata
+            else:
+                logger.debug(f"Last-Modified changed for {archive_url}, will download")
+                return True, current_metadata
+
+        # Can't determine = assume changed (safe default)
+        logger.debug(f"Cannot determine change status for {archive_url}, will download")
+        return True, current_metadata
+
+    except requests.RequestException as e:
+        logger.warning(f"HEAD request failed for {archive_url}: {e}, will download anyway")
+        return True, HttpMetadata()
+
+
+def parse_archive_xml(xml_url: str) -> ArchiveParseResult:
     """
     Download and parse an archive to count biological units.
 
@@ -38,7 +118,7 @@ def parse_archive_xml(xml_url: str) -> int:
         xml_url: URL of the XML file or ZIP archive
 
     Returns:
-        Total unit count across all XML files in the archive
+        ArchiveParseResult containing unit count and HTTP metadata
 
     Raises:
         XMLParsingError: If download or parsing fails
@@ -46,6 +126,12 @@ def parse_archive_xml(xml_url: str) -> int:
     try:
         response = requests.get(xml_url, timeout=30, stream=True)
         response.raise_for_status()
+
+        # Capture HTTP headers for change detection
+        http_metadata = HttpMetadata(
+            etag=response.headers.get("etag"),
+            last_modified=response.headers.get("last-modified"),
+        )
 
         total_unit_count = 0
 
@@ -91,7 +177,10 @@ def parse_archive_xml(xml_url: str) -> int:
                 root = ET.fromstring(temp_file.read())
                 total_unit_count = _count_units(root)
 
-        return total_unit_count
+        return ArchiveParseResult(
+            unit_count=total_unit_count,
+            http_metadata=http_metadata,
+        )
 
     except requests.RequestException as e:
         raise XMLParsingError(f"Download failed: {e}")
@@ -146,15 +235,18 @@ def _count_units(root) -> int:
 
 
 @shared_task(name="snapshots.collect_single_archive_snapshot", queue='light_tasks')
-def collect_single_archive_snapshot(archive_id: int) -> Dict[str, Any]:
+def collect_single_archive_snapshot(archive_id: int, force: bool = False) -> Dict[str, Any]:
     """
     Collect a snapshot for a single archive.
 
     Called when a new archive is registered to immediately capture its unit count.
     This is still append-only - just adds data sooner rather than waiting for nightly job.
 
+    Uses HTTP change detection to skip unchanged archives unless force=True.
+
     Args:
         archive_id: ID of the archive to snapshot
+        force: If True, skip change detection and always download
 
     Returns:
         Dict with status and unit_count
@@ -173,21 +265,43 @@ def collect_single_archive_snapshot(archive_id: int) -> Dict[str, Any]:
             logger.info(f"Archive {archive_id} is not latest, skipping snapshot")
             return {"status": "skipped", "message": "Archive is not latest version"}
 
+        # Get the latest snapshot for this archive to check for changes
+        latest_snapshot = db.query(ArchiveSnapshotModel).filter(
+            ArchiveSnapshotModel.archive_id == archive_id
+        ).order_by(ArchiveSnapshotModel.recorded_at.desc()).first()
+
+        # Check if archive has changed (unless force=True or no previous snapshot)
+        if not force and latest_snapshot:
+            changed, _ = check_archive_changed(
+                archive.url,
+                previous_etag=latest_snapshot.http_etag,
+                previous_last_modified=latest_snapshot.http_last_modified,
+            )
+            if not changed:
+                logger.info(f"Archive {archive_id} unchanged, skipping download")
+                return {
+                    "status": "unchanged",
+                    "archive_id": archive_id,
+                    "message": "Archive unchanged since last snapshot"
+                }
+
         try:
-            unit_count = parse_archive_xml(archive.url)
+            result = parse_archive_xml(archive.url)
 
             snapshot = ArchiveSnapshotModel(
                 archive_id=archive.id,
-                unit_count=unit_count
+                unit_count=result.unit_count,
+                http_etag=result.http_metadata.etag,
+                http_last_modified=result.http_metadata.last_modified,
             )
             db.add(snapshot)
             db.commit()
 
-            logger.info(f"Snapshot created for archive {archive_id}: {unit_count} units")
+            logger.info(f"Snapshot created for archive {archive_id}: {result.unit_count} units")
             return {
                 "status": "success",
                 "archive_id": archive_id,
-                "unit_count": unit_count
+                "unit_count": result.unit_count
             }
 
         except XMLParsingError as e:
@@ -211,6 +325,7 @@ def collect_archive_snapshots():
     without updating or deleting existing data.
 
     Runs daily via Celery beat to build historical timeline.
+    Uses HTTP change detection to skip downloading unchanged archives.
     Skips archives that already have a snapshot for today.
     """
     from datetime import date
@@ -234,26 +349,74 @@ def collect_archive_snapshots():
         # Filter to archives that need snapshots
         archives_to_process = [a for a in archives if a.id not in existing_archive_ids]
 
+        # Build a map of archive_id -> latest snapshot for HTTP metadata lookup
+        # This is more efficient than querying per archive in the loop
+        latest_snapshot_subq = (
+            db.query(
+                ArchiveSnapshotModel.archive_id,
+                func.max(ArchiveSnapshotModel.recorded_at).label('max_recorded')
+            )
+            .group_by(ArchiveSnapshotModel.archive_id)
+            .subquery()
+        )
+
+        latest_snapshots = (
+            db.query(ArchiveSnapshotModel)
+            .join(
+                latest_snapshot_subq,
+                (ArchiveSnapshotModel.archive_id == latest_snapshot_subq.c.archive_id) &
+                (ArchiveSnapshotModel.recorded_at == latest_snapshot_subq.c.max_recorded)
+            )
+            .all()
+        )
+
+        # Create lookup map: archive_id -> (http_etag, http_last_modified)
+        snapshot_metadata_map = {
+            s.archive_id: (s.http_etag, s.http_last_modified)
+            for s in latest_snapshots
+        }
+
         logger.info(
-            f"Starting snapshot collection: {len(archives_to_process)} archives to process "
+            f"Starting snapshot collection: {len(archives_to_process)} archives to check "
             f"({len(existing_archive_ids)} already have snapshots today)"
         )
 
         success_count = 0
+        unchanged_count = 0
         error_count = 0
-        skipped_count = len(existing_archive_ids)
+        skipped_today_count = len(existing_archive_ids)
 
         for archive in archives_to_process:
             try:
-                unit_count = parse_archive_xml(archive.url)
+                # Get previous HTTP metadata for this archive
+                prev_etag, prev_last_modified = snapshot_metadata_map.get(
+                    archive.id, (None, None)
+                )
+
+                # Check if archive has changed
+                changed, _ = check_archive_changed(
+                    archive.url,
+                    previous_etag=prev_etag,
+                    previous_last_modified=prev_last_modified,
+                )
+
+                if not changed:
+                    logger.debug(f"Archive {archive.id} unchanged, skipping download")
+                    unchanged_count += 1
+                    continue
+
+                # Archive changed or first time - download and parse
+                result = parse_archive_xml(archive.url)
 
                 snapshot = ArchiveSnapshotModel(
                     archive_id=archive.id,
-                    unit_count=unit_count
+                    unit_count=result.unit_count,
+                    http_etag=result.http_metadata.etag,
+                    http_last_modified=result.http_metadata.last_modified,
                 )
                 db.add(snapshot)
 
-                logger.info(f"Snapshot for archive {archive.id}: {unit_count} units")
+                logger.info(f"Snapshot for archive {archive.id}: {result.unit_count} units")
                 success_count += 1
 
             except XMLParsingError as e:
@@ -267,14 +430,16 @@ def collect_archive_snapshots():
 
         db.commit()
         logger.info(
-            f"Snapshot collection complete: {success_count} successful, "
-            f"{error_count} failed, {skipped_count} skipped (already done today)"
+            f"Snapshot collection complete: {success_count} downloaded, "
+            f"{unchanged_count} unchanged, {error_count} failed, "
+            f"{skipped_today_count} skipped (already done today)"
         )
 
         return {
             "success_count": success_count,
+            "unchanged_count": unchanged_count,
             "error_count": error_count,
-            "skipped_count": skipped_count,
+            "skipped_today_count": skipped_today_count,
             "total_archives": len(archives)
         }
 
