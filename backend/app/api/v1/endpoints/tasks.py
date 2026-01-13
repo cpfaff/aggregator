@@ -7,9 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
 from app.tasks.example import process_data
-from app.tasks.snapshot_tasks import collect_archive_snapshots
 from app.models import UserModel
-from app.security import get_current_user, check_global_admin
+from app.security import get_current_user
 
 router = APIRouter()
 
@@ -80,28 +79,3 @@ async def get_task_status(
         response["result"] = task.result
 
     return response
-
-
-@router.post("/statistics/collect", response_model=TaskResponse)
-async def trigger_snapshot_collection(
-    current_user: UserModel = Depends(get_current_user),
-) -> TaskResponse:
-    """
-    Manually trigger archive snapshot collection.
-
-    Args:
-        current_user: The current authenticated user (must be global admin)
-
-    Returns:
-        Information about the submitted task
-    """
-    # Only global admins can trigger snapshot collection
-    check_global_admin(current_user)
-
-    # Submit the task to Celery
-    task = collect_archive_snapshots.delay()
-
-    return TaskResponse(
-        task_id=task.id,
-        status="pending"
-    )
