@@ -124,7 +124,7 @@ const Header = ({ currentUser, activeView, navigate, logout, isDarkTheme, toggle
       isActiveFn: () => isActive('/statistics') || isActive('/admin/statistics')
     },
     { path: '/users', label: 'Users', show: isLoggedIn && currentUser?.is_global_admin },
-    { path: '/changelog', label: 'Changelog', show: isLoggedIn },
+    { path: '/changelog', label: 'Changelog', show: true },
     { path: '/about', label: 'About', show: true },
   ].filter(item => item.show);
 
