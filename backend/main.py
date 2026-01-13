@@ -29,6 +29,7 @@ from app.core.config import settings
 from app.core.utils import apply_entity_updates
 from app.core.cache import cache_response, invalidate_cache
 from app.models import (
+    Base,
     UserModel,
     DataProviderModel,
     DatasetModel,
