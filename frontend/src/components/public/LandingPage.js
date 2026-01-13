@@ -43,7 +43,7 @@ const LandingPage = memo(({ onGetStarted, onLearnMore, onViewStatistics }) => {
 
   // Fetch live statistics on component mount
   useEffect(() => {
-    fetch('/api/v1/public-statistics/overview')
+    fetch('/api/v1/statistics/overview')
       .then(res => res.json())
       .then(data => {
         setStats(data);

@@ -13,7 +13,7 @@ export const publicStatsApi = {
    * @returns {Promise<Object>} Overview statistics
    */
   getOverview: async () => {
-    const response = await fetch(`${API_BASE}${API_VERSION}/public-statistics/overview`);
+    const response = await fetch(`${API_BASE}${API_VERSION}/statistics/overview`);
     if (!response.ok) {
       throw new Error(`Failed to fetch public overview: ${response.status}`);
     }
@@ -30,7 +30,7 @@ export const publicStatsApi = {
       period: params.period || 'daily',
       months: params.months || 1
     });
-    const response = await fetch(`${API_BASE}${API_VERSION}/public-statistics/timeline?${queryParams}`);
+    const response = await fetch(`${API_BASE}${API_VERSION}/statistics/timeline?${queryParams}`);
     if (!response.ok) {
       throw new Error(`Failed to fetch timeline: ${response.status}`);
     }
@@ -42,7 +42,7 @@ export const publicStatsApi = {
    * @returns {Promise<Array>} Provider statistics
    */
   getProviders: async () => {
-    const response = await fetch(`${API_BASE}${API_VERSION}/public-statistics/providers`);
+    const response = await fetch(`${API_BASE}${API_VERSION}/statistics/providers`);
     if (!response.ok) {
       throw new Error(`Failed to fetch provider stats: ${response.status}`);
     }

@@ -16,4 +16,3 @@ api_v1_router.include_router(validators_router, prefix="/validators", tags=["val
 
 # Use snapshot-based statistics router for both public and authenticated endpoints
 api_v1_router.include_router(snapshots_router, prefix="/statistics", tags=["statistics"])
-api_v1_router.include_router(snapshots_router, prefix="/public-statistics", tags=["public-statistics"])
