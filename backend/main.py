@@ -1,15 +1,10 @@
-import os
-import json
 import time
 import uuid
 import logging
-from datetime import datetime, timedelta
-from functools import lru_cache
+from datetime import datetime
 
-from typing import List, Optional, Dict, Any, Generic, TypeVar
+from typing import List, Optional
 
-import jwt
-import bcrypt
 from fastapi import (
     FastAPI,
     HTTPException,
@@ -20,144 +15,57 @@ from fastapi import (
     APIRouter,
     Query,
 )
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, AnyUrl, Field, field_validator, ConfigDict
-from pydantic.generics import GenericModel
-from pydantic_settings import BaseSettings
-from sqlalchemy import (
-    text,
-    Column,
-    Integer,
-    String,
-    Boolean,
-    JSON,
-    ForeignKey,
-    select,
-    and_,
-    Index,
-    func,
-    DateTime,
-)
+from pydantic import BaseModel, Field
+from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import relationship, selectinload
+from sqlalchemy.orm import selectinload
 from pythonjsonlogger import jsonlogger
-from fastapi_csrf_protect import CsrfProtect
 
 # Import application components
-from app.core.config import Settings, settings
+from app.core.config import settings
 from app.core.utils import apply_entity_updates
-from app.core.cache import cache, cache_response, invalidate_cache
+from app.core.cache import cache_response, invalidate_cache
 from app.models import (
-    Base,
     UserModel,
     DataProviderModel,
     DatasetModel,
     XmlArchiveModel,
     UsefulLinkModel,
 )
-from app.db import async_session, engine, get_db
+from app.db import get_db
 from app.schemas import (
-    User, 
-    UserCreate, 
-    UserUpdate, 
+    User,
+    UserCreate,
+    UserUpdate,
     UserPermissions,
-    DataProvider, 
+    DataProvider,
     ProviderAssociation,
-    Dataset, 
-    XmlArchive, 
+    Dataset,
+    XmlArchive,
     UsefulLink,
-    LegacyDataset, 
-    LegacyXmlArchive, 
+    LegacyDataset,
+    LegacyXmlArchive,
     LegacyUsefulLink,
-    PaginatedResponse,
-    TokenResponse,
-    PaginatedProviders,
-    PaginatedDatasets
 )
 from app.security import (
     get_password_hash,
     verify_password,
-    create_access_token,
-    create_refresh_token,
     get_current_user,
-    authenticate_user,
-    check_provider_permission,
     get_user_model,
     normalize_provider_roles,
     check_global_admin
 )
-from app.security.token import oauth2_scheme
 
 # Import slowapi components for rate limiting
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from starlette.middleware.base import BaseHTTPMiddleware
 
-# ------------------- Configuration Management -------------------
-class Settings(BaseSettings):
-    """
-    Configuration settings for the API loaded from environment variables.
-    """
-
-    DATABASE_URL: str
-    SECRET_KEY: str
-    ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
-    ALLOWED_ORIGINS: str = (
-        "http://localhost:3000,http://localhost:5173,http://localhost"
-    )
-    LOG_LEVEL: str = "INFO"
-    # Rate limiting settings
-    LOGIN_RATE_LIMIT: str = "5/minute"
-    HARVEST_RATE_LIMIT: str = "30/hour"
-    CSRF_TOKEN_RATE_LIMIT: str = "20/minute"
-    # Cache settings
-    CACHE_ENABLED: bool = True
-    CACHE_EXPIRE_SECONDS: int = 300
-    # JWT settings
-    TOKEN_AUDIENCE: str = "dataset-api"
-    # Database connection pool settings
-    DB_POOL_SIZE: int = 10
-    DB_MAX_OVERFLOW: int = 20
-    DB_POOL_RECYCLE: int = 1800
-    # Password policy
-    MIN_PASSWORD_LENGTH: int = 8
-
-    @property
-    def allowed_origins_list(self) -> List[str]:
-        """Convert comma-separated ALLOWED_ORIGINS string to a list of strings."""
-        return [
-            origin.strip()
-            for origin in self.ALLOWED_ORIGINS.split(",")
-            if origin.strip()
-        ]
-
-    class Config:
-        env_file = ".env"
-
-
-@lru_cache()
-def get_settings() -> Settings:
-    return Settings()
-
-
-settings = get_settings()
-
-# Ensure SECRET_KEY is set for security
-if not settings.SECRET_KEY:
-    raise RuntimeError(
-        "SECRET_KEY environment variable is not set. This is required for application security."
-    )
-# Ensure DATABASE_URL is set for database connectivity
-if not settings.DATABASE_URL:
-    raise RuntimeError(
-        "DATABASE_URL environment variable is not set. This is required for database connectivity."
-    )
+# Import shared API dependencies
+from app.api.deps import limiter, csrf_protect, provider_permission
 
 # ------------------- Logging Configuration -------------------
 log_handler = logging.StreamHandler()
@@ -180,20 +88,6 @@ def trim_string(value: str):
         return None
     return value.strip()
 
-# ------------------- Dependencies -------------------
-# Database dependency moved to app.db.session
-
-def provider_permission(operation: str = "read"):
-    """Dependency factory for provider permission checking."""
-
-    async def dependency(
-        provider_id: int, current_user: UserModel = Depends(get_current_user)
-    ):
-        check_provider_permission(provider_id, current_user, operation)
-        return current_user
-
-    return dependency
-
 # ------------------- Create FastAPI app and routers -------------------
 app = FastAPI(
     title="Dataset Management API",
@@ -205,28 +99,9 @@ app = FastAPI(
 
 v1_router = APIRouter(prefix="/api/v1")
 
-# Note: The tokenUrl is updated to include the v1 prefix
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth-token")
-
-# Initialize rate limiter with IP address as the key
-limiter = Limiter(key_func=get_remote_address)
+# Register rate limiter with the app
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-
-
-# ------------------- CSRF Protection Settings -------------------
-class CsrfSettings(BaseSettings):
-    secret_key: str = settings.SECRET_KEY
-    cookie_samesite: str = "lax"
-    cookie_secure: bool = False  # Set to True in production with HTTPS
-
-
-@CsrfProtect.load_config
-def get_csrf_config():
-    return CsrfSettings()
-
-
-csrf_protect = CsrfProtect()
 
 # ------------------- CORS Middleware -------------------
 app.add_middleware(
@@ -382,124 +257,8 @@ async def general_exception_handler(request: Request, exc: Exception):
     )
 
 # ------------------- Endpoints -------------------
-
-
-# CSRF Token endpoint
-@v1_router.get("/csrf-token", summary="Get CSRF token")
-@limiter.limit(settings.CSRF_TOKEN_RATE_LIMIT)
-async def get_csrf_token(request: Request):
-    """
-    Retrieve a CSRF token to protect against cross-site request forgery in subsequent requests.
-    Returns a JSON object with the token.
-
-    This endpoint is rate-limited to prevent abuse.
-    """
-    csrf_token, signed_token = csrf_protect.generate_csrf_tokens()
-    response = JSONResponse(content={"csrf_token": csrf_token})
-    csrf_protect.set_csrf_cookie(signed_token, response)
-    return response
-
-
-# Authentication endpoint
-@v1_router.post("/auth-token", response_model=TokenResponse)
-@limiter.limit(settings.LOGIN_RATE_LIMIT)
-async def login(
-    request: Request,
-    form_data: OAuth2PasswordRequestForm = Depends(),
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    Authenticate a user and return JWT access and refresh tokens.
-
-    - **username**: The user's username
-    - **password**: The user's password
-
-    Returns a JSON object containing the access token, refresh token, token type, and expiration time.
-    """
-    user = await authenticate_user(form_data.username, form_data.password, db)
-    if not user:
-        logger.warning(
-            f"Failed login attempt",
-            extra={
-                "username": form_data.username,
-                "ip_address": request.client.host if request.client else None,
-            },
-        )
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
-    )
-    refresh_token = create_refresh_token(data={"sub": user.username})
-
-    logger.info(
-        f"User authenticated",
-        extra={
-            "username": user.username,
-            "is_admin": user.is_global_admin,
-            "ip_address": request.client.host if request.client else None,
-        },
-    )
-    return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "bearer",
-        "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-    }
-
-
-@v1_router.post("/refresh-token", response_model=TokenResponse)
-async def refresh_token(
-    refresh_token: str = Body(...), db: AsyncSession = Depends(get_db)
-):
-    """
-    Get a new access token using a refresh token.
-
-    - **refresh_token**: A valid refresh token previously issued
-
-    Returns a new access token and refresh token.
-    """
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Invalid refresh token",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(
-            refresh_token,
-            settings.SECRET_KEY,
-            algorithms=[settings.ALGORITHM],
-            audience=f"{settings.TOKEN_AUDIENCE}:refresh",  # Verify audience claim for refresh
-        )
-        username: str = payload.get("sub")
-        if username is None:
-            raise credentials_exception
-    except jwt.PyJWTError:
-        raise credentials_exception
-
-    user = await get_user_model(username, db)
-    if user is None:
-        raise credentials_exception
-
-    # Create new tokens
-    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    new_access_token = create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
-    )
-    new_refresh_token = create_refresh_token(data={"sub": user.username})
-
-    return {
-        "access_token": new_access_token,
-        "refresh_token": new_refresh_token,
-        "token_type": "bearer",
-        "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-    }
-
+# Note: Auth endpoints (csrf-token, auth-token, refresh-token) moved to app/api/v1/endpoints/auth.py
+# Note: Health check endpoint moved to app/api/v1/endpoints/health.py
 
 # User Endpoints
 @v1_router.get(
@@ -1626,41 +1385,6 @@ async def create_useful_link(
     invalidate_cache("datasets")
 
     return link_obj
-
-
-# Health Check Endpoint
-@v1_router.get("/health-check", status_code=200, summary="Health check")
-async def health_check(db: AsyncSession = Depends(get_db)):
-    """
-    Check the health of the API and database connection.
-    Returns a JSON object with the status and database connection state.
-    """
-    try:
-        # Time the database query
-        start_time = time.time()
-        await db.execute(text("SELECT 1"))
-        db_response_time = time.time() - start_time
-
-        # Return enhanced health check information
-        return {
-            "status": "healthy",
-            "database": {
-                "status": "connected",
-                "response_time_ms": round(db_response_time * 1000, 2),
-            },
-            "version": "1.9.0",
-            "timestamp": datetime.utcnow().isoformat(),
-        }
-    except Exception as e:
-        logger.error(f"Health check failed: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=503,
-            detail={
-                "status": "unhealthy",
-                "database": {"status": "disconnected", "error": str(e)},
-                "timestamp": datetime.utcnow().isoformat(),
-            },
-        )
 
 
 # Legacy Harvesting Endpoint
