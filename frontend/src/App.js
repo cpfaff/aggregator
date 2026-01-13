@@ -135,7 +135,7 @@ function App() {
         display: 'flex', 
         flexDirection: 'column',
         width: '100%',
-        alignItems: ['/', '/about', '/statistics', '/login'].includes(location.pathname) ? 'stretch' : 'center',
+        alignItems: ['/', '/about', '/statistics', '/login', '/changelog'].includes(location.pathname) ? 'stretch' : 'center',
       }}>
         <Routes>
           {/* Public Routes */}
@@ -148,9 +148,9 @@ function App() {
           } />
           
           <Route path="/about" element={
-            <About currentUser={currentUser} />
+            <About currentUser={currentUser} isDarkTheme={isDarkTheme} />
           } />
-          
+
           <Route path="/statistics" element={
             <PublicStatsDashboard />
           } />
@@ -197,17 +197,7 @@ function App() {
           } />
           
           <Route path="/changelog" element={
-            <ProtectedRoute>
-              <div style={{
-                width: '100%',
-                maxWidth: '1200px',
-                flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-              }}>
-                <Changelog />
-              </div>
-            </ProtectedRoute>
+            <Changelog currentUser={currentUser} />
           } />
           
           {/* Admin Routes */}

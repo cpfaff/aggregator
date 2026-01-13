@@ -27,7 +27,12 @@ import Breadcrumbs from '../ui/Breadcrumbs';
  *         - Instead of 5 separate bug fixes, use "Various bug fixes and improvements"
  */
 
-const Changelog = () => {
+const Changelog = ({ currentUser }) => {
+  const breadcrumbItems = [
+    { label: 'Home', onClick: () => {} },
+    { label: 'Changelog', onClick: null }
+  ];
+
   const changelogEntries = [
     {
       version: '2.0.2',
@@ -162,50 +167,78 @@ const Changelog = () => {
     }
   ];
 
+  // Styles
+  const styles = {
+    container: {
+      flexGrow: 1,
+      padding: '2rem 1rem 4rem',
+      maxWidth: '1200px',
+      margin: '0 auto',
+      width: '100%',
+      minHeight: '60vh',
+    },
+    pageHeader: {
+      marginBottom: '2rem',
+      marginTop: '1rem',
+    },
+    pageHeaderTitle: {
+      fontSize: '1.5rem',
+      fontWeight: 600,
+      color: 'var(--text)',
+      marginBottom: '0.5rem',
+    },
+    pageHeaderSubtitle: {
+      fontSize: '1rem',
+      color: 'var(--text-light)',
+      margin: 0,
+      lineHeight: '1.5',
+    },
+    heroSection: {
+      textAlign: 'center',
+      marginBottom: '3rem',
+      padding: '2rem 0',
+    },
+    heroTitle: {
+      fontSize: 'clamp(2rem, 4vw, 2.75rem)',
+      fontWeight: 700,
+      marginBottom: '1rem',
+      color: 'var(--text)',
+      letterSpacing: '-0.025em',
+    },
+    heroSubtitle: {
+      fontSize: 'clamp(1rem, 2.5vw, 1.25rem)',
+      color: 'var(--text-light)',
+      maxWidth: '600px',
+      margin: '0 auto',
+      lineHeight: '1.6',
+    },
+  };
+
   return (
-    <div 
-      className="content-container"
-      style={{ 
-        padding: '2rem 1rem', 
-        width: '100%',
-        flexGrow: 1,
-      }}
-    >
-      {/* Breadcrumb navigation */}
-      <Breadcrumbs 
-        items={[
-          { label: 'Home', onClick: () => {} },
-          { label: 'Changelog', onClick: () => {} }
-        ]} 
-      />
-      
-      <div style={{
-        maxWidth: '1200px',
-        margin: '1rem auto 2rem auto'
-      }}>
-        <h2 style={{
-          fontSize: '1.5rem',
-          fontWeight: 600,
-          color: 'var(--text)',
-          marginBottom: '0.5rem'
-        }}>
-          Changelog
-        </h2>
-        <p style={{
-          fontSize: '1rem',
-          color: 'var(--text-light)',
-          margin: 0,
-          lineHeight: '1.5'
-        }}>
-          Track the evolution of the platform through our release history.
-        </p>
-      </div>
-      
+    <div style={styles.container}>
+      {/* Breadcrumbs - only show when logged in */}
+      {currentUser && <Breadcrumbs items={breadcrumbItems} />}
+
+      {/* Header Section */}
+      {currentUser ? (
+        <div style={styles.pageHeader}>
+          <h2 style={styles.pageHeaderTitle}>Changelog</h2>
+          <p style={styles.pageHeaderSubtitle}>
+            Track the evolution of the platform through our release history.
+          </p>
+        </div>
+      ) : (
+        <header style={styles.heroSection}>
+          <h1 style={styles.heroTitle}>Changelog</h1>
+          <p style={styles.heroSubtitle}>
+            Track the evolution of the Data Provider Manager through our release history
+          </p>
+        </header>
+      )}
+
       {/* Timeline Container */}
       <div style={{
         position: 'relative',
-        maxWidth: '1200px',
-        margin: '0 auto',
         paddingBottom: '2rem'
       }}>
         {/* Timeline Line */}
@@ -218,11 +251,11 @@ const Changelog = () => {
           background: 'linear-gradient(to bottom, var(--primary) 0%, var(--border) 100%)',
           zIndex: 1
         }} />
-        
+
         {changelogEntries.map((entry, entryIndex) => {
           const isMobile = window.innerWidth <= 768;
           return (
-            <div 
+            <div
               key={entry.version}
               style={{
                 position: 'relative',
@@ -256,7 +289,7 @@ const Changelog = () => {
                   backgroundColor: 'white'
                 }} />
               </div>
-              
+
               {/* Content Card */}
               <div style={{
                 flex: 1,
@@ -298,7 +331,7 @@ const Changelog = () => {
                     zIndex: 1
                   }} />
                 )}
-                
+
                 {/* Mobile-specific arrow */}
                 {isMobile && (
                   <div style={{
@@ -315,15 +348,15 @@ const Changelog = () => {
                     zIndex: 1
                   }} />
                 )}
-                
+
                 {/* Version Header */}
-                <div style={{ 
+                <div style={{
                   marginBottom: '1.5rem',
                   textAlign: isMobile ? 'left' : (entryIndex % 2 === 0 ? 'right' : 'left')
                 }}>
-                  <h3 style={{ 
-                    fontSize: isMobile ? '1.25rem' : '1.5rem', 
-                    fontWeight: 700, 
+                  <h3 style={{
+                    fontSize: isMobile ? '1.25rem' : '1.5rem',
+                    fontWeight: 700,
                     margin: 0,
                     color: 'var(--primary)',
                     marginBottom: '0.5rem'
@@ -344,7 +377,7 @@ const Changelog = () => {
                     {entry.date}
                   </div>
                 </div>
-                
+
                 {/* Changes List */}
                 <div style={{
                   textAlign: 'left'
@@ -358,14 +391,14 @@ const Changelog = () => {
                   }}>
                     What's New
                   </h4>
-                  <ul style={{ 
-                    margin: 0, 
-                    paddingLeft: '0', 
+                  <ul style={{
+                    margin: 0,
+                    paddingLeft: '0',
                     color: 'var(--text)',
                     listStyle: 'none'
                   }}>
                     {entry.changes.map((change, index) => (
-                      <li key={index} style={{ 
+                      <li key={index} style={{
                         marginBottom: '0.75rem',
                         position: 'relative',
                         paddingLeft: '1.5rem',
@@ -388,7 +421,7 @@ const Changelog = () => {
                   </ul>
                 </div>
               </div>
-              
+
               {/* Empty space for alternating layout - hidden on mobile */}
               {!isMobile && <div style={{ flex: 1, maxWidth: '520px' }} />}
             </div>
