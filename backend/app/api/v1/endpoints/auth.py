@@ -5,7 +5,7 @@ This module contains endpoints for CSRF token generation, user authentication,
 and token refresh functionality.
 """
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request, Body, status
@@ -73,6 +73,11 @@ async def login(
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    # Update last login timestamp
+    user.last_login = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(user)
 
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(

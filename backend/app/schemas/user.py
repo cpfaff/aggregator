@@ -1,6 +1,7 @@
 """
 User-related Pydantic schemas for validation and serialization.
 """
+from datetime import datetime
 from typing import Dict, Optional
 
 from pydantic import BaseModel, field_validator, ConfigDict
@@ -13,6 +14,7 @@ class User(BaseModel):
     username: str
     provider_roles: Dict[str, str]
     is_global_admin: bool = False
+    last_login: Optional[datetime] = None
 
     @field_validator("username")
     @classmethod
@@ -77,6 +79,7 @@ class UserPermissions(BaseModel):
     username: str
     is_global_admin: bool
     provider_roles: Dict[str, str]
+    last_login: Optional[datetime] = None
 
     @field_validator("username")
     @classmethod

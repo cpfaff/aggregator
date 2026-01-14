@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext';
 import { apiRequest } from '../../utils/apiUtils';
 import useFormValidation from '../../utils/useFormValidation';
 import validationRules from '../../utils/validationRules';
+import { formatRelativeTime } from '../../utils/dateUtils';
 import FormField from '../ui/FormField';
 import Alert from '../ui/Alert';
 import Button from '../ui/Button';
@@ -555,14 +556,23 @@ function UserManagement() {
                     {user.username.charAt(0).toUpperCase()}
                   </div>
                   <div>
-                    <h3 style={{ 
-                      margin: '0', 
-                      fontSize: '1.125rem', 
+                    <h3 style={{
+                      margin: '0',
+                      fontSize: '1.125rem',
                       fontWeight: 600,
                       color: 'var(--text)',
                     }}>
                       {user.username}
                     </h3>
+                    <div style={{
+                      fontSize: '0.75rem',
+                      color: 'var(--text-light)',
+                      marginTop: '0.25rem'
+                    }}>
+                      {user.last_login
+                        ? `Last login: ${formatRelativeTime(user.last_login)}`
+                        : 'Never logged in'}
+                    </div>
                   </div>
                 </div>
                 
