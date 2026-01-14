@@ -194,6 +194,7 @@ services:
       - app-network
     volumes:
       - ./maintenance:/usr/share/nginx/html
+      - ./maintenance/nginx.conf:/etc/nginx/conf.d/default.conf
     labels:
       - "traefik.enable=${MAINTENANCE_TRAEFIK_ENABLED:-false}"
       - "traefik.http.routers.maintenance.rule=PathPrefix(`/`)"
