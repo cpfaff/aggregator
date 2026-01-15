@@ -401,9 +401,9 @@ def collect_archive_snapshots():
             .all()
         )
 
-        # Create lookup map: archive_id -> (http_etag, http_last_modified)
+        # Create lookup map: archive_id -> (http_etag, http_last_modified, unit_count)
         snapshot_metadata_map = {
-            s.archive_id: (s.http_etag, s.http_last_modified)
+            s.archive_id: (s.http_etag, s.http_last_modified, s.unit_count)
             for s in latest_snapshots
         }
 
@@ -419,20 +419,29 @@ def collect_archive_snapshots():
 
         for archive in archives_to_process:
             try:
-                # Get previous HTTP metadata for this archive
-                prev_etag, prev_last_modified = snapshot_metadata_map.get(
-                    archive.id, (None, None)
+                # Get previous snapshot data for this archive
+                prev_etag, prev_last_modified, prev_unit_count = snapshot_metadata_map.get(
+                    archive.id, (None, None, None)
                 )
 
                 # Check if archive has changed
-                changed, _ = check_archive_changed(
+                changed, current_http_metadata = check_archive_changed(
                     archive.url,
                     previous_etag=prev_etag,
                     previous_last_modified=prev_last_modified,
                 )
 
-                if not changed:
-                    logger.debug(f"Archive {archive.id} unchanged, skipping download")
+                if not changed and prev_unit_count is not None:
+                    # Archive unchanged - create snapshot with previous data to maintain daily timeline
+                    # This avoids re-downloading while still building the historical timeline
+                    snapshot = ArchiveSnapshotModel(
+                        archive_id=archive.id,
+                        unit_count=prev_unit_count,
+                        http_etag=current_http_metadata.etag or prev_etag,
+                        http_last_modified=current_http_metadata.last_modified or prev_last_modified,
+                    )
+                    db.add(snapshot)
+                    logger.debug(f"Archive {archive.id} unchanged, using previous unit count: {prev_unit_count}")
                     unchanged_count += 1
                     continue
 
@@ -462,7 +471,7 @@ def collect_archive_snapshots():
         db.commit()
         logger.info(
             f"Snapshot collection complete: {success_count} downloaded, "
-            f"{unchanged_count} unchanged, {error_count} failed, "
+            f"{unchanged_count} unchanged (reused previous data), {error_count} failed, "
             f"{skipped_today_count} skipped (already done today)"
         )
 
