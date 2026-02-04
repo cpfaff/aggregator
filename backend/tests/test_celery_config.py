@@ -37,32 +37,22 @@ class TestCeleryConfiguration:
         """Test that beat schedule configuration is preserved."""
         beat_schedule = celery_app.conf.beat_schedule
 
-        # Check that all scheduled tasks are still present
+        # Check that the snapshot collection task is scheduled
         expected_tasks = [
-            "collect-daily-statistics",
-            "aggregate-weekly-statistics",
-            "aggregate-monthly-statistics",
-            "analyze-xml-archives",
-            "collect-provider-biological-units",
+            "collect-archive-snapshots",
         ]
 
         for task_name in expected_tasks:
             assert task_name in beat_schedule
 
     def test_task_modules_included(self):
-        """Test that all task modules are included."""
-        # Get the include configuration from Celery app
-        # Note: The include list is passed during app initialization
-        # We can verify the tasks are registered by checking the registry
-        from celery import current_app
+        """Test that all task modules are included in celery app configuration."""
+        # Verify the include list contains the expected task modules
+        include = celery_app.conf.get("include", []) or celery_app.include or []
 
-        # These should be registered tasks
-        expected_task_prefixes = ["validator", "statistics"]
-        registered_tasks = list(current_app.tasks.keys())
-
-        for prefix in expected_task_prefixes:
-            matching_tasks = [t for t in registered_tasks if t.startswith(prefix)]
-            assert len(matching_tasks) > 0, f"No tasks found with prefix '{prefix}'"
+        expected_modules = ["app.tasks", "app.tasks.validator_tasks", "app.tasks.snapshot_tasks"]
+        for module in expected_modules:
+            assert module in include, f"Module '{module}' not in include list: {include}"
 
     def test_default_queue_still_works(self):
         """Test that tasks without explicit routing can still use default queue."""

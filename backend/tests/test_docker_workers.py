@@ -129,23 +129,25 @@ def test_worker_dependencies():
     stats_deps_found = False
 
     for i, line in enumerate(lines):
-        if "celery_worker_validation:" in line:
-            # Look for depends_on in next few lines
-            for j in range(i, min(i + 10, len(lines))):
+        # Match only top-level service definitions (2-space indent), not
+        # references inside another service's depends_on block.
+        if line.startswith("  celery_worker_validation:") and not line.startswith("      "):
+            # Look for depends_on within the service block
+            for j in range(i, min(i + 25, len(lines))):
                 if "depends_on:" in lines[j]:
                     # Check next lines for db and redis
-                    for k in range(j + 1, min(j + 5, len(lines))):
+                    for k in range(j + 1, min(j + 10, len(lines))):
                         if "db" in lines[k] or "redis" in lines[k]:
                             validation_deps_found = True
                             break
                     break
 
-        elif "celery_worker_stats:" in line:
-            # Look for depends_on in next few lines
-            for j in range(i, min(i + 10, len(lines))):
+        elif line.startswith("  celery_worker_stats:") and not line.startswith("      "):
+            # Look for depends_on within the service block
+            for j in range(i, min(i + 25, len(lines))):
                 if "depends_on:" in lines[j]:
                     # Check next lines for db and redis
-                    for k in range(j + 1, min(j + 5, len(lines))):
+                    for k in range(j + 1, min(j + 10, len(lines))):
                         if "db" in lines[k] or "redis" in lines[k]:
                             stats_deps_found = True
                             break
