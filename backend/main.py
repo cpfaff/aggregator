@@ -1129,6 +1129,9 @@ async def harvest_datasets(request: Request, db: AsyncSession = Depends(get_db))
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}") from e
 
 
+# Include the v1_router (CRUD endpoints still in main.py)
+app.include_router(v1_router)
+
 # Include the API router with proper versioning and backwards compatibility
 from app.api.router import api_router  # noqa: E402
 
