@@ -63,40 +63,40 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired, onDirtyChan
   const handleFormSubmit = async (values) => {
     setIsLoading(true);
     setError('');
-    
+
     try {
       // Reconstruct arrays from flattened values
       const xmlArchives = form.values.xmlArchives || [];
       const usefulLinks = form.values.usefulLinks || [];
-      
+
       // Filter out any empty items
-      const filteredXmlArchives = xmlArchives.filter(archive => 
+      const filteredXmlArchives = xmlArchives.filter(archive =>
         archive.url && archive.url.trim() !== ''
       );
-      
-      const filteredUsefulLinks = usefulLinks.filter(link => 
-        link.title && link.title.trim() !== '' && 
+
+      const filteredUsefulLinks = usefulLinks.filter(link =>
+        link.title && link.title.trim() !== '' &&
         link.url && link.url.trim() !== ''
       );
-      
+
       // Create sanitized form data object
       const sanitizedFormData = {
         source: values.source,
         title: values.title,
-        landingPageUrl: values.landingPageUrl && values.landingPageUrl.trim() !== '' 
-          ? values.landingPageUrl 
+        landingPageUrl: values.landingPageUrl && values.landingPageUrl.trim() !== ''
+          ? values.landingPageUrl
           : null
       };
-      
+
       // Only include non-empty arrays or empty arrays when editing (to signal deletion)
       if (filteredXmlArchives.length > 0 || isEditing) {
         sanitizedFormData.xmlArchives = filteredXmlArchives;
       }
-      
+
       if (filteredUsefulLinks.length > 0 || isEditing) {
         sanitizedFormData.usefulLinks = filteredUsefulLinks;
       }
-      
+
       let res;
       if (isEditing) {
         res = await apiRequest(`/data-providers/${providerId}/data-sets/${dataset.id}`, {
@@ -111,7 +111,7 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired, onDirtyChan
           body: JSON.stringify(sanitizedFormData)
         }, onTokenExpired);
       }
-      
+
       if (!res.ok) {
         let errorMessage = 'Failed to save dataset';
         try {
@@ -124,19 +124,19 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired, onDirtyChan
         setIsLoading(false);
         return;
       }
-      
+
       const updatedDataset = await res.json();
-      
+
       // Normalize the dataset response to ensure xmlArchives and usefulLinks are always arrays
       const normalizedDataset = {
         ...updatedDataset,
         xmlArchives: Array.isArray(updatedDataset.xmlArchives) ? updatedDataset.xmlArchives : [],
         usefulLinks: Array.isArray(updatedDataset.usefulLinks) ? updatedDataset.usefulLinks : []
       };
-      
+
       setIsLoading(false);
       showToast(
-        isEditing 
+        isEditing
           ? `Dataset "${normalizedDataset.title}" updated successfully!`
           : `Dataset "${normalizedDataset.title}" created successfully!`,
         'success'
@@ -185,7 +185,7 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired, onDirtyChan
   const addXmlArchive = () => {
     const newArchives = [...(form.values.xmlArchives || []), { id: null, url: '', isLatest: false }];
     form.setFieldValue('xmlArchives', newArchives);
-    
+
     // Update validation schema with the new array
     const newSchema = createValidationSchema(newArchives, form.values.usefulLinks || []);
     // Note: We'd need to enhance useFormValidation to support dynamic schema updates
@@ -194,7 +194,7 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired, onDirtyChan
 
   const updateXmlArchive = (index, field, value) => {
     const updatedArchives = [...(form.values.xmlArchives || [])];
-    
+
     // If marking this item as latest, uncheck all other XML archives
     if (field === 'isLatest' && value === true) {
       updatedArchives.forEach((archive, idx) => {
@@ -203,27 +203,27 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired, onDirtyChan
         }
       });
     }
-    
+
     updatedArchives[index] = { ...updatedArchives[index], [field]: value };
     form.setFieldValue('xmlArchives', updatedArchives);
-    
+
     // Also update the flattened field for validation
     const fieldName = getArrayFieldName('xmlArchives', index, field);
     form.setFieldValue(fieldName, value);
-    
+
     // Manually validate the field immediately
     if (field === 'url') {
       const validators = [
         validationRules.required('URL is required'),
         validationRules.url('Please enter a valid URL')
       ];
-      
+
       let error = null;
       for (const validator of validators) {
         error = validator(value);
         if (error) break;
       }
-      
+
       if (error) {
         form.setFieldError(fieldName, error);
       } else {
@@ -235,7 +235,7 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired, onDirtyChan
   const removeXmlArchive = (index) => {
     const archive = form.values.xmlArchives[index];
     const displayUrl = archive.url || `Archive ${index + 1}`;
-    
+
     setConfirmAction({
       message: `Are you sure you want to remove XML Archive "${displayUrl}"? This action cannot be undone.`,
       onConfirm: () => {
@@ -255,7 +255,7 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired, onDirtyChan
 
   const updateUsefulLink = (index, field, value) => {
     const updatedLinks = [...(form.values.usefulLinks || [])];
-    
+
     // If marking this item as latest, uncheck all other useful links
     if (field === 'isLatest' && value === true) {
       updatedLinks.forEach((link, idx) => {
@@ -264,27 +264,27 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired, onDirtyChan
         }
       });
     }
-    
+
     updatedLinks[index] = { ...updatedLinks[index], [field]: value };
     form.setFieldValue('usefulLinks', updatedLinks);
-    
+
     // Also update the flattened field for validation
     const fieldName = getArrayFieldName('usefulLinks', index, field);
     form.setFieldValue(fieldName, value);
-    
+
     // Manually validate the field immediately
     if (field === 'url') {
       const validators = [
         validationRules.required('URL is required'),
         validationRules.url('Please enter a valid URL')
       ];
-      
+
       let error = null;
       for (const validator of validators) {
         error = validator(value);
         if (error) break;
       }
-      
+
       if (error) {
         form.setFieldError(fieldName, error);
       } else {
@@ -295,13 +295,13 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired, onDirtyChan
         validationRules.required('Title is required'),
         validationRules.maxLength(200, 'Title must be less than 200 characters')
       ];
-      
+
       let error = null;
       for (const validator of validators) {
         error = validator(value);
         if (error) break;
       }
-      
+
       if (error) {
         form.setFieldError(fieldName, error);
       } else {
@@ -313,7 +313,7 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired, onDirtyChan
   const removeUsefulLink = (index) => {
     const link = form.values.usefulLinks[index];
     const displayName = link.title || `Link ${index + 1}`;
-    
+
     setConfirmAction({
       message: `Are you sure you want to remove Useful Link "${displayName}"? This action cannot be undone.`,
       onConfirm: () => {
@@ -328,7 +328,7 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired, onDirtyChan
   return (
     <div>
       {error && <Alert type="error">{error}</Alert>}
-      
+
       <form onSubmit={form.handleSubmit} noValidate>
         <FormField
           type="text"
@@ -342,7 +342,7 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired, onDirtyChan
           placeholder="Enter dataset source"
           required
         />
-        
+
         <FormField
           type="text"
           name="title"
@@ -355,7 +355,7 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired, onDirtyChan
           placeholder="Enter dataset title"
           required
         />
-        
+
         <FormField
           type="url"
           name="landingPageUrl"
@@ -368,25 +368,25 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired, onDirtyChan
           placeholder="https://example.com/dataset"
           helpText="Optional: The dataset's landing page URL"
         />
-        
+
         {/* XML Archives Section */}
         <div style={{ margin: '1rem 0' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-            <h5 style={{ 
-              fontSize: '0.875rem', 
-              fontWeight: 600, 
+            <h5 style={{
+              fontSize: '0.875rem',
+              fontWeight: 600,
               margin: 0,
               color: 'var(--text)',
             }}>
               XML Archives
             </h5>
-            <Button 
-              variant="primary" 
+            <Button
+              variant="primary"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 addXmlArchive();
-              }} 
+              }}
               style={{
                 padding: '0.375rem 0.75rem',
                 height: 'auto',
@@ -400,14 +400,14 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired, onDirtyChan
               Add Archive
             </Button>
           </div>
-          
+
           {(!form.values.xmlArchives || form.values.xmlArchives.length === 0) ? (
-            <div style={{ 
-              padding: '1rem', 
-              backgroundColor: 'var(--subtle-bg)', 
-              borderRadius: '0.5rem', 
-              fontSize: '0.875rem', 
-              color: 'var(--text-light)', 
+            <div style={{
+              padding: '1rem',
+              backgroundColor: 'var(--subtle-bg)',
+              borderRadius: '0.5rem',
+              fontSize: '0.875rem',
+              color: 'var(--text-light)',
               textAlign: 'center',
               marginBottom: '1rem',
             }}>
@@ -417,12 +417,12 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired, onDirtyChan
             form.values.xmlArchives.map((archive, archIndex) => {
               const urlFieldName = getArrayFieldName('xmlArchives', archIndex, 'url');
               return (
-                <div 
-                  key={archIndex} 
-                  style={{ 
-                    padding: '1rem', 
-                    backgroundColor: 'var(--subtle-bg)', 
-                    borderRadius: '0.5rem', 
+                <div
+                  key={archIndex}
+                  style={{
+                    padding: '1rem',
+                    backgroundColor: 'var(--subtle-bg)',
+                    borderRadius: '0.5rem',
                     marginBottom: '0.75rem',
                   }}
                 >
@@ -447,14 +447,14 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired, onDirtyChan
                     placeholder="https://example.com/archive.xml"
                     required
                   />
-                  
+
                   <div style={{ marginBottom: '0.75rem' }}>
-                    <label style={{ 
-                      display: 'flex', 
+                    <label style={{
+                      display: 'flex',
                       paddingLeft: '0.2rem',
                       alignItems: 'center',
-                      fontSize: '0.875rem', 
-                      fontWeight: 500, 
+                      fontSize: '0.875rem',
+                      fontWeight: 500,
                       color: 'var(--text)',
                     }}>
                       <input
@@ -472,7 +472,7 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired, onDirtyChan
                       Is Latest Version
                     </label>
                   </div>
-                  
+
                   <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
                     <button
                       type="button"
@@ -504,25 +504,25 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired, onDirtyChan
             })
           )}
         </div>
-        
+
         {/* Useful Links Section */}
         <div style={{ margin: '1rem 0' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-            <h5 style={{ 
-              fontSize: '0.875rem', 
-              fontWeight: 600, 
+            <h5 style={{
+              fontSize: '0.875rem',
+              fontWeight: 600,
               margin: 0,
               color: 'var(--text)',
             }}>
               Useful Links
             </h5>
-            <Button 
-              variant="primary" 
+            <Button
+              variant="primary"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 addUsefulLink();
-              }} 
+              }}
               style={{
                 padding: '0.375rem 0.75rem',
                 height: 'auto',
@@ -536,14 +536,14 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired, onDirtyChan
               Add Link
             </Button>
           </div>
-          
+
           {(!form.values.usefulLinks || form.values.usefulLinks.length === 0) ? (
-            <div style={{ 
-              padding: '1rem', 
-              backgroundColor: 'var(--subtle-bg)', 
-              borderRadius: '0.5rem', 
-              fontSize: '0.875rem', 
-              color: 'var(--text-light)', 
+            <div style={{
+              padding: '1rem',
+              backgroundColor: 'var(--subtle-bg)',
+              borderRadius: '0.5rem',
+              fontSize: '0.875rem',
+              color: 'var(--text-light)',
               textAlign: 'center',
               marginBottom: '1rem',
             }}>
@@ -554,12 +554,12 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired, onDirtyChan
               const titleFieldName = getArrayFieldName('usefulLinks', linkIndex, 'title');
               const urlFieldName = getArrayFieldName('usefulLinks', linkIndex, 'url');
               return (
-                <div 
-                  key={linkIndex} 
-                  style={{ 
-                    padding: '1rem', 
-                    backgroundColor: 'var(--subtle-bg)', 
-                    borderRadius: '0.5rem', 
+                <div
+                  key={linkIndex}
+                  style={{
+                    padding: '1rem',
+                    backgroundColor: 'var(--subtle-bg)',
+                    borderRadius: '0.5rem',
                     marginBottom: '0.75rem',
                   }}
                 >
@@ -584,7 +584,7 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired, onDirtyChan
                     placeholder="Enter link title"
                     required
                   />
-                  
+
                   <FormField
                     type="url"
                     name={urlFieldName}
@@ -606,14 +606,14 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired, onDirtyChan
                     placeholder="https://example.com/resource"
                     required
                   />
-                  
+
                   <div style={{ marginBottom: '0.75rem' }}>
-                    <label style={{ 
-                      display: 'flex', 
+                    <label style={{
+                      display: 'flex',
                       paddingLeft: '0.2rem',
                       alignItems: 'center',
-                      fontSize: '0.875rem', 
-                      fontWeight: 500, 
+                      fontSize: '0.875rem',
+                      fontWeight: 500,
                       color: 'var(--text)',
                     }}>
                       <input
@@ -631,7 +631,7 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired, onDirtyChan
                       Is Latest Version
                     </label>
                   </div>
-                  
+
                   <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
                     <button
                       type="button"
@@ -663,7 +663,7 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired, onDirtyChan
             })
           )}
         </div>
-        
+
         <div style={{
           display: 'flex',
           justifyContent: 'flex-end',

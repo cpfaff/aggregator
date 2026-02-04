@@ -13,31 +13,31 @@ import validationRules from './validationRules';
  */
 export const arrayValidation = (itemSchema, options = {}) => {
   const { minItems, maxItems, validateEach = true } = options;
-  
+
   return (arrayValue, allValues) => {
     const errors = {};
-    
+
     if (!Array.isArray(arrayValue)) {
       return 'Must be an array';
     }
-    
+
     // Check min/max constraints
     if (minItems && arrayValue.length < minItems) {
       return `Must have at least ${minItems} item${minItems !== 1 ? 's' : ''}`;
     }
-    
+
     if (maxItems && arrayValue.length > maxItems) {
       return `Must have no more than ${maxItems} item${maxItems !== 1 ? 's' : ''}`;
     }
-    
+
     // Validate each item if required
     if (validateEach && itemSchema) {
       arrayValue.forEach((item, index) => {
         Object.keys(itemSchema).forEach(field => {
-          const validators = Array.isArray(itemSchema[field]) 
-            ? itemSchema[field] 
+          const validators = Array.isArray(itemSchema[field])
+            ? itemSchema[field]
             : [itemSchema[field]];
-          
+
           for (const validator of validators) {
             if (typeof validator === 'function') {
               const error = validator(item[field], allValues);
@@ -50,7 +50,7 @@ export const arrayValidation = (itemSchema, options = {}) => {
         });
       });
     }
-    
+
     return Object.keys(errors).length > 0 ? errors : null;
   };
 };
@@ -64,7 +64,7 @@ export const createDynamicArraySchema = (baseFieldName, itemSchema) => {
   return (formValues) => {
     const schema = {};
     const arrayValue = formValues[baseFieldName] || [];
-    
+
     if (Array.isArray(arrayValue)) {
       arrayValue.forEach((item, index) => {
         Object.keys(itemSchema).forEach(field => {
@@ -72,7 +72,7 @@ export const createDynamicArraySchema = (baseFieldName, itemSchema) => {
         });
       });
     }
-    
+
     return schema;
   };
 };
@@ -105,7 +105,7 @@ export const parseArrayFieldName = (fieldName) => {
  */
 export const flattenArrayForValidation = (arrayName, arrayValue) => {
   const flattened = {};
-  
+
   if (Array.isArray(arrayValue)) {
     arrayValue.forEach((item, index) => {
       Object.keys(item).forEach(field => {
@@ -114,7 +114,7 @@ export const flattenArrayForValidation = (arrayName, arrayValue) => {
       });
     });
   }
-  
+
   return flattened;
 };
 
@@ -123,7 +123,7 @@ export const flattenArrayForValidation = (arrayName, arrayValue) => {
  */
 export const unflattenArrayErrors = (errors, arrayName) => {
   const arrayErrors = [];
-  
+
   Object.keys(errors).forEach(key => {
     const parsed = parseArrayFieldName(key);
     if (parsed && parsed.arrayName === arrayName) {
@@ -133,7 +133,7 @@ export const unflattenArrayErrors = (errors, arrayName) => {
       arrayErrors[parsed.index][parsed.field] = errors[key];
     }
   });
-  
+
   return arrayErrors;
 };
 

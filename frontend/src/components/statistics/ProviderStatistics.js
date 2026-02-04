@@ -146,9 +146,9 @@ function ProviderStatistics({ providerId, providerName }) {
 
 
   return (
-    <div style={{ 
-      padding: '0 1.5rem 2rem', 
-      maxWidth: '1200px', 
+    <div style={{
+      padding: '0 1.5rem 2rem',
+      maxWidth: '1200px',
       margin: '0 auto',
       position: 'relative'
     }}>
@@ -163,10 +163,10 @@ function ProviderStatistics({ providerId, providerName }) {
         borderRadius: '50%',
         zIndex: -1
       }} />
-      
+
       {/* Header */}
-      <div style={{ 
-        marginBottom: '3rem', 
+      <div style={{
+        marginBottom: '3rem',
         textAlign: 'left',
         position: 'relative',
         padding: '0.5rem 0 1.5rem',
@@ -183,7 +183,7 @@ function ProviderStatistics({ providerId, providerName }) {
         }}>
           {providerName || 'Provider Trends'}
         </h2>
-        
+
         {/* Meta information row */}
         <div style={{
           display: 'flex',
@@ -212,7 +212,7 @@ function ProviderStatistics({ providerId, providerName }) {
             </div>
           )}
         </div>
-        
+
         <p style={{
           color: 'var(--text-light)',
           margin: 0,
@@ -241,7 +241,7 @@ function ProviderStatistics({ providerId, providerName }) {
           error={timeSeriesData.length === 0 ? 'No historical data available' : null}
           integerOnly={true}
         />
-        
+
         {/* Biological Units Timeline */}
         <TimeSeriesChart
           data={biologicalUnitsTimeSeriesData}

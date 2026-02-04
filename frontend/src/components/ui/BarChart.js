@@ -12,8 +12,8 @@ import {
 /**
  * BarChart component for displaying bar chart data
  */
-function BarChart({ 
-  data = [], 
+function BarChart({
+  data = [],
   dataKey = 'value',
   nameKey = 'name',
   color = 'var(--primary)',
@@ -117,16 +117,16 @@ function BarChart({
           boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
           fontSize: '0.875rem'
         }}>
-          <p style={{ 
-            margin: 0, 
+          <p style={{
+            margin: 0,
             marginBottom: '0.25rem',
             color: 'var(--text-light)',
             fontWeight: 500
           }}>
             {label}
           </p>
-          <p style={{ 
-            margin: 0, 
+          <p style={{
+            margin: 0,
             color: payload[0].fill,
             fontWeight: 600
           }}>
@@ -140,12 +140,12 @@ function BarChart({
 
   const ChartComponent = horizontal ? RechartsBarChart : RechartsBarChart;
   const layout = horizontal ? 'horizontal' : 'vertical';
-  
+
   // Resolve CSS variables to actual colors
   const resolveColor = (colorValue) => {
     const colorMap = {
       'var(--primary)': '#3b82f6',
-      'var(--success)': '#22c55e', 
+      'var(--success)': '#22c55e',
       'var(--warning)': '#f59e0b',
       'var(--error)': '#ef4444',
       'var(--text)': '#1f2937',
@@ -153,9 +153,9 @@ function BarChart({
     };
     return colorMap[colorValue] || colorValue;
   };
-  
+
   const resolvedColor = resolveColor(color);
-  
+
 
   return (
     <div style={{
@@ -178,12 +178,12 @@ function BarChart({
         background: `radial-gradient(ellipse at 0% 0%, ${color}05 0%, transparent 70%)`,
         pointerEvents: 'none'
       }} />
-      
+
       {(title || subtitle) && (
-        <div style={{ 
-          marginBottom: '1.5rem', 
-          position: 'relative', 
-          zIndex: 1 
+        <div style={{
+          marginBottom: '1.5rem',
+          position: 'relative',
+          zIndex: 1
         }}>
           {title && (
             <h3 style={{
@@ -209,17 +209,17 @@ function BarChart({
           )}
         </div>
       )}
-      
+
       <div style={{ position: 'relative', zIndex: 1 }}>
         <ResponsiveContainer width="100%" height={height}>
-          <ChartComponent 
-            data={data} 
+          <ChartComponent
+            data={data}
             margin={{ top: 10, right: 30, left: 20, bottom: 10 }}
             layout={layout}
           >
             {showGrid && (
-              <CartesianGrid 
-                strokeDasharray="2 4" 
+              <CartesianGrid
+                strokeDasharray="2 4"
                 stroke="var(--border)"
                 opacity={0.3}
                 horizontal={!horizontal}
@@ -228,7 +228,7 @@ function BarChart({
             )}
             {horizontal ? (
               <>
-                <XAxis 
+                <XAxis
                   type="number"
                   stroke="var(--text-light)"
                   fontSize={11}
@@ -245,7 +245,7 @@ function BarChart({
                     return value;
                   }}
                 />
-                <YAxis 
+                <YAxis
                   type="category"
                   dataKey={nameKey}
                   stroke="var(--text-light)"
@@ -259,7 +259,7 @@ function BarChart({
               </>
             ) : (
               <>
-                <XAxis 
+                <XAxis
                   dataKey={nameKey}
                   stroke="var(--text-light)"
                   fontSize={11}
@@ -272,7 +272,7 @@ function BarChart({
                   textAnchor={data.length > 5 ? 'end' : 'middle'}
                   height={data.length > 5 ? 60 : 30}
                 />
-                <YAxis 
+                <YAxis
                   stroke="var(--text-light)"
                   fontSize={11}
                   fontWeight={500}
@@ -292,8 +292,8 @@ function BarChart({
               </>
             )}
             {showTooltip && <Tooltip content={<CustomTooltip />} />}
-            <Bar 
-              dataKey={dataKey} 
+            <Bar
+              dataKey={dataKey}
               fill={resolvedColor}
               radius={horizontal ? [0, 6, 6, 0] : [6, 6, 0, 0]}
               opacity={1}

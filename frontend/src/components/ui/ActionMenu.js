@@ -3,7 +3,7 @@ import './ActionMenu.css';
 
 /**
  * ActionMenu - A floating action menu that stays visible during scroll
- * 
+ *
  * @param {Object} props - Component props
  * @param {Array} props.actions - Array of action objects with icon, label, onClick, and color props
  * @param {Object} props.style - Additional styles to apply to the container
@@ -12,9 +12,9 @@ import './ActionMenu.css';
  * @param {String} props.mode - Positioning mode: 'fixed' (default) or 'content-relative'
  * @param {String} props.contentSelector - CSS selector for the content container when mode is 'content-relative'
  */
-function ActionMenu({ 
-  actions = [], 
-  style = {}, 
+function ActionMenu({
+  actions = [],
+  style = {},
   position = 'right',
   offset = 24,
   mode = 'fixed',
@@ -23,12 +23,12 @@ function ActionMenu({
   const [containerStyle, setContainerStyle] = useState({});
   const actionMenuRef = useRef(null);
   const styleRef = useRef(style);
-  
+
   // Update styleRef when style prop changes
   useEffect(() => {
     styleRef.current = style;
   }, [style]);
-  
+
   // Function to update position based on mode
   const updatePosition = useCallback(() => {
     // Base styles for both modes
@@ -39,7 +39,7 @@ function ActionMenu({
       zIndex: 100,
       ...styleRef.current
     };
-    
+
     if (mode === 'fixed') {
       // Original fixed positioning
       const fixedStyle = {
@@ -48,32 +48,32 @@ function ActionMenu({
         top: '50%',
         transform: 'translateY(-50%)'
       };
-      
+
       // Apply position (left or right)
       if (position === 'right') {
         fixedStyle.right = `${offset}px`;
       } else {
         fixedStyle.left = `${offset}px`;
       }
-      
+
       setContainerStyle(fixedStyle);
     } else if (mode === 'content-relative') {
       // Content-relative positioning
       const contentContainer = document.querySelector(contentSelector);
-      
+
       if (contentContainer) {
         const contentRect = contentContainer.getBoundingClientRect();
         const windowWidth = window.innerWidth;
-        
+
         // Calculate position relative to the content container
         const relativeStyle = {
           ...baseStyle,
           position: 'fixed'
         };
-        
+
         // Check if there's enough space for the menu
         const actionMenuWidth = actionMenuRef.current ? actionMenuRef.current.offsetWidth : 60; // Default width estimate
-        
+
         if (position === 'right') {
           // Place it to the right of the content container with appropriate spacing
           relativeStyle.right = `${Math.max(offset, windowWidth - contentRect.right - actionMenuWidth - 20)}px`;
@@ -85,55 +85,55 @@ function ActionMenu({
           relativeStyle.top = '50%';
           relativeStyle.transform = 'translateY(-50%)';
         }
-        
+
         setContainerStyle(relativeStyle);
       }
     }
   }, [mode, position, offset, contentSelector]); // Removed style from dependencies
-  
+
   // Set up position and event listeners - add delay and multiple updates for reliability
   useEffect(() => {
     // Set initial positioning immediately
     updatePosition();
-    
+
     // Add a slight delay to ensure DOM is fully rendered
     const initialDelayTimer = setTimeout(() => {
       updatePosition();
-      
+
       // Schedule one more update to ensure measurements are accurate
       const secondUpdateTimer = setTimeout(() => {
         updatePosition();
       }, 50);
-      
+
       return () => clearTimeout(secondUpdateTimer);
     }, 10);
-    
+
     // Add event listeners for resize if using content-relative mode
     if (mode === 'content-relative') {
       window.addEventListener('resize', updatePosition);
       window.addEventListener('scroll', updatePosition);
-      
+
       // Call update when any images load, as this can affect layout
       const handleImageLoad = () => {
         updatePosition();
       };
-      
+
       // Watch for DOM changes that might affect positioning
       const observer = new MutationObserver(() => {
         updatePosition();
       });
-      
+
       const contentContainer = document.querySelector(contentSelector);
       if (contentContainer) {
-        observer.observe(contentContainer, { 
-          childList: true, 
+        observer.observe(contentContainer, {
+          childList: true,
           subtree: true,
           attributes: true
         });
       }
-      
+
       document.addEventListener('load', handleImageLoad, true);
-      
+
       // Cleanup
       return () => {
         clearTimeout(initialDelayTimer);
@@ -143,14 +143,14 @@ function ActionMenu({
         observer.disconnect();
       };
     }
-    
+
     return () => clearTimeout(initialDelayTimer);
   }, [mode, updatePosition, contentSelector]);
-  
+
   if (!actions || actions.length === 0) return null;
-  
+
   return (
-    <div 
+    <div
       ref={actionMenuRef}
       style={containerStyle}
       className="action-menu"
@@ -187,7 +187,7 @@ function ActionMenu({
           title={action.label}
         >
           {React.cloneElement(action.icon, { size: 24 })}
-          
+
           {/* Tooltip */}
           <div
             style={{

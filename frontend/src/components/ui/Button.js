@@ -40,10 +40,10 @@ function Button({ children, onClick, variant = 'primary', isLoading, disabled, s
       };
     }
   };
-  
+
   return (
-    <button 
-      style={{...getButtonStyle(), ...(style || {})}} 
+    <button
+      style={{...getButtonStyle(), ...(style || {})}}
       onClick={onClick}
       disabled={isLoading || disabled}
       {...props}

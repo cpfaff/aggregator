@@ -14,13 +14,13 @@ import {
  * MultiLineTimeSeriesChart component for displaying multi-provider time-series data
  * Supports multiple data series/lines with dynamic color assignment and enhanced tooltips
  */
-function MultiLineTimeSeriesChart({ 
-  data = [], 
+function MultiLineTimeSeriesChart({
+  data = [],
   providers = [],
   xKey = 'date',
   colors = [
     'var(--primary)',
-    'var(--success)', 
+    'var(--success)',
     'var(--warning)',
     'var(--error)',
     '#8B5CF6',
@@ -46,7 +46,7 @@ function MultiLineTimeSeriesChart({
     if (!data || data.length === 0 || !providers || providers.length === 0) {
       return null;
     }
-    
+
     // Calculate Y domain across all provider values
     const allValues = [];
     data.forEach(item => {
@@ -57,12 +57,12 @@ function MultiLineTimeSeriesChart({
         }
       });
     });
-    
+
     if (allValues.length === 0) return null;
-    
+
     const minY = Math.min(...allValues);
     const maxY = Math.max(...allValues);
-    
+
     if (scaleType === 'log') {
       // For log scale, use actual min and max without padding
       // Ensure minimum is at least 1 for log scale
@@ -73,7 +73,7 @@ function MultiLineTimeSeriesChart({
       return [Math.max(0, minY - padding), maxY + padding];
     }
   }, [data, providers, scaleType]);
-  
+
   // Memoize processed data
   const memoizedData = useMemo(() => data, [data]);
   const memoizedProviders = useMemo(() => providers, [providers]);
@@ -185,9 +185,9 @@ function MultiLineTimeSeriesChart({
             borderTopLeftRadius: '0.75rem',
             borderTopRightRadius: '0.75rem'
           }} />
-          
-          <p style={{ 
-            margin: 0, 
+
+          <p style={{
+            margin: 0,
             marginBottom: '0.75rem',
             color: 'var(--text-light)',
             fontWeight: 600,
@@ -197,7 +197,7 @@ function MultiLineTimeSeriesChart({
           }}>
             {label}
           </p>
-          
+
           {/* Show all providers' values */}
           {payload.map((entry, index) => (
             <div key={index} style={{
@@ -219,7 +219,7 @@ function MultiLineTimeSeriesChart({
                   backgroundColor: entry.color,
                   boxShadow: `0 0 0 2px ${entry.color}20`
                 }} />
-                <span style={{ 
+                <span style={{
                   color: 'var(--text)',
                   fontWeight: 500,
                   fontSize: '0.85rem'
@@ -227,7 +227,7 @@ function MultiLineTimeSeriesChart({
                   {entry.dataKey}
                 </span>
               </div>
-              <span style={{ 
+              <span style={{
                 color: entry.color,
                 fontWeight: 700,
                 fontSize: '0.9rem'
@@ -244,10 +244,10 @@ function MultiLineTimeSeriesChart({
 
   const CustomLegend = ({ payload }) => {
     if (!payload || payload.length === 0) return null;
-    
+
     // Determine if we need compact mode based on number of providers
     const needsCompactMode = payload.length > 6;
-    
+
     return (
       <div style={{
         display: 'grid',
@@ -262,13 +262,13 @@ function MultiLineTimeSeriesChart({
       }}>
         {payload.map((entry, index) => {
           // Truncate long provider names
-          const displayName = entry.value.length > 40 
-            ? entry.value.substring(0, 37) + '...' 
+          const displayName = entry.value.length > 40
+            ? entry.value.substring(0, 37) + '...'
             : entry.value;
-          
+
           return (
-            <div 
-              key={index} 
+            <div
+              key={index}
               title={entry.value} // Show full name on hover
               style={{
                 display: 'flex',
@@ -326,12 +326,12 @@ function MultiLineTimeSeriesChart({
         background: `radial-gradient(ellipse at 100% 0%, ${colors[0]}05 0%, transparent 70%)`,
         pointerEvents: 'none'
       }} />
-      
+
       {(title || subtitle) && (
-        <div style={{ 
-          marginBottom: '1.5rem', 
-          position: 'relative', 
-          zIndex: 1 
+        <div style={{
+          marginBottom: '1.5rem',
+          position: 'relative',
+          zIndex: 1
         }}>
           <div style={{
             display: 'flex',
@@ -409,22 +409,22 @@ function MultiLineTimeSeriesChart({
           </div>
         </div>
       )}
-      
+
       <div style={{ position: 'relative', zIndex: 1 }}>
         <ResponsiveContainer width="100%" height={height}>
-          <LineChart 
-            data={memoizedData} 
+          <LineChart
+            data={memoizedData}
             margin={{ top: 10, right: 30, left: 20, bottom: 10 }}
           >
             {showGrid && (
-              <CartesianGrid 
-                strokeDasharray="2 4" 
+              <CartesianGrid
+                strokeDasharray="2 4"
                 stroke="var(--border)"
                 opacity={0.3}
                 vertical={false}
               />
             )}
-            <XAxis 
+            <XAxis
               dataKey={xKey}
               stroke="var(--text-light)"
               fontSize={11}
@@ -433,7 +433,7 @@ function MultiLineTimeSeriesChart({
               axisLine={false}
               tick={{ fill: 'var(--text-light)' }}
             />
-            <YAxis 
+            <YAxis
               stroke="var(--text-light)"
               fontSize={11}
               fontWeight={500}
@@ -459,25 +459,25 @@ function MultiLineTimeSeriesChart({
             />
             {showTooltip && <Tooltip content={<CustomTooltip />} />}
             {showLegend && <Legend content={<CustomLegend />} />}
-            
+
             {/* Render a Line component for each provider */}
             {memoizedProviders.map((provider, index) => (
-              <Line 
+              <Line
                 key={provider.key}
-                type="monotone" 
-                dataKey={provider.key} 
+                type="monotone"
+                dataKey={provider.key}
                 stroke={colors[index % colors.length]}
                 strokeWidth={2.5}
-                dot={{ 
-                  fill: 'var(--card-bg)', 
-                  stroke: colors[index % colors.length], 
-                  strokeWidth: 2, 
+                dot={{
+                  fill: 'var(--card-bg)',
+                  stroke: colors[index % colors.length],
+                  strokeWidth: 2,
                   r: 4,
                   filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
                 }}
-                activeDot={{ 
-                  r: 6, 
-                  stroke: colors[index % colors.length], 
+                activeDot={{
+                  r: 6,
+                  stroke: colors[index % colors.length],
                   strokeWidth: 2.5,
                   fill: 'var(--card-bg)',
                   filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.15))'
@@ -503,32 +503,32 @@ export default React.memo(MultiLineTimeSeriesChart, (prevProps, nextProps) => {
     if (prev === next) return true;
     if (!prev || !next) return prev === next;
     if (prev.length !== next.length) return false;
-    
+
     return prev.every((item, index) => {
       const nextItem = next[index];
       if (!nextItem) return false;
-      
+
       // Compare date and all provider values
       if (item[prevProps.xKey] !== nextItem[nextProps.xKey]) return false;
-      
-      return prevProps.providers?.every(provider => 
+
+      return prevProps.providers?.every(provider =>
         item[provider.key] === nextItem[provider.key]
       ) ?? true;
     });
   };
-  
+
   const providersEqual = (prev, next) => {
     if (prev === next) return true;
     if (!prev || !next) return prev === next;
     if (prev.length !== next.length) return false;
-    
+
     return prev.every((provider, index) => {
       const nextProvider = next[index];
-      return provider?.key === nextProvider?.key && 
+      return provider?.key === nextProvider?.key &&
              provider?.name === nextProvider?.name;
     });
   };
-  
+
   return (
     shallowDataEqual(prevProps.data, nextProps.data) &&
     providersEqual(prevProps.providers, nextProps.providers) &&

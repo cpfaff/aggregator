@@ -240,7 +240,7 @@ const styles = {
 };
 
 const ValidationResultsModal = ({ isOpen, onClose, validationResults }) => {
-  
+
   if (!isOpen || !validationResults) return null;
 
   // Extract relevant data from validation results
@@ -258,7 +258,7 @@ const ValidationResultsModal = ({ isOpen, onClose, validationResults }) => {
   // Format date
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
-    
+
     try {
       // Explicitly treat the input date as UTC if it doesn't have timezone info
       // This addresses the 2-hour difference issue
@@ -270,7 +270,7 @@ const ValidationResultsModal = ({ isOpen, onClose, validationResults }) => {
         // Assume UTC and convert
         date = new Date(dateString + 'Z');
       }
-      
+
       return date.toLocaleString(undefined, {
         year: 'numeric',
         month: 'short',
@@ -296,7 +296,7 @@ const ValidationResultsModal = ({ isOpen, onClose, validationResults }) => {
   // Format file list
   const formatFileList = (fileInfo) => {
     if (!fileInfo) return '';
-    
+
     if (Array.isArray(fileInfo)) {
       const lastItem = fileInfo[fileInfo.length - 1];
       if (lastItem && lastItem.includes('more files')) {
@@ -311,13 +311,13 @@ const ValidationResultsModal = ({ isOpen, onClose, validationResults }) => {
         return parts[parts.length - 1];
       }).join(', ');
     }
-    
+
     const displayFiles = fileInfo.examples || [];
     const text = displayFiles.map(f => {
       const parts = f.split('/');
       return parts[parts.length - 1];
     }).join(', ');
-    
+
     if (fileInfo.remaining_count > 0) {
       return `${text} (... ${fileInfo.remaining_count} more)`;
     }
@@ -330,12 +330,12 @@ const ValidationResultsModal = ({ isOpen, onClose, validationResults }) => {
   };
 
   return (
-    <Modal 
-      isOpen={isOpen} 
+    <Modal
+      isOpen={isOpen}
       onClose={onClose}
       title="Validation Results"
       footer={
-        <button 
+        <button
           onClick={onClose}
           style={{
             padding: '0.75rem 1rem',
@@ -359,8 +359,8 @@ const ValidationResultsModal = ({ isOpen, onClose, validationResults }) => {
           <div style={styles.summaryItem}>
             <p style={styles.summaryLabel}>Status</p>
             <h3 style={styles.summaryValue}>
-              {isValid 
-                ? <><CheckCircle size={18} style={{ color: 'var(--success)' }} /> Valid</> 
+              {isValid
+                ? <><CheckCircle size={18} style={{ color: 'var(--success)' }} /> Valid</>
                 : <><XCircle size={18} style={{ color: 'var(--error)' }} /> Invalid</>
               }
             </h3>
@@ -425,10 +425,10 @@ const ValidationResultsModal = ({ isOpen, onClose, validationResults }) => {
                     {/* Conditionally show examples only for non-length constraint errors */}
                     {(() => {
                       // Check if this is a length constraint error
-                      const isLengthConstraint = 
-                        error.details?.validation_type === "SCHEMAV_CVC_MINLENGTH_VALID" || 
+                      const isLengthConstraint =
+                        error.details?.validation_type === "SCHEMAV_CVC_MINLENGTH_VALID" ||
                         error.details?.validation_type === "SCHEMAV_CVC_MAXLENGTH_VALID";
-                      
+
                       // Only show examples for non-length constraint errors
                       if (!isLengthConstraint && error.details?.distinct_values && error.details.distinct_values.length > 0) {
                         return (
@@ -452,7 +452,7 @@ const ValidationResultsModal = ({ isOpen, onClose, validationResults }) => {
                           </div>
                         );
                       }
-                      
+
                       return null;
                     })()}
 
@@ -491,7 +491,7 @@ const ValidationResultsModal = ({ isOpen, onClose, validationResults }) => {
                 <div style={styles.ruleDetails}>
                   {rule.path && <div style={styles.rulePath}>Path: {rule.path}</div>}
                   {rule.message && (
-                    <div 
+                    <div
                       style={styles.ruleMessage}
                       dangerouslySetInnerHTML={createMarkup(
                         Array.isArray(rule.message) ? rule.message.join('<br>') : rule.message
@@ -588,7 +588,7 @@ const ValidationResultsModal = ({ isOpen, onClose, validationResults }) => {
                 <div style={styles.ruleDetails}>
                   {rule.path && <div style={styles.rulePath}>Path: {rule.path}</div>}
                   {rule.message && (
-                    <div 
+                    <div
                       style={styles.ruleMessage}
                       dangerouslySetInnerHTML={createMarkup(
                         Array.isArray(rule.message) ? rule.message.join('<br>') : rule.message

@@ -3,7 +3,7 @@ import Modal from './Modal';
 
 /**
  * ConfirmModal - A standardized confirmation dialog component
- * 
+ *
  * @param {Object} props - Component props
  * @param {boolean} props.isOpen - Whether the modal is open
  * @param {string} props.title - The title of the modal (defaults to 'Confirm Action')
@@ -14,18 +14,18 @@ import Modal from './Modal';
  * @param {Function} props.onConfirm - Function to call when the confirm button is clicked
  * @param {Function} props.onCancel - Function to call when the cancel button is clicked
  */
-function ConfirmModal({ 
+function ConfirmModal({
   isOpen = false,
-  title = 'Confirm Action', 
-  message, 
-  confirmText = 'Confirm', 
+  title = 'Confirm Action',
+  message,
+  confirmText = 'Confirm',
   cancelText = 'Cancel',
   confirmVariant = 'danger',
-  onConfirm, 
+  onConfirm,
   onCancel
 }) {
   if (!isOpen) return null;
-  
+
   return (
     <Modal
       isOpen={true}
@@ -34,7 +34,7 @@ function ConfirmModal({
       zIndex={1100}
       footer={
         <>
-          <button 
+          <button
             onClick={onCancel}
             style={{
               padding: '0.75rem 1rem',
@@ -50,11 +50,11 @@ function ConfirmModal({
           >
             {cancelText}
           </button>
-          <button 
+          <button
             onClick={onConfirm}
             style={{
               padding: '0.75rem 1rem',
-              backgroundColor: confirmVariant === 'danger' ? 'var(--error)' : 
+              backgroundColor: confirmVariant === 'danger' ? 'var(--error)' :
                                confirmVariant === 'primary' ? 'var(--primary)' : 'transparent',
               color: confirmVariant === 'secondary' ? 'var(--text-light)' : 'white',
               border: confirmVariant === 'secondary' ? '1px solid var(--border)' : 'none',

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xs:schema xmlns="http://www.tdwg.org/schemas/abcd/2.06"
 	xmlns:xs="http://www.w3.org/2001/XMLSchema"
-	xmlns:sawsdl="http://www.w3.org/ns/sawsdl" 
+	xmlns:sawsdl="http://www.w3.org/ns/sawsdl"
 	targetNamespace="http://www.tdwg.org/schemas/abcd/2.06" elementFormDefault="qualified"
 	attributeFormDefault="unqualified" version="2.06b+sa">
 	<xs:element name="DataSets" sawsdl:modelReference="1">

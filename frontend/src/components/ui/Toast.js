@@ -89,7 +89,7 @@ const Toast = ({ message, type = 'success', duration = 5000, onClose, position =
         ${isExiting ? 'animate-slide-out' : 'animate-slide-in'}
       `}
       style={{
-        animation: isExiting 
+        animation: isExiting
           ? 'slideOut 0.3s ease-in-out forwards'
           : 'slideIn 0.3s ease-in-out forwards'
       }}
@@ -116,7 +116,7 @@ const Toast = ({ message, type = 'success', duration = 5000, onClose, position =
           {icons[type]}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ 
+          <p style={{
             margin: 0,
             fontSize: '0.875rem',
             fontWeight: 500,
@@ -167,7 +167,7 @@ export const ToastContainer = () => {
     const handleToast = (event) => {
       const { message, type, duration } = event.detail;
       const id = Date.now() + Math.random();
-      
+
       setToasts(prev => [...prev, { id, message, type, duration }]);
     };
 

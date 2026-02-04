@@ -37,18 +37,18 @@ function AdminDashboard() {
     try {
       setIsLoading(true);
       setError('');
-      
+
       // Fetch overview statistics
       const overview = await authStatsApi.getOverview(handleTokenExpiration);
       setOverviewStats(overview);
-      
+
       // Fetch quality metrics
       const quality = await authStatsApi.getQualityMetrics(handleTokenExpiration);
       setQualityMetrics(quality);
-      
+
       // Fetch public stats for datacenter distribution
       const providers = await publicStatsApi.getProviders();
-      
+
       // Transform datacenter data for PieChart component
       // Sort by dataset count (descending) to ensure largest gets primary color
       // Group smaller data centers into "Other" category if too many
@@ -60,15 +60,15 @@ function AdminDashboard() {
             provider_count: dc.provider_count
           }))
           .sort((a, b) => b.value - a.value); // Sort descending by dataset count
-        
+
         // If more than 7 data centers, group the smallest ones into "Other"
         if (sorted.length > 7) {
           const topProviders = sorted.slice(0, 6); // Take top 6
           const otherProviders = sorted.slice(6); // All the rest
-          
+
           const otherTotal = otherProviders.reduce((sum, dc) => sum + dc.value, 0);
           const otherCount = otherProviders.length;
-          
+
           return [
             ...topProviders,
             {
@@ -79,10 +79,10 @@ function AdminDashboard() {
             }
           ];
         }
-        
+
         return sorted;
       })();
-      
+
       setDatacenterStats(prev => {
         const prevDataStr = JSON.stringify(prev);
         const newDataStr = JSON.stringify(transformedDatacenters);
@@ -91,18 +91,18 @@ function AdminDashboard() {
         }
         return prev;
       });
-      
-      
+
+
       // Fetch time-series data for system dataset count and biological units
       await Promise.all([
         fetchTimeSeries(),
         fetchBiologicalUnitsTimeline(),
         fetchMultiProviderBiologicalUnits()
       ]);
-      
+
       // Update last refreshed timestamp
       setLastUpdated(new Date());
-      
+
     } catch (err) {
       console.error('Error fetching admin statistics:', err);
       setError('Failed to load statistics: ' + err.message);
@@ -139,10 +139,10 @@ function AdminDashboard() {
         period: 'daily',
         limit: 30
       };
-      
+
       const data = await authStatsApi.getBiologicalUnitsTimeline(params, handleTokenExpiration);
       const formattedData = statsUtils.formatTimeSeriesForChart(data.data_points);
-      
+
       // Only update if data has actually changed to prevent chart re-renders
       setBiologicalUnitsData(prev => {
         const prevDataStr = JSON.stringify(prev);
@@ -152,7 +152,7 @@ function AdminDashboard() {
         }
         return prev;
       });
-      
+
     } catch (err) {
       console.error('Error fetching biological units timeline:', err);
       // Don't set error for biological units timeline failure
@@ -165,10 +165,10 @@ function AdminDashboard() {
         period: 'daily',
         limit: 30
       };
-      
+
       const data = await authStatsApi.getMultiProviderBiologicalUnits(params, handleTokenExpiration);
       const formattedData = statsUtils.formatMultiProviderTimeSeriesForChart(data.data_points);
-      
+
       // Only update if data has actually changed to prevent chart re-renders
       setMultiProviderBiologicalUnits(prev => {
         const prevDataStr = JSON.stringify(prev);
@@ -178,7 +178,7 @@ function AdminDashboard() {
         }
         return prev;
       });
-      
+
     } catch (err) {
       console.error('Error fetching multi-provider biological units:', err);
       // Don't set error for multi-provider biological units failure
@@ -192,8 +192,8 @@ function AdminDashboard() {
 
   if (isLoading) {
     return (
-      <div 
-        style={{ 
+      <div
+        style={{
           flexGrow: 1,
           padding: '2rem 1rem',
           width: '100%',
@@ -222,8 +222,8 @@ function AdminDashboard() {
 
   if (error && !overviewStats) {
     return (
-      <div 
-        style={{ 
+      <div
+        style={{
           flexGrow: 1,
           padding: '2rem 1rem',
           width: '100%',
@@ -237,8 +237,8 @@ function AdminDashboard() {
   }
 
   return (
-    <div 
-      style={{ 
+    <div
+      style={{
         flexGrow: 1,
         padding: '2rem 1rem',
         width: '100%',
@@ -246,7 +246,7 @@ function AdminDashboard() {
       className="content-container"
     >
       <Breadcrumbs items={breadcrumbItems} />
-      
+
       {/* Page title and actions */}
       <div style={{
         marginBottom: '2rem',
@@ -289,25 +289,25 @@ function AdminDashboard() {
             value={overviewStats.total_providers}
             color="var(--success)"
           />
-          
+
           <StatCard
             title="Data Centers"
             value={overviewStats.total_datacenters}
             color="var(--warning)"
           />
-          
+
           <StatCard
             title="Total Datasets"
             value={overviewStats.total_datasets}
             color="var(--primary)"
           />
-          
+
           <StatCard
             title="XML Archives"
             value={overviewStats.total_xml_archives}
             color="var(--info)"
           />
-          
+
           {qualityMetrics && (
             <StatCard
               title="Total Validations"
@@ -315,7 +315,7 @@ function AdminDashboard() {
               color="var(--warning)"
               />
           )}
-          
+
           {overviewStats.validation_success_rate !== null && (
             <StatCard
               title="Validation Success Rate"
@@ -324,7 +324,7 @@ function AdminDashboard() {
               color="var(--success)"
               />
           )}
-          
+
           {qualityMetrics && qualityMetrics.average_processing_time && (
             <StatCard
               title="Average Validation Time"
@@ -402,7 +402,7 @@ function AdminDashboard() {
           height={600}
           colors={[
             'var(--primary)',
-            'var(--success)', 
+            'var(--success)',
             'var(--warning)',
             'var(--error)',
             '#8B5CF6',

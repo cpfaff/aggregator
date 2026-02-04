@@ -173,8 +173,8 @@ export const authStatsApi = {
     });
 
     const response = await apiRequest(
-      `/statistics/biological-units-timeline?${queryParams}`, 
-      {}, 
+      `/statistics/biological-units-timeline?${queryParams}`,
+      {},
       onTokenExpired
     );
     if (!response.ok) {
@@ -198,8 +198,8 @@ export const authStatsApi = {
     });
 
     const response = await apiRequest(
-      `/statistics/multi-provider-biological-units?${queryParams}`, 
-      {}, 
+      `/statistics/multi-provider-biological-units?${queryParams}`,
+      {},
       onTokenExpired
     );
     if (!response.ok) {

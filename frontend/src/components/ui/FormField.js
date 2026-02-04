@@ -33,20 +33,20 @@ const FormField = ({
   ...props
 }) => {
   const [showPassword, setShowPassword] = React.useState(false);
-  
+
   // Determine if field has an error and should show it
   const showError = touched && error;
   const fieldId = `field-${name}`;
   const errorId = `${fieldId}-error`;
   const helpId = `${fieldId}-help`;
-  
+
   // Get field border color based on state
   const getBorderColor = () => {
     if (showError) return 'var(--error)';
     if (touched && !error) return 'var(--success)';
     return 'var(--border)';
   };
-  
+
   // Common input styles
   const inputStyles = {
     display: 'block',
@@ -61,7 +61,7 @@ const FormField = ({
     outline: 'none',
     ...style
   };
-  
+
   // Add focus styles
   const focusStyles = {
     ':focus': {
@@ -69,17 +69,17 @@ const FormField = ({
       boxShadow: '0 0 0 3px rgba(var(--primary-rgb), 0.1)'
     }
   };
-  
+
   // Render the appropriate input element
   const renderInput = () => {
     // Checkbox input
     if (type === 'checkbox') {
       return (
-        <label style={{ 
-          display: 'flex', 
+        <label style={{
+          display: 'flex',
           alignItems: 'center',
-          fontSize: '0.875rem', 
-          fontWeight: 500, 
+          fontSize: '0.875rem',
+          fontWeight: 500,
           color: 'var(--text)',
           cursor: disabled ? 'not-allowed' : 'pointer'
         }}>
@@ -108,19 +108,19 @@ const FormField = ({
         </label>
       );
     }
-    
+
     // Select input
     if (type === 'select') {
       return (
         <>
           {label && (
-            <label 
+            <label
               htmlFor={fieldId}
-              style={{ 
-                display: 'block', 
-                fontSize: '0.875rem', 
-                fontWeight: 500, 
-                marginBottom: '0.5rem', 
+              style={{
+                display: 'block',
+                fontSize: '0.875rem',
+                fontWeight: 500,
+                marginBottom: '0.5rem',
                 color: 'var(--text)',
               }}
             >
@@ -143,8 +143,8 @@ const FormField = ({
           >
             {!multiple && <option value="">Select an option</option>}
             {options?.map(option => (
-              <option 
-                key={option.value} 
+              <option
+                key={option.value}
                 value={option.value}
               >
                 {option.label}
@@ -154,19 +154,19 @@ const FormField = ({
         </>
       );
     }
-    
+
     // Textarea input
     if (type === 'textarea') {
       return (
         <>
           {label && (
-            <label 
+            <label
               htmlFor={fieldId}
-              style={{ 
-                display: 'block', 
-                fontSize: '0.875rem', 
-                fontWeight: 500, 
-                marginBottom: '0.5rem', 
+              style={{
+                display: 'block',
+                fontSize: '0.875rem',
+                fontWeight: 500,
+                marginBottom: '0.5rem',
                 color: 'var(--text)',
               }}
             >
@@ -195,19 +195,19 @@ const FormField = ({
         </>
       );
     }
-    
+
     // Password input with show/hide toggle
     if (type === 'password' && showPasswordToggle) {
       return (
         <>
           {label && (
-            <label 
+            <label
               htmlFor={fieldId}
-              style={{ 
-                display: 'block', 
-                fontSize: '0.875rem', 
-                fontWeight: 500, 
-                marginBottom: '0.5rem', 
+              style={{
+                display: 'block',
+                fontSize: '0.875rem',
+                fontWeight: 500,
+                marginBottom: '0.5rem',
                 color: 'var(--text)',
               }}
             >
@@ -259,18 +259,18 @@ const FormField = ({
         </>
       );
     }
-    
+
     // All other input types
     return (
       <>
         {label && (
-          <label 
+          <label
             htmlFor={fieldId}
-            style={{ 
-              display: 'block', 
-              fontSize: '0.875rem', 
-              fontWeight: 500, 
-              marginBottom: '0.5rem', 
+            style={{
+              display: 'block',
+              fontSize: '0.875rem',
+              fontWeight: 500,
+              marginBottom: '0.5rem',
               color: 'var(--text)',
             }}
           >
@@ -319,14 +319,14 @@ const FormField = ({
       </>
     );
   };
-  
+
   return (
     <div className={className} style={{ marginBottom: '1rem' }}>
       {renderInput()}
-      
+
       {/* Help text */}
       {helpText && !showError && (
-        <div 
+        <div
           id={helpId}
           style={{
             fontSize: '0.75rem',
@@ -338,10 +338,10 @@ const FormField = ({
           {helpText}
         </div>
       )}
-      
+
       {/* Error message */}
       {showError && (
-        <div 
+        <div
           id={errorId}
           role="alert"
           style={{

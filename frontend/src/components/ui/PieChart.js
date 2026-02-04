@@ -11,8 +11,8 @@ import {
 /**
  * PieChart component for displaying pie chart data
  */
-function PieChart({ 
-  data = [], 
+function PieChart({
+  data = [],
   dataKey = 'value',
   nameKey = 'name',
   colors = ['var(--primary)', 'var(--success)', 'var(--warning)', 'var(--error)'],
@@ -123,7 +123,7 @@ function PieChart({
       const percentage = ((data.value / data.payload.total) * 100).toFixed(1);
       const isOther = data.name && data.name.includes('Other');
       const details = data.payload.details;
-      
+
       return (
         <div style={{
           backgroundColor: 'var(--card-bg)',
@@ -134,16 +134,16 @@ function PieChart({
           fontSize: '0.875rem',
           maxWidth: isOther && details ? '250px' : 'auto'
         }}>
-          <p style={{ 
-            margin: 0, 
+          <p style={{
+            margin: 0,
             marginBottom: '0.25rem',
             color: 'var(--text-light)',
             fontWeight: 500
           }}>
             {data.name}
           </p>
-          <p style={{ 
-            margin: 0, 
+          <p style={{
+            margin: 0,
             color: data.fill,
             fontWeight: 600,
             marginBottom: isOther && details ? '0.5rem' : 0
@@ -181,7 +181,7 @@ function PieChart({
   const CustomLegend = ({ payload }) => {
     // Determine if we need compact mode based on number of items
     const needsCompactMode = payload.length > 6;
-    
+
     return (
       <div style={{
         display: 'grid',
@@ -192,13 +192,13 @@ function PieChart({
       }}>
         {payload.map((entry, index) => {
           // Truncate long names for display
-          const displayName = entry.value.length > 25 
-            ? entry.value.substring(0, 22) + '...' 
+          const displayName = entry.value.length > 25
+            ? entry.value.substring(0, 22) + '...'
             : entry.value;
-          
+
           return (
-            <div 
-              key={index} 
+            <div
+              key={index}
               title={entry.value} // Show full name on hover
               style={{
                 display: 'flex',
@@ -223,7 +223,7 @@ function PieChart({
                 flexShrink: 0,
                 boxShadow: needsCompactMode ? 'none' : `0 0 0 2px ${entry.color}20`
               }} />
-              <span style={{ 
+              <span style={{
                 color: 'var(--text)',
                 fontWeight: needsCompactMode ? 400 : 500,
                 overflow: 'hidden',
@@ -261,10 +261,10 @@ function PieChart({
         background: `radial-gradient(circle at 100% 50%, ${colors[0]}03 0%, transparent 70%)`,
         pointerEvents: 'none'
       }} />
-      
+
       {(title || subtitle) && (
-        <div style={{ 
-          marginBottom: '1.5rem', 
+        <div style={{
+          marginBottom: '1.5rem',
           textAlign: 'center',
           position: 'relative',
           zIndex: 1
@@ -293,7 +293,7 @@ function PieChart({
           )}
         </div>
       )}
-      
+
       <div style={{ position: 'relative', zIndex: 1 }}>
         <ResponsiveContainer width="100%" height={height}>
           <RechartsPieChart>
@@ -312,8 +312,8 @@ function PieChart({
               animationDuration={0}
             >
               {enhancedData.map((entry, index) => (
-                <Cell 
-                  key={`cell-${index}`} 
+                <Cell
+                  key={`cell-${index}`}
                   fill={colors[index % colors.length]}
                 />
               ))}
@@ -334,11 +334,11 @@ export default React.memo(PieChart, (prevProps, nextProps) => {
     if (prev === next) return true;
     if (!prev || !next) return prev === next;
     if (prev.length !== next.length) return false;
-    
+
     return prev.every((item, index) => {
       const nextItem = next[index];
       if (!nextItem) return false;
-      
+
       // Compare key properties that affect chart rendering
       return (
         item[prevProps.dataKey] === nextItem[nextProps.dataKey] &&
@@ -346,14 +346,14 @@ export default React.memo(PieChart, (prevProps, nextProps) => {
       );
     });
   };
-  
+
   // Array comparison for colors
   const arraysEqual = (a, b) => {
     if (a === b) return true;
     if (!a || !b) return a === b;
     return a.length === b.length && a.every((val, i) => val === b[i]);
   };
-  
+
   return (
     shallowDataEqual(prevProps.data, nextProps.data) &&
     prevProps.dataKey === nextProps.dataKey &&

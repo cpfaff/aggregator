@@ -5,13 +5,13 @@ Tests all user management operations with real database via testcontainers,
 following TDD principles and covering edge cases.
 """
 
+from unittest.mock import patch
+
 import pytest
 import pytest_asyncio
-from unittest.mock import patch, MagicMock
-from fastapi import HTTPException
-
-from app.services.user_service import UserService
 from app.models.user import UserModel
+from app.services.user_service import UserService
+from fastapi import HTTPException
 
 
 @pytest_asyncio.fixture
@@ -133,9 +133,7 @@ async def test_get_user_or_404_not_found(user_service):
 @patch("app.services.user_service.get_password_hash")
 @patch("app.services.user_service.normalize_provider_roles")
 @patch("app.services.user_service.invalidate_cache")
-async def test_create_user_success(
-    mock_invalidate, mock_normalize, mock_hash, user_service
-):
+async def test_create_user_success(mock_invalidate, mock_normalize, mock_hash, user_service):
     """Test creating a new user successfully."""
     mock_hash.return_value = "hashed_password"
     mock_normalize.return_value = {"1": "admin"}
@@ -173,9 +171,7 @@ async def test_create_user_duplicate_username(user_service, sample_user):
 @pytest.mark.asyncio
 @patch("app.services.user_service.verify_password")
 @patch("app.services.user_service.get_password_hash")
-async def test_update_user_password_own_success(
-    mock_hash, mock_verify, user_service, sample_user
-):
+async def test_update_user_password_own_success(mock_hash, mock_verify, user_service, sample_user):
     """Test user updating their own password successfully."""
     mock_verify.return_value = True
     mock_hash.return_value = "new_hashed_password"
@@ -194,9 +190,7 @@ async def test_update_user_password_own_success(
 
 @pytest.mark.asyncio
 @patch("app.services.user_service.verify_password")
-async def test_update_user_password_own_wrong_old_password(
-    mock_verify, user_service, sample_user
-):
+async def test_update_user_password_own_wrong_old_password(mock_verify, user_service, sample_user):
     """Test updating own password with wrong old password fails."""
     mock_verify.return_value = False
 
@@ -213,9 +207,7 @@ async def test_update_user_password_own_wrong_old_password(
 
 @pytest.mark.asyncio
 @patch("app.services.user_service.get_password_hash")
-async def test_update_user_password_admin_changing_other(
-    mock_hash, user_service, sample_user
-):
+async def test_update_user_password_admin_changing_other(mock_hash, user_service, sample_user):
     """Test admin changing another user's password (no old password verification)."""
     mock_hash.return_value = "admin_set_password"
 
@@ -257,15 +249,11 @@ async def test_update_user_all_fields(
 @pytest.mark.asyncio
 @patch("app.services.user_service.normalize_provider_roles")
 @patch("app.services.user_service.invalidate_cache")
-async def test_update_user_only_roles(
-    mock_invalidate, mock_normalize, user_service, sample_user
-):
+async def test_update_user_only_roles(mock_invalidate, mock_normalize, user_service, sample_user):
     """Test updating only provider roles."""
     mock_normalize.return_value = {"5": "admin"}
 
-    updated = await user_service.update_user(
-        username="testuser", provider_roles={"5": "admin"}
-    )
+    updated = await user_service.update_user(username="testuser", provider_roles={"5": "admin"})
 
     assert updated.provider_roles == {"5": "admin"}
     # Password should remain unchanged
@@ -338,7 +326,9 @@ async def test_add_provider_association_update_existing(
     ]
 
     updated = await user_service.add_provider_association(
-        username="testuser", provider_id=1, role="superadmin"  # Update existing
+        username="testuser",
+        provider_id=1,
+        role="superadmin",  # Update existing
     )
 
     assert updated.provider_roles["1"] == "superadmin"
@@ -367,15 +357,15 @@ async def test_update_provider_association_success(
 
 @pytest.mark.asyncio
 @patch("app.services.user_service.normalize_provider_roles")
-async def test_update_provider_association_not_found(
-    mock_normalize, user_service, sample_user
-):
+async def test_update_provider_association_not_found(mock_normalize, user_service, sample_user):
     """Test updating non-existent provider association raises 404."""
     mock_normalize.return_value = {"1": "admin", "2": "curator"}
 
     with pytest.raises(HTTPException) as exc_info:
         await user_service.update_provider_association(
-            username="testuser", provider_id=999, role="admin"  # Doesn't exist
+            username="testuser",
+            provider_id=999,
+            role="admin",  # Doesn't exist
         )
     assert exc_info.value.status_code == 404
     assert exc_info.value.detail == "User or association not found"
@@ -391,9 +381,7 @@ async def test_remove_provider_association_success(
     """Test removing a provider association."""
     mock_normalize.return_value = {"1": "admin", "2": "curator"}
 
-    updated = await user_service.remove_provider_association(
-        username="testuser", provider_id=1
-    )
+    updated = await user_service.remove_provider_association(username="testuser", provider_id=1)
 
     assert "1" not in updated.provider_roles
     assert "2" in updated.provider_roles
@@ -404,15 +392,14 @@ async def test_remove_provider_association_success(
 
 @pytest.mark.asyncio
 @patch("app.services.user_service.normalize_provider_roles")
-async def test_remove_provider_association_not_found(
-    mock_normalize, user_service, sample_user
-):
+async def test_remove_provider_association_not_found(mock_normalize, user_service, sample_user):
     """Test removing non-existent provider association raises 404."""
     mock_normalize.return_value = {"1": "admin", "2": "curator"}
 
     with pytest.raises(HTTPException) as exc_info:
         await user_service.remove_provider_association(
-            username="testuser", provider_id=999  # Doesn't exist
+            username="testuser",
+            provider_id=999,  # Doesn't exist
         )
     assert exc_info.value.status_code == 404
 

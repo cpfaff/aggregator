@@ -20,13 +20,13 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
 
   // Check if user is global admin or provider admin
   // Convert provider_id to string for comparison since IDs from API might be numbers
-  const canDelete = currentUser?.is_global_admin || 
-                   (currentUser?.provider_roles && 
+  const canDelete = currentUser?.is_global_admin ||
+                   (currentUser?.provider_roles &&
                     currentUser.provider_roles[String(dataset.provider_id)] === 'admin');
 
   // Debug the result
   console.log('Can Delete:', canDelete);
-  
+
   // Fetch validation status and dataset stats when component mounts
   useEffect(() => {
     if (dataset && dataset.id) {
@@ -52,7 +52,7 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
       // Don't show error to user, just log it - stats are optional
     }
   };
-  
+
   // Function to fetch validation status
   const fetchValidationStatus = async () => {
     try {
@@ -65,10 +65,10 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
           },
         }
       );
-      
+
       const newStatus = response.data;
       setValidationStatus(newStatus);
-      
+
       // If the status is no longer running or pending, ensure we're not in validating state
       if (newStatus.validation_status !== 'running' && newStatus.validation_status !== 'pending') {
         if (pollingInterval) {
@@ -79,7 +79,7 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
       }
     } catch (error) {
       console.error('Error fetching validation status:', error);
-      
+
       // If there's an error, stop polling and validating
       if (pollingInterval) {
         clearInterval(pollingInterval);
@@ -88,22 +88,22 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
       setIsValidating(false);
     }
   };
-  
+
   // Update the useEffect to also react to validation status changes
   useEffect(() => {
     // If validation status changes and is not running/pending, make sure isValidating is false
-    if (validationStatus && 
-        validationStatus.validation_status !== 'running' && 
+    if (validationStatus &&
+        validationStatus.validation_status !== 'running' &&
         validationStatus.validation_status !== 'pending') {
       setIsValidating(false);
     }
   }, [validationStatus]);
-  
+
   // Add a safety timeout to reset validation state if it gets stuck
   useEffect(() => {
     // If we've been validating for more than 45 seconds, force reset state
     let validationTimeout;
-    
+
     if (isValidating) {
       console.log('Starting validation safety timeout...');
       validationTimeout = setTimeout(() => {
@@ -117,7 +117,7 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
         fetchValidationStatus();
       }, 45000); // 45 second timeout
     }
-    
+
     return () => {
       if (validationTimeout) {
         clearTimeout(validationTimeout);
@@ -128,18 +128,18 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
   // Function to trigger validation
   const triggerValidation = async (e) => {
     e.stopPropagation();
-    
+
     // Prevent multiple clicks
     if (isValidating) return;
-    
+
     setIsValidating(true);
-    
+
     // Clear any existing polling
     if (pollingInterval) {
       clearInterval(pollingInterval);
       setPollingInterval(null);
     }
-    
+
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post(
@@ -151,29 +151,29 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
           },
         }
       );
-      
+
       // Check if response indicates an immediate error
       if (response.data && response.data.status === 'error') {
         console.error('Validation API returned error:', response.data.message);
         setIsValidating(false);
         return;
       }
-      
+
       // Immediately fetch status to update UI
       await fetchValidationStatus();
-      
+
       // Set up polling to check status every 3 seconds
       const interval = setInterval(fetchValidationStatus, 3000);
       setPollingInterval(interval);
     } catch (error) {
       console.error('Error triggering validation:', error);
       setIsValidating(false);
-      
+
       // Show an alert if there was an error (optional)
       alert('Error triggering validation. Please try again later.');
     }
   };
-  
+
   // Function to open validation modal
   const openValidationModal = (e) => {
     e.stopPropagation();
@@ -193,7 +193,7 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
   };
 
   return (
-    <div 
+    <div
       style={{
         backgroundColor: 'var(--card-bg)',
         borderRadius: '0.75rem',
@@ -218,7 +218,7 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
       aria-label={`Dataset: ${dataset.title}`}
     >
       {/* HEADER AREA */}
-      <div style={{ 
+      <div style={{
         padding: '1.25rem 1.25rem 0.75rem',
         borderBottom: '1px solid var(--border)',
         display: 'flex',
@@ -227,7 +227,7 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
       }}>
         {/* Dataset badge */}
         <div>
-          <span style={{ 
+          <span style={{
             backgroundColor: 'var(--subtle-bg)',
             padding: '0.25rem 0.625rem',
             borderRadius: '0.375rem',
@@ -239,7 +239,7 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
             Dataset
           </span>
         </div>
-        
+
         {/* Dataset ID badge if available */}
         {dataset.id && (
           <span style={{
@@ -257,18 +257,18 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
           </span>
         )}
       </div>
-      
+
       {/* BODY CONTENT */}
-      <div style={{ 
-        padding: '0.75rem 1.25rem 1.25rem', 
+      <div style={{
+        padding: '0.75rem 1.25rem 1.25rem',
         flexGrow: 1,
         display: 'flex',
         flexDirection: 'column',
       }}>
         {/* Title with better prominence */}
-        <h3 style={{ 
-          fontSize: '1.125rem', 
-          fontWeight: 600, 
+        <h3 style={{
+          fontSize: '1.125rem',
+          fontWeight: 600,
           margin: '0 0 0.5rem 0',
           paddingLeft: '0.25rem',
           color: 'var(--text)',
@@ -283,15 +283,15 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
         >
           {dataset.title}
         </h3>
-        
+
         {/* Last Updated timestamp - subtle styling below title */}
         {dataset.updated_at && (
-          <div style={{ 
+          <div style={{
             paddingLeft: '0.25rem',
             marginBottom: '1rem',
           }}>
-            <span style={{ 
-              fontSize: '0.75rem', 
+            <span style={{
+              fontSize: '0.75rem',
               color: 'var(--text-light)',
               opacity: 0.7,
             }}>
@@ -303,12 +303,12 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
             </span>
           </div>
         )}
-        
+
         {/* Flexible spacer */}
         <div style={{ flexGrow: 1, minHeight: '0.5rem' }}></div>
-        
+
         {/* Main content sections */}
-        <div style={{ 
+        <div style={{
           display: 'flex',
           flexDirection: 'column',
           gap: '1.25rem',
@@ -685,11 +685,11 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
               opacity: 0.4,
               zIndex: 0
             }}></div>
-            
-            <div style={{ 
-              fontSize: '0.8125rem', 
-              textTransform: 'uppercase', 
-              fontWeight: 600, 
+
+            <div style={{
+              fontSize: '0.8125rem',
+              textTransform: 'uppercase',
+              fontWeight: 600,
               color: 'var(--text-light)',
               marginBottom: '0.75rem',
               letterSpacing: '0.025em',
@@ -701,8 +701,8 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
             }}>
               Links
             </div>
-            
-            <div style={{ 
+
+            <div style={{
               paddingLeft: '1.5rem',
               position: 'relative',
               zIndex: 1
@@ -741,18 +741,18 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
                   <ExternalLink size={11} style={{ marginLeft: '0.25rem', opacity: 0.5 }} />
                 </a>
               ) : (
-                <div style={{ 
+                <div style={{
                   display: 'flex',
-                  alignItems: 'center', 
+                  alignItems: 'center',
                   fontSize: '0.8125rem',
                   color: 'var(--text-light)',
                 }}>
-                  <Globe 
-                    size={15} 
-                    style={{ 
-                      marginRight: '0.75rem', 
-                      flexShrink: 0 
-                    }} 
+                  <Globe
+                    size={15}
+                    style={{
+                      marginRight: '0.75rem',
+                      flexShrink: 0
+                    }}
                   />
                   <span style={{ fontStyle: 'italic' }}>
                     No landing page available
@@ -763,7 +763,7 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
           </div>
         </div>
       </div>
-      
+
       {/* ACTIONS AREA */}
       <div style={{
         display: 'flex',
@@ -800,7 +800,7 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
           >
             <Edit size={20} />
           </button>
-          
+
           {canDelete && (
             <button
               onClick={handleDeleteClick}
@@ -826,7 +826,7 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
           )}
         </div>
       </div>
-      
+
       {/* Validation Results Modal */}
       {showValidationModal && validationStatus && (
         <ValidationResultsModal
@@ -849,12 +849,12 @@ const injectDatasetCardStyles = () => {
         outline: 2px solid var(--primary);
         outline-offset: 2px;
       }
-      
+
       .dataset-card button:focus, .dataset-card a:focus {
         outline: 2px solid var(--primary);
         outline-offset: 1px;
       }
-      
+
       @keyframes spin {
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }

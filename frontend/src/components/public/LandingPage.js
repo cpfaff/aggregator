@@ -335,9 +335,9 @@ const LandingPage = memo(({ onGetStarted, onLearnMore, onViewStatistics }) => {
           <p style={subtitleStyle}>
             A platform for managing biodiversity datasets and connecting research data with the GFBio infrastructure.
           </p>
-          
+
           <div style={ctaContainerStyle}>
-            <Button 
+            <Button
               onClick={handleGetStarted}
               variant="primary"
               style={{
@@ -353,7 +353,7 @@ const LandingPage = memo(({ onGetStarted, onLearnMore, onViewStatistics }) => {
             >
               Sign In
             </Button>
-            <Button 
+            <Button
               onClick={handleLearnMore}
               variant="default"
               style={{
@@ -372,14 +372,14 @@ const LandingPage = memo(({ onGetStarted, onLearnMore, onViewStatistics }) => {
           </div>
 
           <div style={trustSignalsStyle}>
-            <div 
+            <div
               style={trustBadgeStyle}
               onMouseEnter={handleBadgeHover}
               onMouseLeave={handleBadgeLeave}
             >
               GFBio e.V.
             </div>
-            <div 
+            <div
               style={trustBadgeStyle}
               onMouseEnter={handleBadgeHover}
               onMouseLeave={handleBadgeLeave}
@@ -393,9 +393,9 @@ const LandingPage = memo(({ onGetStarted, onLearnMore, onViewStatistics }) => {
       {/* Value Propositions */}
       <section style={contentSectionStyle}>
         <h2 style={sectionHeaderStyle}>Core Features</h2>
-        
+
         <div style={cardsGridStyle}>
-          <div 
+          <div
             style={cardStyle}
             onMouseEnter={handleCardHover}
             onMouseLeave={handleCardLeave}
@@ -412,7 +412,7 @@ const LandingPage = memo(({ onGetStarted, onLearnMore, onViewStatistics }) => {
             </p>
           </div>
 
-          <div 
+          <div
             style={cardStyle}
             onMouseEnter={handleCardHover}
             onMouseLeave={handleCardLeave}
@@ -430,7 +430,7 @@ const LandingPage = memo(({ onGetStarted, onLearnMore, onViewStatistics }) => {
             </p>
           </div>
 
-          <div 
+          <div
             style={cardStyle}
             onMouseEnter={handleCardHover}
             onMouseLeave={handleCardLeave}
@@ -469,14 +469,14 @@ const LandingPage = memo(({ onGetStarted, onLearnMore, onViewStatistics }) => {
               isLoading={isLoadingStats}
               color="var(--success)"
             />
-            
+
             <StatCard
               title="Data Centers"
               value={stats?.total_datacenters || 0}
               isLoading={isLoadingStats}
               color="var(--warning)"
             />
-            
+
             <StatCard
               title="Total Datasets"
               value={stats?.total_datasets || 0}
@@ -484,9 +484,9 @@ const LandingPage = memo(({ onGetStarted, onLearnMore, onViewStatistics }) => {
               color="var(--primary)"
             />
           </div>
-          
+
           {/* Link to full statistics dashboard - centered */}
-          <div style={{ 
+          <div style={{
             display: 'flex',
             justifyContent: 'center',
             marginTop: '2rem',

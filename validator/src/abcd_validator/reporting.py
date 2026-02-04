@@ -51,7 +51,7 @@ VALUE_PATTERNS = [
     re.compile(r"The value '(.+?)' is not accepted"),
     re.compile(r"The value '(.+?)' is not an element"),
     # Captures length from facet constraint errors
-    re.compile(r"The value has a length of '(\d+)'"),  
+    re.compile(r"The value has a length of '(\d+)'"),
 ]
 NORMALIZE_PATH_REGEX = re.compile(r'\[\d+\]')
 
@@ -199,12 +199,12 @@ def finalize_schema_errors(error_groups: Dict[Tuple, Dict[str, Any]]) -> List[Di
         message = group['message']
         element_name = get_local_name(group['element']) if group['element'] else "Unknown"
         validation_type = group['validation_type']
-        
+
         # Extract constraint values from context details when available
         constraint_value = None
         if group['context_details']:
             context = next(iter(group['context_details']))
-            
+
             # Extract min/max length constraints
             if validation_type == "SCHEMAV_CVC_MINLENGTH_VALID":
                 min_match = re.search(r"allowed minimum length of '(\d+)'", context)
@@ -214,36 +214,36 @@ def finalize_schema_errors(error_groups: Dict[Tuple, Dict[str, Any]]) -> List[Di
                     # Use proper XML format with abcd21 namespace as commonly used in the files
                     xml_example = f"&lt;abcd21:{element_name} language=\"de\" /&gt;"
                     message += f" Required length: at least {constraint_value} characters. Example of problematic format: {xml_example}"
-            
+
             elif validation_type == "SCHEMAV_CVC_MAXLENGTH_VALID":
                 max_match = re.search(r"allowed maximum length of '(\d+)'", context)
                 if max_match:
                     constraint_value = max_match.group(1)
                     # Add max length information to message
                     message += f" Maximum allowed length: {constraint_value} characters."
-                    
+
                     # If we have a value example that's too long, provide a truncated example
                     if group['values']:
                         actual_length = next(iter(group['values']), "unknown")
                         message += f" Your content length: {actual_length} characters."
-            
+
             # Extract enumeration constraints
             elif validation_type == "SCHEMAV_CVC_ENUMERATION_VALID":
                 # Add XML example for enumeration
                 message += f" Example usage: &lt;abcd21:{element_name}&gt;allowed_value&lt;/abcd21:{element_name}&gt;"
-                
+
             # Extract pattern constraints
             elif validation_type == "SCHEMAV_CVC_PATTERN_VALID":
                 pattern_match = re.search(r"The value '.*?' is not a valid value of the atomic type '.*?' - pattern constraint failed: '(.*?)'", context)
                 if pattern_match:
                     pattern = pattern_match.group(1)
                     message += f" Pattern constraint: '{pattern}'"
-        
+
         # Optionally add count information but NO examples to message
         if group['values']:
             distinct_count = len(group['values'])
             message = f"{message} ({distinct_count} distinct values found)"
-            
+
         aggregated.append({
             'heading': f"Schema error for {element_name}",
             'context': "; ".join(sorted(list(group['context_details']))),

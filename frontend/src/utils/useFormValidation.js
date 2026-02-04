@@ -3,7 +3,7 @@ import { useState, useCallback, useEffect } from 'react';
 /**
  * Custom hook for form validation and state management
  * Provides consistent validation behavior across all forms
- * 
+ *
  * @param {Object} initialValues - Initial form values
  * @param {Object} validationSchema - Validation rules for each field
  * @param {Function} onSubmit - Callback function when form is valid and submitted
@@ -39,20 +39,20 @@ const useFormValidation = (initialValues = {}, validationSchema = {}, onSubmit) 
     if (!fieldValidators) return null;
 
     const validators = Array.isArray(fieldValidators) ? fieldValidators : [fieldValidators];
-    
+
     for (const validator of validators) {
       let error = null;
-      
+
       if (typeof validator === 'function') {
         // Handle both sync and async validators
         error = await Promise.resolve(validator(value, values));
       }
-      
+
       if (error) {
         return error;
       }
     }
-    
+
     return null;
   }, [validationSchema, values]);
 
@@ -96,7 +96,7 @@ const useFormValidation = (initialValues = {}, validationSchema = {}, onSubmit) 
   // Handle field blur - validate on blur
   const handleBlur = useCallback(async (e) => {
     const { name } = e.target;
-    
+
     setTouched(prev => ({
       ...prev,
       [name]: true
@@ -148,7 +148,7 @@ const useFormValidation = (initialValues = {}, validationSchema = {}, onSubmit) 
     }
 
     setIsSubmitting(true);
-    
+
     // Touch all fields to show errors
     const allTouched = {};
     Object.keys(validationSchema).forEach(key => {
@@ -158,7 +158,7 @@ const useFormValidation = (initialValues = {}, validationSchema = {}, onSubmit) 
 
     // Validate form
     const isValid = await validateForm();
-    
+
     if (isValid && onSubmit) {
       try {
         await onSubmit(values);

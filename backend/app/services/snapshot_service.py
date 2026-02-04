@@ -58,9 +58,7 @@ class SnapshotService:
             "last_updated": datetime.utcnow(),
         }
 
-    def get_quality_metrics(
-        self, user: UserModel | None = None, days: int = 30
-    ) -> dict[str, Any]:
+    def get_quality_metrics(self, user: UserModel | None = None, days: int = 30) -> dict[str, Any]:
         """Get data quality metrics from validation jobs."""
         cutoff_date = date.today() - timedelta(days=days)
 

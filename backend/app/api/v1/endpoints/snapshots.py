@@ -127,7 +127,9 @@ async def get_provider_list_stats(
 async def get_recent_dataset_activity(
     db: Annotated[Session, Depends(get_sync_db)],
     current_user: Annotated[UserModel | None, Depends(get_current_user_optional)],
-    limit: Annotated[int, Query(ge=1, le=50, description="Number of recent activities to show")] = 10,
+    limit: Annotated[
+        int, Query(ge=1, le=50, description="Number of recent activities to show")
+    ] = 10,
     days: Annotated[int, Query(ge=1, le=90, description="Number of days to look back")] = 30,
     response: Response = None,
 ) -> dict[str, Any]:
@@ -235,7 +237,9 @@ async def get_provider_datasets_timeline(
         )
     except Exception as e:
         logger.error(f"Error getting provider {provider_id} datasets timeline: {e}")
-        raise HTTPException(status_code=500, detail="Error retrieving provider datasets timeline") from e
+        raise HTTPException(
+            status_code=500, detail="Error retrieving provider datasets timeline"
+        ) from e
 
 
 @router.get(
@@ -304,7 +308,9 @@ async def get_biological_units_timeline(
         )
     except Exception as e:
         logger.error(f"Error getting biological units timeline: {e}")
-        raise HTTPException(status_code=500, detail="Error retrieving biological units timeline") from e
+        raise HTTPException(
+            status_code=500, detail="Error retrieving biological units timeline"
+        ) from e
 
 
 @router.get(

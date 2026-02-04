@@ -8,7 +8,7 @@ user permissions, and provider associations.
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import csrf_protect
@@ -52,7 +52,9 @@ async def list_users(
     current_user: Annotated[UserModel, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
     skip: Annotated[int, Query(ge=0, description="Number of users to skip")] = 0,
-    limit: Annotated[int, Query(ge=1, le=1000, description="Maximum number of users to return")] = 100,
+    limit: Annotated[
+        int, Query(ge=1, le=1000, description="Maximum number of users to return")
+    ] = 100,
 ):
     """
     List all users in the system. Requires global admin privileges.

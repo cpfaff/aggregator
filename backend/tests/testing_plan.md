@@ -165,7 +165,7 @@ For each phase:
    ```python
    def test_authentication_with_nonexistent_user():
        # Test authenticating with a username that doesn't exist
-   
+
    def test_authentication_with_invalid_password():
        # Test authenticating with an invalid password format
    ```
@@ -174,7 +174,7 @@ For each phase:
    ```python
    def test_delete_permission_checks():
        # Test delete operations with different user roles
-   
+
    def test_malformed_provider_roles():
        # Test behavior with malformed provider roles
    ```
@@ -183,7 +183,7 @@ For each phase:
    ```python
    def test_database_connection_error():
        # Test behavior when database connection fails
-   
+
    def test_transaction_rollback():
        # Test transaction rollback on error
    ```

@@ -14,7 +14,7 @@ providers:
 
 # Enable API and dashboard (access at http://localhost:8080/dashboard/)
 api:
-  dashboard: false 
+  dashboard: false
   # insecure: true  # In production, secure this with authentication
 
 # Enable ping for health checks

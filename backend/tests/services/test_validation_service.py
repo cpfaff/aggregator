@@ -5,16 +5,16 @@ Tests all validation job management operations with real database via testcontai
 following TDD principles and covering edge cases.
 """
 
+from datetime import datetime
+from unittest.mock import MagicMock, patch
+
 import pytest
 import pytest_asyncio
-from unittest.mock import patch, MagicMock
-from fastapi import HTTPException
-from datetime import datetime
-
-from app.services.validation_service import ValidationService
-from app.models.validation import ValidationJobModel
-from app.models.dataset import XmlArchiveModel, DatasetModel
+from app.models.dataset import DatasetModel, XmlArchiveModel
 from app.models.provider import DataProviderModel
+from app.models.validation import ValidationJobModel
+from app.services.validation_service import ValidationService
+from fastapi import HTTPException
 
 
 @pytest_asyncio.fixture
@@ -115,9 +115,7 @@ async def test_get_archive_or_404_not_found(validation_service):
 # Test create_validation_job (happy path + archive not found)
 @pytest.mark.asyncio
 @patch("app.services.validation_service.validate_archive")
-async def test_create_validation_job_success(
-    mock_validate, validation_service, sample_archive
-):
+async def test_create_validation_job_success(mock_validate, validation_service, sample_archive):
     """Test creating a validation job successfully."""
     mock_task = MagicMock()
     mock_task.id = "celery-task-abc123"
@@ -174,12 +172,8 @@ async def test_list_validation_jobs_with_data(
 ):
     """Test listing all validation jobs."""
     # Create multiple jobs
-    job1 = ValidationJobModel(
-        archive_id=sample_archive.id, status="completed", task_id="task-1"
-    )
-    job2 = ValidationJobModel(
-        archive_id=another_archive.id, status="pending", task_id="task-2"
-    )
+    job1 = ValidationJobModel(archive_id=sample_archive.id, status="completed", task_id="task-1")
+    job2 = ValidationJobModel(archive_id=another_archive.id, status="pending", task_id="task-2")
     db_session.add_all([job1, job2])
     await db_session.flush()
 
@@ -192,12 +186,8 @@ async def test_list_validation_jobs_filter_by_archive(
     validation_service, db_session, sample_archive, another_archive
 ):
     """Test filtering validation jobs by archive ID."""
-    job1 = ValidationJobModel(
-        archive_id=sample_archive.id, status="completed", task_id="task-1"
-    )
-    job2 = ValidationJobModel(
-        archive_id=another_archive.id, status="pending", task_id="task-2"
-    )
+    job1 = ValidationJobModel(archive_id=sample_archive.id, status="completed", task_id="task-1")
+    job2 = ValidationJobModel(archive_id=another_archive.id, status="pending", task_id="task-2")
     db_session.add_all([job1, job2])
     await db_session.flush()
 
@@ -211,12 +201,8 @@ async def test_list_validation_jobs_filter_by_status(
     validation_service, db_session, sample_archive
 ):
     """Test filtering validation jobs by status."""
-    job1 = ValidationJobModel(
-        archive_id=sample_archive.id, status="completed", task_id="task-1"
-    )
-    job2 = ValidationJobModel(
-        archive_id=sample_archive.id, status="pending", task_id="task-2"
-    )
+    job1 = ValidationJobModel(archive_id=sample_archive.id, status="completed", task_id="task-1")
+    job2 = ValidationJobModel(archive_id=sample_archive.id, status="pending", task_id="task-2")
     db_session.add_all([job1, job2])
     await db_session.flush()
 
@@ -226,9 +212,7 @@ async def test_list_validation_jobs_filter_by_status(
 
 
 @pytest.mark.asyncio
-async def test_list_validation_jobs_pagination(
-    validation_service, db_session, sample_archive
-):
+async def test_list_validation_jobs_pagination(validation_service, db_session, sample_archive):
     """Test pagination with limit and offset."""
     # Create 5 jobs
     for i in range(5):
@@ -273,9 +257,7 @@ async def test_get_validation_results_completed_with_results(
 
 
 @pytest.mark.asyncio
-async def test_get_validation_results_not_completed(
-    validation_service, sample_validation_job
-):
+async def test_get_validation_results_not_completed(validation_service, sample_validation_job):
     """Test getting results for non-completed job raises 400."""
     with pytest.raises(HTTPException) as exc_info:
         await validation_service.get_validation_results(sample_validation_job.id)
@@ -284,9 +266,7 @@ async def test_get_validation_results_not_completed(
 
 
 @pytest.mark.asyncio
-async def test_get_validation_results_no_results(
-    validation_service, db_session, sample_archive
-):
+async def test_get_validation_results_no_results(validation_service, db_session, sample_archive):
     """Test getting results for completed job without results raises 404."""
     job = ValidationJobModel(
         archive_id=sample_archive.id,
@@ -351,9 +331,7 @@ async def test_cleanup_obsolete_pending_jobs_no_matching_completed(
 
 # Test get_dataset_validation_status (with/without archive, various states)
 @pytest.mark.asyncio
-async def test_get_dataset_validation_status_no_archive(
-    validation_service, sample_dataset
-):
+async def test_get_dataset_validation_status_no_archive(validation_service, sample_dataset):
     """Test getting validation status when dataset has no latest archive."""
     status = await validation_service.get_dataset_validation_status(sample_dataset.id)
 
@@ -381,9 +359,7 @@ async def test_get_dataset_validation_status_pending_validation(
     validation_service, db_session, sample_dataset, sample_archive
 ):
     """Test getting validation status with pending validation."""
-    job = ValidationJobModel(
-        archive_id=sample_archive.id, status="pending", task_id="task-1"
-    )
+    job = ValidationJobModel(archive_id=sample_archive.id, status="pending", task_id="task-1")
     db_session.add(job)
     await db_session.flush()
 
@@ -458,17 +434,13 @@ async def test_get_latest_archive_for_dataset_found(
     validation_service, sample_dataset, sample_archive
 ):
     """Test getting latest archive when it exists."""
-    archive = await validation_service.get_latest_archive_for_dataset(
-        sample_dataset.id
-    )
+    archive = await validation_service.get_latest_archive_for_dataset(sample_dataset.id)
     assert archive.id == sample_archive.id
     assert archive.isLatest is True
 
 
 @pytest.mark.asyncio
-async def test_get_latest_archive_for_dataset_not_found(
-    validation_service, sample_dataset
-):
+async def test_get_latest_archive_for_dataset_not_found(validation_service, sample_dataset):
     """Test getting latest archive when none exist raises 404."""
     # Update sample archive to not be latest
     sample_dataset  # Keep dataset but no latest archive
@@ -485,9 +457,7 @@ async def test_find_existing_active_validation_pending(
     validation_service, db_session, sample_archive
 ):
     """Test finding existing pending validation."""
-    job = ValidationJobModel(
-        archive_id=sample_archive.id, status="pending", task_id="task-1"
-    )
+    job = ValidationJobModel(archive_id=sample_archive.id, status="pending", task_id="task-1")
     db_session.add(job)
     await db_session.flush()
 
@@ -502,9 +472,7 @@ async def test_find_existing_active_validation_running(
     validation_service, db_session, sample_archive
 ):
     """Test finding existing running validation."""
-    job = ValidationJobModel(
-        archive_id=sample_archive.id, status="running", task_id="task-1"
-    )
+    job = ValidationJobModel(archive_id=sample_archive.id, status="running", task_id="task-1")
     db_session.add(job)
     await db_session.flush()
 
@@ -514,13 +482,9 @@ async def test_find_existing_active_validation_running(
 
 
 @pytest.mark.asyncio
-async def test_find_existing_active_validation_none(
-    validation_service, db_session, sample_archive
-):
+async def test_find_existing_active_validation_none(validation_service, db_session, sample_archive):
     """Test finding active validation when only completed jobs exist."""
-    job = ValidationJobModel(
-        archive_id=sample_archive.id, status="completed", task_id="task-1"
-    )
+    job = ValidationJobModel(archive_id=sample_archive.id, status="completed", task_id="task-1")
     db_session.add(job)
     await db_session.flush()
 
@@ -534,9 +498,7 @@ async def test_find_existing_active_validation_returns_latest(
 ):
     """Test that find_existing_active_validation returns the most recent active job."""
     # Create two pending jobs
-    old_job = ValidationJobModel(
-        archive_id=sample_archive.id, status="pending", task_id="task-old"
-    )
+    old_job = ValidationJobModel(archive_id=sample_archive.id, status="pending", task_id="task-old")
     db_session.add(old_job)
     await db_session.flush()
 
@@ -545,9 +507,7 @@ async def test_find_existing_active_validation_returns_latest(
 
     await asyncio.sleep(0.01)
 
-    new_job = ValidationJobModel(
-        archive_id=sample_archive.id, status="pending", task_id="task-new"
-    )
+    new_job = ValidationJobModel(archive_id=sample_archive.id, status="pending", task_id="task-new")
     db_session.add(new_job)
     await db_session.flush()
 
@@ -612,9 +572,7 @@ async def test_validate_dataset_latest_archive_existing_forced(
     mock_task.id = "forced-new-task"
     mock_validate.delay.return_value = mock_task
 
-    result = await validation_service.validate_dataset_latest_archive(
-        sample_dataset.id, force=True
-    )
+    result = await validation_service.validate_dataset_latest_archive(sample_dataset.id, force=True)
 
     # Should create new job, not return existing
     assert result["task_id"] == "forced-new-task"
@@ -622,14 +580,10 @@ async def test_validate_dataset_latest_archive_existing_forced(
 
 
 @pytest.mark.asyncio
-async def test_validate_dataset_latest_archive_no_archive(
-    validation_service, sample_dataset
-):
+async def test_validate_dataset_latest_archive_no_archive(validation_service, sample_dataset):
     """Test validating dataset without latest archive raises 404."""
     # sample_dataset exists but has no isLatest archive
     with pytest.raises(HTTPException) as exc_info:
-        await validation_service.validate_dataset_latest_archive(
-            sample_dataset.id, force=False
-        )
+        await validation_service.validate_dataset_latest_archive(sample_dataset.id, force=False)
     assert exc_info.value.status_code == 404
     assert "No latest XML archive found" in exc_info.value.detail

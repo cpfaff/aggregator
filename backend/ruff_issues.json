@@ -7,5 +7,3 @@ ruff failed
 Failed to parse version: Unexpected end of version specifier, expected operator:
 ^3.11
 ^^^^^
-
-
