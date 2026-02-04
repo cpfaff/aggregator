@@ -27,8 +27,10 @@
 ### Manual Review Required (147 total)
 
 5. **B008 (71)**: Do not perform function call `Depends` in argument defaults
-   - **Note:** This is standard FastAPI dependency injection pattern
-   - Options: Ignore B008 or refactor dependency injection
+   - **Fix:** Refactor to modern `Annotated` pattern (FastAPI 0.95+)
+   - Old: `db: AsyncSession = Depends(get_db)`
+   - New: `db: Annotated[AsyncSession, Depends(get_db)]`
+   - Benefits: Fixes B008 warning + improves type safety
    - Tracked: aggregator-53o
 
 6. **F401 (28)**: Unused imports
