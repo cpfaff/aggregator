@@ -9,7 +9,7 @@ Total: ~300 lines (vs 798 in the old unified_statistics.py)
 
 import logging
 from datetime import date
-from typing import Any
+from typing import Annotated, Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
@@ -49,8 +49,8 @@ def _no_cache_headers(response: Response) -> None:
 
 @router.get("/overview", response_model=OverviewStats, summary="Registry overview statistics")
 async def get_overview(
-    db: Session = Depends(get_sync_db),
-    current_user: UserModel | None = Depends(get_current_user_optional),
+    db: Annotated[Session, Depends(get_sync_db)],
+    current_user: Annotated[UserModel | None, Depends(get_current_user_optional)],
     response: Response = None,
 ) -> OverviewStats:
     """Get registry overview statistics using live database counts."""
@@ -67,9 +67,9 @@ async def get_overview(
 
 @router.get("/quality", response_model=QualityMetrics, summary="Data quality metrics")
 async def get_quality_metrics(
-    db: Session = Depends(get_sync_db),
-    current_user: UserModel | None = Depends(get_current_user_optional),
-    days: int = Query(30, ge=1, le=90, description="Number of days to look back"),
+    db: Annotated[Session, Depends(get_sync_db)],
+    current_user: Annotated[UserModel | None, Depends(get_current_user_optional)],
+    days: Annotated[int, Query(ge=1, le=90, description="Number of days to look back")] = 30,
     response: Response = None,
 ) -> QualityMetrics:
     """Get data quality metrics from validation jobs."""
@@ -85,10 +85,10 @@ async def get_quality_metrics(
 
 @router.get("/timeline", response_model=GrowthMetrics, summary="Registry growth timeline")
 async def get_growth_timeline(
-    period: str = Query("monthly", description="Time period for aggregation"),
-    months: int = Query(12, ge=1, le=60, description="Number of months to retrieve"),
-    db: Session = Depends(get_sync_db),
-    current_user: UserModel | None = Depends(get_current_user_optional),
+    db: Annotated[Session, Depends(get_sync_db)],
+    current_user: Annotated[UserModel | None, Depends(get_current_user_optional)],
+    period: Annotated[str, Query(description="Time period for aggregation")] = "monthly",
+    months: Annotated[int, Query(ge=1, le=60, description="Number of months to retrieve")] = 12,
     response: Response = None,
 ) -> GrowthMetrics:
     """Get registry growth metrics over time."""
@@ -108,9 +108,9 @@ async def get_growth_timeline(
 
 @router.get("/providers", summary="Provider statistics")
 async def get_provider_list_stats(
-    limit: int = Query(20, ge=1, le=100, description="Number of top providers to show"),
-    db: Session = Depends(get_sync_db),
-    current_user: UserModel | None = Depends(get_current_user_optional),
+    db: Annotated[Session, Depends(get_sync_db)],
+    current_user: Annotated[UserModel | None, Depends(get_current_user_optional)],
+    limit: Annotated[int, Query(ge=1, le=100, description="Number of top providers to show")] = 20,
     response: Response = None,
 ) -> dict[str, Any]:
     """Get statistics about top contributing providers."""
@@ -125,10 +125,10 @@ async def get_provider_list_stats(
 
 @router.get("/datasets/recent", summary="Recent dataset activity")
 async def get_recent_dataset_activity(
-    limit: int = Query(10, ge=1, le=50, description="Number of recent activities to show"),
-    days: int = Query(30, ge=1, le=90, description="Number of days to look back"),
-    db: Session = Depends(get_sync_db),
-    current_user: UserModel | None = Depends(get_current_user_optional),
+    db: Annotated[Session, Depends(get_sync_db)],
+    current_user: Annotated[UserModel | None, Depends(get_current_user_optional)],
+    limit: Annotated[int, Query(ge=1, le=50, description="Number of recent activities to show")] = 10,
+    days: Annotated[int, Query(ge=1, le=90, description="Number of days to look back")] = 30,
     response: Response = None,
 ) -> dict[str, Any]:
     """Get recent dataset registration activity."""
@@ -143,8 +143,8 @@ async def get_recent_dataset_activity(
 
 @router.get("/health", summary="Registry health status")
 async def get_registry_health(
-    db: Session = Depends(get_sync_db),
-    current_user: UserModel | None = Depends(get_current_user_optional),
+    db: Annotated[Session, Depends(get_sync_db)],
+    current_user: Annotated[UserModel | None, Depends(get_current_user_optional)],
     response: Response = None,
 ) -> dict[str, Any]:
     """Get basic health metrics of the registry system."""
@@ -167,8 +167,8 @@ async def get_registry_health(
 )
 async def get_provider_statistics(
     provider_id: int,
-    db: Session = Depends(get_sync_db),
-    current_user: UserModel = Depends(get_current_user_sync),
+    db: Annotated[Session, Depends(get_sync_db)],
+    current_user: Annotated[UserModel, Depends(get_current_user_sync)],
 ) -> ProviderStats:
     """Get statistics for a specific data provider. Requires authentication."""
     try:
@@ -189,8 +189,8 @@ async def get_provider_statistics(
 )
 async def get_dataset_statistics(
     dataset_id: int,
-    db: Session = Depends(get_sync_db),
-    current_user: UserModel = Depends(get_current_user_sync),
+    db: Annotated[Session, Depends(get_sync_db)],
+    current_user: Annotated[UserModel, Depends(get_current_user_sync)],
 ) -> DatasetStats:
     """Get statistics for a specific dataset. Requires authentication."""
     try:
@@ -213,10 +213,10 @@ async def get_dataset_statistics(
 )
 async def get_provider_datasets_timeline(
     provider_id: int,
-    period: str = Query("monthly", description="Time period (daily or monthly)"),
-    months: int = Query(12, ge=1, le=60, description="Number of months to retrieve"),
-    db: Session = Depends(get_sync_db),
-    current_user: UserModel = Depends(get_current_user_sync),
+    db: Annotated[Session, Depends(get_sync_db)],
+    current_user: Annotated[UserModel, Depends(get_current_user_sync)],
+    period: Annotated[str, Query(description="Time period (daily or monthly)")] = "monthly",
+    months: Annotated[int, Query(ge=1, le=60, description="Number of months to retrieve")] = 12,
 ) -> TimeSeriesResponse:
     """Get dataset count timeline for a specific provider. Requires authentication."""
     try:
@@ -245,12 +245,12 @@ async def get_provider_datasets_timeline(
 )
 async def get_provider_biological_units_timeline(
     provider_id: int,
-    period: str = Query("daily", description="Time period"),
-    start_date: date | None = Query(None, description="Start date"),
-    end_date: date | None = Query(None, description="End date"),
-    limit: int = Query(30, ge=1, le=365, description="Maximum data points"),
-    db: Session = Depends(get_sync_db),
-    current_user: UserModel = Depends(get_current_user_sync),
+    db: Annotated[Session, Depends(get_sync_db)],
+    current_user: Annotated[UserModel, Depends(get_current_user_sync)],
+    period: Annotated[str, Query(description="Time period")] = "daily",
+    start_date: Annotated[date | None, Query(description="Start date")] = None,
+    end_date: Annotated[date | None, Query(description="End date")] = None,
+    limit: Annotated[int, Query(ge=1, le=365, description="Maximum data points")] = 30,
 ) -> TimeSeriesResponse:
     """Get biological units timeline for a specific provider. Requires authentication."""
     try:
@@ -280,12 +280,12 @@ async def get_provider_biological_units_timeline(
     summary="Biological units timeline",
 )
 async def get_biological_units_timeline(
-    period: str = Query("daily", description="Time period"),
-    start_date: date | None = Query(None, description="Start date"),
-    end_date: date | None = Query(None, description="End date"),
-    limit: int = Query(30, ge=1, le=365, description="Maximum data points"),
-    db: Session = Depends(get_sync_db),
-    current_user: UserModel = Depends(get_current_user_sync),
+    db: Annotated[Session, Depends(get_sync_db)],
+    current_user: Annotated[UserModel, Depends(get_current_user_sync)],
+    period: Annotated[str, Query(description="Time period")] = "daily",
+    start_date: Annotated[date | None, Query(description="Start date")] = None,
+    end_date: Annotated[date | None, Query(description="End date")] = None,
+    limit: Annotated[int, Query(ge=1, le=365, description="Maximum data points")] = 30,
 ) -> TimeSeriesResponse:
     """Get system-wide biological units timeline. Requires authentication."""
     try:
@@ -313,12 +313,12 @@ async def get_biological_units_timeline(
     summary="Multi-provider biological units",
 )
 async def get_multi_provider_biological_units_timeline(
-    period: str = Query("daily", description="Time period"),
-    start_date: date | None = Query(None, description="Start date"),
-    end_date: date | None = Query(None, description="End date"),
-    limit: int = Query(30, ge=1, le=365, description="Maximum data points"),
-    db: Session = Depends(get_sync_db),
-    current_user: UserModel = Depends(get_current_user_sync),
+    db: Annotated[Session, Depends(get_sync_db)],
+    current_user: Annotated[UserModel, Depends(get_current_user_sync)],
+    period: Annotated[str, Query(description="Time period")] = "daily",
+    start_date: Annotated[date | None, Query(description="Start date")] = None,
+    end_date: Annotated[date | None, Query(description="End date")] = None,
+    limit: Annotated[int, Query(ge=1, le=365, description="Maximum data points")] = 30,
 ) -> dict[str, Any]:
     """Get biological units timeline for all providers. Requires authentication."""
     try:
@@ -340,7 +340,8 @@ async def get_multi_provider_biological_units_timeline(
 
 @router.post("/collect", summary="Trigger snapshot collection")
 async def trigger_snapshot_collection(
-    background_tasks: BackgroundTasks, current_user: UserModel = Depends(require_admin)
+    background_tasks: BackgroundTasks,
+    current_user: Annotated[UserModel, Depends(require_admin)],
 ) -> dict[str, Any]:
     """
     Manually trigger archive snapshot collection.

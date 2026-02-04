@@ -6,6 +6,7 @@ user permissions, and provider associations.
 """
 
 import logging
+from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,8 +35,8 @@ router = APIRouter()
     summary="Get current user's permissions",
 )
 async def get_user_permissions(
-    current_user: UserModel = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[UserModel, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """
     Retrieve the permissions of the currently authenticated user.
@@ -48,10 +49,10 @@ async def get_user_permissions(
 
 @router.get("/users", response_model=list[User], summary="List all users")
 async def list_users(
-    current_user: UserModel = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-    skip: int = Query(0, ge=0, description="Number of users to skip"),
-    limit: int = Query(100, ge=1, le=1000, description="Maximum number of users to return"),
+    current_user: Annotated[UserModel, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    skip: Annotated[int, Query(ge=0, description="Number of users to skip")] = 0,
+    limit: Annotated[int, Query(ge=1, le=1000, description="Maximum number of users to return")] = 100,
 ):
     """
     List all users in the system. Requires global admin privileges.
@@ -66,8 +67,8 @@ async def list_users(
 @router.get("/users/{username}", response_model=User, summary="Get user by username")
 async def get_user_endpoint(
     username: str,
-    current_user: UserModel = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[UserModel, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """
     Retrieve a user by their username. Requires global admin privileges.
@@ -82,9 +83,9 @@ async def get_user_endpoint(
 async def update_user(
     username: str,
     user: UserUpdate,
-    old_password: str | None = Body(None),
-    current_user: UserModel = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[UserModel, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    old_password: Annotated[str | None, Body()] = None,
 ):
     """
     Update a user's information. Requires global admin privileges.
@@ -111,8 +112,8 @@ async def update_user(
 @router.post("/users", response_model=User, status_code=201, summary="Create a new user")
 async def create_user(
     user: UserCreate,
-    current_user: UserModel = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[UserModel, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """
     Create a new user. Requires global admin privileges.
@@ -135,8 +136,8 @@ async def create_user(
 @router.delete("/users/{username}", status_code=204, summary="Delete user")
 async def delete_user(
     username: str,
-    current_user: UserModel = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[UserModel, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """
     Delete a user by username. Requires global admin privileges.
@@ -157,8 +158,8 @@ async def delete_user(
 async def add_provider_association(
     username: str,
     association: ProviderAssociation,
-    current_user: UserModel = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[UserModel, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """
     Add a provider association to a user. Requires global admin privileges.
@@ -182,8 +183,8 @@ async def update_provider_association(
     username: str,
     provider_id: int,
     association: ProviderAssociation,
-    current_user: UserModel = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[UserModel, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """
     Update a provider association for a user. Requires global admin privileges.
@@ -206,8 +207,8 @@ async def update_provider_association(
 async def remove_provider_association(
     username: str,
     provider_id: int,
-    current_user: UserModel = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[UserModel, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """
     Remove a provider association from a user. Requires global admin privileges.

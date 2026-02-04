@@ -3,7 +3,7 @@ User authentication and authorization permissions.
 """
 
 import logging
-from typing import Any
+from typing import Annotated, Any
 
 import jwt
 from fastapi import Depends, HTTPException, status
@@ -125,7 +125,8 @@ def check_provider_permission(
 
 
 async def get_current_user(
-    token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)
+    token: Annotated[str, Depends(oauth2_scheme)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> UserModel:
     """
     Retrieve the current authenticated user from a JWT token.
@@ -166,7 +167,8 @@ async def get_current_user(
 
 # Synchronous versions for compatibility with sync database sessions
 def get_current_user_sync(
-    token: str = Depends(oauth2_scheme), db: Session = Depends(get_sync_db)
+    token: Annotated[str, Depends(oauth2_scheme)],
+    db: Annotated[Session, Depends(get_sync_db)],
 ) -> UserModel:
     """
     Synchronous version of get_current_user for use with sync database sessions.
@@ -206,10 +208,11 @@ def get_current_user_sync(
 
 
 def get_current_user_optional(
-    token: str | None = Depends(
-        OAuth2PasswordBearer(tokenUrl="/api/v1/auth-token", auto_error=False)
-    ),
-    db: Session = Depends(get_sync_db),
+    token: Annotated[
+        str | None,
+        Depends(OAuth2PasswordBearer(tokenUrl="/api/v1/auth-token", auto_error=False)),
+    ],
+    db: Annotated[Session, Depends(get_sync_db)],
 ) -> UserModel | None:
     """
     Get the current authenticated user or None if not authenticated.
@@ -250,7 +253,9 @@ def get_current_user_optional(
         return None
 
 
-def require_admin(current_user: UserModel = Depends(get_current_user_sync)) -> UserModel:
+def require_admin(
+    current_user: Annotated[UserModel, Depends(get_current_user_sync)],
+) -> UserModel:
     """
     Dependency that requires admin privileges.
 
