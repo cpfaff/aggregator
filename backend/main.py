@@ -45,7 +45,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
-from pythonjsonlogger import jsonlogger
+from app.core.logging_config import configure_logging, request_id_var
 
 # Import slowapi components for rate limiting
 from slowapi import _rate_limit_exceeded_handler
@@ -56,13 +56,8 @@ from sqlalchemy.orm import selectinload
 from starlette.middleware.base import BaseHTTPMiddleware
 
 # ------------------- Logging Configuration -------------------
-log_handler = logging.StreamHandler()
-formatter = jsonlogger.JsonFormatter()
-log_handler.setFormatter(formatter)
-
+configure_logging(level=settings.LOG_LEVEL)
 logger = logging.getLogger("api")
-logger.addHandler(log_handler)
-logger.setLevel(getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO))
 
 # ------------------- Database Setup -------------------
 # Database configuration moved to app.db module
@@ -127,18 +122,20 @@ async def log_requests(request: Request, call_next):
     """Log incoming requests and their completion status."""
     request_id = str(uuid.uuid4())
     request.state.request_id = request_id
-    logger.info(
-        f"Request started: {request.method} {request.url.path}",
-        extra={
-            "request_id": request_id,
-            "method": request.method,
-            "path": request.url.path,
-            "client_ip": request.client.host if request.client else None,
-            "user_agent": request.headers.get("user-agent"),
-        },
-    )
-    start_time = time.time()
+
+    # Set request_id in contextvars so all loggers automatically include it
+    token = request_id_var.set(request_id)
     try:
+        logger.info(
+            f"Request started: {request.method} {request.url.path}",
+            extra={
+                "method": request.method,
+                "path": request.url.path,
+                "client_ip": request.client.host if request.client else None,
+                "user_agent": request.headers.get("user-agent"),
+            },
+        )
+        start_time = time.time()
         response = await call_next(request)
         process_time = time.time() - start_time
         response.headers["X-Process-Time"] = f"{process_time:.4f}"
@@ -146,7 +143,6 @@ async def log_requests(request: Request, call_next):
         logger.info(
             f"Request completed: {request.method} {request.url.path}",
             extra={
-                "request_id": request_id,
                 "method": request.method,
                 "path": request.url.path,
                 "status_code": response.status_code,
@@ -159,7 +155,6 @@ async def log_requests(request: Request, call_next):
         logger.error(
             f"Request failed: {request.method} {request.url.path}",
             extra={
-                "request_id": request_id,
                 "method": request.method,
                 "path": request.url.path,
                 "error": str(e),
@@ -168,6 +163,8 @@ async def log_requests(request: Request, call_next):
             exc_info=True,
         )
         raise
+    finally:
+        request_id_var.reset(token)
 
 
 # ------------------- Exception Handlers -------------------
