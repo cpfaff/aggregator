@@ -9,7 +9,7 @@ Total: ~200 lines (vs 1,085 in the old statistics_service.py)
 
 import logging
 from datetime import date, datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from sqlalchemy import and_, desc, func
 from sqlalchemy.orm import Session
@@ -34,8 +34,8 @@ class SnapshotService:
     # -------------------------------------------------------------------------
 
     def get_overview_stats(
-        self, user: Optional[UserModel] = None, include_sensitive: bool = False
-    ) -> Dict[str, Any]:
+        self, user: UserModel | None = None, include_sensitive: bool = False
+    ) -> dict[str, Any]:
         """Get system overview statistics using live counts."""
         total_datasets = self.db.query(func.count(DatasetModel.id)).scalar() or 0
         total_providers = self.db.query(func.count(DataProviderModel.id)).scalar() or 0
@@ -59,8 +59,8 @@ class SnapshotService:
         }
 
     def get_quality_metrics(
-        self, user: Optional[UserModel] = None, days: int = 30
-    ) -> Dict[str, Any]:
+        self, user: UserModel | None = None, days: int = 30
+    ) -> dict[str, Any]:
         """Get data quality metrics from validation jobs."""
         cutoff_date = date.today() - timedelta(days=days)
 
@@ -104,7 +104,7 @@ class SnapshotService:
             "average_processing_time": avg_processing_time,
         }
 
-    def _calculate_validation_success_rate(self, days: int = 30) -> Optional[float]:
+    def _calculate_validation_success_rate(self, days: int = 30) -> float | None:
         """Calculate validation success rate for the last N days."""
         cutoff_date = date.today() - timedelta(days=days)
 
@@ -240,8 +240,8 @@ class SnapshotService:
     # -------------------------------------------------------------------------
 
     def get_biological_units_timeline(
-        self, start_date: Optional[date] = None, end_date: Optional[date] = None, limit: int = 30
-    ) -> List[Dict[str, Any]]:
+        self, start_date: date | None = None, end_date: date | None = None, limit: int = 30
+    ) -> list[dict[str, Any]]:
         """
         Get system-wide biological units timeline with forward-fill.
 
@@ -305,10 +305,10 @@ class SnapshotService:
     def get_provider_biological_units_timeline(
         self,
         provider_id: int,
-        start_date: Optional[date] = None,
-        end_date: Optional[date] = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
         limit: int = 30,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get biological units timeline for a specific provider with forward-fill.
 
@@ -386,7 +386,7 @@ class SnapshotService:
 
     def get_provider_datasets_timeline(
         self, provider_id: int, period: str = "daily", months: int = 12
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get cumulative dataset count timeline for a specific provider.
 
@@ -458,8 +458,8 @@ class SnapshotService:
             return timeline
 
     def get_multi_provider_timeline(
-        self, start_date: Optional[date] = None, end_date: Optional[date] = None, limit: int = 30
-    ) -> Dict[str, Any]:
+        self, start_date: date | None = None, end_date: date | None = None, limit: int = 30
+    ) -> dict[str, Any]:
         """
         Get biological units timeline for all providers with forward-fill.
 
@@ -589,8 +589,8 @@ class SnapshotService:
     # -------------------------------------------------------------------------
 
     def get_provider_statistics(
-        self, provider_id: int, user: Optional[UserModel] = None
-    ) -> Optional[Dict[str, Any]]:
+        self, provider_id: int, user: UserModel | None = None
+    ) -> dict[str, Any] | None:
         """Get statistics for a specific provider."""
         provider = (
             self.db.query(DataProviderModel).filter(DataProviderModel.id == provider_id).first()
@@ -634,7 +634,7 @@ class SnapshotService:
             "activity_score": None,  # No longer tracked
         }
 
-    def _calculate_provider_validation_rate(self, provider_id: int) -> Optional[float]:
+    def _calculate_provider_validation_rate(self, provider_id: int) -> float | None:
         """Calculate validation success rate for a specific provider."""
         cutoff_date = date.today() - timedelta(days=30)
 
@@ -664,8 +664,8 @@ class SnapshotService:
         return (successful / len(completed_jobs) * 100) if completed_jobs else None
 
     def get_dataset_statistics(
-        self, dataset_id: int, user: Optional[UserModel] = None
-    ) -> Optional[Dict[str, Any]]:
+        self, dataset_id: int, user: UserModel | None = None
+    ) -> dict[str, Any] | None:
         """Get statistics for a specific dataset."""
         dataset = self.db.query(DatasetModel).filter(DatasetModel.id == dataset_id).first()
 
@@ -708,8 +708,8 @@ class SnapshotService:
         }
 
     def get_provider_list_stats(
-        self, limit: int = 20, user: Optional[UserModel] = None
-    ) -> Dict[str, Any]:
+        self, limit: int = 20, user: UserModel | None = None
+    ) -> dict[str, Any]:
         """Get statistics about top providers."""
         providers = self.db.query(DataProviderModel).limit(limit).all()
 
@@ -765,8 +765,8 @@ class SnapshotService:
         }
 
     def get_recent_activity(
-        self, limit: int = 10, days: int = 30, user: Optional[UserModel] = None
-    ) -> Dict[str, Any]:
+        self, limit: int = 10, days: int = 30, user: UserModel | None = None
+    ) -> dict[str, Any]:
         """Get recent dataset registration activity."""
         cutoff_date = date.today() - timedelta(days=days)
 
@@ -791,7 +791,7 @@ class SnapshotService:
             "total_new_datasets": len(recent_datasets),
         }
 
-    def get_health_status(self, user: Optional[UserModel] = None) -> Dict[str, Any]:
+    def get_health_status(self, user: UserModel | None = None) -> dict[str, Any]:
         """Get basic health metrics of the registry."""
         total_datasets = self.db.query(func.count(DatasetModel.id)).scalar() or 0
         total_archives = self.db.query(func.count(XmlArchiveModel.id)).scalar() or 0
@@ -822,8 +822,8 @@ class SnapshotService:
         }
 
     def get_growth_metrics(
-        self, period: str = "monthly", months: int = 12, user: Optional[UserModel] = None
-    ) -> Dict[str, Any]:
+        self, period: str = "monthly", months: int = 12, user: UserModel | None = None
+    ) -> dict[str, Any]:
         """
         Get cumulative growth metrics over time.
 

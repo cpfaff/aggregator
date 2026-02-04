@@ -5,10 +5,9 @@ These are placeholder tasks that can be replaced with real application tasks.
 
 import logging
 import time
-from typing import Any, Dict, Optional
+from typing import Any
 
 from celery import shared_task
-
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +20,7 @@ logger = logging.getLogger(__name__)
     autoretry_for=(Exception,),
     retry_backoff=True,
 )
-def process_data(self, data: Dict[str, Any], user_id: Optional[int] = None) -> Dict[str, Any]:
+def process_data(self, data: dict[str, Any], user_id: int | None = None) -> dict[str, Any]:
     """
     Example task that processes data.
 

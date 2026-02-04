@@ -3,7 +3,7 @@ User authentication and authorization permissions.
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 import jwt
 from fastapi import Depends, HTTPException, status
@@ -19,7 +19,7 @@ from app.security.token import decode_token, oauth2_scheme
 logger = logging.getLogger(__name__)
 
 
-def normalize_provider_roles(roles: Any) -> Dict[str, str]:
+def normalize_provider_roles(roles: Any) -> dict[str, str]:
     """
     Normalize provider roles to ensure they are in the correct format.
 
@@ -36,7 +36,7 @@ def normalize_provider_roles(roles: Any) -> Dict[str, str]:
     return {}
 
 
-async def get_user_model(username: str, db: AsyncSession) -> Optional[UserModel]:
+async def get_user_model(username: str, db: AsyncSession) -> UserModel | None:
     """
     Retrieve a user model from the database by username.
 
@@ -71,7 +71,7 @@ def check_global_admin(current_user: UserModel) -> None:
         )
 
 
-async def authenticate_user(username: str, password: str, db: AsyncSession) -> Optional[UserModel]:
+async def authenticate_user(username: str, password: str, db: AsyncSession) -> UserModel | None:
     """
     Authenticate a user with username and password.
 
@@ -206,11 +206,11 @@ def get_current_user_sync(
 
 
 def get_current_user_optional(
-    token: Optional[str] = Depends(
+    token: str | None = Depends(
         OAuth2PasswordBearer(tokenUrl="/api/v1/auth-token", auto_error=False)
     ),
     db: Session = Depends(get_sync_db),
-) -> Optional[UserModel]:
+) -> UserModel | None:
     """
     Get the current authenticated user or None if not authenticated.
     This is used for endpoints that have different behavior based on authentication status.

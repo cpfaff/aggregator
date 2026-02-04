@@ -2,7 +2,6 @@
 
 import logging
 import multiprocessing
-from typing import Union
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +33,7 @@ def get_validator_cpu_count(cpu_percent: int = 75) -> int:
 
 
 def get_stats_worker_concurrency(
-    concurrency_setting: Union[str, int], validator_cpus: int = None
+    concurrency_setting: str | int, validator_cpus: int = None
 ) -> int:
     """
     Calculate concurrency for statistics worker.

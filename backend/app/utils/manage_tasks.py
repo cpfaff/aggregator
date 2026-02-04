@@ -8,13 +8,12 @@ import json
 import subprocess
 import sys
 from datetime import datetime
-from typing import Dict, Optional
 
 # Add the app directory to path
 sys.path.insert(0, "/app")
 
 
-def run_celery_command(command: str, json_output: bool = True) -> Optional[Dict]:
+def run_celery_command(command: str, json_output: bool = True) -> dict | None:
     """Run a celery command and return the result."""
     cmd = f"celery -A app.core.celery_app {command}"
     if json_output:

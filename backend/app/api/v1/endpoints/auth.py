@@ -6,7 +6,7 @@ and token refresh functionality.
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import jwt
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
@@ -63,7 +63,7 @@ async def login(
     user = await authenticate_user(form_data.username, form_data.password, db)
     if not user:
         logger.warning(
-            f"Failed login attempt",
+            "Failed login attempt",
             extra={
                 "username": form_data.username,
                 "ip_address": request.client.host if request.client else None,
@@ -76,7 +76,7 @@ async def login(
         )
 
     # Update last login timestamp
-    user.last_login = datetime.now(timezone.utc)
+    user.last_login = datetime.now(UTC)
     await db.commit()
     await db.refresh(user)
 
@@ -87,7 +87,7 @@ async def login(
     refresh_token = create_refresh_token(data={"sub": user.username})
 
     logger.info(
-        f"User authenticated",
+        "User authenticated",
         extra={
             "username": user.username,
             "is_admin": user.is_global_admin,

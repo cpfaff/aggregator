@@ -6,7 +6,6 @@ user permissions, and provider associations.
 """
 
 import logging
-from typing import List, Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from sqlalchemy import select
@@ -55,7 +54,7 @@ async def get_user_permissions(current_user: UserModel = Depends(get_current_use
     )
 
 
-@router.get("/users", response_model=List[User], summary="List all users")
+@router.get("/users", response_model=list[User], summary="List all users")
 async def list_users(
     current_user: UserModel = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -93,7 +92,7 @@ async def get_user_endpoint(
 async def update_user(
     username: str,
     user: UserUpdate,
-    old_password: Optional[str] = Body(None),
+    old_password: str | None = Body(None),
     current_user: UserModel = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):

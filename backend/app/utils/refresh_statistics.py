@@ -67,7 +67,7 @@ def check_snapshot_status():
 
         row = coverage_result.fetchone()
         if row and row.total_archives > 0:
-            print(f"\nArchive Coverage:")
+            print("\nArchive Coverage:")
             print(f"  Total latest archives: {row.total_archives}")
             print(
                 f"  With snapshots: {row.with_snapshots} ({row.with_snapshots * 100 // row.total_archives}%)"

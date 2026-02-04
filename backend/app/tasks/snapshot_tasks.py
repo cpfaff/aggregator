@@ -12,7 +12,7 @@ import tempfile
 import xml.etree.ElementTree as ET
 import zipfile
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any
 
 import requests
 from celery import shared_task
@@ -28,8 +28,8 @@ logger = logging.getLogger(__name__)
 class HttpMetadata:
     """HTTP metadata from archive download for change detection."""
 
-    etag: Optional[str] = None
-    last_modified: Optional[str] = None
+    etag: str | None = None
+    last_modified: str | None = None
 
 
 @dataclass
@@ -46,7 +46,7 @@ class XMLParsingError(Exception):
     pass
 
 
-def _normalize_etag(etag: Optional[str]) -> Optional[str]:
+def _normalize_etag(etag: str | None) -> str | None:
     """
     Normalize an ETag for comparison.
 
@@ -70,8 +70,8 @@ def _normalize_etag(etag: Optional[str]) -> Optional[str]:
 
 def check_archive_changed(
     archive_url: str,
-    previous_etag: Optional[str] = None,
-    previous_last_modified: Optional[str] = None,
+    previous_etag: str | None = None,
+    previous_last_modified: str | None = None,
 ) -> tuple[bool, HttpMetadata]:
     """
     Check if an archive has changed using HTTP HEAD request.
@@ -269,7 +269,7 @@ def _count_units(root) -> int:
 
 
 @shared_task(name="snapshots.collect_single_archive_snapshot", queue="light_tasks")
-def collect_single_archive_snapshot(archive_id: int, force: bool = False) -> Dict[str, Any]:
+def collect_single_archive_snapshot(archive_id: int, force: bool = False) -> dict[str, Any]:
     """
     Collect a snapshot for a single archive.
 

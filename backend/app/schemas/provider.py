@@ -3,7 +3,6 @@ Provider-related Pydantic schemas for validation and serialization.
 """
 
 from datetime import datetime
-from typing import List, Optional
 
 from pydantic import AnyUrl, BaseModel, ConfigDict, field_validator
 
@@ -13,16 +12,16 @@ from app.schemas.dataset import Dataset
 class DataProvider(BaseModel):
     """Schema for data provider information."""
 
-    id: Optional[int] = None
+    id: int | None = None
     datacenter: str
     shortName: str
     name: str
-    url: Optional[AnyUrl] = None
-    biocaseUrl: Optional[AnyUrl] = None
-    isDataCenter: Optional[bool] = None
-    datasets: List[Dataset] = []
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    url: AnyUrl | None = None
+    biocaseUrl: AnyUrl | None = None
+    isDataCenter: bool | None = None
+    datasets: list[Dataset] = []
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
     @field_validator("datacenter", "shortName", "name")
     @classmethod

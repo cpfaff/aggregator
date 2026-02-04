@@ -8,7 +8,7 @@ import os
 import shutil
 import tempfile
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any
 
 from abcd_validator import ABCDValidator, JSONReportStrategy, download_archive
 
@@ -21,7 +21,7 @@ class ValidatorService:
     Provides a clean interface to the ABCD Validator library.
     """
 
-    def __init__(self, temp_dir: Optional[str] = None):
+    def __init__(self, temp_dir: str | None = None):
         """
         Initialize the validator service.
 
@@ -67,8 +67,8 @@ class ValidatorService:
             raise
 
     def validate_archive(
-        self, archive_url: str, archive_path: Optional[str] = None
-    ) -> Dict[str, Any]:
+        self, archive_url: str, archive_path: str | None = None
+    ) -> dict[str, Any]:
         """
         Validate an XML archive either from a URL or local path.
 

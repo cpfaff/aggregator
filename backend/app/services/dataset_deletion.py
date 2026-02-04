@@ -6,7 +6,7 @@ ensuring no orphaned records remain in the database.
 """
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,7 +25,7 @@ class DatasetDeletionService:
         """Initialize the service with a database session."""
         self.db = db
 
-    async def delete_dataset_cascade(self, dataset_id: int, provider_id: int) -> Dict[str, Any]:
+    async def delete_dataset_cascade(self, dataset_id: int, provider_id: int) -> dict[str, Any]:
         """
         Completely delete a dataset and all associated data.
 
@@ -120,7 +120,7 @@ class DatasetDeletionService:
             await self.db.rollback()
             raise
 
-    async def get_dataset_dependencies(self, dataset_id: int) -> Dict[str, int]:
+    async def get_dataset_dependencies(self, dataset_id: int) -> dict[str, int]:
         """
         Get counts of all dependent records for a dataset.
         Useful for showing confirmation dialog before deletion.

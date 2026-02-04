@@ -3,7 +3,6 @@ Configuration management for the application.
 Settings are loaded from environment variables.
 """
 
-from typing import List, Union
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
@@ -41,7 +40,7 @@ class Settings(BaseSettings):
     CELERY_RESULT_BACKEND: str = "redis://redis:6379/0"
     # Resource allocation settings
     VALIDATOR_CPU_PERCENT: int = Field(default=75, ge=1, le=100)
-    STATS_WORKER_CONCURRENCY: Union[str, int] = "auto"
+    STATS_WORKER_CONCURRENCY: str | int = "auto"
 
     @field_validator("VALIDATOR_CPU_PERCENT")
     @classmethod
@@ -68,7 +67,7 @@ class Settings(BaseSettings):
     REDIS_PASSWORD: str = ""
 
     @property
-    def allowed_origins_list(self) -> List[str]:
+    def allowed_origins_list(self) -> list[str]:
         return self.ALLOWED_ORIGINS.split(",")
 
     @property

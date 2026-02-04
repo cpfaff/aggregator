@@ -3,7 +3,7 @@ API endpoints for XML validation tasks.
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
@@ -47,11 +47,11 @@ class ValidationJobResponse(BaseModel):
     status: str
     task_id: str
     started_at: datetime
-    completed_at: Optional[datetime] = None
-    total_files: Optional[int] = None
-    valid_files: Optional[int] = None
-    error_count: Optional[int] = None
-    validation_time: Optional[float] = None
+    completed_at: datetime | None = None
+    total_files: int | None = None
+    valid_files: int | None = None
+    error_count: int | None = None
+    validation_time: float | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -64,18 +64,18 @@ class DatasetValidationStatus(BaseModel):
     """
 
     dataset_id: int
-    archive_id: Optional[int] = None
+    archive_id: int | None = None
     has_latest_archive: bool
-    validation_status: Optional[str] = None  # not_validated, pending, running, completed, failed
-    validation_id: Optional[int] = None
-    last_validated_at: Optional[datetime] = None
+    validation_status: str | None = None  # not_validated, pending, running, completed, failed
+    validation_id: int | None = None
+    last_validated_at: datetime | None = None
 
     # Core quality indicators (for quick access without parsing the full results)
-    is_valid: Optional[bool] = None
-    quality_score: Optional[float] = None
+    is_valid: bool | None = None
+    quality_score: float | None = None
 
     # Complete validation results as JSON
-    validation_results: Optional[Dict[str, Any]] = None
+    validation_results: dict[str, Any] | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -164,10 +164,10 @@ async def get_validation_job(
     return job
 
 
-@router.get("/", response_model=List[ValidationJobResponse])
+@router.get("/", response_model=list[ValidationJobResponse])
 async def list_validation_jobs(
-    archive_id: Optional[int] = None,
-    status: Optional[str] = None,
+    archive_id: int | None = None,
+    status: str | None = None,
     limit: int = 10,
     offset: int = 0,
     current_user: UserModel = Depends(get_current_user),
@@ -205,7 +205,7 @@ async def list_validation_jobs(
     return jobs
 
 
-@router.get("/{job_id}/results", response_model=Dict[str, Any])
+@router.get("/{job_id}/results", response_model=dict[str, Any])
 async def get_validation_results(
     job_id: int,
     current_user: UserModel = Depends(get_current_user),

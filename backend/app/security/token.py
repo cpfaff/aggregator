@@ -5,7 +5,7 @@ JWT token generation and validation utilities.
 import logging
 import uuid
 from datetime import datetime, timedelta
-from typing import Any, Dict, Optional
+from typing import Any
 
 import jwt
 from fastapi import HTTPException, status
@@ -19,7 +19,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth-token")
 logger = logging.getLogger(__name__)
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     """
     Create a JWT access token with an expiration time and additional security claims.
 
@@ -68,7 +68,7 @@ def create_refresh_token(data: dict) -> str:
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
-def decode_token(token: str, audience: Optional[str] = None) -> Dict[str, Any]:
+def decode_token(token: str, audience: str | None = None) -> dict[str, Any]:
     """
     Decode and validate a JWT token.
 
@@ -114,7 +114,7 @@ def decode_token(token: str, audience: Optional[str] = None) -> Dict[str, Any]:
         ) from None
 
 
-def get_token_data(token: str) -> Dict[str, Any]:
+def get_token_data(token: str) -> dict[str, Any]:
     """
     Extract username and other data from a token.
 

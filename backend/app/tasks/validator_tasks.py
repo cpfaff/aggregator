@@ -5,7 +5,7 @@ Celery tasks for XML validation.
 import logging
 import uuid
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any
 
 from celery import shared_task
 
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
     autoretry_for=(Exception,),  # Auto-retry on all exceptions
     task_time_limit=7500,  # Hard time limit (2h 5min)
 )
-def validate_archive(self, archive_id: int, job_id: Optional[int] = None) -> Dict[str, Any]:
+def validate_archive(self, archive_id: int, job_id: int | None = None) -> dict[str, Any]:
     """
     Validate an XML archive with the given ID.
 

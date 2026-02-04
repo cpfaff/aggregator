@@ -2,7 +2,7 @@
 Common schemas used across the application.
 """
 
-from typing import Generic, List, TypeVar
+from typing import Generic, TypeVar
 
 from pydantic import BaseModel
 from pydantic.generics import GenericModel
@@ -13,13 +13,13 @@ T = TypeVar("T")
 class PaginatedResponse(GenericModel, Generic[T]):
     """Generic paginated response model"""
 
-    items: List[T]
+    items: list[T]
     total: int
     page: int
     size: int
 
     @classmethod
-    def create(cls, items: List[T], total: int, page: int, size: int):
+    def create(cls, items: list[T], total: int, page: int, size: int):
         """Factory method to create a paginated response"""
         return cls(items=items, total=total, page=page, size=size)
 

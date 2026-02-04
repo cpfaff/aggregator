@@ -2,7 +2,7 @@
 Models for XML validation jobs.
 """
 
-from typing import Any, Dict
+from typing import Any
 
 from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, func
 from sqlalchemy.dialects.postgresql import JSONB
@@ -41,7 +41,7 @@ class ValidationJobModel(Base, TimestampMixin):
     # Relationships
     archive = relationship("XmlArchiveModel", back_populates="validation_jobs")
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert model to dictionary representation.
         """

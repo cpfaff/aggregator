@@ -9,7 +9,7 @@ Total: ~300 lines (vs 798 in the old unified_statistics.py)
 
 import logging
 from datetime import date
-from typing import Any, Dict, Optional
+from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
@@ -50,7 +50,7 @@ def _no_cache_headers(response: Response) -> None:
 @router.get("/overview", response_model=OverviewStats, summary="Registry overview statistics")
 async def get_overview(
     db: Session = Depends(get_sync_db),
-    current_user: Optional[UserModel] = Depends(get_current_user_optional),
+    current_user: UserModel | None = Depends(get_current_user_optional),
     response: Response = None,
 ) -> OverviewStats:
     """Get registry overview statistics using live database counts."""
@@ -68,7 +68,7 @@ async def get_overview(
 @router.get("/quality", response_model=QualityMetrics, summary="Data quality metrics")
 async def get_quality_metrics(
     db: Session = Depends(get_sync_db),
-    current_user: Optional[UserModel] = Depends(get_current_user_optional),
+    current_user: UserModel | None = Depends(get_current_user_optional),
     days: int = Query(30, ge=1, le=90, description="Number of days to look back"),
     response: Response = None,
 ) -> QualityMetrics:
@@ -88,7 +88,7 @@ async def get_growth_timeline(
     period: str = Query("monthly", description="Time period for aggregation"),
     months: int = Query(12, ge=1, le=60, description="Number of months to retrieve"),
     db: Session = Depends(get_sync_db),
-    current_user: Optional[UserModel] = Depends(get_current_user_optional),
+    current_user: UserModel | None = Depends(get_current_user_optional),
     response: Response = None,
 ) -> GrowthMetrics:
     """Get registry growth metrics over time."""
@@ -110,9 +110,9 @@ async def get_growth_timeline(
 async def get_provider_list_stats(
     limit: int = Query(20, ge=1, le=100, description="Number of top providers to show"),
     db: Session = Depends(get_sync_db),
-    current_user: Optional[UserModel] = Depends(get_current_user_optional),
+    current_user: UserModel | None = Depends(get_current_user_optional),
     response: Response = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get statistics about top contributing providers."""
     try:
         _no_cache_headers(response)
@@ -128,9 +128,9 @@ async def get_recent_dataset_activity(
     limit: int = Query(10, ge=1, le=50, description="Number of recent activities to show"),
     days: int = Query(30, ge=1, le=90, description="Number of days to look back"),
     db: Session = Depends(get_sync_db),
-    current_user: Optional[UserModel] = Depends(get_current_user_optional),
+    current_user: UserModel | None = Depends(get_current_user_optional),
     response: Response = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get recent dataset registration activity."""
     try:
         _no_cache_headers(response)
@@ -144,9 +144,9 @@ async def get_recent_dataset_activity(
 @router.get("/health", summary="Registry health status")
 async def get_registry_health(
     db: Session = Depends(get_sync_db),
-    current_user: Optional[UserModel] = Depends(get_current_user_optional),
+    current_user: UserModel | None = Depends(get_current_user_optional),
     response: Response = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get basic health metrics of the registry system."""
     try:
         _no_cache_headers(response)
@@ -246,8 +246,8 @@ async def get_provider_datasets_timeline(
 async def get_provider_biological_units_timeline(
     provider_id: int,
     period: str = Query("daily", description="Time period"),
-    start_date: Optional[date] = Query(None, description="Start date"),
-    end_date: Optional[date] = Query(None, description="End date"),
+    start_date: date | None = Query(None, description="Start date"),
+    end_date: date | None = Query(None, description="End date"),
     limit: int = Query(30, ge=1, le=365, description="Maximum data points"),
     db: Session = Depends(get_sync_db),
     current_user: UserModel = Depends(get_current_user_sync),
@@ -281,8 +281,8 @@ async def get_provider_biological_units_timeline(
 )
 async def get_biological_units_timeline(
     period: str = Query("daily", description="Time period"),
-    start_date: Optional[date] = Query(None, description="Start date"),
-    end_date: Optional[date] = Query(None, description="End date"),
+    start_date: date | None = Query(None, description="Start date"),
+    end_date: date | None = Query(None, description="End date"),
     limit: int = Query(30, ge=1, le=365, description="Maximum data points"),
     db: Session = Depends(get_sync_db),
     current_user: UserModel = Depends(get_current_user_sync),
@@ -309,17 +309,17 @@ async def get_biological_units_timeline(
 
 @router.get(
     "/multi-provider-biological-units",
-    response_model=Dict[str, Any],
+    response_model=dict[str, Any],
     summary="Multi-provider biological units",
 )
 async def get_multi_provider_biological_units_timeline(
     period: str = Query("daily", description="Time period"),
-    start_date: Optional[date] = Query(None, description="Start date"),
-    end_date: Optional[date] = Query(None, description="End date"),
+    start_date: date | None = Query(None, description="Start date"),
+    end_date: date | None = Query(None, description="End date"),
     limit: int = Query(30, ge=1, le=365, description="Maximum data points"),
     db: Session = Depends(get_sync_db),
     current_user: UserModel = Depends(get_current_user_sync),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get biological units timeline for all providers. Requires authentication."""
     try:
         service = SnapshotService(db)
@@ -341,7 +341,7 @@ async def get_multi_provider_biological_units_timeline(
 @router.post("/collect", summary="Trigger snapshot collection")
 async def trigger_snapshot_collection(
     background_tasks: BackgroundTasks, current_user: UserModel = Depends(require_admin)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Manually trigger archive snapshot collection.
     Requires admin permissions.

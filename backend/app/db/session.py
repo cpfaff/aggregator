@@ -2,7 +2,7 @@
 Database session management and dependencies.
 """
 
-from typing import AsyncGenerator, Generator
+from collections.abc import AsyncGenerator, Generator
 
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import AsyncSession
