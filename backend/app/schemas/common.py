@@ -35,9 +35,9 @@ class TokenResponse(BaseModel):
 
 # Import other schema types to define specialized paginated responses
 # These are defined here to avoid circular imports
-from app.schemas.dataset import Dataset
-from app.schemas.provider import DataProvider
-from app.schemas.user import User
+from app.schemas.dataset import Dataset  # noqa: E402
+from app.schemas.provider import DataProvider  # noqa: E402
+from app.schemas.user import User  # noqa: E402
 
 # Create paginated response models for each entity
 PaginatedProviders = PaginatedResponse[DataProvider]

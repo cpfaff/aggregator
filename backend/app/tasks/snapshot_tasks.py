@@ -247,7 +247,7 @@ def _count_units(root) -> int:
         ns_uri = root.tag.split("}")[0][1:]
     else:
         # Check children for namespace
-        for prefix, uri in namespaces.items():
+        for _prefix, uri in namespaces.items():
             if any(uri in elem.tag for elem in root.iter()):
                 ns_uri = uri
                 break
@@ -368,7 +368,7 @@ def collect_archive_snapshots():
         today = date.today()
 
         # Get all current (latest) archives
-        archives = db.query(XmlArchiveModel).filter(XmlArchiveModel.isLatest == True).all()
+        archives = db.query(XmlArchiveModel).filter(XmlArchiveModel.isLatest).all()
 
         # Get archive IDs that already have snapshots for today
         existing_today = (

@@ -32,7 +32,7 @@ class SimpleCache:
 
 
 # Global cache instance
-from app.core.config import settings
+from app.core.config import settings  # noqa: E402
 
 cache = SimpleCache(ttl_seconds=settings.CACHE_EXPIRE_SECONDS)
 

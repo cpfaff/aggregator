@@ -42,7 +42,7 @@ class SnapshotService:
         total_archives = self.db.query(func.count(XmlArchiveModel.id)).scalar() or 0
         total_datacenters = (
             self.db.query(func.count(DataProviderModel.id))
-            .filter(DataProviderModel.isDataCenter == True)
+            .filter(DataProviderModel.isDataCenter)
             .scalar()
             or 0
         )
@@ -149,7 +149,7 @@ class SnapshotService:
                 func.max(ArchiveSnapshotModel.recorded_at).label("max_recorded"),
             )
             .join(XmlArchiveModel, ArchiveSnapshotModel.archive_id == XmlArchiveModel.id)
-            .filter(XmlArchiveModel.dataset_id == dataset_id, XmlArchiveModel.isLatest == True)
+            .filter(XmlArchiveModel.dataset_id == dataset_id, XmlArchiveModel.isLatest)
             .group_by(ArchiveSnapshotModel.archive_id)
             .subquery()
         )
@@ -185,7 +185,7 @@ class SnapshotService:
             )
             .join(XmlArchiveModel, ArchiveSnapshotModel.archive_id == XmlArchiveModel.id)
             .join(DatasetModel, XmlArchiveModel.dataset_id == DatasetModel.id)
-            .filter(DatasetModel.provider_id == provider_id, XmlArchiveModel.isLatest == True)
+            .filter(DatasetModel.provider_id == provider_id, XmlArchiveModel.isLatest)
             .group_by(ArchiveSnapshotModel.archive_id)
             .subquery()
         )
@@ -216,7 +216,7 @@ class SnapshotService:
                 func.max(ArchiveSnapshotModel.recorded_at).label("max_recorded"),
             )
             .join(XmlArchiveModel, ArchiveSnapshotModel.archive_id == XmlArchiveModel.id)
-            .filter(XmlArchiveModel.isLatest == True)
+            .filter(XmlArchiveModel.isLatest)
             .group_by(ArchiveSnapshotModel.archive_id)
             .subquery()
         )
@@ -293,7 +293,7 @@ class SnapshotService:
                     ),
                 )
                 .join(XmlArchiveModel, ArchiveSnapshotModel.archive_id == XmlArchiveModel.id)
-                .filter(XmlArchiveModel.isLatest == True)
+                .filter(XmlArchiveModel.isLatest)
                 .scalar()
                 or 0
             )
@@ -342,7 +342,7 @@ class SnapshotService:
             r[0]
             for r in self.db.query(XmlArchiveModel.id)
             .join(DatasetModel, XmlArchiveModel.dataset_id == DatasetModel.id)
-            .filter(DatasetModel.provider_id == provider_id, XmlArchiveModel.isLatest == True)
+            .filter(DatasetModel.provider_id == provider_id, XmlArchiveModel.isLatest)
             .all()
         ]
 
@@ -499,7 +499,7 @@ class SnapshotService:
             .join(DatasetModel, DataProviderModel.id == DatasetModel.provider_id)
             .join(XmlArchiveModel, DatasetModel.id == XmlArchiveModel.dataset_id)
             .join(ArchiveSnapshotModel, XmlArchiveModel.id == ArchiveSnapshotModel.archive_id)
-            .filter(XmlArchiveModel.isLatest == True)
+            .filter(XmlArchiveModel.isLatest)
             .distinct()
             .all()
         )
@@ -522,7 +522,7 @@ class SnapshotService:
                 r[0]
                 for r in self.db.query(XmlArchiveModel.id)
                 .join(DatasetModel, XmlArchiveModel.dataset_id == DatasetModel.id)
-                .filter(DatasetModel.provider_id == provider_id, XmlArchiveModel.isLatest == True)
+                .filter(DatasetModel.provider_id == provider_id, XmlArchiveModel.isLatest)
                 .all()
             ]
             provider_archives[provider_name] = archive_ids

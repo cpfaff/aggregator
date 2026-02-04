@@ -135,7 +135,7 @@ def list_tasks(show_all: bool = False):
                 or "Starting validation" in result.stdout
             ):
                 print("\n    🟡 Recent validation activity detected in logs")
-        except:
+        except Exception:
             pass
 
     if task_count == 0 and validation_worker_name in found_workers:
@@ -225,7 +225,7 @@ def cancel_all_tasks(force: bool = False):
 
     task_ids = []
     task_details = []
-    for worker, tasks in active.items():
+    for _worker, tasks in active.items():
         for task in tasks:
             task_ids.append(task["id"])
             task_details.append((task["id"], task["name"]))
@@ -233,7 +233,7 @@ def cancel_all_tasks(force: bool = False):
     # Get all reserved tasks
     reserved = run_celery_command("inspect reserved")
     if reserved:
-        for worker, tasks in reserved.items():
+        for _worker, tasks in reserved.items():
             for task in tasks:
                 task_ids.append(task["id"])
                 task_details.append((task["id"], task.get("name", "queued")))

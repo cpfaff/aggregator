@@ -266,7 +266,7 @@ async def get_dataset_validation_status(
     latest_archive_result = await db.execute(
         select(XmlArchiveModel)
         .where(XmlArchiveModel.dataset_id == dataset_id)
-        .where(XmlArchiveModel.isLatest == True)
+        .where(XmlArchiveModel.isLatest)
     )
     latest_archive = latest_archive_result.scalars().first()
 
@@ -377,7 +377,7 @@ async def validate_dataset_latest_archive(
     latest_archive_result = await db.execute(
         select(XmlArchiveModel)
         .where(XmlArchiveModel.dataset_id == dataset_id)
-        .where(XmlArchiveModel.isLatest == True)
+        .where(XmlArchiveModel.isLatest)
     )
     latest_archive = latest_archive_result.scalars().first()
 
