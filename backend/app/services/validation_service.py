@@ -1,0 +1,406 @@
+"""
+Validation service for managing XML archive validation jobs.
+
+This service extracts validation business logic from route handlers,
+providing a clean interface for validation job management.
+"""
+import logging
+from typing import Dict, Any, List, Optional
+from datetime import datetime
+
+from sqlalchemy import select, desc
+from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import HTTPException, status
+
+from app.models import XmlArchiveModel, ValidationJobModel
+from app.tasks.validator_tasks import validate_archive
+
+logger = logging.getLogger(__name__)
+
+
+class ValidationService:
+    """Service for validation job operations."""
+
+    def __init__(self, db: AsyncSession):
+        self.db = db
+
+    async def get_archive_or_404(self, archive_id: int) -> XmlArchiveModel:
+        """
+        Get an archive by ID or raise 404 if not found.
+
+        Args:
+            archive_id: ID of the archive to retrieve
+
+        Returns:
+            XmlArchiveModel: The archive if found
+
+        Raises:
+            HTTPException: 404 if archive not found
+        """
+        result = await self.db.execute(
+            select(XmlArchiveModel).where(XmlArchiveModel.id == archive_id)
+        )
+        archive = result.scalar_one_or_none()
+
+        if not archive:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Archive with ID {archive_id} not found"
+            )
+
+        return archive
+
+    async def create_validation_job(
+        self,
+        archive_id: int
+    ) -> Dict[str, Any]:
+        """
+        Create a new validation job for an archive.
+
+        Args:
+            archive_id: ID of the archive to validate
+
+        Returns:
+            Dict with task_id, job_id, archive_id, and status
+
+        Raises:
+            HTTPException: If archive not found
+        """
+        # Verify archive exists
+        await self.get_archive_or_404(archive_id)
+
+        # Create validation job record
+        job = ValidationJobModel(
+            archive_id=archive_id,
+            status="pending",
+            task_id="pending",  # Will be updated when task starts
+        )
+
+        self.db.add(job)
+        await self.db.commit()
+        await self.db.refresh(job)
+
+        # Submit validation task to Celery
+        task = validate_archive.delay(archive_id, job_id=job.id)
+
+        # Update job with task ID
+        job.task_id = task.id
+        await self.db.commit()
+
+        return {
+            "task_id": task.id,
+            "job_id": job.id,
+            "archive_id": archive_id,
+            "status": "pending"
+        }
+
+    async def get_validation_job(self, job_id: int) -> ValidationJobModel:
+        """
+        Get a validation job by ID.
+
+        Args:
+            job_id: ID of the validation job
+
+        Returns:
+            ValidationJobModel: The validation job
+
+        Raises:
+            HTTPException: 404 if job not found
+        """
+        result = await self.db.execute(
+            select(ValidationJobModel).where(ValidationJobModel.id == job_id)
+        )
+        job = result.scalar_one_or_none()
+
+        if not job:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Validation job with ID {job_id} not found"
+            )
+
+        return job
+
+    async def list_validation_jobs(
+        self,
+        archive_id: Optional[int] = None,
+        status_filter: Optional[str] = None,
+        limit: int = 10,
+        offset: int = 0,
+    ) -> List[ValidationJobModel]:
+        """
+        List validation jobs with optional filtering.
+
+        Args:
+            archive_id: Optional filter by archive ID
+            status_filter: Optional filter by status
+            limit: Maximum number of jobs to return
+            offset: Offset for pagination
+
+        Returns:
+            List of validation jobs
+        """
+        query = select(ValidationJobModel).order_by(desc(ValidationJobModel.created_at))
+
+        # Apply filters
+        if archive_id is not None:
+            query = query.where(ValidationJobModel.archive_id == archive_id)
+
+        if status_filter is not None:
+            query = query.where(ValidationJobModel.status == status_filter)
+
+        # Apply pagination
+        query = query.limit(limit).offset(offset)
+
+        result = await self.db.execute(query)
+        return list(result.scalars().all())
+
+    async def get_validation_results(self, job_id: int) -> Dict[str, Any]:
+        """
+        Get detailed validation results for a completed job.
+
+        Args:
+            job_id: ID of the validation job
+
+        Returns:
+            Validation results as dictionary
+
+        Raises:
+            HTTPException: If job not found, not completed, or results missing
+        """
+        job = await self.get_validation_job(job_id)
+
+        if job.status != "completed":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Validation job is not completed (current status: {job.status})"
+            )
+
+        if not job.results:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Validation results not found"
+            )
+
+        return job.results
+
+    async def cleanup_obsolete_pending_jobs(
+        self,
+        archive_id: int
+    ) -> None:
+        """
+        Mark pending validation jobs as obsolete if newer completed jobs exist.
+
+        This handles the task ID mismatch issue where Celery workers add UUIDs
+        to task IDs.
+
+        Args:
+            archive_id: Archive ID to check
+        """
+        # Get all pending validations for this archive
+        pending_result = await self.db.execute(
+            select(ValidationJobModel)
+            .where(ValidationJobModel.archive_id == archive_id)
+            .where(ValidationJobModel.status == "pending")
+            .order_by(desc(ValidationJobModel.created_at))
+        )
+        pending_jobs = list(pending_result.scalars().all())
+
+        # Check each pending job for a matching completed job
+        for pending in pending_jobs:
+            # Look for completed validation with task ID starting with pending task ID
+            completed_result = await self.db.execute(
+                select(ValidationJobModel)
+                .where(ValidationJobModel.archive_id == archive_id)
+                .where(ValidationJobModel.status == "completed")
+                .where(ValidationJobModel.task_id.startswith(pending.task_id))
+            )
+            completed = completed_result.scalars().first()
+
+            # If matching completed job found, mark pending as obsolete
+            if completed:
+                pending.status = "obsolete"
+
+        await self.db.commit()
+
+    async def get_dataset_validation_status(
+        self,
+        dataset_id: int
+    ) -> Dict[str, Any]:
+        """
+        Get validation status for a dataset's latest XML archive.
+
+        This includes checking for obsolete pending jobs and computing
+        quality metrics from validation results.
+
+        Args:
+            dataset_id: ID of the dataset
+
+        Returns:
+            Dictionary with validation status information
+        """
+        # Get latest archive for this dataset
+        latest_archive_result = await self.db.execute(
+            select(XmlArchiveModel)
+            .where(XmlArchiveModel.dataset_id == dataset_id)
+            .where(XmlArchiveModel.isLatest == True)
+        )
+        latest_archive = latest_archive_result.scalars().first()
+
+        # Initialize response
+        status_response = {
+            "dataset_id": dataset_id,
+            "archive_id": None,
+            "has_latest_archive": latest_archive is not None,
+            "validation_status": None,
+            "validation_id": None,
+            "last_validated_at": None,
+            "is_valid": None,
+            "quality_score": None,
+            "validation_results": None,
+        }
+
+        # If no latest archive, return basic response
+        if not latest_archive:
+            return status_response
+
+        status_response["archive_id"] = latest_archive.id
+
+        # Cleanup obsolete pending jobs
+        await self.cleanup_obsolete_pending_jobs(latest_archive.id)
+
+        # Get latest non-obsolete validation
+        latest_validation_result = await self.db.execute(
+            select(ValidationJobModel)
+            .where(ValidationJobModel.archive_id == latest_archive.id)
+            .where(ValidationJobModel.status != "obsolete")
+            .order_by(desc(ValidationJobModel.created_at))
+            .limit(1)
+        )
+        latest_validation = latest_validation_result.scalars().first()
+
+        # If no validation exists
+        if not latest_validation:
+            status_response["validation_status"] = "not_validated"
+            return status_response
+
+        # Populate validation details
+        status_response["validation_id"] = latest_validation.id
+        status_response["validation_status"] = latest_validation.status
+        status_response["last_validated_at"] = (
+            latest_validation.completed_at or latest_validation.started_at
+        )
+
+        # Include full results if completed
+        if latest_validation.status == "completed" and latest_validation.results:
+            status_response["validation_results"] = latest_validation.results
+
+            # Extract convenience fields from results
+            summary = latest_validation.results.get("summary")
+            if summary:
+                # Check if archive is fully valid
+                total_files = summary.get("total_files")
+                valid_files = summary.get("valid_files")
+                if total_files is not None and valid_files is not None:
+                    status_response["is_valid"] = total_files == valid_files
+
+                # Extract quality score
+                data_quality = summary.get("data_quality")
+                if data_quality and "total_weighted_quality" in data_quality:
+                    status_response["quality_score"] = data_quality["total_weighted_quality"]
+
+        return status_response
+
+    async def get_latest_archive_for_dataset(
+        self,
+        dataset_id: int
+    ) -> XmlArchiveModel:
+        """
+        Get the latest archive for a dataset.
+
+        Args:
+            dataset_id: ID of the dataset
+
+        Returns:
+            Latest XmlArchiveModel
+
+        Raises:
+            HTTPException: 404 if no latest archive found
+        """
+        result = await self.db.execute(
+            select(XmlArchiveModel)
+            .where(XmlArchiveModel.dataset_id == dataset_id)
+            .where(XmlArchiveModel.isLatest == True)
+        )
+        archive = result.scalars().first()
+
+        if not archive:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"No latest XML archive found for dataset with ID {dataset_id}"
+            )
+
+        return archive
+
+    async def find_existing_active_validation(
+        self,
+        archive_id: int
+    ) -> Optional[ValidationJobModel]:
+        """
+        Find existing pending or running validation for an archive.
+
+        Args:
+            archive_id: Archive ID to check
+
+        Returns:
+            ValidationJobModel if found, None otherwise
+        """
+        result = await self.db.execute(
+            select(ValidationJobModel)
+            .where(ValidationJobModel.archive_id == archive_id)
+            .where(ValidationJobModel.status.in_(["pending", "running"]))
+            .order_by(desc(ValidationJobModel.created_at))
+            .limit(1)
+        )
+        return result.scalars().first()
+
+    async def validate_dataset_latest_archive(
+        self,
+        dataset_id: int,
+        force: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Start validation for the latest archive of a dataset.
+
+        If force=False and an active validation exists, returns existing job.
+        If force=True, always creates a new validation job.
+
+        Args:
+            dataset_id: ID of the dataset
+            force: If True, create new job even if one exists
+
+        Returns:
+            Dictionary with validation job information
+
+        Raises:
+            HTTPException: If dataset has no latest archive
+        """
+        # Get latest archive
+        latest_archive = await self.get_latest_archive_for_dataset(dataset_id)
+
+        # Check for existing active validation (unless force=True)
+        if not force:
+            existing_validation = await self.find_existing_active_validation(
+                latest_archive.id
+            )
+
+            if existing_validation:
+                # Return existing job instead of creating new one
+                return {
+                    "task_id": existing_validation.task_id,
+                    "job_id": existing_validation.id,
+                    "archive_id": latest_archive.id,
+                    "status": existing_validation.status
+                }
+
+        # Create new validation job
+        return await self.create_validation_job(latest_archive.id)
