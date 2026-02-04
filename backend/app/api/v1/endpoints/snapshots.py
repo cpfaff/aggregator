@@ -8,8 +8,8 @@ Total: ~300 lines (vs 798 in the old unified_statistics.py)
 """
 
 import logging
-from datetime import date, datetime
-from typing import Any, Dict, List, Optional
+from datetime import date
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session

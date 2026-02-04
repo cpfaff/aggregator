@@ -8,7 +8,7 @@ import json
 import subprocess
 import sys
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 # Add the app directory to path
 sys.path.insert(0, "/app")

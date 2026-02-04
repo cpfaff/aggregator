@@ -2,10 +2,9 @@
 Common schemas used across the application.
 """
 
-from datetime import datetime
-from typing import Generic, List, Optional, TypeVar
+from typing import Generic, List, TypeVar
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel
 from pydantic.generics import GenericModel
 
 T = TypeVar("T")

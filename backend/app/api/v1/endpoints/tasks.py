@@ -4,7 +4,7 @@ API endpoints for managing background tasks with Celery.
 
 from typing import Any, Dict
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from app.models import UserModel

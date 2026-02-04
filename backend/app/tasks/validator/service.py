@@ -8,9 +8,9 @@ import os
 import shutil
 import tempfile
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
-from abcd_validator import ABCDValidator, JSONReportStrategy, ValidationResult, download_archive
+from abcd_validator import ABCDValidator, JSONReportStrategy, download_archive
 
 logger = logging.getLogger(__name__)
 

@@ -6,9 +6,9 @@ ensuring no orphaned records remain in the database.
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
-from sqlalchemy import and_, delete, select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.archive_snapshot import ArchiveSnapshotModel

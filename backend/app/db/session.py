@@ -4,7 +4,6 @@ Database session management and dependencies.
 
 from typing import AsyncGenerator, Generator
 
-from fastapi import Depends
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session, sessionmaker

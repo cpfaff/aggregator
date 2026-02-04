@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta
 from functools import wraps
-from typing import Any, Optional
 
 
 # SimpleCache for in-memory caching

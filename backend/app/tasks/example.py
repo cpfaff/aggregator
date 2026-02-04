@@ -9,7 +9,6 @@ from typing import Any, Dict, Optional
 
 from celery import shared_task
 
-from app.core.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
 
