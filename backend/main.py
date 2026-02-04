@@ -250,6 +250,7 @@ async def general_exception_handler(request: Request, exc: Exception):
 
 
 # Data Provider Endpoints
+# TODO-REMOVE(aggregator-6ev): Move DB logic from provider handlers to ProviderService, keep handlers thin
 @v1_router.get("/data-providers", response_model=list[DataProvider], summary="List data providers")
 @cache_response(prefix="providers", ttl_seconds=300)
 async def get_providers(
@@ -536,6 +537,7 @@ async def update_provider(
     # Trigger snapshot collection for any archives to capture unit count
     provider_result = result.scalar_one()
     if provider.datasets is not None:
+        # TODO-REMOVE(aggregator-zai): Move to module-level imports after service extraction
         from app.tasks.snapshot_tasks import collect_single_archive_snapshot
 
         for dataset in provider_result.datasets:
@@ -573,6 +575,7 @@ async def delete_provider(
 
 
 # Dataset Endpoints
+# TODO-REMOVE(aggregator-8xx): Move DB logic from dataset handlers to DatasetService, keep handlers thin
 @v1_router.get(
     "/data-providers/{provider_id}/data-sets",
     response_model=list[Dataset],
@@ -713,6 +716,7 @@ async def create_dataset(
     # Trigger snapshot collection for any archives created with this dataset
     dataset_result = result.scalar_one()
     if dataset_result.xmlArchives:
+        # TODO-REMOVE(aggregator-zai): Move to module-level imports after service extraction
         from app.tasks.snapshot_tasks import collect_single_archive_snapshot
 
         for archive in dataset_result.xmlArchives:
@@ -804,6 +808,7 @@ async def update_dataset(
     # Trigger snapshot collection for any new archives to capture unit count
     dataset_result = result.scalar_one()
     if dataset.xmlArchives is not None:
+        # TODO-REMOVE(aggregator-zai): Move to module-level imports after service extraction
         from app.tasks.snapshot_tasks import collect_single_archive_snapshot
 
         for archive in dataset_result.xmlArchives:
@@ -855,6 +860,7 @@ async def delete_dataset(
         raise HTTPException(status_code=404, detail="Dataset not found")
 
     # Use the cascade deletion service
+    # TODO-REMOVE(aggregator-zai): Move to module-level imports after service extraction
     from app.services.dataset_deletion import DatasetDeletionService
 
     deletion_service = DatasetDeletionService(db)
@@ -886,6 +892,7 @@ async def delete_dataset(
 
 
 # XML Archive Endpoints
+# TODO-REMOVE(aggregator-hj8): Move DB logic from archive/link handlers to ArchiveService/LinkService, keep handlers thin
 @v1_router.get(
     "/data-providers/{provider_id}/data-sets/{dataset_id}/xml-archives",
     response_model=list[XmlArchive],
@@ -960,11 +967,13 @@ async def create_xml_archive(
     invalidate_cache("datasets")
 
     # Automatically trigger validation task
+    # TODO-REMOVE(aggregator-zai): Move to module-level imports after service extraction
     from app.tasks.validator_tasks import validate_archive
 
     validate_archive.delay(xml_obj.id)
 
     # Trigger snapshot collection for this archive to capture unit count immediately
+    # TODO-REMOVE(aggregator-zai): Move to module-level imports after service extraction
     from app.tasks.snapshot_tasks import collect_single_archive_snapshot
 
     collect_single_archive_snapshot.delay(xml_obj.id)
@@ -973,6 +982,7 @@ async def create_xml_archive(
 
 
 # Useful Link Endpoints
+# TODO-REMOVE(aggregator-hj8): Move DB logic from link handlers to LinkService, keep handlers thin
 @v1_router.get(
     "/data-providers/{provider_id}/data-sets/{dataset_id}/useful-links",
     response_model=list[UsefulLink],
@@ -1050,6 +1060,7 @@ async def create_useful_link(
 
 
 # Legacy Harvesting Endpoint
+# TODO-REMOVE(aggregator-lwf): Evaluate if legacy harvesting endpoint is still needed by external consumers
 @v1_router.get("/legacy-data-sets", response_model=list[LegacyDataset])
 @limiter.limit(settings.HARVEST_RATE_LIMIT)
 async def harvest_datasets(request: Request, db: AsyncSession = Depends(get_db)):
