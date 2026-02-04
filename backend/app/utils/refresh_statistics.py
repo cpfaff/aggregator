@@ -4,16 +4,17 @@ Management command to trigger archive snapshot collection.
 Can be run as: python -m app.utils.refresh_statistics
 """
 
-import sys
 import argparse
+import sys
 from datetime import datetime
 
 # Add the app directory to path
-sys.path.insert(0, '/app')
+sys.path.insert(0, "/app")
+
+from sqlalchemy import text
 
 from app.db.session import SessionLocal
 from app.tasks.snapshot_tasks import collect_archive_snapshots
-from sqlalchemy import text
 
 
 def queue_snapshot_collection():
@@ -29,7 +30,8 @@ def check_snapshot_status():
     db = SessionLocal()
     try:
         # Overall snapshot statistics
-        result = db.execute(text('''
+        result = db.execute(
+            text("""
             SELECT
                 COUNT(*) as total_snapshots,
                 COUNT(DISTINCT archive_id) as unique_archives,
@@ -37,7 +39,8 @@ def check_snapshot_status():
                 MAX(recorded_at) as latest_snapshot,
                 SUM(unit_count) as total_units
             FROM archive_snapshots
-        '''))
+        """)
+        )
 
         print("\nCurrent Snapshot Status:")
         print("-" * 60)
@@ -50,7 +53,8 @@ def check_snapshot_status():
             print(f"Total units (latest): {row.total_units}")
 
         # Archive coverage
-        coverage_result = db.execute(text('''
+        coverage_result = db.execute(
+            text("""
             SELECT
                 COUNT(DISTINCT xa.id) as total_archives,
                 COUNT(DISTINCT CASE WHEN s.archive_id IS NOT NULL THEN xa.id END) as with_snapshots,
@@ -58,23 +62,28 @@ def check_snapshot_status():
             FROM xml_archives xa
             LEFT JOIN archive_snapshots s ON s.archive_id = xa.id
             WHERE xa."isLatest" = true
-        '''))
+        """)
+        )
 
         row = coverage_result.fetchone()
         if row and row.total_archives > 0:
-            print(f"\nArchive Coverage:")
+            print("\nArchive Coverage:")
             print(f"  Total latest archives: {row.total_archives}")
-            print(f"  With snapshots: {row.with_snapshots} ({row.with_snapshots*100//row.total_archives}%)")
-            print(f"  Without snapshots: {row.without_snapshots} ({row.without_snapshots*100//row.total_archives}%)")
+            print(
+                f"  With snapshots: {row.with_snapshots} ({row.with_snapshots * 100 // row.total_archives}%)"
+            )
+            print(
+                f"  Without snapshots: {row.without_snapshots} ({row.without_snapshots * 100 // row.total_archives}%)"
+            )
 
     finally:
         db.close()
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Refresh archive snapshots')
-    parser.add_argument('--collect', action='store_true', help='Collect archive snapshots')
-    parser.add_argument('--status', action='store_true', help='Show snapshot status')
+    parser = argparse.ArgumentParser(description="Refresh archive snapshots")
+    parser.add_argument("--collect", action="store_true", help="Collect archive snapshots")
+    parser.add_argument("--status", action="store_true", help="Show snapshot status")
 
     args = parser.parse_args()
 

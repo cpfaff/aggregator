@@ -4,16 +4,17 @@ Authentication API endpoints.
 This module contains endpoints for CSRF token generation, user authentication,
 and token refresh functionality.
 """
+
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import jwt
-from fastapi import APIRouter, Depends, HTTPException, Request, Body, status
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import limiter, csrf_protect
+from app.api.deps import csrf_protect, limiter
 from app.core.config import settings
 from app.db import get_db
 from app.schemas import TokenResponse
@@ -62,7 +63,7 @@ async def login(
     user = await authenticate_user(form_data.username, form_data.password, db)
     if not user:
         logger.warning(
-            f"Failed login attempt",
+            "Failed login attempt",
             extra={
                 "username": form_data.username,
                 "ip_address": request.client.host if request.client else None,
@@ -75,7 +76,7 @@ async def login(
         )
 
     # Update last login timestamp
-    user.last_login = datetime.now(timezone.utc)
+    user.last_login = datetime.now(UTC)
     await db.commit()
     await db.refresh(user)
 
@@ -86,7 +87,7 @@ async def login(
     refresh_token = create_refresh_token(data={"sub": user.username})
 
     logger.info(
-        f"User authenticated",
+        "User authenticated",
         extra={
             "username": user.username,
             "is_admin": user.is_global_admin,
@@ -102,9 +103,7 @@ async def login(
 
 
 @router.post("/refresh-token", response_model=TokenResponse)
-async def refresh_token(
-    refresh_token: str = Body(...), db: AsyncSession = Depends(get_db)
-):
+async def refresh_token(refresh_token: str = Body(...), db: AsyncSession = Depends(get_db)):
     """
     Get a new access token using a refresh token.
 
@@ -128,7 +127,7 @@ async def refresh_token(
         if username is None:
             raise credentials_exception
     except jwt.PyJWTError:
-        raise credentials_exception
+        raise credentials_exception from None
 
     user = await get_user_model(username, db)
     if user is None:

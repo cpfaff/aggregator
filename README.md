@@ -119,7 +119,87 @@ As a developer working with Aggregator:
    docker-compose up
    ```
 
-2. **API Integration**:
+2. **Backend Development Setup**:
+
+   **Prerequisites:**
+   - Python 3.11+
+   - Poetry 1.7+ (`pip install poetry`)
+   - Docker (for testcontainers and development environment)
+
+   **Installation:**
+   ```bash
+   cd backend
+   poetry install --with dev
+   ```
+
+   **Running Tests:**
+   ```bash
+   # Run all tests
+   poetry run pytest tests/ -v
+
+   # Run with coverage report
+   poetry run pytest tests/ -v --cov=app --cov-report=term-missing
+   ```
+
+   **Testing with Testcontainers:**
+   Tests use real PostgreSQL and Redis via Docker containers.
+   Ensure Docker daemon is running before running tests.
+   First test run may be slow (pulling images). Subsequent runs are faster (cached images).
+
+   **Linting & Formatting:**
+   ```bash
+   # Check linting issues
+   poetry run ruff check app/
+
+   # Auto-fix linting issues
+   poetry run ruff check --fix app/
+
+   # Check formatting
+   poetry run ruff format --check app/
+
+   # Auto-format code
+   poetry run ruff format app/
+   ```
+
+   **Known Issues:**
+   Current codebase has known linting issues being tracked:
+   - Import sorting (I001): 47 issues - tracked in bd task aggregator-dd4
+   - Formatting issues: 42 files - tracked in bd task aggregator-fdz
+   - Exception handling (B904): 24 issues - tracked in bd task aggregator-2hc
+   - Unused imports (F401): 28 issues - tracked in bd task aggregator-q9p
+   - Depends() in defaults (B008): 71 issues - tracked in bd task aggregator-53o
+
+   New code must pass Ruff checks before merging.
+
+3. **CI/CD Configuration**:
+
+   **GitLab Runner Compatibility:**
+   The CI pipeline supports both Docker executor and shell executor runners:
+
+   - **Docker executor runners**: Jobs run inside containers with `docker:dind` service
+   - **Shell executor runners**: Jobs run directly on host using host's Docker daemon
+
+   The test jobs automatically detect the runner type and configure Docker access accordingly.
+
+   **Requirements for shell executor runners:**
+   ```bash
+   # Docker must be installed and accessible to the gitlab-runner user
+   sudo usermod -aG docker gitlab-runner
+
+   # Verify Docker is accessible
+   sudo -u gitlab-runner docker ps
+   ```
+
+   **Testing CI configuration locally:**
+   ```bash
+   # Install gitlab-runner (if not already installed)
+   # See: https://docs.gitlab.com/runner/install/
+
+   # Test a specific job
+   gitlab-runner exec shell test-backend
+   ```
+
+4. **API Integration**:
    - Use the API documentation at `/docs` to understand available endpoints
    - Authenticate with JWT tokens
    - Make API calls to integrate with your systems

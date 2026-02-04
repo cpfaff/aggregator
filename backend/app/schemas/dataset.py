@@ -1,28 +1,29 @@
 """
 Dataset-related Pydantic schemas for validation and serialization.
 """
-from datetime import datetime
-from typing import Any, List, Optional
 
-from pydantic import BaseModel, AnyUrl, field_validator, ConfigDict
+from datetime import datetime
+from typing import Any
+
+from pydantic import AnyUrl, BaseModel, ConfigDict, field_validator
 
 
 class XmlArchive(BaseModel):
     """Schema for XML archive information."""
-    id: Optional[int] = None
+
+    id: int | None = None
     url: AnyUrl
     isLatest: bool
 
     model_config = ConfigDict(
-        from_attributes=True,
-        json_encoders={AnyUrl: str},
-        populate_by_name=True
+        from_attributes=True, json_encoders={AnyUrl: str}, populate_by_name=True
     )
 
 
 class UsefulLink(BaseModel):
     """Schema for useful link information."""
-    id: Optional[int] = None
+
+    id: int | None = None
     title: str
     url: AnyUrl
     isLatest: bool
@@ -33,22 +34,21 @@ class UsefulLink(BaseModel):
         return v.strip()
 
     model_config = ConfigDict(
-        from_attributes=True,
-        json_encoders={AnyUrl: str},
-        populate_by_name=True
+        from_attributes=True, json_encoders={AnyUrl: str}, populate_by_name=True
     )
 
 
 class Dataset(BaseModel):
     """Schema for dataset information."""
-    id: Optional[int] = None
+
+    id: int | None = None
     source: str
     title: str
-    landingPageUrl: Optional[AnyUrl] = None
-    xmlArchives: List[XmlArchive] = []
-    usefulLinks: List[UsefulLink] = []
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    landingPageUrl: AnyUrl | None = None
+    xmlArchives: list[XmlArchive] = []
+    usefulLinks: list[UsefulLink] = []
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
     @field_validator("source", "title")
     @classmethod
@@ -71,27 +71,24 @@ class Dataset(BaseModel):
         return data
 
     model_config = ConfigDict(
-        from_attributes=True,
-        json_encoders={AnyUrl: str},
-        populate_by_name=True
+        from_attributes=True, json_encoders={AnyUrl: str}, populate_by_name=True
     )
 
 
 # Legacy API compatibility schemas
 class LegacyXmlArchive(BaseModel):
     """Legacy schema for XML archive information."""
+
     archive_id: int
     xml_archive: AnyUrl
     latest: bool
 
-    model_config = ConfigDict(
-        from_attributes=True,
-        json_encoders={AnyUrl: str}
-    )
+    model_config = ConfigDict(from_attributes=True, json_encoders={AnyUrl: str})
 
 
 class LegacyUsefulLink(BaseModel):
     """Legacy schema for useful link information."""
+
     link_id: int
     title: str
     url: AnyUrl
@@ -102,27 +99,25 @@ class LegacyUsefulLink(BaseModel):
     def trim_whitespace(cls, v: str) -> str:
         return v.strip()
 
-    model_config = ConfigDict(
-        from_attributes=True,
-        json_encoders={AnyUrl: str}
-    )
+    model_config = ConfigDict(from_attributes=True, json_encoders={AnyUrl: str})
 
 
 class LegacyDataset(BaseModel):
     """Legacy schema for dataset information."""
+
     dataset_id: int
     datasource: str
     dataset: str
-    custom_landingpage: Optional[AnyUrl]
+    custom_landingpage: AnyUrl | None
     provider_id: int
-    xml_archives: List[LegacyXmlArchive]
-    useful_links: List[LegacyUsefulLink]
+    xml_archives: list[LegacyXmlArchive]
+    useful_links: list[LegacyUsefulLink]
     provider_datacenter: str
     provider_shortname: str
     provider_name: str
-    provider_url: Optional[AnyUrl]
-    biocase_url: Optional[AnyUrl]
-    is_data_center: Optional[bool] = None
+    provider_url: AnyUrl | None
+    biocase_url: AnyUrl | None
+    is_data_center: bool | None = None
 
     @field_validator(
         "datasource",
@@ -135,7 +130,4 @@ class LegacyDataset(BaseModel):
     def trim_whitespace(cls, v: str) -> str:
         return v.strip()
 
-    model_config = ConfigDict(
-        from_attributes=True,
-        json_encoders={AnyUrl: str}
-    )
+    model_config = ConfigDict(from_attributes=True, json_encoders={AnyUrl: str})

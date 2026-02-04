@@ -2,12 +2,15 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install curl for health checks
+# Install curl for health checks and Poetry
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+RUN pip install poetry==1.7.1
 
-# Copy requirements first for better caching
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy dependency files
+COPY pyproject.toml poetry.lock ./
+
+# Install dependencies (without creating virtualenv in container)
+RUN poetry config virtualenvs.create false && poetry install --no-interaction --no-ansi
 
 # Copy the rest of the application
 COPY . .

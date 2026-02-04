@@ -4,9 +4,11 @@ Health check API endpoint.
 This module contains the health check endpoint for monitoring
 the API and database connection status.
 """
-import time
+
 import logging
+import time
 from datetime import datetime
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
@@ -20,7 +22,7 @@ router = APIRouter()
 
 
 @router.get("/health-check", status_code=200, summary="Health check")
-async def health_check(db: AsyncSession = Depends(get_db)):
+async def health_check(db: Annotated[AsyncSession, Depends(get_db)]):
     """
     Check the health of the API and database connection.
     Returns a JSON object with the status and database connection state.
@@ -50,4 +52,4 @@ async def health_check(db: AsyncSession = Depends(get_db)):
                 "database": {"status": "disconnected", "error": str(e)},
                 "timestamp": datetime.utcnow().isoformat(),
             },
-        )
+        ) from e

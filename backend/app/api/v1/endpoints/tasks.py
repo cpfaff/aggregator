@@ -1,14 +1,15 @@
 """
 API endpoints for managing background tasks with Celery.
 """
-from typing import Dict, Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Any
+
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
-from app.tasks.example import process_data
 from app.models import UserModel
 from app.security import get_current_user
+from app.tasks.example import process_data
 
 router = APIRouter()
 
@@ -17,13 +18,15 @@ class TaskRequest(BaseModel):
     """
     Request model for submitting a task.
     """
-    data: Dict[str, Any]
+
+    data: dict[str, Any]
 
 
 class TaskResponse(BaseModel):
     """
     Response model for a submitted task.
     """
+
     task_id: str
     status: str
 
@@ -46,17 +49,14 @@ async def create_task(
     # Submit the task to Celery
     task = process_data.delay(request.data, user_id=current_user.id)
 
-    return TaskResponse(
-        task_id=task.id,
-        status="pending"
-    )
+    return TaskResponse(task_id=task.id, status="pending")
 
 
-@router.get("/{task_id}", response_model=Dict[str, Any])
+@router.get("/{task_id}", response_model=dict[str, Any])
 async def get_task_status(
     task_id: str,
     current_user: UserModel = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Get the status of a task.
 

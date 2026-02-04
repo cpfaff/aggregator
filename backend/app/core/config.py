@@ -2,9 +2,10 @@
 Configuration management for the application.
 Settings are loaded from environment variables.
 """
-from typing import List, Union
-from pydantic_settings import BaseSettings
+
+
 from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -17,9 +18,7 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
-    ALLOWED_ORIGINS: str = (
-        "http://localhost:3000,http://localhost:5173,http://localhost"
-    )
+    ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:5173,http://localhost"
     LOG_LEVEL: str = "INFO"
     # Rate limiting settings
     LOGIN_RATE_LIMIT: str = "5/minute"
@@ -41,25 +40,26 @@ class Settings(BaseSettings):
     CELERY_RESULT_BACKEND: str = "redis://redis:6379/0"
     # Resource allocation settings
     VALIDATOR_CPU_PERCENT: int = Field(default=75, ge=1, le=100)
-    STATS_WORKER_CONCURRENCY: Union[str, int] = "auto"
-    
-    @field_validator('VALIDATOR_CPU_PERCENT')
+    STATS_WORKER_CONCURRENCY: str | int = "auto"
+
+    @field_validator("VALIDATOR_CPU_PERCENT")
     @classmethod
     def validate_cpu_percent(cls, v):
         if not 1 <= v <= 100:
             raise ValueError("VALIDATOR_CPU_PERCENT must be between 1 and 100")
         return v
-    
-    @field_validator('STATS_WORKER_CONCURRENCY')
+
+    @field_validator("STATS_WORKER_CONCURRENCY")
     @classmethod
     def validate_concurrency(cls, v):
         if isinstance(v, str):
-            if v != 'auto':
+            if v != "auto":
                 try:
                     return int(v)
                 except ValueError:
-                    raise ValueError("STATS_WORKER_CONCURRENCY must be 'auto' or an integer")
+                    raise ValueError("STATS_WORKER_CONCURRENCY must be 'auto' or an integer") from None
         return v
+
     # Redis settings
     REDIS_HOST: str = "redis"
     REDIS_PORT: int = 6379
@@ -67,7 +67,7 @@ class Settings(BaseSettings):
     REDIS_PASSWORD: str = ""
 
     @property
-    def allowed_origins_list(self) -> List[str]:
+    def allowed_origins_list(self) -> list[str]:
         return self.ALLOWED_ORIGINS.split(",")
 
     @property

@@ -3,6 +3,7 @@ Main API router that combines all versioned API routers.
 This router serves as the central point for organizing all API endpoints,
 facilitating easy versioning and organization of the API.
 """
+
 from fastapi import APIRouter
 
 from app.api.v1.router import api_v1_router

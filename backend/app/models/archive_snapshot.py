@@ -4,9 +4,11 @@ Archive snapshot model for tracking historical unit counts.
 This implements a true append-only storage pattern for point-in-time
 snapshots of archive analysis results.
 """
+
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Index
-from sqlalchemy.orm import relationship, backref
+
+from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, String
+from sqlalchemy.orm import backref, relationship
 
 from app.models.base import Base
 
@@ -28,19 +30,12 @@ class ArchiveSnapshotModel(Base):
         http_etag: ETag header from the last download (for change detection)
         http_last_modified: Last-Modified header from the last download
     """
+
     __tablename__ = "archive_snapshots"
 
     id = Column(Integer, primary_key=True, index=True)
-    archive_id = Column(
-        Integer,
-        ForeignKey("xml_archives.id", ondelete="CASCADE"),
-        nullable=False
-    )
-    recorded_at = Column(
-        DateTime,
-        nullable=False,
-        default=datetime.utcnow
-    )
+    archive_id = Column(Integer, ForeignKey("xml_archives.id", ondelete="CASCADE"), nullable=False)
+    recorded_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     unit_count = Column(Integer, nullable=False, default=0)
 
     # HTTP headers for change detection (stored from last download)
@@ -51,9 +46,7 @@ class ArchiveSnapshotModel(Base):
     # passive_deletes=True tells SQLAlchemy to let the database handle CASCADE delete
     # instead of trying to set archive_id to NULL (which fails due to NOT NULL constraint)
     archive = relationship(
-        "XmlArchiveModel",
-        backref=backref("snapshots", passive_deletes=True),
-        passive_deletes=True
+        "XmlArchiveModel", backref=backref("snapshots", passive_deletes=True), passive_deletes=True
     )
 
     __table_args__ = (

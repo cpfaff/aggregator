@@ -4,26 +4,23 @@ User management API endpoints.
 This module contains endpoints for user CRUD operations,
 user permissions, and provider associations.
 """
-import logging
-from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Body, Query
+import logging
+
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import csrf_protect
 from app.db import get_db
 from app.models import UserModel
 from app.schemas import (
+    ProviderAssociation,
     User,
     UserCreate,
-    UserUpdate,
     UserPermissions,
-    ProviderAssociation,
+    UserUpdate,
 )
-from app.security import (
-    get_current_user,
-    check_global_admin,
-)
+from app.security import check_global_admin, get_current_user
 from app.services.user_service import UserService
 
 logger = logging.getLogger("api")
@@ -49,14 +46,12 @@ async def get_user_permissions(
     return UserPermissions(**permissions)
 
 
-@router.get("/users", response_model=List[User], summary="List all users")
+@router.get("/users", response_model=list[User], summary="List all users")
 async def list_users(
     current_user: UserModel = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     skip: int = Query(0, ge=0, description="Number of users to skip"),
-    limit: int = Query(
-        100, ge=1, le=1000, description="Maximum number of users to return"
-    ),
+    limit: int = Query(100, ge=1, le=1000, description="Maximum number of users to return"),
 ):
     """
     List all users in the system. Requires global admin privileges.
@@ -87,7 +82,7 @@ async def get_user_endpoint(
 async def update_user(
     username: str,
     user: UserUpdate,
-    old_password: Optional[str] = Body(None),
+    old_password: str | None = Body(None),
     current_user: UserModel = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -108,14 +103,12 @@ async def update_user(
         provider_roles=user.provider_roles,
         is_global_admin=user.is_global_admin,
         old_password=old_password,
-        current_username=current_user.username
+        current_username=current_user.username,
     )
 
 
 @csrf_protect.validate_csrf
-@router.post(
-    "/users", response_model=User, status_code=201, summary="Create a new user"
-)
+@router.post("/users", response_model=User, status_code=201, summary="Create a new user")
 async def create_user(
     user: UserCreate,
     current_user: UserModel = Depends(get_current_user),
@@ -134,7 +127,7 @@ async def create_user(
         username=user.username,
         password=user.password,
         provider_roles=user.provider_roles,
-        is_global_admin=user.is_global_admin
+        is_global_admin=user.is_global_admin,
     )
 
 
@@ -175,9 +168,7 @@ async def add_provider_association(
     check_global_admin(current_user)
     service = UserService(db)
     return await service.add_provider_association(
-        username=username,
-        provider_id=association.provider_id,
-        role=association.role
+        username=username, provider_id=association.provider_id, role=association.role
     )
 
 
@@ -202,9 +193,7 @@ async def update_provider_association(
     check_global_admin(current_user)
     service = UserService(db)
     return await service.update_provider_association(
-        username=username,
-        provider_id=provider_id,
-        role=association.role
+        username=username, provider_id=provider_id, role=association.role
     )
 
 
@@ -226,7 +215,4 @@ async def remove_provider_association(
     """
     check_global_admin(current_user)
     service = UserService(db)
-    return await service.remove_provider_association(
-        username=username,
-        provider_id=provider_id
-    )
+    return await service.remove_provider_association(username=username, provider_id=provider_id)

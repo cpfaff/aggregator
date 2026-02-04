@@ -1,20 +1,21 @@
 """
 User-related Pydantic schemas for validation and serialization.
 """
-from datetime import datetime
-from typing import Dict, Optional
 
-from pydantic import BaseModel, field_validator, ConfigDict
+from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from app.core.config import settings
 
 
 class User(BaseModel):
     """Schema for returning user information."""
+
     username: str
-    provider_roles: Dict[str, str]
+    provider_roles: dict[str, str]
     is_global_admin: bool = False
-    last_login: Optional[datetime] = None
+    last_login: datetime | None = None
 
     @field_validator("username")
     @classmethod
@@ -26,9 +27,10 @@ class User(BaseModel):
 
 class UserCreate(BaseModel):
     """Schema for creating a new user."""
+
     username: str
     password: str
-    provider_roles: Optional[Dict[str, str]] = {}
+    provider_roles: dict[str, str] | None = {}
     is_global_admin: bool = False
 
     @field_validator("username", "password")
@@ -49,26 +51,25 @@ class UserCreate(BaseModel):
 
 class UserUpdate(BaseModel):
     """Schema for updating an existing user."""
-    password: Optional[str] = None
-    provider_roles: Optional[Dict[str, str]] = None
-    is_global_admin: Optional[bool] = None
+
+    password: str | None = None
+    provider_roles: dict[str, str] | None = None
+    is_global_admin: bool | None = None
 
     @field_validator("password")
     @classmethod
-    def trim_whitespace(cls, v: Optional[str]) -> Optional[str]:
+    def trim_whitespace(cls, v: str | None) -> str | None:
         if v is None:
             return v
         return v.strip()
 
     @field_validator("password")
     @classmethod
-    def validate_password_strength(cls, v: Optional[str]) -> Optional[str]:
+    def validate_password_strength(cls, v: str | None) -> str | None:
         if v is not None:
             min_length = settings.MIN_PASSWORD_LENGTH
             if len(v) < min_length:
-                raise ValueError(
-                    f"Password must be at least {min_length} characters long"
-                )
+                raise ValueError(f"Password must be at least {min_length} characters long")
         return v
 
     model_config = ConfigDict(from_attributes=True)
@@ -76,10 +77,11 @@ class UserUpdate(BaseModel):
 
 class UserPermissions(BaseModel):
     """Schema for retrieving user permissions."""
+
     username: str
     is_global_admin: bool
-    provider_roles: Dict[str, str]
-    last_login: Optional[datetime] = None
+    provider_roles: dict[str, str]
+    last_login: datetime | None = None
 
     @field_validator("username")
     @classmethod
