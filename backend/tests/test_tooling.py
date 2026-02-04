@@ -46,7 +46,7 @@ def test_redis_testcontainer():
         import redis as redis_client
 
         client = redis_client.Redis(host=redis.get_container_host_ip(), port=int(port))
-        assert client.ping() == True
+        assert client.ping() is True
 
 
 def test_ruff_format_check_passes_on_formatted_file():

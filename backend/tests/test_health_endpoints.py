@@ -1,8 +1,8 @@
 """Tests for health check endpoints."""
 
-import pytest
-import pytest_asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from app.api.v1.endpoints.health import health_check, readiness_check
 

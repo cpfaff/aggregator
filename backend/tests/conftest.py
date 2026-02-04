@@ -2,12 +2,13 @@
 
 import pytest
 import pytest_asyncio
-from app.models.base import Base
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import Session, sessionmaker
 from testcontainers.postgres import PostgresContainer
 from testcontainers.redis import RedisContainer
+
+from app.models.base import Base
 
 
 @pytest.fixture(scope="session")

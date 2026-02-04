@@ -262,20 +262,20 @@ def finalize_schema_errors(error_groups: dict[tuple, dict[str, Any]]) -> list[di
         aggregated.append(
             {
                 "heading": f"Schema error for {element_name}",
-                "context": "; ".join(sorted(list(group["context_details"]))),
+                "context": "; ".join(sorted(group["context_details"])),
                 "message": message,
                 "total_errors": group["total_errors"],
                 "affected_files": {
                     "total": len(group["files"]),
-                    "examples": sorted(list(group["files"]))[:5],
+                    "examples": sorted(group["files"])[:5],
                     "has_more": len(group["files"]) > 5,
                 },
                 "details": {
                     "validation_type": validation_type,
                     "domain": group["details"]["domain"] if group["details"] else None,
                     "level": group["details"]["level"] if group["details"] else None,
-                    "sample_paths": sorted(list(group["paths"]))[:3],
-                    "distinct_values": sorted(list(group["values"]))[:5]
+                    "sample_paths": sorted(group["paths"])[:3],
+                    "distinct_values": sorted(group["values"])[:5]
                     if group["values"]
                     else None,
                     "distinct_count": len(group["values"]) if group["values"] else 0,
@@ -339,10 +339,10 @@ def finalize_syntax_errors(groups: dict[tuple, dict[str, Any]]) -> list[dict[str
                 "total_errors": group["total_errors"],
                 "affected_files": {
                     "total": len(group["files"]),
-                    "examples": sorted(list(group["files"]))[:5],
+                    "examples": sorted(group["files"])[:5],
                     "has_more": len(group["files"]) > 5,
                 },
-                "details": {"lines": sorted(list(group["lines"]))},
+                "details": {"lines": sorted(group["lines"])},
             }
         )
     aggregated.sort(key=lambda x: x["total_errors"], reverse=True)
@@ -398,7 +398,7 @@ def finalize_encoding_errors(groups: dict[tuple, dict[str, Any]]) -> list[dict[s
                 "total_errors": group["total_errors"],
                 "affected_files": {
                     "total": len(group["files"]),
-                    "examples": sorted(list(group["files"]))[:5],
+                    "examples": sorted(group["files"])[:5],
                     "has_more": len(group["files"]) > 5,
                 },
                 "details": {},
@@ -459,7 +459,7 @@ def finalize_processing_errors(groups: dict[tuple, dict[str, Any]]) -> list[dict
                 "total_errors": group["total_errors"],
                 "affected_files": {
                     "total": len(group["files"]),
-                    "examples": sorted(list(group["files"]))[:5],
+                    "examples": sorted(group["files"])[:5],
                     "has_more": len(group["files"]) > 5,
                 },
                 "details": {},
@@ -518,7 +518,7 @@ def finalize_unknown_errors(groups: dict[tuple, dict[str, Any]]) -> list[dict[st
                 "total_errors": group["total_errors"],
                 "affected_files": {
                     "total": len(group["files"]),
-                    "examples": sorted(list(group["files"]))[:5],
+                    "examples": sorted(group["files"])[:5],
                     "has_more": len(group["files"]) > 5,
                 },
                 "details": {},
@@ -609,13 +609,13 @@ def finalize_custom_rules(
                             for cat in total_counts["categories"]
                         },
                         "example_values": {
-                            status: sorted(list(vals))[:5]
+                            status: sorted(vals)[:5]
                             for status, vals in total_counts["example_values"].items()
                         },
                     },
                     "affected_files": {
                         "total": len(affected_files),
-                        "examples": sorted(list(affected_files))[:5],
+                        "examples": sorted(affected_files)[:5],
                         "has_more": len(affected_files) > 5,
                     }
                     if affected_files

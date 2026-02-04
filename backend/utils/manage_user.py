@@ -35,7 +35,7 @@ Usage examples:
 # Add the parent directory to sys.path to allow importing from the backend directory
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from main import UserModel
+from main import UserModel  # noqa: E402
 
 
 def parse_arguments():

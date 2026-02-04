@@ -4,8 +4,6 @@ import json
 import logging
 import uuid
 
-import pytest
-
 from app.core.logging_config import RequestIdFilter, configure_logging, request_id_var
 
 

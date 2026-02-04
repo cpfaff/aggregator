@@ -10,11 +10,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import pytest_asyncio
+from fastapi import HTTPException
+
 from app.models.dataset import DatasetModel, XmlArchiveModel
 from app.models.provider import DataProviderModel
 from app.models.validation import ValidationJobModel
 from app.services.validation_service import ValidationService
-from fastapi import HTTPException
 
 
 @pytest_asyncio.fixture
@@ -443,7 +444,7 @@ async def test_get_latest_archive_for_dataset_found(
 async def test_get_latest_archive_for_dataset_not_found(validation_service, sample_dataset):
     """Test getting latest archive when none exist raises 404."""
     # Update sample archive to not be latest
-    sample_dataset  # Keep dataset but no latest archive
+    _ = sample_dataset  # Keep dataset but no latest archive
 
     with pytest.raises(HTTPException) as exc_info:
         await validation_service.get_latest_archive_for_dataset(999)

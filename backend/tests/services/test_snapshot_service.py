@@ -9,10 +9,10 @@ health status, and growth metrics.
 from datetime import date, datetime, timedelta
 
 import pytest
+
 from app.models.archive_snapshot import ArchiveSnapshotModel
 from app.models.dataset import DatasetModel, XmlArchiveModel
 from app.models.provider import DataProviderModel
-from app.models.user import UserModel
 from app.models.validation import ValidationJobModel
 from app.services.snapshot_service import SnapshotService
 

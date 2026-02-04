@@ -3,12 +3,35 @@ import time
 import uuid
 from datetime import datetime
 
+from fastapi import (
+    APIRouter,
+    Depends,
+    FastAPI,
+    HTTPException,
+    Query,
+    Request,
+    status,
+)
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
+
+# Import slowapi components for rate limiting
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from sqlalchemy import and_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+from starlette.middleware.base import BaseHTTPMiddleware
+
 # Import shared API dependencies
 from app.api.deps import csrf_protect, limiter, provider_permission
 from app.core.cache import cache_response, invalidate_cache
 
 # Import application components
 from app.core.config import settings
+from app.core.logging_config import configure_logging, request_id_var
 from app.core.utils import apply_entity_updates
 from app.db import get_db
 from app.models import (
@@ -32,28 +55,6 @@ from app.security import (
     get_current_user,
     normalize_provider_roles,
 )
-from fastapi import (
-    APIRouter,
-    Depends,
-    FastAPI,
-    HTTPException,
-    Query,
-    Request,
-    status,
-)
-from fastapi.exceptions import RequestValidationError
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
-from app.core.logging_config import configure_logging, request_id_var
-
-# Import slowapi components for rate limiting
-from slowapi import _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
-from sqlalchemy import and_, select
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
-from starlette.middleware.base import BaseHTTPMiddleware
 
 # ------------------- Logging Configuration -------------------
 configure_logging(level=settings.LOG_LEVEL)
@@ -881,7 +882,7 @@ async def delete_dataset(
 
     except Exception as e:
         logger.error(f"Failed to delete dataset {dataset_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to delete dataset: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete dataset: {str(e)}") from e
 
 
 # XML Archive Endpoints
@@ -1114,17 +1115,17 @@ async def harvest_datasets(request: Request, db: AsyncSession = Depends(get_db))
         return legacy_datasets
     except Exception as e:
         logger.error(f"Error in harvest endpoint: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}") from e
 
 
 # Include the API router with proper versioning and backwards compatibility
-from app.api.router import api_router
+from app.api.router import api_router  # noqa: E402
 
 app.include_router(api_router, prefix="/api")
 
 # Also include api_v1_router directly without prefix for backwards compatibility
 # This allows existing clients to use /users instead of /api/v1/users or /api/users
-from app.api.v1.router import api_v1_router
+from app.api.v1.router import api_v1_router  # noqa: E402
 
 app.include_router(api_v1_router)
 

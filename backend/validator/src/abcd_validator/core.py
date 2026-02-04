@@ -269,7 +269,7 @@ class ABCDValidator:
             self.schema = etree.XMLSchema(xmlschema_doc)
             logging.info(f"Loaded schema from {self.schema_path}")
         except Exception as e:
-            raise Exception(f"Failed to load schema: {e}")
+            raise Exception(f"Failed to load schema: {e}") from e
 
     @staticmethod
     def _validate_encoding(xml_content: bytes) -> tuple[bool, str | None]:
@@ -619,7 +619,7 @@ def download_archive(
     except requests.RequestException as e:
         if os.path.exists(temp_path):
             os.remove(temp_path)
-        raise Exception(f"Failed to download {url}: {e}")
+        raise Exception(f"Failed to download {url}: {e}") from e
 
 
 def main():

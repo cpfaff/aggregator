@@ -380,7 +380,7 @@ class CustomRuleValidator:
     def _calculate_scores(self, rule_results: dict[Any, dict[str, int]]) -> dict[str, Any]:
         """Calculate and return scores for mandatory and recommended rules."""
         scores = {"mandatory": {"passed": 0, "total": 0}, "recommended": {"passed": 0, "total": 0}}
-        for (rule_id, importance), result in rule_results.items():
+        for (_rule_id, importance), result in rule_results.items():
             if importance in ["mandatory", "recommended"]:
                 scores[importance]["total"] += 1
                 if result["passed"] > 0:

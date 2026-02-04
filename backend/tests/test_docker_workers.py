@@ -84,7 +84,7 @@ def test_worker_health_checks():
     in_validation_worker = False
     in_stats_worker = False
 
-    for i, line in enumerate(config_lines):
+    for _i, line in enumerate(config_lines):
         if "celery_worker_validation:" in line:
             in_validation_worker = True
             in_stats_worker = False

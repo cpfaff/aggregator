@@ -3,10 +3,11 @@ import asyncio
 import os
 import sys
 
-from main import UserModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+
+from main import UserModel
 
 
 async def make_regular_user(username):

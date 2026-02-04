@@ -9,9 +9,10 @@ from unittest.mock import patch
 
 import pytest
 import pytest_asyncio
+from fastapi import HTTPException
+
 from app.models.user import UserModel
 from app.services.user_service import UserService
-from fastapi import HTTPException
 
 
 @pytest_asyncio.fixture

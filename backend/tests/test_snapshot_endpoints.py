@@ -28,7 +28,6 @@ from app.api.v1.endpoints.snapshots import (
     trigger_snapshot_collection,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helper: _no_cache_headers
 # ---------------------------------------------------------------------------

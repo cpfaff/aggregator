@@ -13,7 +13,6 @@ from starlette.requests import Request
 
 from app.api.v1.endpoints.auth import get_csrf_token, login, refresh_token
 
-
 # ---------------------------------------------------------------------------
 # GET /csrf-token
 # ---------------------------------------------------------------------------
