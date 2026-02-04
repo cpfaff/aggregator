@@ -63,6 +63,11 @@ node_modules/
 # Testing
 /coverage/
 /.nyc_output
+.coverage
+
+# Linting/Formatting
+.ruff_cache/
+ruff_format_report.txt
 
 # Docker
 .docker-data/
