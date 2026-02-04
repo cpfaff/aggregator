@@ -2,11 +2,12 @@
 Custom Celery task base class with enhanced error logging and retry handling.
 """
 
+import json
 import logging
 from typing import Any, Dict, Optional
+
 from celery import Task
 from celery.exceptions import MaxRetriesExceededError, SoftTimeLimitExceeded
-import json
 
 logger = logging.getLogger(__name__)
 

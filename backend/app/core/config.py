@@ -3,8 +3,9 @@ Configuration management for the application.
 Settings are loaded from environment variables.
 """
 from typing import List, Union
-from pydantic_settings import BaseSettings
+
 from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):

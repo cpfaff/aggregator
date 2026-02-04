@@ -8,17 +8,17 @@ Includes HTTP-based change detection to skip unchanged archives.
 """
 import logging
 import tempfile
-import zipfile
 import xml.etree.ElementTree as ET
+import zipfile
 from dataclasses import dataclass
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 import requests
 from celery import shared_task
 
 from app.db.session import SessionLocal
-from app.models.dataset import XmlArchiveModel
 from app.models.archive_snapshot import ArchiveSnapshotModel
+from app.models.dataset import XmlArchiveModel
 
 logger = logging.getLogger(__name__)
 
@@ -358,6 +358,7 @@ def collect_archive_snapshots():
     Skips archives that already have a snapshot for today.
     """
     from datetime import date
+
     from sqlalchemy import func
 
     db = SessionLocal()

@@ -1,9 +1,10 @@
+from pydantic import AnyUrl
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import AnyUrl
 
-from app.models.dataset import DatasetModel
 from app.core.cache import invalidate_cache
+from app.models.dataset import DatasetModel
+
 
 async def apply_entity_updates(
     db: AsyncSession,

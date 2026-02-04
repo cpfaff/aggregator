@@ -1,7 +1,7 @@
 """
 Data Provider model for storing information about data providers.
 """
-from sqlalchemy import Column, Integer, String, Boolean
+from sqlalchemy import Boolean, Column, Integer, String
 from sqlalchemy.orm import relationship
 
 from app.models.base import Base, TimestampMixin

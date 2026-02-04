@@ -2,9 +2,9 @@
 Common schemas used across the application.
 """
 from datetime import datetime
-from typing import Generic, List, TypeVar, Optional
+from typing import Generic, List, Optional, TypeVar
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic.generics import GenericModel
 
 T = TypeVar("T")
@@ -38,8 +38,8 @@ class TokenResponse(BaseModel):
 
 # Import other schema types to define specialized paginated responses
 # These are defined here to avoid circular imports
-from app.schemas.provider import DataProvider
 from app.schemas.dataset import Dataset
+from app.schemas.provider import DataProvider
 from app.schemas.user import User
 
 # Create paginated response models for each entity

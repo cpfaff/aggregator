@@ -2,9 +2,9 @@
 Models for XML validation jobs.
 """
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
-from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, func
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 

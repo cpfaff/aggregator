@@ -1,14 +1,14 @@
 """
 API endpoints for managing background tasks with Celery.
 """
-from typing import Dict, Any
+from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
-from app.tasks.example import process_data
 from app.models import UserModel
 from app.security import get_current_user
+from app.tasks.example import process_data
 
 router = APIRouter()
 

@@ -5,14 +5,15 @@ This module handles the complete deletion of a dataset and all its associated da
 ensuring no orphaned records remain in the database.
 """
 
-from typing import Optional, Dict, Any
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, and_
 import logging
+from typing import Any, Dict, Optional
 
-from app.models.dataset import DatasetModel, XmlArchiveModel, UsefulLinkModel
-from app.models.validation import ValidationJobModel
+from sqlalchemy import and_, delete, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.models.archive_snapshot import ArchiveSnapshotModel
+from app.models.dataset import DatasetModel, UsefulLinkModel, XmlArchiveModel
+from app.models.validation import ValidationJobModel
 
 logger = logging.getLogger(__name__)
 

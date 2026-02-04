@@ -8,12 +8,12 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 import jwt
-from fastapi import APIRouter, Depends, HTTPException, Request, Body, status
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import limiter, csrf_protect
+from app.api.deps import csrf_protect, limiter
 from app.core.config import settings
 from app.db import get_db
 from app.schemas import TokenResponse

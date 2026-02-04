@@ -4,9 +4,9 @@ Simple task management utility for monitoring and controlling Celery tasks.
 Follows KISS principle - just shows what's running and lets you cancel tasks.
 """
 
-import sys
 import json
 import subprocess
+import sys
 from datetime import datetime
 from typing import Dict, List, Optional
 

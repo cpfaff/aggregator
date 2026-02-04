@@ -2,6 +2,7 @@
 Base model and shared mixins for SQLAlchemy ORM models.
 """
 from datetime import datetime
+
 from sqlalchemy import Column, DateTime
 from sqlalchemy.orm import declarative_base
 

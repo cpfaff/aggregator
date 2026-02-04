@@ -4,7 +4,7 @@ User-related Pydantic schemas for validation and serialization.
 from datetime import datetime
 from typing import Dict, Optional
 
-from pydantic import BaseModel, field_validator, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from app.core.config import settings
 

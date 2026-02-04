@@ -1,7 +1,7 @@
 """
 User database model.
 """
-from sqlalchemy import Column, Integer, String, Boolean, JSON, DateTime
+from sqlalchemy import JSON, Boolean, Column, DateTime, Integer, String
 
 from app.models.base import Base
 

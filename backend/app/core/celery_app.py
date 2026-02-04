@@ -1,10 +1,9 @@
-from celery import Celery
-from app.core.config import settings
-from app.core.resource_allocation import (
-    get_validator_cpu_count,
-    get_stats_worker_concurrency
-)
 import logging
+
+from celery import Celery
+
+from app.core.config import settings
+from app.core.resource_allocation import get_stats_worker_concurrency, get_validator_cpu_count
 
 logger = logging.getLogger(__name__)
 

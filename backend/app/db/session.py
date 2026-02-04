@@ -6,9 +6,9 @@ from typing import AsyncGenerator, Generator
 from fastapi import Depends
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import Session, sessionmaker
 
-from app.db.base import engine, SYNC_DATABASE_URL
+from app.db.base import SYNC_DATABASE_URL, engine
 
 # Create async session factory
 async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)

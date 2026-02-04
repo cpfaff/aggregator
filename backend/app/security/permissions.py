@@ -2,8 +2,9 @@
 User authentication and authorization permissions.
 """
 import logging
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
+import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,8 +13,7 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db, get_sync_db
 from app.models.user import UserModel
 from app.security.password import verify_password
-from app.security.token import oauth2_scheme, decode_token
-import jwt
+from app.security.token import decode_token, oauth2_scheme
 
 logger = logging.getLogger(__name__)
 

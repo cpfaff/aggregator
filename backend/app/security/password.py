@@ -2,7 +2,9 @@
 Password hashing and validation utilities.
 """
 import logging
+
 import bcrypt
+
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)

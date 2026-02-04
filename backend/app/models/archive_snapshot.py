@@ -5,8 +5,9 @@ This implements a true append-only storage pattern for point-in-time
 snapshots of archive analysis results.
 """
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Index
-from sqlalchemy.orm import relationship, backref
+
+from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, String
+from sqlalchemy.orm import backref, relationship
 
 from app.models.base import Base
 

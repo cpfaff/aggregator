@@ -5,10 +5,10 @@ This module contains shared dependencies used across multiple API endpoint modul
 including rate limiting, CSRF protection, and permission checking.
 """
 from fastapi import Depends
+from fastapi_csrf_protect import CsrfProtect
 from pydantic_settings import BaseSettings
 from slowapi import Limiter
 from slowapi.util import get_remote_address
-from fastapi_csrf_protect import CsrfProtect
 
 from app.core.config import settings
 from app.models import UserModel

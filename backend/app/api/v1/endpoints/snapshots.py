@@ -7,22 +7,22 @@ using the ArchiveSnapshot model.
 Total: ~300 lines (vs 798 in the old unified_statistics.py)
 """
 import logging
-from datetime import datetime, date
-from typing import Dict, Any, Optional, List
+from datetime import date, datetime
+from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 
 from app.db.session import get_sync_db
 from app.models.user import UserModel
 from app.schemas.statistics import (
+    DatasetStats,
+    GrowthMetrics,
     OverviewStats,
     ProviderStats,
-    DatasetStats,
     QualityMetrics,
-    TimeSeriesResponse,
     TimeSeriesPoint,
-    GrowthMetrics
+    TimeSeriesResponse,
 )
 from app.security.permissions import get_current_user_optional, get_current_user_sync, require_admin
 from app.services.snapshot_service import SnapshotService

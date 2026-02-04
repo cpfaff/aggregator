@@ -7,17 +7,17 @@ ArchiveSnapshot model with query-time SQL aggregation.
 Total: ~200 lines (vs 1,085 in the old statistics_service.py)
 """
 import logging
-from datetime import datetime, date, timedelta
-from typing import Dict, Any, Optional, List
+from datetime import date, datetime, timedelta
+from typing import Any, Dict, List, Optional
 
-from sqlalchemy import func, and_, desc
+from sqlalchemy import and_, desc, func
 from sqlalchemy.orm import Session
 
 from app.models.archive_snapshot import ArchiveSnapshotModel
-from app.models.dataset import XmlArchiveModel, DatasetModel
+from app.models.dataset import DatasetModel, XmlArchiveModel
 from app.models.provider import DataProviderModel
-from app.models.validation import ValidationJobModel
 from app.models.user import UserModel
+from app.models.validation import ValidationJobModel
 
 logger = logging.getLogger(__name__)
 

@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from functools import wraps
-from typing import Optional, Any
+from typing import Any, Optional
+
 
 # SimpleCache for in-memory caching
 class SimpleCache:
@@ -34,6 +35,7 @@ class SimpleCache:
 
 # Global cache instance
 from app.core.config import settings
+
 cache = SimpleCache(ttl_seconds=settings.CACHE_EXPIRE_SECONDS)
 
 
@@ -50,6 +52,7 @@ def cache_response(prefix, ttl_seconds=None):
             # Skip Request and AsyncSession objects
             from fastapi import Request
             from sqlalchemy.ext.asyncio import AsyncSession
+
             from app.models.user import UserModel
             
             key_parts.extend(

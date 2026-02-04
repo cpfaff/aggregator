@@ -1,7 +1,7 @@
 """Dynamic resource allocation module for Celery workers."""
 
-import multiprocessing
 import logging
+import multiprocessing
 from typing import Union
 
 logger = logging.getLogger(__name__)

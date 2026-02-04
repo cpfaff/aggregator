@@ -7,7 +7,7 @@ user permissions, and provider associations.
 import logging
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Body, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,19 +16,19 @@ from app.core.cache import invalidate_cache
 from app.db import get_db
 from app.models import UserModel
 from app.schemas import (
+    ProviderAssociation,
     User,
     UserCreate,
-    UserUpdate,
     UserPermissions,
-    ProviderAssociation,
+    UserUpdate,
 )
 from app.security import (
-    get_current_user,
-    get_user_model,
-    get_password_hash,
-    verify_password,
-    normalize_provider_roles,
     check_global_admin,
+    get_current_user,
+    get_password_hash,
+    get_user_model,
+    normalize_provider_roles,
+    verify_password,
 )
 
 logger = logging.getLogger("api")

@@ -4,8 +4,8 @@ Health check API endpoint.
 This module contains the health check endpoint for monitoring
 the API and database connection status.
 """
-import time
 import logging
+import time
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException

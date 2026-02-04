@@ -4,16 +4,17 @@ Management command to trigger archive snapshot collection.
 Can be run as: python -m app.utils.refresh_statistics
 """
 
-import sys
 import argparse
+import sys
 from datetime import datetime
 
 # Add the app directory to path
 sys.path.insert(0, '/app')
 
+from sqlalchemy import text
+
 from app.db.session import SessionLocal
 from app.tasks.snapshot_tasks import collect_archive_snapshots
-from sqlalchemy import text
 
 
 def queue_snapshot_collection():

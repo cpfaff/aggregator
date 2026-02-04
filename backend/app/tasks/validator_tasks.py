@@ -5,14 +5,14 @@ Celery tasks for XML validation.
 import logging
 import uuid
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 from celery import shared_task
 
-from app.models import ValidationJobModel, XmlArchiveModel
-from app.db.session import SessionLocal
-from app.tasks.validator.service import ValidatorService
 from app.core.task_base import LoggingTask
+from app.db.session import SessionLocal
+from app.models import ValidationJobModel, XmlArchiveModel
+from app.tasks.validator.service import ValidatorService
 
 logger = logging.getLogger(__name__)
 

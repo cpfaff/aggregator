@@ -1,7 +1,7 @@
 """
 Dataset models including XML archives and useful links.
 """
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Index
+from sqlalchemy import Boolean, Column, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import relationship
 
 from app.models.base import Base, TimestampMixin

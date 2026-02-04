@@ -3,11 +3,11 @@ Statistics schemas for API request/response validation.
 
 Simplified schemas for the snapshot-based statistics system.
 """
-from datetime import datetime
 from datetime import date as date_type
-from typing import Optional, List, Dict, Any
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class TimeSeriesPoint(BaseModel):

@@ -4,9 +4,10 @@ These are placeholder tasks that can be replaced with real application tasks.
 """
 import logging
 import time
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 from celery import shared_task
+
 from app.core.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
