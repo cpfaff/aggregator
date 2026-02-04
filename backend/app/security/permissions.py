@@ -154,7 +154,7 @@ async def get_current_user(
     except HTTPException:
         raise
     except Exception:
-        raise credentials_exception
+        raise credentials_exception from None
 
     user = await get_user_model(username, db)
     if user is None:
@@ -195,7 +195,7 @@ def get_current_user_sync(
     except HTTPException:
         raise
     except Exception:
-        raise credentials_exception
+        raise credentials_exception from None
 
     user = db.query(UserModel).filter(UserModel.username == username).first()
     if user is None:

@@ -217,11 +217,11 @@ def parse_archive_xml(xml_url: str) -> ArchiveParseResult:
         )
 
     except requests.RequestException as e:
-        raise XMLParsingError(f"Download failed: {e}")
+        raise XMLParsingError(f"Download failed: {e}") from e
     except ET.ParseError as e:
-        raise XMLParsingError(f"XML parsing failed: {e}")
+        raise XMLParsingError(f"XML parsing failed: {e}") from e
     except Exception as e:
-        raise XMLParsingError(f"Unexpected error: {e}")
+        raise XMLParsingError(f"Unexpected error: {e}") from e
 
 
 def _count_units(root) -> int:

@@ -98,20 +98,20 @@ def decode_token(token: str, audience: Optional[str] = None) -> Dict[str, Any]:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token has expired",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from None
     except jwt.JWTClaimsError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token claims such as audience or issuer",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from None
     except jwt.PyJWTError as e:
         logger.warning(f"JWT token validation failed: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from None
 
 
 def get_token_data(token: str) -> Dict[str, Any]:

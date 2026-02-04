@@ -58,7 +58,7 @@ class Settings(BaseSettings):
                 try:
                     return int(v)
                 except ValueError:
-                    raise ValueError("STATS_WORKER_CONCURRENCY must be 'auto' or an integer")
+                    raise ValueError("STATS_WORKER_CONCURRENCY must be 'auto' or an integer") from None
         return v
 
     # Redis settings

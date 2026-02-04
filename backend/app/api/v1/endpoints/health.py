@@ -51,4 +51,4 @@ async def health_check(db: AsyncSession = Depends(get_db)):
                 "database": {"status": "disconnected", "error": str(e)},
                 "timestamp": datetime.utcnow().isoformat(),
             },
-        )
+        ) from e

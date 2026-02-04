@@ -62,7 +62,7 @@ async def get_overview(
         return OverviewStats(**stats)
     except Exception as e:
         logger.error(f"Error getting overview: {e}")
-        raise HTTPException(status_code=500, detail="Error retrieving statistics")
+        raise HTTPException(status_code=500, detail="Error retrieving statistics") from e
 
 
 @router.get("/quality", response_model=QualityMetrics, summary="Data quality metrics")
@@ -80,7 +80,7 @@ async def get_quality_metrics(
         return QualityMetrics(**metrics)
     except Exception as e:
         logger.error(f"Error getting quality metrics: {e}")
-        raise HTTPException(status_code=500, detail="Error retrieving quality metrics")
+        raise HTTPException(status_code=500, detail="Error retrieving quality metrics") from e
 
 
 @router.get("/timeline", response_model=GrowthMetrics, summary="Registry growth timeline")
@@ -103,7 +103,7 @@ async def get_growth_timeline(
         )
     except Exception as e:
         logger.error(f"Error getting growth timeline: {e}")
-        raise HTTPException(status_code=500, detail="Error retrieving growth timeline")
+        raise HTTPException(status_code=500, detail="Error retrieving growth timeline") from e
 
 
 @router.get("/providers", summary="Provider statistics")
@@ -120,7 +120,7 @@ async def get_provider_list_stats(
         return service.get_provider_list_stats(limit=limit, user=current_user)
     except Exception as e:
         logger.error(f"Error getting provider list stats: {e}")
-        raise HTTPException(status_code=500, detail="Error retrieving provider statistics")
+        raise HTTPException(status_code=500, detail="Error retrieving provider statistics") from e
 
 
 @router.get("/datasets/recent", summary="Recent dataset activity")
@@ -138,7 +138,7 @@ async def get_recent_dataset_activity(
         return service.get_recent_activity(limit=limit, days=days, user=current_user)
     except Exception as e:
         logger.error(f"Error getting recent dataset activity: {e}")
-        raise HTTPException(status_code=500, detail="Error retrieving recent activity")
+        raise HTTPException(status_code=500, detail="Error retrieving recent activity") from e
 
 
 @router.get("/health", summary="Registry health status")
@@ -154,7 +154,7 @@ async def get_registry_health(
         return service.get_health_status(user=current_user)
     except Exception as e:
         logger.error(f"Error getting registry health: {e}")
-        raise HTTPException(status_code=500, detail="Error retrieving health status")
+        raise HTTPException(status_code=500, detail="Error retrieving health status") from e
 
 
 # -----------------------------------------------------------------------------
@@ -181,7 +181,7 @@ async def get_provider_statistics(
         raise
     except Exception as e:
         logger.error(f"Error getting provider {provider_id} statistics: {e}")
-        raise HTTPException(status_code=500, detail="Error retrieving provider statistics")
+        raise HTTPException(status_code=500, detail="Error retrieving provider statistics") from e
 
 
 @router.get(
@@ -203,7 +203,7 @@ async def get_dataset_statistics(
         raise
     except Exception as e:
         logger.error(f"Error getting dataset {dataset_id} statistics: {e}")
-        raise HTTPException(status_code=500, detail="Error retrieving dataset statistics")
+        raise HTTPException(status_code=500, detail="Error retrieving dataset statistics") from e
 
 
 @router.get(
@@ -235,7 +235,7 @@ async def get_provider_datasets_timeline(
         )
     except Exception as e:
         logger.error(f"Error getting provider {provider_id} datasets timeline: {e}")
-        raise HTTPException(status_code=500, detail="Error retrieving provider datasets timeline")
+        raise HTTPException(status_code=500, detail="Error retrieving provider datasets timeline") from e
 
 
 @router.get(
@@ -271,7 +271,7 @@ async def get_provider_biological_units_timeline(
         logger.error(f"Error getting provider {provider_id} biological units timeline: {e}")
         raise HTTPException(
             status_code=500, detail="Error retrieving provider biological units timeline"
-        )
+        ) from e
 
 
 @router.get(
@@ -304,7 +304,7 @@ async def get_biological_units_timeline(
         )
     except Exception as e:
         logger.error(f"Error getting biological units timeline: {e}")
-        raise HTTPException(status_code=500, detail="Error retrieving biological units timeline")
+        raise HTTPException(status_code=500, detail="Error retrieving biological units timeline") from e
 
 
 @router.get(
@@ -330,7 +330,7 @@ async def get_multi_provider_biological_units_timeline(
         logger.error(f"Error getting multi-provider biological units timeline: {e}")
         raise HTTPException(
             status_code=500, detail="Error retrieving multi-provider biological units timeline"
-        )
+        ) from e
 
 
 # -----------------------------------------------------------------------------
@@ -351,4 +351,4 @@ async def trigger_snapshot_collection(
         return {"message": "Snapshot collection task has been queued", "status": "queued"}
     except Exception as e:
         logger.error(f"Error triggering snapshot collection: {e}")
-        raise HTTPException(status_code=500, detail="Error triggering snapshot collection")
+        raise HTTPException(status_code=500, detail="Error triggering snapshot collection") from e

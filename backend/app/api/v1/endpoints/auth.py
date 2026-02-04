@@ -127,7 +127,7 @@ async def refresh_token(refresh_token: str = Body(...), db: AsyncSession = Depen
         if username is None:
             raise credentials_exception
     except jwt.PyJWTError:
-        raise credentials_exception
+        raise credentials_exception from None
 
     user = await get_user_model(username, db)
     if user is None:
