@@ -8,3 +8,6 @@ backend/data/import.log export-ignore
 
 # Exclude any GitLab-specific directories if they exist
 .gitlab/ export-ignore
+
+# Use bd merge for beads JSONL files
+.beads/issues.jsonl merge=beads
