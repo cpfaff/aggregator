@@ -24,7 +24,8 @@ dependencies = [
     "slowapi (>=0.1.9)",
     "celery (>=5.3.6)",
     "redis (>=5.0.1)",
-    "flower (>=2.0.1)"
+    "flower (>=2.0.1)",
+    "abcd-validator @ file:///home/ctpfaff/Claude/development/search.gfbio.org/aggregator/.worktrees/production-readiness/backend/validator"
 ]
 
 
