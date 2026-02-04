@@ -15,6 +15,7 @@ stages:
   - create_merge_request
   - tag_release_check
   - tag_release
+  - test
   - build
   - deploy
 
@@ -32,6 +33,53 @@ cache:
   key: ${CI_COMMIT_REF_SLUG}
   paths:
     - .cache/
+
+# Backend Tests
+test-backend:
+  stage: test
+  image: python:3.11-slim
+  services:
+    - docker:dind
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends gcc postgresql-client
+    - pip install poetry
+    - cd backend
+    - poetry install --with dev
+  script:
+    - poetry run pytest tests/ -v --cov=app --cov-report=term-missing
+  coverage: '/TOTAL.*\s+(\d+%)$/'
+  tags:
+    - dev-denbi
+
+# Backend Linting
+lint-backend:
+  stage: test
+  image: python:3.11-slim
+  before_script:
+    - pip install poetry
+    - cd backend
+    - poetry install --with dev
+  script:
+    - poetry run ruff check app/
+  allow_failure: true  # Phase 1: document issues, don't block
+  tags:
+    - dev-denbi
+
+# Backend Format Check
+format-check-backend:
+  stage: test
+  image: python:3.11-slim
+  before_script:
+    - pip install poetry
+    - cd backend
+    - poetry install --with dev
+  script:
+    - poetry run ruff format --check app/
+  allow_failure: true  # Phase 1: document issues, don't block
+  tags:
+    - dev-denbi
 
 create_merge_request:
   variables:
