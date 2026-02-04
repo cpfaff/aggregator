@@ -8,14 +8,13 @@ providing a clean interface for user CRUD and permission management.
 import logging
 
 from fastapi import HTTPException
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.cache import invalidate_cache
 from app.models import UserModel
+from app.repositories.user_repository import UserRepository
 from app.security import (
     get_password_hash,
-    get_user_model,
     normalize_provider_roles,
     verify_password,
 )
@@ -28,6 +27,7 @@ class UserService:
 
     def __init__(self, db: AsyncSession):
         self.db = db
+        self.repo = UserRepository(db)
 
     async def list_users(self, skip: int = 0, limit: int = 100) -> list[UserModel]:
         """
@@ -40,8 +40,7 @@ class UserService:
         Returns:
             List of UserModel instances
         """
-        result = await self.db.execute(select(UserModel).offset(skip).limit(limit))
-        return list(result.scalars().all())
+        return await self.repo.list(skip=skip, limit=limit)
 
     async def get_user_by_username(self, username: str) -> UserModel | None:
         """
@@ -53,7 +52,7 @@ class UserService:
         Returns:
             UserModel if found, None otherwise
         """
-        return await get_user_model(username, self.db)
+        return await self.repo.get_by_username(username)
 
     async def get_user_or_404(self, username: str) -> UserModel:
         """
@@ -114,9 +113,8 @@ class UserService:
             is_global_admin=is_global_admin,
         )
 
-        self.db.add(user)
-        await self.db.commit()
-        await self.db.refresh(user)
+        await self.repo.create(user)
+        await self.repo.commit()
 
         # Invalidate user list cache
         invalidate_cache("users")
@@ -197,9 +195,8 @@ class UserService:
         if is_global_admin is not None:
             user.is_global_admin = is_global_admin
 
-        self.db.add(user)
-        await self.db.commit()
-        await self.db.refresh(user)
+        await self.repo.update(user)
+        await self.repo.commit()
 
         # Invalidate user cache
         invalidate_cache(f"user:{username}")
@@ -218,8 +215,8 @@ class UserService:
         """
         user = await self.get_user_or_404(username)
 
-        await self.db.delete(user)
-        await self.db.commit()
+        await self.repo.delete(user)
+        await self.repo.commit()
 
         # Invalidate caches
         invalidate_cache("users")
@@ -249,9 +246,8 @@ class UserService:
         roles[str(provider_id)] = role
         user.provider_roles = roles
 
-        self.db.add(user)
-        await self.db.commit()
-        await self.db.refresh(user)
+        await self.repo.update(user)
+        await self.repo.commit()
 
         # Invalidate user cache
         invalidate_cache(f"user:{username}")
@@ -286,9 +282,8 @@ class UserService:
         roles[str(provider_id)] = role
         user.provider_roles = roles
 
-        self.db.add(user)
-        await self.db.commit()
-        await self.db.refresh(user)
+        await self.repo.update(user)
+        await self.repo.commit()
 
         # Invalidate caches
         invalidate_cache(f"user:{username}")
@@ -321,9 +316,8 @@ class UserService:
         roles.pop(str(provider_id))
         user.provider_roles = roles
 
-        self.db.add(user)
-        await self.db.commit()
-        await self.db.refresh(user)
+        await self.repo.update(user)
+        await self.repo.commit()
 
         # Invalidate caches
         invalidate_cache(f"user:{username}")

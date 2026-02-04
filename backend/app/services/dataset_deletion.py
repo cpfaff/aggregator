@@ -8,12 +8,9 @@ ensuring no orphaned records remain in the database.
 import logging
 from typing import Any
 
-from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.archive_snapshot import ArchiveSnapshotModel
-from app.models.dataset import DatasetModel, UsefulLinkModel, XmlArchiveModel
-from app.models.validation import ValidationJobModel
+from app.repositories.dataset_repository import DatasetRepository
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +21,7 @@ class DatasetDeletionService:
     def __init__(self, db: AsyncSession):
         """Initialize the service with a database session."""
         self.db = db
+        self.repo = DatasetRepository(db)
 
     async def delete_dataset_cascade(self, dataset_id: int, provider_id: int) -> dict[str, Any]:
         """
@@ -51,59 +49,38 @@ class DatasetDeletionService:
 
         try:
             # 1. Get all XML archive IDs for this dataset
-            archive_result = await self.db.execute(
-                select(XmlArchiveModel.id).where(XmlArchiveModel.dataset_id == dataset_id)
-            )
-            archive_ids = [row[0] for row in archive_result.fetchall()]
+            archive_ids = await self.repo.get_archive_ids_for_dataset(dataset_id)
 
             # 2. Delete archive snapshots for these archives
-            if archive_ids:
-                logger.info(f"Deleting snapshots for {len(archive_ids)} archives")
-                snapshot_result = await self.db.execute(
-                    delete(ArchiveSnapshotModel).where(
-                        ArchiveSnapshotModel.archive_id.in_(archive_ids)
-                    )
-                )
-                deletion_summary["deleted_counts"]["archive_snapshots"] = snapshot_result.rowcount
-                logger.info(f"Deleted {snapshot_result.rowcount} archive snapshots")
-            else:
-                deletion_summary["deleted_counts"]["archive_snapshots"] = 0
+            logger.info(f"Deleting snapshots for {len(archive_ids)} archives")
+            snapshot_count = await self.repo.delete_snapshots_for_archives(archive_ids)
+            deletion_summary["deleted_counts"]["archive_snapshots"] = snapshot_count
+            logger.info(f"Deleted {snapshot_count} archive snapshots")
 
             # 3. Delete validation jobs for these archives
-            if archive_ids:
-                logger.info(f"Deleting validation jobs for {len(archive_ids)} archives")
-                validation_result = await self.db.execute(
-                    delete(ValidationJobModel).where(ValidationJobModel.archive_id.in_(archive_ids))
-                )
-                deletion_summary["deleted_counts"]["validation_jobs"] = validation_result.rowcount
-                logger.info(f"Deleted {validation_result.rowcount} validation jobs")
-            else:
-                deletion_summary["deleted_counts"]["validation_jobs"] = 0
+            logger.info(f"Deleting validation jobs for {len(archive_ids)} archives")
+            validation_count = await self.repo.delete_validation_jobs_for_archives(archive_ids)
+            deletion_summary["deleted_counts"]["validation_jobs"] = validation_count
+            logger.info(f"Deleted {validation_count} validation jobs")
 
             # 4. Delete XML archives
             logger.info(f"Deleting XML archives for dataset {dataset_id}")
-            archives_result = await self.db.execute(
-                delete(XmlArchiveModel).where(XmlArchiveModel.dataset_id == dataset_id)
-            )
-            deletion_summary["deleted_counts"]["xml_archives"] = archives_result.rowcount
-            logger.info(f"Deleted {archives_result.rowcount} XML archives")
+            archives_count = await self.repo.delete_archives_for_dataset(dataset_id)
+            deletion_summary["deleted_counts"]["xml_archives"] = archives_count
+            logger.info(f"Deleted {archives_count} XML archives")
 
             # 5. Delete useful links
             logger.info(f"Deleting useful links for dataset {dataset_id}")
-            links_result = await self.db.execute(
-                delete(UsefulLinkModel).where(UsefulLinkModel.dataset_id == dataset_id)
-            )
-            deletion_summary["deleted_counts"]["useful_links"] = links_result.rowcount
-            logger.info(f"Deleted {links_result.rowcount} useful links")
+            links_count = await self.repo.delete_links_for_dataset(dataset_id)
+            deletion_summary["deleted_counts"]["useful_links"] = links_count
+            logger.info(f"Deleted {links_count} useful links")
 
             # 6. Finally delete the dataset itself
             logger.info(f"Deleting dataset {dataset_id}")
-            dataset_result = await self.db.execute(
-                delete(DatasetModel).where(DatasetModel.id == dataset_id)
-            )
-            deletion_summary["deleted_counts"]["dataset"] = dataset_result.rowcount
+            dataset_count = await self.repo.delete_dataset_by_id(dataset_id)
+            deletion_summary["deleted_counts"]["dataset"] = dataset_count
 
-            if dataset_result.rowcount == 0:
+            if dataset_count == 0:
                 logger.warning(f"Dataset {dataset_id} not found or already deleted")
                 deletion_summary["status"] = "not_found"
             else:
@@ -111,13 +88,13 @@ class DatasetDeletionService:
                 deletion_summary["status"] = "success"
 
             # Commit all deletions in a single transaction
-            await self.db.commit()
+            await self.repo.commit()
 
             return deletion_summary
 
         except Exception as e:
             logger.error(f"Error during cascade deletion of dataset {dataset_id}: {e}")
-            await self.db.rollback()
+            await self.repo.rollback()
             raise
 
     async def get_dataset_dependencies(self, dataset_id: int) -> dict[str, int]:
@@ -134,35 +111,14 @@ class DatasetDeletionService:
         counts = {}
 
         # Count XML archives
-        archives_result = await self.db.execute(
-            select(XmlArchiveModel).where(XmlArchiveModel.dataset_id == dataset_id)
-        )
-        archives = archives_result.fetchall()
-        counts["xml_archives"] = len(archives)
+        archive_ids = await self.repo.get_archive_ids_for_dataset(dataset_id)
+        counts["xml_archives"] = len(archive_ids)
 
         # Count archive snapshots and validation jobs
-        if archives:
-            archive_ids = [a[0].id for a in archives]
-
-            # Count snapshots
-            snapshot_result = await self.db.execute(
-                select(ArchiveSnapshotModel).where(ArchiveSnapshotModel.archive_id.in_(archive_ids))
-            )
-            counts["archive_snapshots"] = len(snapshot_result.fetchall())
-
-            # Count validation jobs
-            validation_result = await self.db.execute(
-                select(ValidationJobModel).where(ValidationJobModel.archive_id.in_(archive_ids))
-            )
-            counts["validation_jobs"] = len(validation_result.fetchall())
-        else:
-            counts["archive_snapshots"] = 0
-            counts["validation_jobs"] = 0
+        counts["archive_snapshots"] = await self.repo.count_snapshots_for_archives(archive_ids)
+        counts["validation_jobs"] = await self.repo.count_validation_jobs_for_archives(archive_ids)
 
         # Count useful links
-        links_result = await self.db.execute(
-            select(UsefulLinkModel).where(UsefulLinkModel.dataset_id == dataset_id)
-        )
-        counts["useful_links"] = len(links_result.fetchall())
+        counts["useful_links"] = await self.repo.count_links_for_dataset(dataset_id)
 
         return counts
