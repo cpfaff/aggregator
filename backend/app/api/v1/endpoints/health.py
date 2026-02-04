@@ -1,24 +1,32 @@
 """
-Health check API endpoint.
+Health check API endpoints.
 
-This module contains the health check endpoint for monitoring
-the API and database connection status.
+This module contains health check endpoints for monitoring
+the API, database connection, and dependency status.
 """
 
 import logging
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Annotated
 
+import redis
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.db import get_db
 
 logger = logging.getLogger("api")
 
 router = APIRouter()
+
+
+def _get_redis_client() -> redis.Redis:
+    """Create a Redis client for health checks."""
+    return redis.Redis.from_url(settings.redis_url, socket_connect_timeout=5)
 
 
 @router.get("/health-check", status_code=200, summary="Health check")
@@ -41,7 +49,7 @@ async def health_check(db: Annotated[AsyncSession, Depends(get_db)]):
                 "response_time_ms": round(db_response_time * 1000, 2),
             },
             "version": "1.9.0",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
     except Exception as e:
         logger.error(f"Health check failed: {str(e)}", exc_info=True)
@@ -50,6 +58,63 @@ async def health_check(db: Annotated[AsyncSession, Depends(get_db)]):
             detail={
                 "status": "unhealthy",
                 "database": {"status": "disconnected", "error": str(e)},
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             },
         ) from e
+
+
+@router.get("/health/ready", status_code=200, summary="Readiness check")
+async def readiness_check(db: Annotated[AsyncSession, Depends(get_db)]) -> JSONResponse:
+    """
+    Check readiness of all critical dependencies.
+
+    Verifies database and Redis connectivity with response times.
+    Returns 200 if all dependencies are healthy, 503 if any are down.
+    """
+    checks = {}
+    all_healthy = True
+
+    # Check database
+    try:
+        start_time = time.time()
+        await db.execute(text("SELECT 1"))
+        db_response_time = time.time() - start_time
+        checks["database"] = {
+            "status": "up",
+            "response_time_ms": round(db_response_time * 1000, 2),
+        }
+    except Exception as e:
+        all_healthy = False
+        logger.error(f"Readiness check: database failed: {e}")
+        checks["database"] = {"status": "down"}
+
+    # Check Redis
+    redis_client = None
+    try:
+        redis_client = _get_redis_client()
+        start_time = time.time()
+        redis_client.ping()
+        redis_response_time = time.time() - start_time
+        checks["redis"] = {
+            "status": "up",
+            "response_time_ms": round(redis_response_time * 1000, 2),
+        }
+    except Exception as e:
+        all_healthy = False
+        logger.error(f"Readiness check: Redis failed: {e}")
+        checks["redis"] = {"status": "down"}
+    finally:
+        if redis_client:
+            redis_client.close()
+
+    status = "ready" if all_healthy else "not_ready"
+    status_code = 200 if all_healthy else 503
+
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "status": status,
+            "checks": checks,
+            "timestamp": datetime.now(UTC).isoformat(),
+        },
+    )
