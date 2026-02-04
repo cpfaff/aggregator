@@ -24,7 +24,8 @@ dependencies = [
     "slowapi (>=0.1.9)",
     "celery (>=5.3.6)",
     "redis (>=5.0.1)",
-    "flower (>=2.0.1)"
+    "flower (>=2.0.1)",
+    "abcd-validator @ file:///home/ctpfaff/Claude/development/search.gfbio.org/aggregator/.worktrees/production-readiness/backend/validator"
 ]
 
 
@@ -40,7 +41,9 @@ dev = [
     "mypy (>=1.19.1,<2.0.0)",
     "testcontainers (>=4.14.1,<5.0.0)",
     "coverage (>=7.13.3,<8.0.0)",
-    "httpx (>=0.28.1,<0.29.0)"
+    "httpx (>=0.28.1,<0.29.0)",
+    "aiosqlite (>=0.22.1,<0.23.0)",
+    "pre-commit (>=4.5.1,<5.0.0)"
 ]
 
 [tool.ruff]
@@ -58,6 +61,14 @@ select = [
     "UP",  # pyupgrade
 ]
 ignore = ["E501"]  # Line too long (formatter handles)
+
+[tool.ruff.lint.per-file-ignores]
+# main.py is a legacy monolith being replaced by modular app/ endpoints;
+# B008 (Depends in defaults) is the standard FastAPI pattern and will be
+# migrated to Annotated when the endpoints are moved to app/api/v1/.
+"main.py" = ["B008"]
+# Alembic migrations have auto-generated imports that trigger E402
+"alembic/**" = ["E402"]
 
 [tool.ruff.format]
 quote-style = "double"

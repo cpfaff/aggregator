@@ -43,12 +43,12 @@ function UserManagement() {
   const fetchProviders = async () => {
     try {
       const res = await apiRequest('/data-providers', {}, handleTokenExpiration);
-      
+
       if (!res.ok) {
         console.error('Failed to fetch providers:', res.status);
         return;
       }
-      
+
       const data = await res.json();
       setProviders(data);
     } catch (err) {
@@ -147,16 +147,16 @@ function UserManagement() {
   const fetchUsers = async () => {
     setIsLoading(true);
     setError('');
-    
+
     try {
       const res = await apiRequest('/users', {}, handleTokenExpiration);
-      
+
       if (!res.ok) {
         setError('Failed to fetch users');
         setIsLoading(false);
         return;
       }
-      
+
       const data = await res.json();
       setUsers(data);
       setIsLoading(false);
@@ -174,21 +174,21 @@ function UserManagement() {
   const handleFormSubmit = async (values) => {
     setIsFormLoading(true);
     setFormError('');
-    
+
     try {
       let res;
       if (editingUser) {
         // Create a copy of the user data for the update
-        const userData = { 
+        const userData = {
           is_global_admin: values.is_global_admin,
           provider_roles: values.provider_roles
         };
-        
+
         // Only include password if it's not empty
         if (values.password && values.password.trim() !== '') {
           userData.password = values.password;
         }
-        
+
         let requestOptions = {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -196,7 +196,7 @@ function UserManagement() {
             user: userData
           })
         };
-        
+
         // If updating password and it's the current user, include old_password
         if (userData.password && currentUser && currentUser.username === editingUser.username) {
           requestOptions = {
@@ -208,7 +208,7 @@ function UserManagement() {
             })
           };
         }
-        
+
         res = await apiRequest(`/users/${editingUser.username}`, requestOptions, handleTokenExpiration);
       } else {
         res = await apiRequest('/users', {
@@ -217,7 +217,7 @@ function UserManagement() {
           body: JSON.stringify(values)
         }, handleTokenExpiration);
       }
-      
+
       if (!res.ok) {
         let errorMessage = 'Failed to save user';
         try {
@@ -230,13 +230,13 @@ function UserManagement() {
         setIsFormLoading(false);
         return;
       }
-      
+
       setEditingUser(null);
       setAddingUser(false);
       fetchUsers();
       setIsFormLoading(false);
       showToast(
-        editingUser 
+        editingUser
           ? `User "${values.username}" updated successfully!`
           : `User "${values.username}" created successfully!`,
         'success'
@@ -265,13 +265,13 @@ function UserManagement() {
     is_global_admin: false,
     provider_roles: {}
   };
-  
+
   const form = useFormValidation(
     initialFormValues,
     getValidationSchema(!!editingUser, editingUser && currentUser && currentUser.username === editingUser.username),
     handleFormSubmit
   );
-  
+
   // Update form values when editingUser changes
   useEffect(() => {
     if (editingUser) {
@@ -289,12 +289,12 @@ function UserManagement() {
   const handleDeleteUser = async (username) => {
     setIsLoading(true);
     setError('');
-    
+
     try {
       const res = await apiRequest(`/users/${username}`, {
         method: 'DELETE'
       }, handleTokenExpiration);
-      
+
       if (!res.ok) {
         let errorMessage = 'Failed to delete user';
         try {
@@ -307,7 +307,7 @@ function UserManagement() {
         setIsLoading(false);
         return;
       }
-      
+
       fetchUsers();
       setIsLoading(false);
       showToast(`User "${username}" deleted successfully!`, 'success');
@@ -347,8 +347,8 @@ function UserManagement() {
   };
 
   return (
-    <div 
-      style={{ 
+    <div
+      style={{
         flexGrow: 1,
         padding: '2rem 1rem',
         width: '100%',
@@ -381,17 +381,17 @@ function UserManagement() {
           Manage user accounts and role assignments.
         </p>
       </div>
-    
-      
+
+
       {/* Floating action menu */}
       <ActionMenu
         actions={[
           {
             icon: <Plus size={24} />,
             label: 'Add User',
-            onClick: () => { 
-              setAddingUser(true); 
-              setEditingUser(null); 
+            onClick: () => {
+              setAddingUser(true);
+              setEditingUser(null);
             },
             color: 'var(--primary)'
           }
@@ -399,9 +399,9 @@ function UserManagement() {
         mode="content-relative"
         offset={16}
       />
-      
+
       {error && <Alert type="error">{error}</Alert>}
-      
+
       {/* Search filter - only show when there are more than 6 users */}
       {users.length > 6 && (
         <div style={{
@@ -409,8 +409,8 @@ function UserManagement() {
           width: '100%',
           marginBottom: '1.25rem',
         }}>
-          <Search 
-            size={18} 
+          <Search
+            size={18}
             style={{
               position: 'absolute',
               left: '0.75rem',
@@ -474,13 +474,13 @@ function UserManagement() {
           )}
         </div>
       )}
-      
+
       {isLoading && !addingUser ? (
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center', 
-          padding: '4rem 0' 
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: '4rem 0'
         }}>
           <div style={{
             width: '32px',
@@ -502,9 +502,9 @@ function UserManagement() {
         }}>
           <h3 style={{ marginTop: 0, color: 'var(--text)' }}>No users found</h3>
           <p style={{ marginBottom: '1.5rem' }}>Get started by adding your first user</p>
-          <Button onClick={() => { 
-            setAddingUser(true); 
-            setEditingUser(null); 
+          <Button onClick={() => {
+            setAddingUser(true);
+            setEditingUser(null);
           }}>
             Add User
           </Button>
@@ -519,8 +519,8 @@ function UserManagement() {
               marginBottom: '2rem',
             }}>
               {filteredUsers.map((user) => (
-            <div 
-              key={user.username} 
+            <div
+              key={user.username}
               style={{
                 backgroundColor: 'var(--card-bg)',
                 borderRadius: '0.75rem',
@@ -533,8 +533,8 @@ function UserManagement() {
                 height: '100%', // Make card fill its container height
               }}
             >
-              <div style={{ 
-                padding: '1.25rem', 
+              <div style={{
+                padding: '1.25rem',
                 flexGrow: 1, // Make body expand to fill available space
                 display: 'flex',
                 flexDirection: 'column',
@@ -575,27 +575,27 @@ function UserManagement() {
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Flexible spacer to push roles to the center */}
                 <div style={{ flexGrow: 1 }}></div>
-                
+
                 {/* Roles section with subtle heading */}
                 <div style={{ marginBottom: '2rem' }}>
-                  <div style={{ 
-                    fontSize: '0.75rem', 
-                    textTransform: 'uppercase', 
-                    fontWeight: 500, 
+                  <div style={{
+                    fontSize: '0.75rem',
+                    textTransform: 'uppercase',
+                    fontWeight: 500,
                     color: 'var(--text-light)',
                     marginBottom: '0.5rem',
                     letterSpacing: '0.025em',
                   }}>
                     Roles
                   </div>
-                  
+
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                     {/* Show Global Admin tag first if applicable */}
                     {user.is_global_admin && (
-                      <div 
+                      <div
                         style={{
                           display: 'flex',
                           alignItems: 'center',
@@ -610,10 +610,10 @@ function UserManagement() {
                         </div>
                       </div>
                     )}
-                    
+
                     {Object.keys(user.provider_roles || {}).length === 0 && !user.is_global_admin ? (
-                      <div style={{ 
-                        color: 'var(--text-light)', 
+                      <div style={{
+                        color: 'var(--text-light)',
                         fontSize: '0.875rem',
                         fontStyle: 'italic'
                       }}>
@@ -624,7 +624,7 @@ function UserManagement() {
                         {Object.entries(user.provider_roles).map(([providerId, role]) => {
                           const provider = providers.find(p => p.id.toString() === providerId);
                           return (
-                            <div 
+                            <div
                               key={providerId}
                               style={{
                                 display: 'flex',
@@ -648,13 +648,13 @@ function UserManagement() {
                     )}
                   </div>
                 </div>
-                
+
                 {/* Flexible spacer to push roles to the center */}
                 <div style={{ flexGrow: 1 }}></div>
               </div>
-              
+
               {/* Footer with action buttons - fixed height, not affected by content */}
-              <div style={{ 
+              <div style={{
                 borderTop: '1px solid var(--border)',
                 display: 'flex',
                 justifyContent: 'flex-end',
@@ -726,7 +726,7 @@ function UserManagement() {
           )}
         </>
       )}
-      
+
       {confirmDeleteUser && (
         <ConfirmModal
           isOpen={true}
@@ -749,7 +749,7 @@ function UserManagement() {
           onCancel={() => setConfirmDiscardChanges(false)}
         />
       )}
-      
+
       <Modal
         isOpen={addingUser}
         onClose={handleModalClose}
@@ -757,7 +757,7 @@ function UserManagement() {
       >
         <div>
           {formError && <Alert type="error">{formError}</Alert>}
-          
+
           <form onSubmit={form.handleSubmit} noValidate>
             <FormField
               type="text"
@@ -774,7 +774,7 @@ function UserManagement() {
               required={!editingUser}
               helpText={editingUser ? "Username cannot be changed" : "Choose a unique username (3-50 characters)"}
             />
-            
+
             <FormField
               type="password"
               name="password"
@@ -790,7 +790,7 @@ function UserManagement() {
               helpText={editingUser ? "Only fill if you want to change the password" : "Minimum 8 characters"}
               showPasswordToggle={true}
             />
-            
+
             {/* Add Old Password field if editing the current user */}
             {editingUser && currentUser && currentUser.username === editingUser.username && form.values.password && (
               <FormField
@@ -809,7 +809,7 @@ function UserManagement() {
                 showPasswordToggle={true}
               />
             )}
-            
+
             <FormField
               type="checkbox"
               name="is_global_admin"
@@ -821,24 +821,24 @@ function UserManagement() {
               touched={form.touched.is_global_admin}
               helpText="Global admins have full access to all providers and user management"
             />
-            
+
             {!form.values.is_global_admin && (
               <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ 
-                  display: 'block', 
-                  fontSize: '0.875rem', 
-                  fontWeight: 500, 
-                  marginBottom: '0.5rem', 
+                <label style={{
+                  display: 'block',
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                  marginBottom: '0.5rem',
                   color: 'var(--text)',
                 }}>
                   Provider Roles
                 </label>
-                
+
                 <div style={{ marginBottom: '1rem' }}>
                   {Object.entries(form.values.provider_roles).map(([providerId, role]) => {
                     const provider = providers.find(p => p.id.toString() === providerId);
                     return (
-                      <div 
+                      <div
                         key={providerId}
                         style={{
                           display: 'flex',
@@ -873,8 +873,8 @@ function UserManagement() {
                   })}
                 </div>
 
-                <div style={{ 
-                  display: 'flex', 
+                <div style={{
+                  display: 'flex',
                   gap: '0.5rem',
                   marginBottom: '0.5rem'
                 }}>
@@ -898,7 +898,7 @@ function UserManagement() {
                       </option>
                     ))}
                   </select>
-                  
+
                   <select
                     value={selectedRole}
                     onChange={(e) => setSelectedRole(e.target.value)}
@@ -915,7 +915,7 @@ function UserManagement() {
                     <option value="admin">Admin</option>
                     <option value="curator">Curator</option>
                   </select>
-                  
+
                   <button
                     type="button"
                     onClick={handleAddProviderRole}
@@ -934,10 +934,10 @@ function UserManagement() {
                 </div>
               </div>
             )}
-            
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'flex-end', 
+
+            <div style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
               gap: '0.75rem'
             }}>
               <Button

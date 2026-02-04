@@ -7,6 +7,7 @@ and token refresh functionality.
 
 import logging
 from datetime import UTC, datetime, timedelta
+from typing import Annotated
 
 import jwt
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
@@ -49,8 +50,8 @@ async def get_csrf_token(request: Request):
 @limiter.limit(settings.LOGIN_RATE_LIMIT)
 async def login(
     request: Request,
-    form_data: OAuth2PasswordRequestForm = Depends(),
-    db: AsyncSession = Depends(get_db),
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """
     Authenticate a user and return JWT access and refresh tokens.
@@ -103,7 +104,10 @@ async def login(
 
 
 @router.post("/refresh-token", response_model=TokenResponse)
-async def refresh_token(refresh_token: str = Body(...), db: AsyncSession = Depends(get_db)):
+async def refresh_token(
+    refresh_token: Annotated[str, Body(...)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
     """
     Get a new access token using a refresh token.
 

@@ -4,11 +4,11 @@ import React from 'react';
  * StatCard component for displaying key metrics
  * Pure minimalist design with centered content
  */
-function StatCard({ 
-  title, 
-  value, 
-  previousValue, 
-  unit = '', 
+function StatCard({
+  title,
+  value,
+  previousValue,
+  unit = '',
   color = 'var(--primary)',
   isLoading = false,
   isLiveData = false,
@@ -47,12 +47,12 @@ function StatCard({
     }}
     >
       {isLoading ? (
-        <div style={{ 
-          display: 'flex', 
+        <div style={{
+          display: 'flex',
           flexDirection: 'column',
-          alignItems: 'center', 
+          alignItems: 'center',
           gap: '0.75rem',
-          position: 'relative', 
+          position: 'relative',
           zIndex: 1,
           padding: '1rem 0',
           textAlign: 'center',
@@ -68,8 +68,8 @@ function StatCard({
             animation: 'spin 1s linear infinite',
             boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
           }} />
-          <span style={{ 
-            color: 'var(--text-light)', 
+          <span style={{
+            color: 'var(--text-light)',
             fontSize: '0.875rem',
             fontWeight: 500,
             letterSpacing: '0.25px'

@@ -32,9 +32,7 @@ def get_validator_cpu_count(cpu_percent: int = 75) -> int:
     return validator_cpus
 
 
-def get_stats_worker_concurrency(
-    concurrency_setting: str | int, validator_cpus: int = None
-) -> int:
+def get_stats_worker_concurrency(concurrency_setting: str | int, validator_cpus: int = None) -> int:
     """
     Calculate concurrency for statistics worker.
 

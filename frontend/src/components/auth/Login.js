@@ -11,7 +11,7 @@ import { showToast } from '../ui/Toast';
 function Login({ sessionExpired, onViewPublicStats }) {
   const { login, isLoading, setIsLoading, sessionExpired: authSessionExpired, setSessionExpired } = useAuth();
   const [loginError, setLoginError] = React.useState('');
-  
+
   // Define validation schema
   const validationSchema = {
     username: [
@@ -84,11 +84,11 @@ function Login({ sessionExpired, onViewPublicStats }) {
 
 
   return (
-    <div style={{ 
-      display: 'flex', 
+    <div style={{
+      display: 'flex',
       flexDirection: 'column',
-      justifyContent: 'center', 
-      alignItems: 'center', 
+      justifyContent: 'center',
+      alignItems: 'center',
       height: '100vh',
       padding: '2rem',
       backgroundColor: 'var(--background)',
@@ -111,16 +111,16 @@ function Login({ sessionExpired, onViewPublicStats }) {
         position: 'relative',
         margin: 'auto 0',
       }}>
-        <h1 style={{ 
-          fontSize: '1.5rem', 
-          fontWeight: 600, 
+        <h1 style={{
+          fontSize: '1.5rem',
+          fontWeight: 600,
           marginTop: 0,
           marginBottom: '1.5rem',
           color: 'var(--text)',
         }}>
           Sign In
         </h1>
-        
+
         {(sessionExpired || authSessionExpired) && (
           <Alert type="error">Your session has expired. Please sign in again.</Alert>
         )}
@@ -202,7 +202,7 @@ function Login({ sessionExpired, onViewPublicStats }) {
             {isLoading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
-        
+
         {/* Optional help text */}
         <div style={{
           marginTop: '2rem',
@@ -223,7 +223,7 @@ function Login({ sessionExpired, onViewPublicStats }) {
             marginTop: '0.5rem',
           }}>
             Need help? Contact{' '}
-            <a 
+            <a
               href="mailto:info@gfbio.org"
               style={{
                 color: 'var(--primary)',
@@ -235,7 +235,7 @@ function Login({ sessionExpired, onViewPublicStats }) {
           </p>
         </div>
       </div>
-      
+
       {/* Minimal footer info */}
       <div style={{
         position: 'absolute',

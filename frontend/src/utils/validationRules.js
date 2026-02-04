@@ -19,14 +19,14 @@ const required = (message = 'This field is required') => (value) => {
 
 const email = (message = 'Please enter a valid email address') => (value) => {
   if (!value) return null; // Let required validator handle empty values
-  
+
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(value) ? null : message;
 };
 
 const url = (message = 'Please enter a valid URL') => (value) => {
   if (!value) return null; // Let required validator handle empty values
-  
+
   try {
     new URL(value);
     return null;
@@ -43,7 +43,7 @@ const url = (message = 'Please enter a valid URL') => (value) => {
 
 const minLength = (min, message) => (value) => {
   if (!value) return null; // Let required validator handle empty values
-  
+
   const defaultMessage = `Must be at least ${min} characters`;
   if (value.length < min) {
     return message || defaultMessage;
@@ -53,7 +53,7 @@ const minLength = (min, message) => (value) => {
 
 const maxLength = (max, message) => (value) => {
   if (!value) return null;
-  
+
   const defaultMessage = `Must be no more than ${max} characters`;
   if (value.length > max) {
     return message || defaultMessage;
@@ -63,7 +63,7 @@ const maxLength = (max, message) => (value) => {
 
 const pattern = (regex, message = 'Invalid format') => (value) => {
   if (!value) return null;
-  
+
   const regexPattern = typeof regex === 'string' ? new RegExp(regex) : regex;
   return regexPattern.test(value) ? null : message;
 };
@@ -78,7 +78,7 @@ const matches = (fieldName, message) => (value, allValues) => {
 
 const minValue = (min, message) => (value) => {
   if (value === null || value === undefined || value === '') return null;
-  
+
   const defaultMessage = `Must be at least ${min}`;
   const numValue = Number(value);
   if (isNaN(numValue) || numValue < min) {
@@ -89,7 +89,7 @@ const minValue = (min, message) => (value) => {
 
 const maxValue = (max, message) => (value) => {
   if (value === null || value === undefined || value === '') return null;
-  
+
   const defaultMessage = `Must be no more than ${max}`;
   const numValue = Number(value);
   if (isNaN(numValue) || numValue > max) {
@@ -101,7 +101,7 @@ const maxValue = (max, message) => (value) => {
 // Password strength validator
 const passwordStrength = (requirements = {}) => (value) => {
   if (!value) return null;
-  
+
   const {
     minLength: min = 8,
     requireUppercase = true,
@@ -109,40 +109,40 @@ const passwordStrength = (requirements = {}) => (value) => {
     requireNumbers = true,
     requireSpecialChars = false
   } = requirements;
-  
+
   const errors = [];
-  
+
   if (value.length < min) {
     errors.push(`at least ${min} characters`);
   }
-  
+
   if (requireUppercase && !/[A-Z]/.test(value)) {
     errors.push('one uppercase letter');
   }
-  
+
   if (requireLowercase && !/[a-z]/.test(value)) {
     errors.push('one lowercase letter');
   }
-  
+
   if (requireNumbers && !/\d/.test(value)) {
     errors.push('one number');
   }
-  
+
   if (requireSpecialChars && !/[!@#$%^&*(),.?":{}|<>]/.test(value)) {
     errors.push('one special character');
   }
-  
+
   if (errors.length > 0) {
     return `Password must contain ${errors.join(', ')}`;
   }
-  
+
   return null;
 };
 
 // Username validator
 const username = (message = 'Username must be 3-20 characters and contain only letters, numbers, and underscores') => (value) => {
   if (!value) return null;
-  
+
   const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
   return usernameRegex.test(value) ? null : message;
 };
@@ -150,22 +150,22 @@ const username = (message = 'Username must be 3-20 characters and contain only l
 // Phone number validator (basic international format)
 const phoneNumber = (message = 'Please enter a valid phone number') => (value) => {
   if (!value) return null;
-  
+
   // Remove all non-digit characters for validation
   const digits = value.replace(/\D/g, '');
-  
+
   // Check if it's a valid phone number length (7-15 digits internationally)
   if (digits.length < 7 || digits.length > 15) {
     return message;
   }
-  
+
   return null;
 };
 
 // Array validators
 const arrayMinLength = (min, message) => (value) => {
   if (!Array.isArray(value)) return null;
-  
+
   const defaultMessage = `Must have at least ${min} item${min !== 1 ? 's' : ''}`;
   if (value.length < min) {
     return message || defaultMessage;
@@ -175,7 +175,7 @@ const arrayMinLength = (min, message) => (value) => {
 
 const arrayMaxLength = (max, message) => (value) => {
   if (!Array.isArray(value)) return null;
-  
+
   const defaultMessage = `Must have no more than ${max} item${max !== 1 ? 's' : ''}`;
   if (value.length > max) {
     return message || defaultMessage;
@@ -186,7 +186,7 @@ const arrayMaxLength = (max, message) => (value) => {
 // Custom async validator example (for checking uniqueness)
 const unique = (checkFunction, message = 'This value is already taken') => async (value) => {
   if (!value) return null;
-  
+
   try {
     const isUnique = await checkFunction(value);
     return isUnique ? null : message;
@@ -207,11 +207,11 @@ const compose = (...validators) => async (value, allValues) => {
 // Conditional validator - applies validation based on a condition
 const conditional = (condition, validator) => (value, allValues) => {
   const shouldValidate = typeof condition === 'function' ? condition(allValues) : condition;
-  
+
   if (shouldValidate) {
     return validator(value, allValues);
   }
-  
+
   return null;
 };
 

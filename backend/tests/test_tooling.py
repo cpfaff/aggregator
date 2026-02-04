@@ -7,8 +7,6 @@ from testcontainers.redis import RedisContainer
 
 def test_poetry_dependencies_installed():
     """Verify Poetry installed all required dependencies with correct versions."""
-    import fastapi
-    import sqlalchemy
     from sqlalchemy import __version__ as sa_version
 
     # Verify SQLAlchemy 2.0+ (requirement for async)
@@ -16,9 +14,6 @@ def test_poetry_dependencies_installed():
     assert major_version >= 2, f"SQLAlchemy {sa_version} < 2.0"
 
     # Verify core dependencies importable
-    import pytest
-    import pydantic
-    import celery
 
     # Note: ruff is command-line tool, not importable Python package
 
@@ -51,14 +46,14 @@ def test_redis_testcontainer():
         import redis as redis_client
 
         client = redis_client.Redis(host=redis.get_container_host_ip(), port=int(port))
-        assert client.ping() == True
+        assert client.ping() is True
 
 
 def test_ruff_format_check_passes_on_formatted_file():
     """Verify Ruff format check works and returns correct exit codes."""
+    import os
     import subprocess
     import tempfile
-    import os
 
     # Create known-formatted Python file with proper Ruff formatting
     with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:

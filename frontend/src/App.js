@@ -20,35 +20,35 @@ import { ToastContainer } from './components/ui/Toast';
 function ProtectedRoute({ children }) {
   const { token, currentUser } = useAuth();
   const location = useLocation();
-  
+
   if (!token) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
-  
+
   if (!currentUser) {
     return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        flex: 1 
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        flex: 1
       }}>
         <div>Loading user data...</div>
       </div>
     );
   }
-  
+
   return children;
 }
 
 // Admin-only Route wrapper
 function AdminRoute({ children }) {
   const { currentUser } = useAuth();
-  
+
   if (!currentUser?.is_global_admin) {
     return <Navigate to="/providers" replace />;
   }
-  
+
   return children;
 }
 
@@ -60,7 +60,7 @@ function App() {
     const savedTheme = localStorage.getItem('isDarkTheme');
     return savedTheme ? JSON.parse(savedTheme) : false;
   });
-  
+
   // Toggle theme function
   const toggleTheme = () => {
     const newTheme = !isDarkTheme;
@@ -77,7 +77,7 @@ function App() {
   useEffect(() => {
     addGlobalStyles();
   }, []);
-  
+
   // Initialize CSRF protection on first render
   useEffect(() => {
     const initCsrf = async () => {
@@ -88,7 +88,7 @@ function App() {
         console.error('Failed to initialize CSRF protection:', error);
       }
     };
-    
+
     initCsrf();
   }, []);
 
@@ -113,16 +113,16 @@ function App() {
   };
 
   return (
-    <div style={{ 
-      display: 'flex', 
-      flexDirection: 'column', 
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
       minHeight: '100vh',
       backgroundColor: 'var(--background)',
       color: 'var(--text)',
       transition: 'background-color 0.3s, color 0.3s',
     }}>
-      <Header 
-        currentUser={token ? currentUser : null} 
+      <Header
+        currentUser={token ? currentUser : null}
         activeView={getActiveView()}
         navigate={navigate}
         logout={handleLogout}
@@ -130,9 +130,9 @@ function App() {
         toggleTheme={toggleTheme}
       />
 
-      <div style={{ 
-        flex: 1, 
-        display: 'flex', 
+      <div style={{
+        flex: 1,
+        display: 'flex',
         flexDirection: 'column',
         width: '100%',
         alignItems: ['/', '/about', '/statistics', '/login', '/changelog'].includes(location.pathname) ? 'stretch' : 'center',
@@ -140,13 +140,13 @@ function App() {
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={
-            <LandingPage 
+            <LandingPage
               onGetStarted={() => navigate('/login')}
               onLearnMore={() => navigate('/about')}
               onViewStatistics={() => navigate('/statistics')}
             />
           } />
-          
+
           <Route path="/about" element={
             <About currentUser={currentUser} isDarkTheme={isDarkTheme} />
           } />
@@ -154,12 +154,12 @@ function App() {
           <Route path="/statistics" element={
             <PublicStatsDashboard />
           } />
-          
+
           <Route path="/login" element={
-            token ? <Navigate to="/providers" replace /> : 
+            token ? <Navigate to="/providers" replace /> :
             <Login sessionExpired={sessionExpired} />
           } />
-          
+
           {/* Protected Routes */}
           <Route path="/providers" element={
             <ProtectedRoute>
@@ -170,8 +170,8 @@ function App() {
                 display: 'flex',
                 flexDirection: 'column',
               }}>
-                <Providers 
-                  currentUser={currentUser} 
+                <Providers
+                  currentUser={currentUser}
                   onViewProviderDetails={(provider) => {
                     navigate(`/provider/${provider.id}`);
                   }}
@@ -179,7 +179,7 @@ function App() {
               </div>
             </ProtectedRoute>
           } />
-          
+
           <Route path="/provider/:id" element={
             <ProtectedRoute>
               <div style={{
@@ -189,17 +189,17 @@ function App() {
                 display: 'flex',
                 flexDirection: 'column',
               }}>
-                <ProviderDetail 
+                <ProviderDetail
                   currentUser={currentUser}
                 />
               </div>
             </ProtectedRoute>
           } />
-          
+
           <Route path="/changelog" element={
             <Changelog currentUser={currentUser} />
           } />
-          
+
           {/* Admin Routes */}
           <Route path="/users" element={
             <ProtectedRoute>
@@ -216,7 +216,7 @@ function App() {
               </AdminRoute>
             </ProtectedRoute>
           } />
-          
+
           <Route path="/admin/statistics" element={
             <ProtectedRoute>
               <div style={{
@@ -230,7 +230,7 @@ function App() {
               </div>
             </ProtectedRoute>
           } />
-          
+
           {/* Catch-all redirect */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

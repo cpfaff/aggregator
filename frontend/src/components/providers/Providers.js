@@ -31,10 +31,10 @@ function Providers({ currentUser, onViewProviderDetails }) {
   const fetchProviders = async () => {
     setIsLoading(true);
     setError('');
-    
+
     try {
       const res = await apiRequest('/data-providers', {}, handleTokenExpiration);
-      
+
       if (!res.ok) {
         if (res.status === 403) {
           setError('You do not have permission to view providers');
@@ -44,7 +44,7 @@ function Providers({ currentUser, onViewProviderDetails }) {
         setIsLoading(false);
         return;
       }
-      
+
       const data = await res.json();
       setProviders(data);
       setIsLoading(false);
@@ -95,7 +95,7 @@ function Providers({ currentUser, onViewProviderDetails }) {
           'Content-Type': 'application/json'
         }
       }, handleTokenExpiration);
-      
+
       if (!res.ok) {
         let errorMessage = 'Failed to delete provider';
         try {
@@ -113,7 +113,7 @@ function Providers({ currentUser, onViewProviderDetails }) {
         setError(errorMessage);
         return;
       }
-      
+
       // Remove from local state and close modal
       const deletedProvider = providers.find(p => p.id === id);
       setProviders(providers.filter(p => p.id !== id));
@@ -154,16 +154,16 @@ function Providers({ currentUser, onViewProviderDetails }) {
       closeModals();
       return;
     }
-    
+
     // Update the local state immediately with the new data
     if (editingProvider) {
-      setProviders(providers.map(p => 
+      setProviders(providers.map(p =>
         p.id === updatedProvider.id ? updatedProvider : p
       ));
     } else {
       setProviders([...providers, updatedProvider]);
     }
-    
+
     closeModals();
   };
 
@@ -174,7 +174,7 @@ function Providers({ currentUser, onViewProviderDetails }) {
   ];
 
   return (
-    <div style={{ 
+    <div style={{
       flexGrow: 1,
       padding: '2rem 1rem',
       width: '100%',
@@ -182,7 +182,7 @@ function Providers({ currentUser, onViewProviderDetails }) {
     className="content-container">
       {/* Breadcrumbs navigation */}
       <Breadcrumbs items={breadcrumbItems} />
-    
+
       {/* Page title and actions */}
       <div style={{
         marginBottom: '2rem',
@@ -205,7 +205,7 @@ function Providers({ currentUser, onViewProviderDetails }) {
           Manage data providers and their institutional information.
         </p>
       </div>
-      
+
       {/* Floating action menu */}
       {currentUser?.is_global_admin && (
         <ActionMenu
@@ -221,9 +221,9 @@ function Providers({ currentUser, onViewProviderDetails }) {
           offset={16}
         />
       )}
-      
+
       {error && <Alert type="error">{error}</Alert>}
-      
+
       {/* Search filter - only show when there are more than 6 providers */}
       {providers.length > 6 && (
         <div style={{
@@ -231,8 +231,8 @@ function Providers({ currentUser, onViewProviderDetails }) {
           width: '100%',
           marginBottom: '1.25rem',
         }}>
-          <Search 
-            size={18} 
+          <Search
+            size={18}
             style={{
               position: 'absolute',
               left: '0.75rem',
@@ -296,13 +296,13 @@ function Providers({ currentUser, onViewProviderDetails }) {
           )}
         </div>
       )}
-      
+
       {isLoading && !addingProvider && !editingProvider ? (
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center', 
-          padding: '4rem 0' 
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: '4rem 0'
         }}>
           <div style={{
             width: '32px',
@@ -340,7 +340,7 @@ function Providers({ currentUser, onViewProviderDetails }) {
               marginBottom: '2rem',
             }}>
               {filteredProviders.map((provider) => (
-                <ProviderCard 
+                <ProviderCard
                   key={provider.id}
                   provider={provider}
                   currentUser={currentUser}
@@ -365,7 +365,7 @@ function Providers({ currentUser, onViewProviderDetails }) {
           )}
         </>
       )}
-      
+
       {confirmDelete && (
         <ConfirmModal
           isOpen={true}

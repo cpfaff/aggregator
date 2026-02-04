@@ -5,6 +5,8 @@ This module contains shared dependencies used across multiple API endpoint modul
 including rate limiting, CSRF protection, and permission checking.
 """
 
+from typing import Annotated
+
 from fastapi import Depends
 from fastapi_csrf_protect import CsrfProtect
 from pydantic_settings import BaseSettings
@@ -54,7 +56,9 @@ def provider_permission(operation: str = "read"):
         for the specified operation on a provider.
     """
 
-    async def dependency(provider_id: int, current_user: UserModel = Depends(get_current_user)):
+    async def dependency(
+        provider_id: int, current_user: Annotated[UserModel, Depends(get_current_user)]
+    ):
         check_provider_permission(provider_id, current_user, operation)
         return current_user
 

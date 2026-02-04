@@ -26,7 +26,7 @@ function PublicStatsDashboard() {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
   const [nextRefreshIn, setNextRefreshIn] = useState(60);
-  
+
   const intervalRef = useRef(null);
   const countdownRef = useRef(null);
   const REFRESH_INTERVAL = 60000; // 60 seconds for public dashboard
@@ -39,15 +39,15 @@ function PublicStatsDashboard() {
         setIsRefreshing(true);
       }
       setError('');
-      
+
       const [overview, providers, timeline] = await Promise.all([
         publicStatsApi.getOverview(),
         publicStatsApi.getProviders(),
         publicStatsApi.getTimeline({ period: 'monthly', months: 12 })
       ]);
-      
+
       setOverviewStats(overview);
-      
+
       // Transform provider stats data for compatibility with charts
       // Only update if data has actually changed to prevent chart re-renders
       const transformedProviders = {
@@ -61,15 +61,15 @@ function PublicStatsDashboard() {
               provider_count: dc.provider_count
             }))
             .sort((a, b) => b.value - a.value); // Sort by dataset count, descending
-          
+
           // If more than 7 data centers, group the smallest ones into "Other"
           if (sorted.length > 7) {
             const topProviders = sorted.slice(0, 6); // Take top 6
             const otherProviders = sorted.slice(6); // All the rest
-            
+
             const otherTotal = otherProviders.reduce((sum, dc) => sum + dc.value, 0);
             const otherCount = otherProviders.length;
-            
+
             return [
               ...topProviders,
               {
@@ -80,11 +80,11 @@ function PublicStatsDashboard() {
               }
             ];
           }
-          
+
           return sorted;
         })()
       };
-      
+
       // Only update providerStats if the data has actually changed
       setProviderStats(prev => {
         const prevDatacentersStr = JSON.stringify(prev?.datacenters || []);
@@ -94,7 +94,7 @@ function PublicStatsDashboard() {
         }
         return prev;
       });
-      
+
       // Format timeline data for the chart
       const formattedTimeline = (timeline.datasets_timeline || []).map(point => ({
         date: new Date(point.date).toLocaleDateString(),
@@ -102,7 +102,7 @@ function PublicStatsDashboard() {
         fullDate: point.date,
         ...point.extra_data
       }));
-      
+
       // Only update timelineData if the data has actually changed
       setTimelineData(prev => {
         const prevTimelineStr = JSON.stringify(prev);
@@ -112,10 +112,10 @@ function PublicStatsDashboard() {
         }
         return prev;
       });
-      
+
       // Update last refreshed timestamp
       setLastUpdated(new Date());
-      
+
     } catch (err) {
       console.error('Error fetching public statistics:', err);
       // Only show prominent error for manual refresh, not auto-refresh
@@ -135,9 +135,9 @@ function PublicStatsDashboard() {
   const startAutoRefresh = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     if (countdownRef.current) clearInterval(countdownRef.current);
-    
+
     setNextRefreshIn(60);
-    
+
     // Start countdown timer
     countdownRef.current = setInterval(() => {
       setNextRefreshIn(prev => {
@@ -147,7 +147,7 @@ function PublicStatsDashboard() {
         return prev - 1;
       });
     }, 1000);
-    
+
     // Start auto-refresh interval
     intervalRef.current = setInterval(() => {
       if (autoRefreshEnabled) {
@@ -155,7 +155,7 @@ function PublicStatsDashboard() {
       }
     }, REFRESH_INTERVAL);
   }, [autoRefreshEnabled, fetchAllStats]);
-  
+
   const stopAutoRefresh = useCallback(() => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
@@ -166,7 +166,7 @@ function PublicStatsDashboard() {
       countdownRef.current = null;
     }
   }, []);
-  
+
   const toggleAutoRefresh = () => {
     setAutoRefreshEnabled(prev => {
       const newValue = !prev;
@@ -179,20 +179,20 @@ function PublicStatsDashboard() {
       return newValue;
     });
   };
-  
+
   const handleManualRefresh = () => {
     fetchAllStats(false);
     if (autoRefreshEnabled) {
       startAutoRefresh(); // Reset the auto-refresh timer
     }
   };
-  
+
   useEffect(() => {
     fetchAllStats();
     if (autoRefreshEnabled) {
       startAutoRefresh();
     }
-    
+
     return () => {
       stopAutoRefresh();
     };
@@ -229,8 +229,8 @@ function PublicStatsDashboard() {
   }
 
   return (
-    <div 
-      style={{ 
+    <div
+      style={{
         flexGrow: 1,
         padding: '2rem 1rem',
         maxWidth: '1200px',
@@ -240,8 +240,8 @@ function PublicStatsDashboard() {
       className="content-container"
     >
       {/* Header */}
-      <div style={{ 
-        textAlign: 'center', 
+      <div style={{
+        textAlign: 'center',
         marginBottom: '4rem',
         position: 'relative',
         padding: '2rem 0'
@@ -258,7 +258,7 @@ function PublicStatsDashboard() {
           borderRadius: '50%',
           zIndex: -1
         }} />
-        
+
         <h1 style={{
           fontSize: 'clamp(2rem, 4vw, 2.75rem)',
           fontWeight: 700,
@@ -276,7 +276,7 @@ function PublicStatsDashboard() {
           lineHeight: '1.6',
           fontWeight: 400
         }}>
-          Explore comprehensive statistics about biological datasets and data providers 
+          Explore comprehensive statistics about biological datasets and data providers
           in the German Federation for Biological Data registry.
         </p>
       </div>
@@ -302,7 +302,7 @@ function PublicStatsDashboard() {
             color="var(--success)"
             isLiveData={autoRefreshEnabled}
           />
-          
+
           <StatCard
             title="Data Centers"
             value={overviewStats.total_datacenters}
@@ -310,7 +310,7 @@ function PublicStatsDashboard() {
             color="var(--warning)"
             isLiveData={autoRefreshEnabled}
           />
-          
+
           <StatCard
             title="Total Datasets"
             value={overviewStats.total_datasets}
@@ -318,7 +318,7 @@ function PublicStatsDashboard() {
             color="var(--primary)"
             isLiveData={autoRefreshEnabled}
           />
-          
+
         </div>
       )}
 

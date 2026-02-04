@@ -3,9 +3,9 @@ API endpoints for XML validation tasks.
 """
 
 from datetime import datetime
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -82,8 +82,8 @@ class DatasetValidationStatus(BaseModel):
 @router.post("/", response_model=ValidateArchiveResponse, status_code=status.HTTP_201_CREATED)
 async def create_validation_job(
     request: ValidateArchiveRequest,
-    current_user: UserModel = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[UserModel, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """
     Start a validation job for an XML archive.
@@ -103,8 +103,8 @@ async def create_validation_job(
 @router.get("/{job_id}", response_model=ValidationJobResponse)
 async def get_validation_job(
     job_id: int,
-    current_user: UserModel = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[UserModel, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """
     Get details of a validation job.
@@ -123,12 +123,12 @@ async def get_validation_job(
 
 @router.get("/", response_model=list[ValidationJobResponse])
 async def list_validation_jobs(
+    current_user: Annotated[UserModel, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
     archive_id: int | None = None,
     status: str | None = None,
     limit: int = 10,
     offset: int = 0,
-    current_user: UserModel = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
 ):
     """
     List validation jobs with optional filtering.
@@ -153,8 +153,8 @@ async def list_validation_jobs(
 @router.get("/{job_id}/results", response_model=dict[str, Any])
 async def get_validation_results(
     job_id: int,
-    current_user: UserModel = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[UserModel, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """
     Get detailed results of a validation job.
@@ -174,8 +174,8 @@ async def get_validation_results(
 @router.get("/datasets/{dataset_id}/validation-status", response_model=DatasetValidationStatus)
 async def get_dataset_validation_status(
     dataset_id: int,
-    current_user: UserModel = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[UserModel, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """
     Get the validation status for a dataset's latest XML archive.
@@ -202,9 +202,9 @@ async def get_dataset_validation_status(
 )
 async def validate_dataset_latest_archive(
     dataset_id: int,
-    force: bool = False,  # New parameter to force validation regardless of status
-    current_user: UserModel = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[UserModel, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    force: bool = False,
 ):
     """
     Start a validation job for the latest XML archive of a dataset.

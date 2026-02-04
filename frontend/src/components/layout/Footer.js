@@ -66,7 +66,7 @@ const Footer = () => {
   };
 
   return (
-    <footer style={{ 
+    <footer style={{
       marginTop: 'auto'
     }}>
       {/* Main Footer Section */}
@@ -90,14 +90,14 @@ const Footer = () => {
               }}>
                 GFBio DPM
               </h3>
-              <p style={{ 
-                fontSize: '0.9375rem', 
+              <p style={{
+                fontSize: '0.9375rem',
                 lineHeight: '1.7',
                 color: 'var(--text-light)',
                 marginBottom: '2rem',
                 maxWidth: '280px'
               }}>
-                A biological data registry facilitating discovery, access, and 
+                A biological data registry facilitating discovery, access, and
                 integration of biological and environmental research data from the German Federation for Biological Data.
               </p>
               <div style={{
@@ -333,7 +333,7 @@ const Footer = () => {
             </div>
 
             {/* Copyright */}
-            <div style={{ 
+            <div style={{
               fontSize: '0.8125rem',
               color: 'var(--text-light)',
               fontWeight: '500'

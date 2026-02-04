@@ -110,11 +110,11 @@ As a developer working with Aggregator:
    cp .env.example .env
    cp backend/.env.example backend/.env
    cp frontend/.env.example frontend/.env
-   
+
    # IMPORTANT: Generate a secure SECRET_KEY for backend/.env:
    # python -c "import secrets; print(secrets.token_hex(32))"
    # Replace the default SECRET_KEY with your generated key
-   
+
    # Start development environment
    docker-compose up
    ```
@@ -218,7 +218,7 @@ Aggregator follows a modern microservices architecture:
 The application uses Traefik as a modern reverse proxy and load balancer:
 
 - **Automatic Service Discovery**: Traefik automatically discovers services through Docker labels
-- **Path-Based Routing**: 
+- **Path-Based Routing**:
   - `/api/*` routes are directed to the backend service
   - All other routes are directed to the frontend service
 - **Network Isolation**: Services are connected through a dedicated Docker network (`app-network`)
@@ -308,10 +308,10 @@ The application uses environment variables for configuration:
    DB_USER=user
    DB_PASSWORD=password
    DB_NAME=dbname
-   
+
    # Security
    SECRET_KEY=your-secret-key
-   
+
    # Frontend configuration (for development)
    REACT_APP_API_URL=http://localhost:8000
    ```

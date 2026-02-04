@@ -81,7 +81,7 @@ const ProviderDetail = ({ currentUser }) => {
           xmlArchives: Array.isArray(dataset.xmlArchives) ? dataset.xmlArchives : [],
           usefulLinks: Array.isArray(dataset.usefulLinks) ? dataset.usefulLinks : []
         };
-        
+
         // Filter on title
         if (normalizedDataset.title && normalizedDataset.title.toLowerCase().includes(query)) {
           return true;
@@ -105,17 +105,17 @@ const ProviderDetail = ({ currentUser }) => {
         if (normalizedDataset.usefulLinks.length.toString().includes(query)) {
           return true;
         }
-        
+
         return false;
       });
-      
+
       // Make sure the filtered results are also normalized
       const normalizedFiltered = filtered.map(dataset => ({
         ...dataset,
-        xmlArchives: Array.isArray(dataset.xmlArchives) ? dataset.xmlArchives : [], 
+        xmlArchives: Array.isArray(dataset.xmlArchives) ? dataset.xmlArchives : [],
         usefulLinks: Array.isArray(dataset.usefulLinks) ? dataset.usefulLinks : []
       }));
-      
+
       setFilteredDatasets(normalizedFiltered);
     }
   }, [searchQuery, datasets]);
@@ -123,10 +123,10 @@ const ProviderDetail = ({ currentUser }) => {
   const fetchProvider = async () => {
     setIsLoadingProvider(true);
     setError('');
-    
+
     try {
       const res = await apiRequest(`/data-providers/${id}`, {}, handleTokenExpiration);
-      
+
       if (!res.ok) {
         if (res.status === 404) {
           setError('Provider not found');
@@ -138,7 +138,7 @@ const ProviderDetail = ({ currentUser }) => {
         setIsLoadingProvider(false);
         return;
       }
-      
+
       const data = await res.json();
       setProvider(data);
       setIsLoadingProvider(false);
@@ -151,18 +151,18 @@ const ProviderDetail = ({ currentUser }) => {
   const fetchDatasets = async () => {
     setIsLoading(true);
     setError('');
-    
+
     try {
       const res = await apiRequest(`/data-providers/${id}/data-sets`, {}, handleTokenExpiration);
-      
+
       if (!res.ok) {
         setError('Failed to fetch datasets');
         setIsLoading(false);
         return;
       }
-      
+
       const data = await res.json();
-      
+
       // Ensure each dataset has properly normalized data and provider_id
       const normalizedData = data.map(dataset => ({
         ...dataset,
@@ -170,7 +170,7 @@ const ProviderDetail = ({ currentUser }) => {
         xmlArchives: Array.isArray(dataset.xmlArchives) ? dataset.xmlArchives : [],
         usefulLinks: Array.isArray(dataset.usefulLinks) ? dataset.usefulLinks : []
       }));
-      
+
       setDatasets(normalizedData);
       setIsLoading(false);
     } catch (err) {
@@ -187,7 +187,7 @@ const ProviderDetail = ({ currentUser }) => {
           'Content-Type': 'application/json'
         }
       }, handleTokenExpiration);
-      
+
       if (!res.ok) {
         let errorMessage = 'Failed to delete dataset';
         try {
@@ -205,7 +205,7 @@ const ProviderDetail = ({ currentUser }) => {
         setError(errorMessage);
         return;
       }
-      
+
       // After successful deletion, update the UI
       const deletedDataset = datasets.find(d => d.id === datasetId);
       setDatasets(datasets.filter(d => d.id !== datasetId));
@@ -226,7 +226,7 @@ const ProviderDetail = ({ currentUser }) => {
       setAddingDataset(false);
       return;
     }
-    
+
     // Handle adding a new dataset
     if (!editingDataset) {
       // For new datasets, use the data directly from the API response and ensure provider_id
@@ -236,21 +236,21 @@ const ProviderDetail = ({ currentUser }) => {
         xmlArchives: Array.isArray(updatedDataset.xmlArchives) ? updatedDataset.xmlArchives : [],
         usefulLinks: Array.isArray(updatedDataset.usefulLinks) ? updatedDataset.usefulLinks : []
       };
-      
+
       // Add to datasets using functional update
       setDatasets(prevDatasets => [...prevDatasets, normalizedDataset]);
-      
+
       setEditingDataset(null);
       setAddingDataset(false);
       return;
     }
-    
+
     // For the most reliable update, re-fetch all datasets after an edit
     // This ensures we always have the most current data from the API
     setIsLoading(true);
     setEditingDataset(null);
     setAddingDataset(false);
-    
+
     try {
       await fetchDatasets();
     } catch (err) {
@@ -267,7 +267,7 @@ const ProviderDetail = ({ currentUser }) => {
           'Content-Type': 'application/json'
         }
       }, handleTokenExpiration);
-      
+
       if (!res.ok) {
         let errorMessage = 'Failed to delete provider';
         try {
@@ -285,7 +285,7 @@ const ProviderDetail = ({ currentUser }) => {
         setError(errorMessage);
         return;
       }
-      
+
       // After successful deletion, navigate back to providers list
       showToast(`Provider "${provider?.name}" deleted successfully!`, 'success');
       navigate('/providers');
@@ -344,7 +344,7 @@ const ProviderDetail = ({ currentUser }) => {
   // Show loading state while fetching provider
   if (isLoadingProvider) {
     return (
-      <div style={{ 
+      <div style={{
         flexGrow: 1,
         padding: '2rem 1rem',
         width: '100%',
@@ -367,14 +367,14 @@ const ProviderDetail = ({ currentUser }) => {
   // Show error if provider not found
   if (!provider && !isLoadingProvider) {
     return (
-      <div style={{ 
+      <div style={{
         flexGrow: 1,
         padding: '2rem 1rem',
         width: '100%'
       }}>
         <Alert type="error">
           {error || 'Provider not found'}
-          <button 
+          <button
             onClick={() => navigate('/providers')}
             style={{
               marginLeft: '1rem',
@@ -396,8 +396,8 @@ const ProviderDetail = ({ currentUser }) => {
   if (!provider) return null;
 
   return (
-    <div 
-      style={{ 
+    <div
+      style={{
         flexGrow: 1,
         padding: '2rem 1rem',
         width: '100%',
@@ -406,7 +406,7 @@ const ProviderDetail = ({ currentUser }) => {
     >
       {/* Breadcrumbs navigation */}
       <Breadcrumbs items={breadcrumbItems} />
-      
+
       {/* Floating action menu - visible to both global admins and provider curators */}
       <ActionMenu
         actions={[
@@ -420,7 +420,7 @@ const ProviderDetail = ({ currentUser }) => {
         mode="content-relative"
         offset={16}
       />
-      
+
       {/* Provider details card with integrated title */}
       <div style={{
         backgroundColor: 'var(--card-bg)',
@@ -431,9 +431,9 @@ const ProviderDetail = ({ currentUser }) => {
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
           <div>
-            <h2 style={{ 
-              fontSize: '1.5rem', 
-              fontWeight: 600, 
+            <h2 style={{
+              fontSize: '1.5rem',
+              fontWeight: 600,
               margin: 0,
               color: 'var(--text)',
             }}>
@@ -592,7 +592,7 @@ const ProviderDetail = ({ currentUser }) => {
             </div>
           </div>
         </div>
-        
+
         {/* Links section with flatter design */}
         <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '1rem', position: 'relative' }}>
           {/* Vertical border for the section */}
@@ -606,12 +606,12 @@ const ProviderDetail = ({ currentUser }) => {
             opacity: 0.4,
             zIndex: 0
           }}></div>
-          
+
           {/* Links header */}
-          <div style={{ 
-            fontSize: '0.8125rem', 
-            textTransform: 'uppercase', 
-            fontWeight: 600, 
+          <div style={{
+            fontSize: '0.8125rem',
+            textTransform: 'uppercase',
+            fontWeight: 600,
             color: 'var(--text-light)',
             marginBottom: '0.75rem',
             letterSpacing: '0.025em',
@@ -623,9 +623,9 @@ const ProviderDetail = ({ currentUser }) => {
           }}>
             Links
           </div>
-          
+
           {/* Links content */}
-          <div style={{ 
+          <div style={{
             paddingLeft: '1.5rem',
             position: 'relative',
             zIndex: 1,
@@ -635,12 +635,12 @@ const ProviderDetail = ({ currentUser }) => {
           }}>
             {/* Website link */}
             {provider.url && (
-              <a 
+              <a
                 href={provider.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ 
-                  display: 'flex', 
+                style={{
+                  display: 'flex',
                   alignItems: 'center',
                   fontSize: '0.8125rem',
                   color: 'var(--text)',
@@ -659,15 +659,15 @@ const ProviderDetail = ({ currentUser }) => {
                 <ExternalLink size={12} style={{ marginLeft: '0.375rem', opacity: 0.5 }} />
               </a>
             )}
-            
+
             {/* BioCASe link */}
             {provider.biocaseUrl && (
-              <a 
+              <a
                 href={provider.biocaseUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ 
-                  display: 'flex', 
+                style={{
+                  display: 'flex',
                   alignItems: 'center',
                   fontSize: '0.8125rem',
                   color: 'var(--text)',
@@ -688,9 +688,9 @@ const ProviderDetail = ({ currentUser }) => {
             )}
           </div>
         </div>
-        
+
         {/* ACTIONS FOOTER */}
-        <div style={{ 
+        <div style={{
           display: 'flex',
           padding: '0.75rem 1.25rem',
           gap: '0.625rem',
@@ -709,7 +709,7 @@ const ProviderDetail = ({ currentUser }) => {
           borderBottomRightRadius: '0.75rem'
         }}>
           {/* Edit Button - visible to all */}
-          <button 
+          <button
             onClick={() => { setEditingProvider(provider); setAddingProvider(true); }}
             style={{
               width: '36px',
@@ -730,10 +730,10 @@ const ProviderDetail = ({ currentUser }) => {
           >
             <Edit size={18} />
           </button>
-          
+
           {/* Delete Button - only visible to global admins */}
           {currentUser?.is_global_admin && (
-            <button 
+            <button
               onClick={() => setConfirmDelete(provider)}
               style={{
                 width: '36px',
@@ -757,9 +757,9 @@ const ProviderDetail = ({ currentUser }) => {
           )}
         </div>
       </div>
-      
+
       {error && <Alert type="error">{error}</Alert>}
-      
+
       {datasets.length > 0 && (
         <div style={{ marginTop: '2rem' }}>
           <div style={{
@@ -771,8 +771,8 @@ const ProviderDetail = ({ currentUser }) => {
               width: '100%',
               marginBottom: '1.25rem',
             }}>
-              <Search 
-                size={18} 
+              <Search
+                size={18}
                 style={{
                   position: 'absolute',
                   left: '0.75rem',
@@ -846,12 +846,12 @@ const ProviderDetail = ({ currentUser }) => {
             }}>
               {filteredDatasets.map(dataset => (
                 <div key={dataset.id}>
-                  <DatasetCard 
-                    dataset={dataset} 
+                  <DatasetCard
+                    dataset={dataset}
                     onEdit={(dataset) => {
                       setEditingDataset(dataset);
                       setAddingDataset(true);
-                    }} 
+                    }}
                     onDelete={(dataset) => {
                       setConfirmDelete(dataset);
                     }}
@@ -874,13 +874,13 @@ const ProviderDetail = ({ currentUser }) => {
           )}
          </div>
       )}
-      
+
       {/* Confirmation modal for deletion */}
       {confirmDelete && (
         <ConfirmModal
           isOpen={true}
           title={confirmDelete.title ? "Delete Dataset" : "Delete Provider"}
-          message={confirmDelete.title 
+          message={confirmDelete.title
             ? `Are you sure you want to delete dataset "${confirmDelete.title}"?`
             : `Are you sure you want to delete "${confirmDelete.name}"? This will remove all associated datasets.`}
           confirmText="Delete"
@@ -898,7 +898,7 @@ const ProviderDetail = ({ currentUser }) => {
           onCancel={() => setConfirmDelete(null)}
         />
       )}
-      
+
       {/* Unsaved changes confirmation modal */}
       {confirmDiscardChanges && (
         <ConfirmModal
@@ -926,7 +926,7 @@ const ProviderDetail = ({ currentUser }) => {
           onDirtyChange={setDatasetFormIsDirty}
         />
       </Modal>
-      
+
       {/* Modal for editing provider */}
       <Modal
         isOpen={addingProvider}
@@ -964,7 +964,7 @@ const ProviderDetail = ({ currentUser }) => {
         title="Trends"
         size="large"
       >
-        <ProviderStatistics 
+        <ProviderStatistics
           providerId={id}
           providerName={provider?.name}
         />

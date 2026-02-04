@@ -27,11 +27,11 @@ function getNiceUpperBound(maxValue) {
   if (maxValue <= 50) return 60;
   if (maxValue <= 60) return 75;
   if (maxValue <= 75) return 100;
-  
+
   // For larger values, round up to nearest nice number
   const magnitude = Math.pow(10, Math.floor(Math.log10(maxValue)));
   const normalized = maxValue / magnitude;
-  
+
   let niceFactor;
   if (normalized <= 1.5) niceFactor = 1.5;
   else if (normalized <= 2) niceFactor = 2;
@@ -42,15 +42,15 @@ function getNiceUpperBound(maxValue) {
   else if (normalized <= 6) niceFactor = 6;
   else if (normalized <= 7.5) niceFactor = 7.5;
   else niceFactor = 10;
-  
+
   return niceFactor * magnitude;
 }
 
 /**
  * TimeSeriesChart component for displaying time-series data
  */
-function TimeSeriesChart({ 
-  data = [], 
+function TimeSeriesChart({
+  data = [],
   dataKey = 'value',
   xKey = 'date',
   color = 'var(--primary)',
@@ -69,43 +69,43 @@ function TimeSeriesChart({
     if (!data || data.length === 0) {
       return null;
     }
-    
+
     // Calculate stable Y domain with padding
     const yValues = data.map(item => item[dataKey]).filter(val => typeof val === 'number');
     const minY = Math.min(...yValues);
     const maxY = Math.max(...yValues);
-    
+
     // For integer-only charts (like dataset counts), use nice bounds
     // to prevent small changes from appearing dramatic
     if (integerOnly) {
       const range = maxY - minY;
       const niceUpper = getNiceUpperBound(maxY);
-      
+
       // For high baseline values (min > 50), start from a nice round number below min
       // This avoids wasting chart space when all values are high
       if (minY > 50) {
         // Find a nice lower bound that's below minY but not too far
         let niceLower = Math.floor(minY / 10) * 10 - 10; // Round down to nearest 10, then subtract 10
         if (niceLower < 0) niceLower = 0;
-        
+
         // Ensure we have enough range to show variations
         const minRange = 20;
         if (niceUpper - niceLower < minRange) {
           niceUpper = niceLower + minRange;
         }
-        
+
         return [niceLower, niceUpper];
       }
-      
+
       // For smaller values or bigger ranges, start from 0 for clarity
       return [0, niceUpper];
     }
-    
+
     // For continuous data, use padding approach
     const padding = (maxY - minY) * 0.1; // 10% padding
     return [Math.max(0, minY - padding), maxY + padding];
   }, [data, dataKey, integerOnly]);
-  
+
   // Memoize processed data to ensure stable object references
   const memoizedData = useMemo(() => data, [data]);
   if (isLoading) {
@@ -214,9 +214,9 @@ function TimeSeriesChart({
             borderTopLeftRadius: '0.75rem',
             borderTopRightRadius: '0.75rem'
           }} />
-          
-          <p style={{ 
-            margin: 0, 
+
+          <p style={{
+            margin: 0,
             marginBottom: '0.5rem',
             color: 'var(--text-light)',
             fontWeight: 600,
@@ -226,8 +226,8 @@ function TimeSeriesChart({
           }}>
             {label}
           </p>
-          <p style={{ 
-            margin: 0, 
+          <p style={{
+            margin: 0,
             color: payload[0].color,
             fontWeight: 700,
             fontSize: '1rem',
@@ -271,12 +271,12 @@ function TimeSeriesChart({
         background: `radial-gradient(ellipse at 100% 0%, ${color}05 0%, transparent 70%)`,
         pointerEvents: 'none'
       }} />
-      
+
       {(title || subtitle) && (
-        <div style={{ 
-          marginBottom: '1.5rem', 
-          position: 'relative', 
-          zIndex: 1 
+        <div style={{
+          marginBottom: '1.5rem',
+          position: 'relative',
+          zIndex: 1
         }}>
           {title && (
             <h3 style={{
@@ -302,22 +302,22 @@ function TimeSeriesChart({
           )}
         </div>
       )}
-      
+
       <div style={{ position: 'relative', zIndex: 1 }}>
         <ResponsiveContainer width="100%" height={height}>
-          <LineChart 
-            data={memoizedData} 
+          <LineChart
+            data={memoizedData}
             margin={{ top: 10, right: 30, left: 20, bottom: 10 }}
           >
             {showGrid && (
-              <CartesianGrid 
-                strokeDasharray="2 4" 
+              <CartesianGrid
+                strokeDasharray="2 4"
                 stroke="var(--border)"
                 opacity={0.3}
                 vertical={false}
               />
             )}
-            <XAxis 
+            <XAxis
               dataKey={xKey}
               stroke="var(--text-light)"
               fontSize={11}
@@ -326,7 +326,7 @@ function TimeSeriesChart({
               axisLine={false}
               tick={{ fill: 'var(--text-light)' }}
             />
-            <YAxis 
+            <YAxis
               stroke="var(--text-light)"
               fontSize={11}
               fontWeight={500}
@@ -349,21 +349,21 @@ function TimeSeriesChart({
               }}
             />
             {showTooltip && <Tooltip content={<CustomTooltip />} />}
-            <Line 
-              type="monotone" 
-              dataKey={dataKey} 
+            <Line
+              type="monotone"
+              dataKey={dataKey}
               stroke={color}
               strokeWidth={3}
-              dot={{ 
-                fill: 'var(--card-bg)', 
-                stroke: color, 
-                strokeWidth: 3, 
+              dot={{
+                fill: 'var(--card-bg)',
+                stroke: color,
+                strokeWidth: 3,
                 r: 5,
                 filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
               }}
-              activeDot={{ 
-                r: 7, 
-                stroke: color, 
+              activeDot={{
+                r: 7,
+                stroke: color,
                 strokeWidth: 3,
                 fill: 'var(--card-bg)',
                 filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.15))'
@@ -387,11 +387,11 @@ export default React.memo(TimeSeriesChart, (prevProps, nextProps) => {
     if (prev === next) return true;
     if (!prev || !next) return prev === next;
     if (prev.length !== next.length) return false;
-    
+
     return prev.every((item, index) => {
       const nextItem = next[index];
       if (!nextItem) return false;
-      
+
       // Compare key properties that affect chart rendering
       return (
         item[prevProps.dataKey] === nextItem[nextProps.dataKey] &&
@@ -399,7 +399,7 @@ export default React.memo(TimeSeriesChart, (prevProps, nextProps) => {
       );
     });
   };
-  
+
   return (
     shallowDataEqual(prevProps.data, nextProps.data) &&
     prevProps.dataKey === nextProps.dataKey &&

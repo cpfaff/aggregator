@@ -1,4 +1,4 @@
-.PHONY: help up down restart logs shell backup restore create-admin create-user migrate test format maintenance-on maintenance-off prod-up prod-down prod-restart refresh-stats stats-status stats-xml stats-daily stats-biological 
+.PHONY: help up down restart logs shell backup restore create-admin create-user migrate test format maintenance-on maintenance-off prod-up prod-down prod-restart refresh-stats stats-status stats-xml stats-daily stats-biological
 
 # Container name configuration - can be overridden
 BACKEND_CONTAINER ?= searchgfbioorg-aggregator_backend-1

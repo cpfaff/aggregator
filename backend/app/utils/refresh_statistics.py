@@ -8,13 +8,13 @@ import argparse
 import sys
 from datetime import datetime
 
+from sqlalchemy import text
+
 # Add the app directory to path
 sys.path.insert(0, "/app")
 
-from sqlalchemy import text
-
-from app.db.session import SessionLocal
-from app.tasks.snapshot_tasks import collect_archive_snapshots
+from app.db.session import SessionLocal  # noqa: E402
+from app.tasks.snapshot_tasks import collect_archive_snapshots  # noqa: E402
 
 
 def queue_snapshot_collection():

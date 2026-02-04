@@ -1,4 +1,4 @@
-Copyright 2025 GfBio e.V. 
+Copyright 2025 GfBio e.V.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the “Software”), to deal in

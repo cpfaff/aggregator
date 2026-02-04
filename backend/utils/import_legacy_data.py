@@ -1,37 +1,38 @@
-import json
 import asyncio
+import json
 import logging
-import bcrypt
-import sys
 import os
+import sys
 from pathlib import Path
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.future import select
-from sqlalchemy import text
+
+import bcrypt
 from dotenv import load_dotenv
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.future import select
+from sqlalchemy.orm import sessionmaker
 
 # Add the parent directory to sys.path to allow importing from the backend directory
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from main import DataProviderModel, DatasetModel, XmlArchiveModel, UsefulLinkModel, UserModel, Base
+from main import Base, DataProviderModel, DatasetModel, UsefulLinkModel, UserModel, XmlArchiveModel
 
 # Set up logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
+    format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[
-        logging.FileHandler(Path(__file__).parent.parent / 'data' / 'import.log'),
-        logging.StreamHandler()
-    ]
+        logging.FileHandler(Path(__file__).parent.parent / "data" / "import.log"),
+        logging.StreamHandler(),
+    ],
 )
 logger = logging.getLogger(__name__)
 
 # Load environment variables
 # Try to load from backend/.env first, then from root .env
 env_paths = [
-    Path(__file__).parent.parent / '.env',  # backend/.env
-    Path(__file__).parent.parent.parent / '.env'  # root .env
+    Path(__file__).parent.parent / ".env",  # backend/.env
+    Path(__file__).parent.parent.parent / ".env",  # root .env
 ]
 
 for env_path in env_paths:
@@ -50,15 +51,16 @@ if not DATABASE_URL:
 
 # Check if we're trying to connect to 'db' host which is the Docker service name
 # If running locally, we should use 'localhost' instead
-if 'db:' in DATABASE_URL and not os.path.exists('/.dockerenv'):
+if "db:" in DATABASE_URL and not os.path.exists("/.dockerenv"):
     logger.info("Detected Docker database URL but running locally, adjusting to localhost")
-    DATABASE_URL = DATABASE_URL.replace('db:', 'localhost:')
+    DATABASE_URL = DATABASE_URL.replace("db:", "localhost:")
 
 logger.info(f"Using database URL: {DATABASE_URL}")
 
 # Create async engine
 engine = create_async_engine(DATABASE_URL, echo=True)
 async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
 
 async def create_tables():
     try:
@@ -70,22 +72,19 @@ async def create_tables():
         logger.error(f"Error creating tables: {str(e)}")
         raise
 
+
 async def create_admin_user(session: AsyncSession):
     try:
         # Check if admin user exists
-        result = await session.execute(
-            select(UserModel).where(UserModel.username == "admin")
-        )
+        result = await session.execute(select(UserModel).where(UserModel.username == "admin"))
         if result.scalar_one_or_none():
             logger.info("Admin user already exists")
             return
 
         # Create admin user
-        hashed_password = bcrypt.hashpw("admin".encode(), bcrypt.gensalt()).decode()
+        hashed_password = bcrypt.hashpw(b"admin", bcrypt.gensalt()).decode()
         admin_user = UserModel(
-            username="admin",
-            hashed_password=hashed_password,
-            is_global_admin=True
+            username="admin", hashed_password=hashed_password, is_global_admin=True
         )
         session.add(admin_user)
         await session.flush()
@@ -94,26 +93,27 @@ async def create_admin_user(session: AsyncSession):
         logger.error(f"Error creating admin user: {str(e)}")
         raise
 
+
 async def import_provider(session: AsyncSession, provider_data: dict) -> DataProviderModel:
     try:
         # Check if provider already exists
         result = await session.execute(
-            select(DataProviderModel).where(DataProviderModel.id == provider_data['id'])
+            select(DataProviderModel).where(DataProviderModel.id == provider_data["id"])
         )
         existing_provider = result.scalar_one_or_none()
-        
+
         if existing_provider:
             logger.info(f"Provider {provider_data['shortName']} already exists, skipping...")
             return existing_provider
 
         # Create new provider
         provider = DataProviderModel(
-            id=provider_data['id'],
-            datacenter=provider_data['datacenter'],
-            shortName=provider_data['shortName'],
-            name=provider_data['name'],
-            url=provider_data['url'],
-            biocaseUrl=provider_data.get('biocaseUrl')
+            id=provider_data["id"],
+            datacenter=provider_data["datacenter"],
+            shortName=provider_data["shortName"],
+            name=provider_data["name"],
+            url=provider_data["url"],
+            biocaseUrl=provider_data.get("biocaseUrl"),
         )
         session.add(provider)
         await session.flush()
@@ -123,25 +123,28 @@ async def import_provider(session: AsyncSession, provider_data: dict) -> DataPro
         logger.error(f"Error importing provider {provider_data.get('shortName')}: {str(e)}")
         raise
 
-async def import_dataset(session: AsyncSession, dataset_data: dict, provider_id: int) -> DatasetModel:
+
+async def import_dataset(
+    session: AsyncSession, dataset_data: dict, provider_id: int
+) -> DatasetModel:
     try:
         # Check if dataset already exists
         result = await session.execute(
-            select(DatasetModel).where(DatasetModel.id == dataset_data['id'])
+            select(DatasetModel).where(DatasetModel.id == dataset_data["id"])
         )
         existing_dataset = result.scalar_one_or_none()
-        
+
         if existing_dataset:
             logger.info(f"Dataset {dataset_data['title']} already exists, skipping...")
             return existing_dataset
 
         # Create new dataset
         dataset = DatasetModel(
-            id=dataset_data['id'],
+            id=dataset_data["id"],
             provider_id=provider_id,
-            source=dataset_data['source'],
-            title=dataset_data['title'],
-            landingPageUrl=dataset_data.get('landingPageUrl')
+            source=dataset_data["source"],
+            title=dataset_data["title"],
+            landingPageUrl=dataset_data.get("landingPageUrl"),
         )
         session.add(dataset)
         await session.flush()
@@ -151,12 +154,13 @@ async def import_dataset(session: AsyncSession, dataset_data: dict, provider_id:
         logger.error(f"Error importing dataset {dataset_data.get('title')}: {str(e)}")
         raise
 
+
 async def import_xml_archives(session: AsyncSession, archives_data: list, dataset_id: int):
     try:
         for archive in archives_data:
             # Check if archive already exists
             result = await session.execute(
-                select(XmlArchiveModel).where(XmlArchiveModel.id == archive['id'])
+                select(XmlArchiveModel).where(XmlArchiveModel.id == archive["id"])
             )
             if result.scalar_one_or_none():
                 logger.info(f"XML Archive {archive['id']} already exists, skipping...")
@@ -164,10 +168,10 @@ async def import_xml_archives(session: AsyncSession, archives_data: list, datase
 
             # Create new archive
             xml_archive = XmlArchiveModel(
-                id=archive['id'],
+                id=archive["id"],
                 dataset_id=dataset_id,
-                url=archive['url'],
-                isLatest=archive['isLatest']
+                url=archive["url"],
+                isLatest=archive["isLatest"],
             )
             session.add(xml_archive)
         await session.flush()
@@ -176,12 +180,13 @@ async def import_xml_archives(session: AsyncSession, archives_data: list, datase
         logger.error(f"Error importing XML archives for dataset {dataset_id}: {str(e)}")
         raise
 
+
 async def import_useful_links(session: AsyncSession, links_data: list, dataset_id: int):
     try:
         for link in links_data:
             # Check if link already exists
             result = await session.execute(
-                select(UsefulLinkModel).where(UsefulLinkModel.id == link['id'])
+                select(UsefulLinkModel).where(UsefulLinkModel.id == link["id"])
             )
             if result.scalar_one_or_none():
                 logger.info(f"Useful Link {link['id']} already exists, skipping...")
@@ -189,11 +194,11 @@ async def import_useful_links(session: AsyncSession, links_data: list, dataset_i
 
             # Create new link
             useful_link = UsefulLinkModel(
-                id=link['id'],
+                id=link["id"],
                 dataset_id=dataset_id,
-                title=link['title'],
-                url=link['url'],
-                isLatest=link['isLatest']
+                title=link["title"],
+                url=link["url"],
+                isLatest=link["isLatest"],
             )
             session.add(useful_link)
         await session.flush()
@@ -201,6 +206,7 @@ async def import_useful_links(session: AsyncSession, links_data: list, dataset_i
     except Exception as e:
         logger.error(f"Error importing useful links for dataset {dataset_id}: {str(e)}")
         raise
+
 
 async def clear_existing_data(session: AsyncSession):
     try:
@@ -218,6 +224,7 @@ async def clear_existing_data(session: AsyncSession):
         logger.error(f"Error clearing existing data: {str(e)}")
         raise
 
+
 async def reset_sequences(session: AsyncSession):
     """Reset all sequences to be after the highest existing ID"""
     try:
@@ -234,63 +241,79 @@ async def reset_sequences(session: AsyncSession):
         links_max_id = links_max.scalar() or 0
 
         # Reset all sequences
-        await session.execute(text(f"ALTER SEQUENCE data_providers_id_seq RESTART WITH {provider_max_id + 1}"))
-        await session.execute(text(f"ALTER SEQUENCE datasets_id_seq RESTART WITH {dataset_max_id + 1}"))
-        await session.execute(text(f"ALTER SEQUENCE xml_archives_id_seq RESTART WITH {xml_max_id + 1}"))
-        await session.execute(text(f"ALTER SEQUENCE useful_links_id_seq RESTART WITH {links_max_id + 1}"))
-        
+        await session.execute(
+            text(f"ALTER SEQUENCE data_providers_id_seq RESTART WITH {provider_max_id + 1}")
+        )
+        await session.execute(
+            text(f"ALTER SEQUENCE datasets_id_seq RESTART WITH {dataset_max_id + 1}")
+        )
+        await session.execute(
+            text(f"ALTER SEQUENCE xml_archives_id_seq RESTART WITH {xml_max_id + 1}")
+        )
+        await session.execute(
+            text(f"ALTER SEQUENCE useful_links_id_seq RESTART WITH {links_max_id + 1}")
+        )
+
         await session.commit()
-        
-        logger.info(f"Reset sequences to: providers={provider_max_id + 1}, datasets={dataset_max_id + 1}, "
-                    f"xml_archives={xml_max_id + 1}, useful_links={links_max_id + 1}")
+
+        logger.info(
+            f"Reset sequences to: providers={provider_max_id + 1}, datasets={dataset_max_id + 1}, "
+            f"xml_archives={xml_max_id + 1}, useful_links={links_max_id + 1}"
+        )
     except Exception as e:
         logger.error(f"Error resetting sequences: {str(e)}")
         raise
 
+
 async def import_all_data():
     try:
         # Load provider data from JSON file
-        data_file = Path(__file__).parent.parent / 'data' / 'providers.json'
-        
+        data_file = Path(__file__).parent.parent / "data" / "providers.json"
+
         if not data_file.exists():
             logger.error(f"Data file not found: {data_file}")
             return
-            
+
         logger.info(f"Loading data from {data_file}")
-        with open(data_file, 'r') as f:
+        with open(data_file) as f:
             providers_data = json.load(f)
 
         async with async_session() as session:
             async with session.begin():
                 # Clear existing data
                 await clear_existing_data(session)
-                
+
                 # Create admin user
                 await create_admin_user(session)
-                
+
                 # Import providers and their datasets
                 for provider_data in providers_data:
                     provider = await import_provider(session, provider_data)
-                    
+
                     # Import datasets for this provider
-                    for dataset_data in provider_data.get('datasets', []):
+                    for dataset_data in provider_data.get("datasets", []):
                         dataset = await import_dataset(session, dataset_data, provider.id)
-                        
+
                         # Import XML archives for this dataset
-                        if 'xmlArchives' in dataset_data:
-                            await import_xml_archives(session, dataset_data['xmlArchives'], dataset.id)
-                        
+                        if "xmlArchives" in dataset_data:
+                            await import_xml_archives(
+                                session, dataset_data["xmlArchives"], dataset.id
+                            )
+
                         # Import useful links for this dataset
-                        if 'usefulLinks' in dataset_data:
-                            await import_useful_links(session, dataset_data['usefulLinks'], dataset.id)
-                
+                        if "usefulLinks" in dataset_data:
+                            await import_useful_links(
+                                session, dataset_data["usefulLinks"], dataset.id
+                            )
+
                 # Reset sequences
                 await reset_sequences(session)
-                
+
                 logger.info("Data import completed successfully")
     except Exception as e:
         logger.error(f"Error during data import: {str(e)}")
         raise
+
 
 if __name__ == "__main__":
     asyncio.run(import_all_data())

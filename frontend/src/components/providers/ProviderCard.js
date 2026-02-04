@@ -18,7 +18,7 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
   };
 
   return (
-    <div 
+    <div
       style={{
         backgroundColor: 'var(--card-bg)',
         borderRadius: '0.75rem',
@@ -42,7 +42,7 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
       aria-label={`View details for ${provider.name}`}
     >
       {/* HEADER AREA */}
-      <div style={{ 
+      <div style={{
         padding: '1.25rem 1.25rem 0.75rem',
         borderBottom: '1px solid var(--border)',
         display: 'flex',
@@ -51,7 +51,7 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
       }}>
         {/* Provider badge */}
         <div>
-          <span style={{ 
+          <span style={{
             backgroundColor: 'var(--subtle-bg)',
             padding: '0.25rem 0.625rem',
             borderRadius: '0.375rem',
@@ -63,7 +63,7 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
             Provider
           </span>
         </div>
-        
+
         {/* Provider ID badge if available */}
         {provider.id && (
           <span style={{
@@ -83,16 +83,16 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
       </div>
 
       {/* CONTENT AREA */}
-      <div style={{ 
-        padding: '1.25rem', 
+      <div style={{
+        padding: '1.25rem',
         flexGrow: 1,
         display: 'flex',
         flexDirection: 'column',
       }}>
         {/* Title with better prominence */}
-        <h3 style={{ 
-          fontSize: '1.125rem', 
-          fontWeight: 600, 
+        <h3 style={{
+          fontSize: '1.125rem',
+          fontWeight: 600,
           margin: '0 0 0.5rem 0',
           paddingLeft: '0.25rem',
           color: 'var(--text)',
@@ -107,15 +107,15 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
         >
           {provider.name}
         </h3>
-        
+
         {/* Datacenter location displayed prominently */}
         {provider.datacenter && (
-          <div style={{ 
+          <div style={{
             paddingLeft: '0.25rem',
             marginBottom: '0.5rem',
           }}>
-            <span style={{ 
-              fontSize: '0.875rem', 
+            <span style={{
+              fontSize: '0.875rem',
               color: 'var(--text)',
               fontWeight: 500
             }}>
@@ -123,15 +123,15 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
             </span>
           </div>
         )}
-        
+
         {/* Last Updated timestamp - subtle styling below datacenter */}
         {provider.updated_at && (
-          <div style={{ 
+          <div style={{
             paddingLeft: '0.25rem',
             marginBottom: '1rem',
           }}>
-            <span style={{ 
-              fontSize: '0.75rem', 
+            <span style={{
+              fontSize: '0.75rem',
               color: 'var(--text-light)',
               opacity: 0.7,
             }}>
@@ -143,12 +143,12 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
             </span>
           </div>
         )}
-                
+
         {/* Flexible spacer */}
         <div style={{ flexGrow: 1, minHeight: '0.5rem' }}></div>
-        
+
         {/* Information sections with clear labels */}
-        <div style={{ 
+        <div style={{
           display: 'flex',
           flexDirection: 'column',
           gap: '1.25rem',
@@ -166,11 +166,11 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
               opacity: 0.4,
               zIndex: 0
             }}></div>
-            
-            <div style={{ 
-              fontSize: '0.8125rem', 
-              textTransform: 'uppercase', 
-              fontWeight: 600, 
+
+            <div style={{
+              fontSize: '0.8125rem',
+              textTransform: 'uppercase',
+              fontWeight: 600,
               color: 'var(--text-light)',
               marginBottom: '0.75rem',
               letterSpacing: '0.025em',
@@ -182,8 +182,8 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
             }}>
               Stats
             </div>
-            
-            <div style={{ 
+
+            <div style={{
               paddingLeft: '1.5rem',
               position: 'relative',
               zIndex: 1
@@ -201,25 +201,25 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
                     flexShrink: 0
                   }}
                 />
-                <span style={{ 
-                  fontSize: '0.8125rem', 
+                <span style={{
+                  fontSize: '0.8125rem',
                   color: 'var(--text)',
                   display: 'flex',
                   alignItems: 'center',
                 }}>
-                  <span style={{ 
-                    fontWeight: 600, 
+                  <span style={{
+                    fontWeight: 600,
                     color: (provider.datasets && provider.datasets.length > 0) ? 'var(--text)' : 'var(--text-light)',
                     marginRight: '0.375rem'
                   }}>
                     {provider.datasets ? provider.datasets.length : 0}
-                  </span> 
+                  </span>
                   {(provider.datasets && provider.datasets.length === 1) ? 'dataset' : 'datasets'}
                 </span>
               </div>
             </div>
           </div>
-          
+
           {/* Links section with flatter design */}
           <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '1rem', position: 'relative' }}>
             {/* Vertical border for the section */}
@@ -233,11 +233,11 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
               opacity: 0.4,
               zIndex: 0
             }}></div>
-            
-            <div style={{ 
-              fontSize: '0.8125rem', 
-              textTransform: 'uppercase', 
-              fontWeight: 600, 
+
+            <div style={{
+              fontSize: '0.8125rem',
+              textTransform: 'uppercase',
+              fontWeight: 600,
               color: 'var(--text-light)',
               marginBottom: '0.75rem',
               letterSpacing: '0.025em',
@@ -249,8 +249,8 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
             }}>
               Links
             </div>
-            
-            <div style={{ 
+
+            <div style={{
               paddingLeft: '1.5rem',
               position: 'relative',
               zIndex: 1
@@ -290,7 +290,7 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
                   <ExternalLink size={11} style={{ marginLeft: '0.25rem', opacity: 0.5 }} />
                 </a>
               )}
-              
+
               {/* BioCASe URL */}
               {provider.biocaseUrl && (
                 <a
@@ -325,21 +325,21 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
                   <ExternalLink size={11} style={{ marginLeft: '0.25rem', opacity: 0.5 }} />
                 </a>
               )}
-              
+
               {/* Show placeholder if no links are available */}
               {!provider.url && !provider.biocaseUrl && (
-                <div style={{ 
+                <div style={{
                   display: 'flex',
-                  alignItems: 'center', 
+                  alignItems: 'center',
                   fontSize: '0.8125rem',
                   color: 'var(--text-light)',
                 }}>
-                  <Globe 
-                    size={15} 
-                    style={{ 
-                      marginRight: '0.75rem', 
-                      flexShrink: 0 
-                    }} 
+                  <Globe
+                    size={15}
+                    style={{
+                      marginRight: '0.75rem',
+                      flexShrink: 0
+                    }}
                   />
                   <span style={{ fontStyle: 'italic' }}>
                     No links available
@@ -350,9 +350,9 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
           </div>
         </div>
       </div>
-      
+
       {/* ACTIONS AREA */}
-      <div style={{ 
+      <div style={{
         display: 'flex',
         padding: '0.75rem 1.25rem',
         gap: '0.625rem',
@@ -365,7 +365,7 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
         boxSizing: 'border-box'
       }}>
         {/* Edit Button - visible to global admins and provider curators */}
-        <button 
+        <button
           onClick={(e) => {
             e.stopPropagation();
             onEdit(provider);
@@ -389,10 +389,10 @@ const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }
         >
           <Edit size={20} />
         </button>
-        
+
         {/* Delete Button - only visible to global admins */}
         {currentUser?.is_global_admin && (
-          <button 
+          <button
             onClick={handleDeleteClick}
             style={{
               width: '44px',

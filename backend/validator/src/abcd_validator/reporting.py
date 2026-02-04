@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-import json
 import re
 from collections import defaultdict
-from typing import List, Dict, Any, Iterator, Tuple
+from collections.abc import Iterator
 from itertools import islice
+from typing import Any
 
-from .models import ValidationResult, ValidationError
+from .models import ValidationError, ValidationResult
 
 # Define the default batch size for reporting
 DEFAULT_BATCH_SIZE = 100
@@ -51,21 +51,23 @@ VALUE_PATTERNS = [
     re.compile(r"The value '(.+?)' is not accepted"),
     re.compile(r"The value '(.+?)' is not an element"),
     # Captures length from facet constraint errors
-    re.compile(r"The value has a length of '(\d+)'"),  
+    re.compile(r"The value has a length of '(\d+)'"),
 ]
-NORMALIZE_PATH_REGEX = re.compile(r'\[\d+\]')
+NORMALIZE_PATH_REGEX = re.compile(r"\[\d+\]")
 
 # Caches to avoid redundant computations
-_normalized_path_cache: Dict[str, str] = {}
-_error_component_cache: Dict[str, Dict[str, Any]] = {}
+_normalized_path_cache: dict[str, str] = {}
+_error_component_cache: dict[str, dict[str, Any]] = {}
+
 
 def format_file_size(size_bytes: int) -> str:
     """Convert a file size in bytes into a human‐readable string."""
-    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+    for unit in ["B", "KB", "MB", "GB", "TB"]:
         if size_bytes < 1024:
             return f"{size_bytes:.1f} {unit}"
         size_bytes /= 1024
     return f"{size_bytes:.1f} PB"
+
 
 def format_time(seconds: float) -> str:
     """Convert seconds into a human‐readable string."""
@@ -79,6 +81,7 @@ def format_time(seconds: float) -> str:
             hours, minutes = divmod(minutes, 60)
             return f"{int(hours)} hr {int(minutes)} min {sec:.1f} sec"
 
+
 def normalize_path(path: str) -> str:
     """
     Normalize an XML path by replacing numeric indices with a wildcard.
@@ -87,19 +90,21 @@ def normalize_path(path: str) -> str:
     if not path:
         return path
     if path not in _normalized_path_cache:
-        _normalized_path_cache[path] = NORMALIZE_PATH_REGEX.sub('[*]', path)
+        _normalized_path_cache[path] = NORMALIZE_PATH_REGEX.sub("[*]", path)
     return _normalized_path_cache[path]
+
 
 def get_local_name(qname: str) -> str:
     """
     Extract the local name from a qualified XML name.
     E.g. '{http://www.example.com}TagName' becomes 'TagName'.
     """
-    if qname and qname.startswith('{'):
-        return qname.split('}', 1)[1]
+    if qname and qname.startswith("{"):
+        return qname.split("}", 1)[1]
     return qname
 
-def extract_error_components(error: ValidationError) -> Dict[str, Any]:
+
+def extract_error_components(error: ValidationError) -> dict[str, Any]:
     """
     Extract key components (such as element and value) from a ValidationError message.
     Uses caching to avoid reprocessing the same error message.
@@ -121,27 +126,31 @@ def extract_error_components(error: ValidationError) -> Dict[str, Any]:
             value = m.group(1)
             break
     comps = {
-        'element': element,
-        'value': value,
-        'normalized_path': normalize_path(error.path) if error.path else None,
+        "element": element,
+        "value": value,
+        "normalized_path": normalize_path(error.path) if error.path else None,
     }
     _error_component_cache[key] = comps
     return comps
 
+
 # --- Aggregators for batched processing ---
 
-def aggregate_schema_errors_batch(results: List[ValidationResult]) -> Dict[Tuple, Dict[str, Any]]:
-    error_groups = defaultdict(lambda: {
-        'message': None,
-        'validation_type': None,
-        'element': None,
-        'total_errors': 0,
-        'values': set(),
-        'files': set(),
-        'paths': set(),
-        'details': None,
-        'context_details': set(),
-    })
+
+def aggregate_schema_errors_batch(results: list[ValidationResult]) -> dict[tuple, dict[str, Any]]:
+    error_groups = defaultdict(
+        lambda: {
+            "message": None,
+            "validation_type": None,
+            "element": None,
+            "total_errors": 0,
+            "values": set(),
+            "files": set(),
+            "paths": set(),
+            "details": None,
+            "context_details": set(),
+        }
+    )
     for result in results:
         for error in result.errors:
             if error.error_type != "schema":
@@ -149,62 +158,65 @@ def aggregate_schema_errors_batch(results: List[ValidationResult]) -> Dict[Tuple
             comps = extract_error_components(error)
             key = (error.type_name, comps.get("normalized_path"), comps.get("element"))
             group = error_groups[key]
-            if group['message'] is None:
+            if group["message"] is None:
                 template = ERROR_TYPE_MAPPING.get(error.type_name)
                 if template:
                     base_msg = template.format(element=comps.get("element") or "Unknown element")
                 else:
-                    base_msg = error.message.split('\n')[0]
-                group['message'] = base_msg
-                group['validation_type'] = error.type_name
-                group['element'] = comps.get("element")
-                group['details'] = {
-                    'domain': getattr(error, 'domain_name', None),
-                    'level': getattr(error, 'level', None)
+                    base_msg = error.message.split("\n")[0]
+                group["message"] = base_msg
+                group["validation_type"] = error.type_name
+                group["element"] = comps.get("element")
+                group["details"] = {
+                    "domain": getattr(error, "domain_name", None),
+                    "level": getattr(error, "level", None),
                 }
-                parts = error.message.split('\n')
+                parts = error.message.split("\n")
                 if len(parts) > 1:
                     detail = " ".join(parts[1:]).strip()
                     if detail:
-                        group['context_details'].add(detail)
+                        group["context_details"].add(detail)
                 elif ":" in error.message:
                     detail = error.message.split(":", 1)[1].strip()
                     if detail:
-                        group['context_details'].add(detail)
-            group['total_errors'] += 1
+                        group["context_details"].add(detail)
+            group["total_errors"] += 1
             if comps.get("value"):
-                group['values'].add(comps.get("value"))
-            group['files'].add(result.file_name)
+                group["values"].add(comps.get("value"))
+            group["files"].add(result.file_name)
             if error.path:
-                group['paths'].add(comps.get("normalized_path"))
+                group["paths"].add(comps.get("normalized_path"))
     return error_groups
 
-def merge_schema_errors(dict1: Dict[Tuple, Dict[str, Any]],
-                        dict2: Dict[Tuple, Dict[str, Any]]) -> Dict[Tuple, Dict[str, Any]]:
+
+def merge_schema_errors(
+    dict1: dict[tuple, dict[str, Any]], dict2: dict[tuple, dict[str, Any]]
+) -> dict[tuple, dict[str, Any]]:
     for key, group in dict2.items():
         if key in dict1:
             existing = dict1[key]
-            existing['total_errors'] += group['total_errors']
-            existing['values'].update(group['values'])
-            existing['files'].update(group['files'])
-            existing['paths'].update(group['paths'])
-            existing['context_details'].update(group['context_details'])
+            existing["total_errors"] += group["total_errors"]
+            existing["values"].update(group["values"])
+            existing["files"].update(group["files"])
+            existing["paths"].update(group["paths"])
+            existing["context_details"].update(group["context_details"])
         else:
             dict1[key] = group
     return dict1
 
-def finalize_schema_errors(error_groups: Dict[Tuple, Dict[str, Any]]) -> List[Dict[str, Any]]:
+
+def finalize_schema_errors(error_groups: dict[tuple, dict[str, Any]]) -> list[dict[str, Any]]:
     aggregated = []
     for group in error_groups.values():
-        message = group['message']
-        element_name = get_local_name(group['element']) if group['element'] else "Unknown"
-        validation_type = group['validation_type']
-        
+        message = group["message"]
+        element_name = get_local_name(group["element"]) if group["element"] else "Unknown"
+        validation_type = group["validation_type"]
+
         # Extract constraint values from context details when available
         constraint_value = None
-        if group['context_details']:
-            context = next(iter(group['context_details']))
-            
+        if group["context_details"]:
+            context = next(iter(group["context_details"]))
+
             # Extract min/max length constraints
             if validation_type == "SCHEMAV_CVC_MINLENGTH_VALID":
                 min_match = re.search(r"allowed minimum length of '(\d+)'", context)
@@ -212,285 +224,328 @@ def finalize_schema_errors(error_groups: Dict[Tuple, Dict[str, Any]]) -> List[Di
                     constraint_value = min_match.group(1)
                     # Add XML example for minLength violation - using local element name only
                     # Use proper XML format with abcd21 namespace as commonly used in the files
-                    xml_example = f"&lt;abcd21:{element_name} language=\"de\" /&gt;"
+                    xml_example = f'&lt;abcd21:{element_name} language="de" /&gt;'
                     message += f" Required length: at least {constraint_value} characters. Example of problematic format: {xml_example}"
-            
+
             elif validation_type == "SCHEMAV_CVC_MAXLENGTH_VALID":
                 max_match = re.search(r"allowed maximum length of '(\d+)'", context)
                 if max_match:
                     constraint_value = max_match.group(1)
                     # Add max length information to message
                     message += f" Maximum allowed length: {constraint_value} characters."
-                    
+
                     # If we have a value example that's too long, provide a truncated example
-                    if group['values']:
-                        actual_length = next(iter(group['values']), "unknown")
+                    if group["values"]:
+                        actual_length = next(iter(group["values"]), "unknown")
                         message += f" Your content length: {actual_length} characters."
-            
+
             # Extract enumeration constraints
             elif validation_type == "SCHEMAV_CVC_ENUMERATION_VALID":
                 # Add XML example for enumeration
                 message += f" Example usage: &lt;abcd21:{element_name}&gt;allowed_value&lt;/abcd21:{element_name}&gt;"
-                
+
             # Extract pattern constraints
             elif validation_type == "SCHEMAV_CVC_PATTERN_VALID":
-                pattern_match = re.search(r"The value '.*?' is not a valid value of the atomic type '.*?' - pattern constraint failed: '(.*?)'", context)
+                pattern_match = re.search(
+                    r"The value '.*?' is not a valid value of the atomic type '.*?' - pattern constraint failed: '(.*?)'",
+                    context,
+                )
                 if pattern_match:
                     pattern = pattern_match.group(1)
                     message += f" Pattern constraint: '{pattern}'"
-        
+
         # Optionally add count information but NO examples to message
-        if group['values']:
-            distinct_count = len(group['values'])
+        if group["values"]:
+            distinct_count = len(group["values"])
             message = f"{message} ({distinct_count} distinct values found)"
-            
-        aggregated.append({
-            'heading': f"Schema error for {element_name}",
-            'context': "; ".join(sorted(list(group['context_details']))),
-            'message': message,
-            'total_errors': group['total_errors'],
-            'affected_files': {
-                "total": len(group['files']),
-                "examples": sorted(list(group['files']))[:5],
-                "has_more": len(group['files']) > 5
-            },
-            'details': {
-                'validation_type': validation_type,
-                'domain': group['details']['domain'] if group['details'] else None,
-                'level': group['details']['level'] if group['details'] else None,
-                'sample_paths': sorted(list(group['paths']))[:3],
-                'distinct_values': sorted(list(group['values']))[:5] if group['values'] else None,
-                'distinct_count': len(group['values']) if group['values'] else 0,
+
+        aggregated.append(
+            {
+                "heading": f"Schema error for {element_name}",
+                "context": "; ".join(sorted(group["context_details"])),
+                "message": message,
+                "total_errors": group["total_errors"],
+                "affected_files": {
+                    "total": len(group["files"]),
+                    "examples": sorted(group["files"])[:5],
+                    "has_more": len(group["files"]) > 5,
+                },
+                "details": {
+                    "validation_type": validation_type,
+                    "domain": group["details"]["domain"] if group["details"] else None,
+                    "level": group["details"]["level"] if group["details"] else None,
+                    "sample_paths": sorted(group["paths"])[:3],
+                    "distinct_values": sorted(group["values"])[:5]
+                    if group["values"]
+                    else None,
+                    "distinct_count": len(group["values"]) if group["values"] else 0,
+                },
             }
-        })
+        )
     aggregated.sort(key=lambda x: x["total_errors"], reverse=True)
     return aggregated
 
-def aggregate_syntax_errors_batch(results: List[ValidationResult]) -> Dict[Tuple, Dict[str, Any]]:
-    groups = defaultdict(lambda: {
-        'message': None,
-        'error_type': None,
-        'element': None,
-        'total_errors': 0,
-        'files': set(),
-        'lines': set(),
-    })
+
+def aggregate_syntax_errors_batch(results: list[ValidationResult]) -> dict[tuple, dict[str, Any]]:
+    groups = defaultdict(
+        lambda: {
+            "message": None,
+            "error_type": None,
+            "element": None,
+            "total_errors": 0,
+            "files": set(),
+            "lines": set(),
+        }
+    )
     for result in results:
         for error in result.errors:
             if error.error_type != "syntax":
                 continue
             comps = extract_error_components(error)
-            key = (error.error_type, error.message.split('\n')[0], comps.get("element"))
+            key = (error.error_type, error.message.split("\n")[0], comps.get("element"))
             group = groups[key]
-            if group['message'] is None:
-                group['message'] = error.message.split('\n')[0]
-                group['error_type'] = error.error_type
-                group['element'] = comps.get("element")
-            group['total_errors'] += 1
-            group['files'].add(result.file_name)
+            if group["message"] is None:
+                group["message"] = error.message.split("\n")[0]
+                group["error_type"] = error.error_type
+                group["element"] = comps.get("element")
+            group["total_errors"] += 1
+            group["files"].add(result.file_name)
             if error.line:
-                group['lines'].add(error.line)
+                group["lines"].add(error.line)
     return groups
 
-def merge_syntax_errors(dict1: Dict[Tuple, Dict[str, Any]],
-                        dict2: Dict[Tuple, Dict[str, Any]]) -> Dict[Tuple, Dict[str, Any]]:
+
+def merge_syntax_errors(
+    dict1: dict[tuple, dict[str, Any]], dict2: dict[tuple, dict[str, Any]]
+) -> dict[tuple, dict[str, Any]]:
     for key, group in dict2.items():
         if key in dict1:
             existing = dict1[key]
-            existing['total_errors'] += group['total_errors']
-            existing['files'].update(group['files'])
-            existing['lines'].update(group['lines'])
+            existing["total_errors"] += group["total_errors"]
+            existing["files"].update(group["files"])
+            existing["lines"].update(group["lines"])
         else:
             dict1[key] = group
     return dict1
 
-def finalize_syntax_errors(groups: Dict[Tuple, Dict[str, Any]]) -> List[Dict[str, Any]]:
+
+def finalize_syntax_errors(groups: dict[tuple, dict[str, Any]]) -> list[dict[str, Any]]:
     aggregated = []
     for group in groups.values():
-        aggregated.append({
-            'heading': f"Syntax error at {group['element']}",
-            'message': group['message'],
-            'total_errors': group['total_errors'],
-            'affected_files': {
-                "total": len(group['files']),
-                "examples": sorted(list(group['files']))[:5],
-                "has_more": len(group['files']) > 5
-            },
-            'details': {
-                'lines': sorted(list(group['lines']))
+        aggregated.append(
+            {
+                "heading": f"Syntax error at {group['element']}",
+                "message": group["message"],
+                "total_errors": group["total_errors"],
+                "affected_files": {
+                    "total": len(group["files"]),
+                    "examples": sorted(group["files"])[:5],
+                    "has_more": len(group["files"]) > 5,
+                },
+                "details": {"lines": sorted(group["lines"])},
             }
-        })
+        )
     aggregated.sort(key=lambda x: x["total_errors"], reverse=True)
     return aggregated
 
-def aggregate_encoding_errors_batch(results: List[ValidationResult]) -> Dict[Tuple, Dict[str, Any]]:
-    groups = defaultdict(lambda: {
-        'message': None,
-        'error_type': None,
-        'element': None,
-        'total_errors': 0,
-        'files': set(),
-    })
+
+def aggregate_encoding_errors_batch(results: list[ValidationResult]) -> dict[tuple, dict[str, Any]]:
+    groups = defaultdict(
+        lambda: {
+            "message": None,
+            "error_type": None,
+            "element": None,
+            "total_errors": 0,
+            "files": set(),
+        }
+    )
     for result in results:
         for error in result.errors:
             if error.error_type != "encoding":
                 continue
             comps = extract_error_components(error)
-            key = (error.error_type, error.message.split('\n')[0])
+            key = (error.error_type, error.message.split("\n")[0])
             group = groups[key]
-            if group['message'] is None:
-                group['message'] = error.message.split('\n')[0]
-                group['error_type'] = error.error_type
-                group['element'] = comps.get("element")
-            group['total_errors'] += 1
-            group['files'].add(result.file_name)
+            if group["message"] is None:
+                group["message"] = error.message.split("\n")[0]
+                group["error_type"] = error.error_type
+                group["element"] = comps.get("element")
+            group["total_errors"] += 1
+            group["files"].add(result.file_name)
     return groups
 
-def merge_encoding_errors(dict1: Dict[Tuple, Dict[str, Any]],
-                          dict2: Dict[Tuple, Dict[str, Any]]) -> Dict[Tuple, Dict[str, Any]]:
+
+def merge_encoding_errors(
+    dict1: dict[tuple, dict[str, Any]], dict2: dict[tuple, dict[str, Any]]
+) -> dict[tuple, dict[str, Any]]:
     for key, group in dict2.items():
         if key in dict1:
             existing = dict1[key]
-            existing['total_errors'] += group['total_errors']
-            existing['files'].update(group['files'])
+            existing["total_errors"] += group["total_errors"]
+            existing["files"].update(group["files"])
         else:
             dict1[key] = group
     return dict1
 
-def finalize_encoding_errors(groups: Dict[Tuple, Dict[str, Any]]) -> List[Dict[str, Any]]:
+
+def finalize_encoding_errors(groups: dict[tuple, dict[str, Any]]) -> list[dict[str, Any]]:
     aggregated = []
     for group in groups.values():
-        aggregated.append({
-            'heading': "Encoding error",
-            'message': group['message'],
-            'total_errors': group['total_errors'],
-            'affected_files': {
-                "total": len(group['files']),
-                "examples": sorted(list(group['files']))[:5],
-                "has_more": len(group['files']) > 5
-            },
-            'details': {}
-        })
+        aggregated.append(
+            {
+                "heading": "Encoding error",
+                "message": group["message"],
+                "total_errors": group["total_errors"],
+                "affected_files": {
+                    "total": len(group["files"]),
+                    "examples": sorted(group["files"])[:5],
+                    "has_more": len(group["files"]) > 5,
+                },
+                "details": {},
+            }
+        )
     aggregated.sort(key=lambda x: x["total_errors"], reverse=True)
     return aggregated
 
-def aggregate_processing_errors_batch(results: List[ValidationResult]) -> Dict[Tuple, Dict[str, Any]]:
-    groups = defaultdict(lambda: {
-        'message': None,
-        'error_type': None,
-        'element': None,
-        'total_errors': 0,
-        'files': set(),
-    })
+
+def aggregate_processing_errors_batch(
+    results: list[ValidationResult],
+) -> dict[tuple, dict[str, Any]]:
+    groups = defaultdict(
+        lambda: {
+            "message": None,
+            "error_type": None,
+            "element": None,
+            "total_errors": 0,
+            "files": set(),
+        }
+    )
     for result in results:
         for error in result.errors:
             if error.error_type != "processing":
                 continue
             comps = extract_error_components(error)
-            key = (error.error_type, error.message.split('\n')[0])
+            key = (error.error_type, error.message.split("\n")[0])
             group = groups[key]
-            if group['message'] is None:
-                group['message'] = error.message.split('\n')[0]
-                group['error_type'] = error.error_type
-                group['element'] = comps.get("element")
-            group['total_errors'] += 1
-            group['files'].add(result.file_name)
+            if group["message"] is None:
+                group["message"] = error.message.split("\n")[0]
+                group["error_type"] = error.error_type
+                group["element"] = comps.get("element")
+            group["total_errors"] += 1
+            group["files"].add(result.file_name)
     return groups
 
-def merge_processing_errors(dict1: Dict[Tuple, Dict[str, Any]],
-                            dict2: Dict[Tuple, Dict[str, Any]]) -> Dict[Tuple, Dict[str, Any]]:
+
+def merge_processing_errors(
+    dict1: dict[tuple, dict[str, Any]], dict2: dict[tuple, dict[str, Any]]
+) -> dict[tuple, dict[str, Any]]:
     for key, group in dict2.items():
         if key in dict1:
             existing = dict1[key]
-            existing['total_errors'] += group['total_errors']
-            existing['files'].update(group['files'])
+            existing["total_errors"] += group["total_errors"]
+            existing["files"].update(group["files"])
         else:
             dict1[key] = group
     return dict1
 
-def finalize_processing_errors(groups: Dict[Tuple, Dict[str, Any]]) -> List[Dict[str, Any]]:
+
+def finalize_processing_errors(groups: dict[tuple, dict[str, Any]]) -> list[dict[str, Any]]:
     aggregated = []
     for group in groups.values():
-        aggregated.append({
-            'heading': "Processing error",
-            'message': group['message'],
-            'total_errors': group['total_errors'],
-            'affected_files': {
-                "total": len(group['files']),
-                "examples": sorted(list(group['files']))[:5],
-                "has_more": len(group['files']) > 5
-            },
-            'details': {}
-        })
+        aggregated.append(
+            {
+                "heading": "Processing error",
+                "message": group["message"],
+                "total_errors": group["total_errors"],
+                "affected_files": {
+                    "total": len(group["files"]),
+                    "examples": sorted(group["files"])[:5],
+                    "has_more": len(group["files"]) > 5,
+                },
+                "details": {},
+            }
+        )
     aggregated.sort(key=lambda x: x["total_errors"], reverse=True)
     return aggregated
 
-def aggregate_unknown_errors_batch(results: List[ValidationResult]) -> Dict[Tuple, Dict[str, Any]]:
-    groups = defaultdict(lambda: {
-        'message': None,
-        'error_type': None,
-        'element': None,
-        'total_errors': 0,
-        'files': set(),
-    })
+
+def aggregate_unknown_errors_batch(results: list[ValidationResult]) -> dict[tuple, dict[str, Any]]:
+    groups = defaultdict(
+        lambda: {
+            "message": None,
+            "error_type": None,
+            "element": None,
+            "total_errors": 0,
+            "files": set(),
+        }
+    )
     for result in results:
         for error in result.errors:
             if error.error_type != "unknown":
                 continue
             comps = extract_error_components(error)
-            key = (error.error_type, error.message.split('\n')[0])
+            key = (error.error_type, error.message.split("\n")[0])
             group = groups[key]
-            if group['message'] is None:
-                group['message'] = error.message.split('\n')[0]
-                group['error_type'] = error.error_type
-                group['element'] = comps.get("element")
-            group['total_errors'] += 1
-            group['files'].add(result.file_name)
+            if group["message"] is None:
+                group["message"] = error.message.split("\n")[0]
+                group["error_type"] = error.error_type
+                group["element"] = comps.get("element")
+            group["total_errors"] += 1
+            group["files"].add(result.file_name)
     return groups
 
-def merge_unknown_errors(dict1: Dict[Tuple, Dict[str, Any]],
-                         dict2: Dict[Tuple, Dict[str, Any]]) -> Dict[Tuple, Dict[str, Any]]:
+
+def merge_unknown_errors(
+    dict1: dict[tuple, dict[str, Any]], dict2: dict[tuple, dict[str, Any]]
+) -> dict[tuple, dict[str, Any]]:
     for key, group in dict2.items():
         if key in dict1:
             existing = dict1[key]
-            existing['total_errors'] += group['total_errors']
-            existing['files'].update(group['files'])
+            existing["total_errors"] += group["total_errors"]
+            existing["files"].update(group["files"])
         else:
             dict1[key] = group
     return dict1
 
-def finalize_unknown_errors(groups: Dict[Tuple, Dict[str, Any]]) -> List[Dict[str, Any]]:
+
+def finalize_unknown_errors(groups: dict[tuple, dict[str, Any]]) -> list[dict[str, Any]]:
     aggregated = []
     for group in groups.values():
-        aggregated.append({
-            'heading': "Unknown error",
-            'message': group['message'],
-            'total_errors': group['total_errors'],
-            'affected_files': {
-                "total": len(group['files']),
-                "examples": sorted(list(group['files']))[:5],
-                "has_more": len(group['files']) > 5
-            },
-            'details': {}
-        })
+        aggregated.append(
+            {
+                "heading": "Unknown error",
+                "message": group["message"],
+                "total_errors": group["total_errors"],
+                "affected_files": {
+                    "total": len(group["files"]),
+                    "examples": sorted(group["files"])[:5],
+                    "has_more": len(group["files"]) > 5,
+                },
+                "details": {},
+            }
+        )
     aggregated.sort(key=lambda x: x["total_errors"], reverse=True)
     return aggregated
 
-def aggregate_custom_rules_batch(results: List[ValidationResult]) -> Dict[str, Dict[str, List[Tuple[Dict[str, Any], str]]]]:
+
+def aggregate_custom_rules_batch(
+    results: list[ValidationResult],
+) -> dict[str, dict[str, list[tuple[dict[str, Any], str]]]]:
     rule_aggregates = defaultdict(lambda: defaultdict(list))
     for result in results:
         for rule in result.custom_rule_results:
             if isinstance(rule, dict):
-                importance = rule.get('importance', 'optional')
-                rule_name = rule.get('name')
+                importance = rule.get("importance", "optional")
+                rule_name = rule.get("name")
                 if rule_name:
                     rule_aggregates[importance][rule_name].append((rule, result.file_name))
     return rule_aggregates
 
+
 def merge_custom_rules(
-    dict1: Dict[str, Dict[str, List[Tuple[Dict[str, Any], str]]]],
-    dict2: Dict[str, Dict[str, List[Tuple[Dict[str, Any], str]]]]
-) -> Dict[str, Dict[str, List[Tuple[Dict[str, Any], str]]]]:
+    dict1: dict[str, dict[str, list[tuple[dict[str, Any], str]]]],
+    dict2: dict[str, dict[str, list[tuple[dict[str, Any], str]]]],
+) -> dict[str, dict[str, list[tuple[dict[str, Any], str]]]]:
     for importance, rules in dict2.items():
         if importance not in dict1:
             dict1[importance] = rules
@@ -499,65 +554,86 @@ def merge_custom_rules(
                 dict1[importance][rule_name].extend(rule_instances)
     return dict1
 
+
 def finalize_custom_rules(
-    rule_aggregates: Dict[str, Dict[str, List[Tuple[Dict[str, Any], str]]]]
-) -> Dict[str, List[Dict[str, Any]]]:
+    rule_aggregates: dict[str, dict[str, list[tuple[dict[str, Any], str]]]],
+) -> dict[str, list[dict[str, Any]]]:
     aggregated = {"mandatory": [], "recommended": [], "optional": []}
     for importance, rules in rule_aggregates.items():
         for rule_name, rule_instances in rules.items():
             base_rule = rule_instances[0][0]
             total_counts = {
                 "total": 0,
-                "categories": {cat: {"count": 0, "percentage": 0} for cat in ['missing', 'empty', 'invalid', 'valid']},
-                "example_values": {"valid": set(), "invalid": set()}
+                "categories": {
+                    cat: {"count": 0, "percentage": 0}
+                    for cat in ["missing", "empty", "invalid", "valid"]
+                },
+                "example_values": {"valid": set(), "invalid": set()},
             }
             affected_files = set()
             for rule_instance, file_name in rule_instances:
-                if not rule_instance.get('valid', True):
+                if not rule_instance.get("valid", True):
                     affected_files.add(file_name)
                 if "counts" in rule_instance and rule_instance["counts"]:
                     counts = rule_instance["counts"]
                     total_counts["total"] += counts.get("total", 0)
-                    for cat in ['missing', 'empty', 'invalid', 'valid']:
-                        total_counts["categories"][cat]["count"] += counts.get("categories", {}).get(cat, {}).get("count", 0)
-                    for status in ['valid', 'invalid']:
+                    for cat in ["missing", "empty", "invalid", "valid"]:
+                        total_counts["categories"][cat]["count"] += (
+                            counts.get("categories", {}).get(cat, {}).get("count", 0)
+                        )
+                    for status in ["valid", "invalid"]:
                         examples = counts.get("example_values", {}).get(status, [])
                         for ex in examples:
                             total_counts["example_values"][status].add(ex)
             for cat in total_counts["categories"]:
                 if total_counts["total"] > 0:
-                    percentage = (total_counts["categories"][cat]["count"] / total_counts["total"]) * 100
+                    percentage = (
+                        total_counts["categories"][cat]["count"] / total_counts["total"]
+                    ) * 100
                     total_counts["categories"][cat]["percentage"] = round(percentage, 1)
-            aggregated.setdefault(importance, []).append({
-                "name": rule_name,
-                "importance": importance,
-                "valid": all(r[0].get('valid', True) for r in rule_instances),
-                "message": base_rule.get('message'),
-                "context_name": base_rule.get('context_name'),
-                "path": base_rule.get('path'),
-                "counts": {
-                    "total": total_counts["total"],
-                    "categories": {cat: {"count": total_counts["categories"][cat]["count"],
-                                         "percentage": total_counts["categories"][cat]["percentage"]} for cat in total_counts["categories"]},
-                    "example_values": {status: sorted(list(vals))[:5] for status, vals in total_counts["example_values"].items()}
-                },
-                "affected_files": {
-                    "total": len(affected_files),
-                    "examples": sorted(list(affected_files))[:5],
-                    "has_more": len(affected_files) > 5
-                } if affected_files else None
-            })
+            aggregated.setdefault(importance, []).append(
+                {
+                    "name": rule_name,
+                    "importance": importance,
+                    "valid": all(r[0].get("valid", True) for r in rule_instances),
+                    "message": base_rule.get("message"),
+                    "context_name": base_rule.get("context_name"),
+                    "path": base_rule.get("path"),
+                    "counts": {
+                        "total": total_counts["total"],
+                        "categories": {
+                            cat: {
+                                "count": total_counts["categories"][cat]["count"],
+                                "percentage": total_counts["categories"][cat]["percentage"],
+                            }
+                            for cat in total_counts["categories"]
+                        },
+                        "example_values": {
+                            status: sorted(vals)[:5]
+                            for status, vals in total_counts["example_values"].items()
+                        },
+                    },
+                    "affected_files": {
+                        "total": len(affected_files),
+                        "examples": sorted(affected_files)[:5],
+                        "has_more": len(affected_files) > 5,
+                    }
+                    if affected_files
+                    else None,
+                }
+            )
     for imp in ["mandatory", "recommended", "optional"]:
         aggregated.setdefault(imp, [])
     return aggregated
 
-def aggregate_summary_batch(results: List[ValidationResult]) -> Dict[str, Any]:
+
+def aggregate_summary_batch(results: list[ValidationResult]) -> dict[str, Any]:
     summary = {
         "total_files": 0,
         "valid_files": 0,
         "total_size": 0,
         "total_time": 0.0,
-        "schema_version": None
+        "schema_version": None,
     }
     for result in results:
         summary["total_files"] += 1
@@ -569,17 +645,19 @@ def aggregate_summary_batch(results: List[ValidationResult]) -> Dict[str, Any]:
             summary["schema_version"] = result.schema_version
     return summary
 
-def merge_summary(sum1: Dict[str, Any], sum2: Dict[str, Any]) -> Dict[str, Any]:
+
+def merge_summary(sum1: dict[str, Any], sum2: dict[str, Any]) -> dict[str, Any]:
     merged = {
         "total_files": sum1.get("total_files", 0) + sum2.get("total_files", 0),
         "valid_files": sum1.get("valid_files", 0) + sum2.get("valid_files", 0),
         "total_size": sum1.get("total_size", 0) + sum2.get("total_size", 0),
         "total_time": sum1.get("total_time", 0) + sum2.get("total_time", 0),
-        "schema_version": sum1.get("schema_version") or sum2.get("schema_version")
+        "schema_version": sum1.get("schema_version") or sum2.get("schema_version"),
     }
     return merged
 
-def batch_iterator(iterable: Iterator[Any], batch_size: int) -> Iterator[List[Any]]:
+
+def batch_iterator(iterable: Iterator[Any], batch_size: int) -> Iterator[list[Any]]:
     """Yield successive batches from an iterator using islice."""
     iterator = iter(iterable)
     while True:
@@ -588,7 +666,8 @@ def batch_iterator(iterable: Iterator[Any], batch_size: int) -> Iterator[List[An
             break
         yield batch
 
-def compute_data_quality(custom_rules: Dict[str, List[Dict[str, Any]]]) -> Dict[str, Any]:
+
+def compute_data_quality(custom_rules: dict[str, list[dict[str, Any]]]) -> dict[str, Any]:
     """
     Compute quality metrics based on distinct custom rule definitions.
     For each of the 'mandatory' and 'recommended' categories, count the number
@@ -596,8 +675,18 @@ def compute_data_quality(custom_rules: Dict[str, List[Dict[str, Any]]]) -> Dict[
     a 70/30 weighting.
     """
     quality = {
-        "mandatory": {"total_rules": 0, "valid_count": 0, "invalid_count": 0, "valid_percentage": 0.0},
-        "recommended": {"total_rules": 0, "valid_count": 0, "invalid_count": 0, "valid_percentage": 0.0}
+        "mandatory": {
+            "total_rules": 0,
+            "valid_count": 0,
+            "invalid_count": 0,
+            "valid_percentage": 0.0,
+        },
+        "recommended": {
+            "total_rules": 0,
+            "valid_count": 0,
+            "invalid_count": 0,
+            "valid_percentage": 0.0,
+        },
     }
     for importance in ["mandatory", "recommended"]:
         rules = custom_rules.get(importance, [])
@@ -609,27 +698,36 @@ def compute_data_quality(custom_rules: Dict[str, List[Dict[str, Any]]]) -> Dict[
                 quality[importance]["invalid_count"] += 1
         total = quality[importance]["total_rules"]
         if total > 0:
-            quality[importance]["valid_percentage"] = round((quality[importance]["valid_count"] / total) * 100, 1)
+            quality[importance]["valid_percentage"] = round(
+                (quality[importance]["valid_count"] / total) * 100, 1
+            )
     weighted = 0.0
     if quality["mandatory"]["total_rules"] or quality["recommended"]["total_rules"]:
         weighted = (
-            0.7 * quality["mandatory"]["valid_percentage"] +
-            0.3 * quality["recommended"]["valid_percentage"]
+            0.7 * quality["mandatory"]["valid_percentage"]
+            + 0.3 * quality["recommended"]["valid_percentage"]
         )
     return {
         "mandatory": quality["mandatory"],
         "recommended": quality["recommended"],
-        "total_weighted_quality": round(weighted, 1)
+        "total_weighted_quality": round(weighted, 1),
     }
+
 
 # --- JSONReportStrategy with batched processing ---
 class JSONReportStrategy:
     def __init__(self, batch_size: int = DEFAULT_BATCH_SIZE):
         self.batch_size = batch_size
 
-    def generate_report(self, results_iterator: Iterator[ValidationResult]) -> Dict[str, Any]:
+    def generate_report(self, results_iterator: Iterator[ValidationResult]) -> dict[str, Any]:
         # Initialize accumulators
-        summary_acc = {"total_files": 0, "valid_files": 0, "total_size": 0, "total_time": 0.0, "schema_version": None}
+        summary_acc = {
+            "total_files": 0,
+            "valid_files": 0,
+            "total_size": 0,
+            "total_time": 0.0,
+            "schema_version": None,
+        }
         schema_acc = {}
         syntax_acc = {}
         encoding_acc = {}
@@ -666,7 +764,7 @@ class JSONReportStrategy:
             "total_time": summary_acc["total_time"],
             "total_time_human": format_time(summary_acc["total_time"]),
             "schema_version": summary_acc["schema_version"] or "Unknown",
-            "data_quality": compute_data_quality(final_custom_rules)
+            "data_quality": compute_data_quality(final_custom_rules),
         }
 
         schema_errors = finalize_schema_errors(schema_acc)
@@ -683,15 +781,17 @@ class JSONReportStrategy:
                 "encoding_errors": encoding_errors,
                 "processing_errors": processing_errors,
                 "unknown_errors": unknown_errors,
-                "custom_rules": final_custom_rules
-            }
+                "custom_rules": final_custom_rules,
+            },
         }
         return report
 
+
 def get_report_strategy(format: str) -> JSONReportStrategy:
-    if format != 'json':
+    if format != "json":
         raise ValueError("Only 'json' format is supported in the current implementation.")
     return JSONReportStrategy()
+
 
 if __name__ == "__main__":
     # For testing purposes

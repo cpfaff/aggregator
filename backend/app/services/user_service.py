@@ -4,21 +4,20 @@ User service for managing user operations.
 This service extracts user management business logic from route handlers,
 providing a clean interface for user CRUD and permission management.
 """
+
 import logging
-from typing import Dict, List, Optional
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import UserModel
-from app.security import (
-    get_user_model,
-    get_password_hash,
-    verify_password,
-    normalize_provider_roles,
-)
 from app.core.cache import invalidate_cache
+from app.models import UserModel
+from app.repositories.user_repository import UserRepository
+from app.security import (
+    get_password_hash,
+    normalize_provider_roles,
+    verify_password,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -28,12 +27,9 @@ class UserService:
 
     def __init__(self, db: AsyncSession):
         self.db = db
+        self.repo = UserRepository(db)
 
-    async def list_users(
-        self,
-        skip: int = 0,
-        limit: int = 100
-    ) -> List[UserModel]:
+    async def list_users(self, skip: int = 0, limit: int = 100) -> list[UserModel]:
         """
         List all users with pagination.
 
@@ -44,15 +40,9 @@ class UserService:
         Returns:
             List of UserModel instances
         """
-        result = await self.db.execute(
-            select(UserModel).offset(skip).limit(limit)
-        )
-        return list(result.scalars().all())
+        return await self.repo.list(skip=skip, limit=limit)
 
-    async def get_user_by_username(
-        self,
-        username: str
-    ) -> Optional[UserModel]:
+    async def get_user_by_username(self, username: str) -> UserModel | None:
         """
         Get a user by username.
 
@@ -62,12 +52,9 @@ class UserService:
         Returns:
             UserModel if found, None otherwise
         """
-        return await get_user_model(username, self.db)
+        return await self.repo.get_by_username(username)
 
-    async def get_user_or_404(
-        self,
-        username: str
-    ) -> UserModel:
+    async def get_user_or_404(self, username: str) -> UserModel:
         """
         Get a user by username or raise 404.
 
@@ -89,8 +76,8 @@ class UserService:
         self,
         username: str,
         password: str,
-        provider_roles: Optional[Dict[str, str]] = None,
-        is_global_admin: bool = False
+        provider_roles: dict[str, str] | None = None,
+        is_global_admin: bool = False,
     ) -> UserModel:
         """
         Create a new user.
@@ -126,9 +113,8 @@ class UserService:
             is_global_admin=is_global_admin,
         )
 
-        self.db.add(user)
-        await self.db.commit()
-        await self.db.refresh(user)
+        await self.repo.create(user)
+        await self.repo.commit()
 
         # Invalidate user list cache
         invalidate_cache("users")
@@ -139,8 +125,8 @@ class UserService:
         self,
         user: UserModel,
         new_password: str,
-        old_password: Optional[str] = None,
-        current_username: Optional[str] = None
+        old_password: str | None = None,
+        current_username: str | None = None,
     ) -> UserModel:
         """
         Update a user's password.
@@ -172,11 +158,11 @@ class UserService:
     async def update_user(
         self,
         username: str,
-        password: Optional[str] = None,
-        provider_roles: Optional[Dict[str, str]] = None,
-        is_global_admin: Optional[bool] = None,
-        old_password: Optional[str] = None,
-        current_username: Optional[str] = None
+        password: str | None = None,
+        provider_roles: dict[str, str] | None = None,
+        is_global_admin: bool | None = None,
+        old_password: str | None = None,
+        current_username: str | None = None,
     ) -> UserModel:
         """
         Update a user's information.
@@ -199,12 +185,7 @@ class UserService:
 
         # Update password if provided
         if password is not None:
-            await self.update_user_password(
-                user,
-                password,
-                old_password,
-                current_username
-            )
+            await self.update_user_password(user, password, old_password, current_username)
 
         # Update provider roles if provided
         if provider_roles is not None:
@@ -214,19 +195,15 @@ class UserService:
         if is_global_admin is not None:
             user.is_global_admin = is_global_admin
 
-        self.db.add(user)
-        await self.db.commit()
-        await self.db.refresh(user)
+        await self.repo.update(user)
+        await self.repo.commit()
 
         # Invalidate user cache
         invalidate_cache(f"user:{username}")
 
         return user
 
-    async def delete_user(
-        self,
-        username: str
-    ) -> None:
+    async def delete_user(self, username: str) -> None:
         """
         Delete a user by username.
 
@@ -238,18 +215,15 @@ class UserService:
         """
         user = await self.get_user_or_404(username)
 
-        await self.db.delete(user)
-        await self.db.commit()
+        await self.repo.delete(user)
+        await self.repo.commit()
 
         # Invalidate caches
         invalidate_cache("users")
         invalidate_cache(f"user:{username}")
 
     async def add_provider_association(
-        self,
-        username: str,
-        provider_id: int,
-        role: str
+        self, username: str, provider_id: int, role: str
     ) -> UserModel:
         """
         Add or update a provider association for a user.
@@ -272,9 +246,8 @@ class UserService:
         roles[str(provider_id)] = role
         user.provider_roles = roles
 
-        self.db.add(user)
-        await self.db.commit()
-        await self.db.refresh(user)
+        await self.repo.update(user)
+        await self.repo.commit()
 
         # Invalidate user cache
         invalidate_cache(f"user:{username}")
@@ -282,10 +255,7 @@ class UserService:
         return user
 
     async def update_provider_association(
-        self,
-        username: str,
-        provider_id: int,
-        role: str
+        self, username: str, provider_id: int, role: str
     ) -> UserModel:
         """
         Update a provider association for a user.
@@ -312,9 +282,8 @@ class UserService:
         roles[str(provider_id)] = role
         user.provider_roles = roles
 
-        self.db.add(user)
-        await self.db.commit()
-        await self.db.refresh(user)
+        await self.repo.update(user)
+        await self.repo.commit()
 
         # Invalidate caches
         invalidate_cache(f"user:{username}")
@@ -322,11 +291,7 @@ class UserService:
 
         return user
 
-    async def remove_provider_association(
-        self,
-        username: str,
-        provider_id: int
-    ) -> UserModel:
+    async def remove_provider_association(self, username: str, provider_id: int) -> UserModel:
         """
         Remove a provider association from a user.
 
@@ -351,9 +316,8 @@ class UserService:
         roles.pop(str(provider_id))
         user.provider_roles = roles
 
-        self.db.add(user)
-        await self.db.commit()
-        await self.db.refresh(user)
+        await self.repo.update(user)
+        await self.repo.commit()
 
         # Invalidate caches
         invalidate_cache(f"user:{username}")
@@ -361,10 +325,7 @@ class UserService:
 
         return user
 
-    def get_user_permissions(
-        self,
-        user: UserModel
-    ) -> Dict[str, any]:
+    def get_user_permissions(self, user: UserModel) -> dict[str, any]:
         """
         Get permissions for a user.
 

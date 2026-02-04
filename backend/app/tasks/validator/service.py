@@ -66,9 +66,7 @@ class ValidatorService:
             logger.error(f"Failed to download archive from {url}: {e}")
             raise
 
-    def validate_archive(
-        self, archive_url: str, archive_path: str | None = None
-    ) -> dict[str, Any]:
+    def validate_archive(self, archive_url: str, archive_path: str | None = None) -> dict[str, Any]:
         """
         Validate an XML archive either from a URL or local path.
 

@@ -3,8 +3,7 @@ Configuration management for the application.
 Settings are loaded from environment variables.
 """
 
-
-from pydantic import Field, field_validator
+from pydantic import ConfigDict, Field, field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -12,6 +11,8 @@ class Settings(BaseSettings):
     """
     Configuration settings for the API loaded from environment variables.
     """
+
+    model_config = ConfigDict(env_file=".env", extra="ignore")
 
     DATABASE_URL: str
     SECRET_KEY: str
@@ -57,7 +58,9 @@ class Settings(BaseSettings):
                 try:
                     return int(v)
                 except ValueError:
-                    raise ValueError("STATS_WORKER_CONCURRENCY must be 'auto' or an integer") from None
+                    raise ValueError(
+                        "STATS_WORKER_CONCURRENCY must be 'auto' or an integer"
+                    ) from None
         return v
 
     # Redis settings
@@ -75,9 +78,6 @@ class Settings(BaseSettings):
         """Build Redis URL from components"""
         auth = f":{self.REDIS_PASSWORD}@" if self.REDIS_PASSWORD else ""
         return f"redis://{auth}{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
-
-    class Config:
-        env_file = ".env"
 
 
 # Create a settings instance for use throughout the application

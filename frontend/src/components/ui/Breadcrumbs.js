@@ -3,18 +3,18 @@ import { ChevronRight, Home } from 'lucide-react';
 
 /**
  * Breadcrumbs - A navigation component showing the current location in the application
- * 
+ *
  * @param {Object} props - Component props
- * @param {Array} props.items - Array of breadcrumb items 
+ * @param {Array} props.items - Array of breadcrumb items
  *   Each item should have: { label: string, onClick: function, active: boolean (optional) }
  * @param {boolean} props.showHomeIcon - Whether to show a home icon on the first item (default: true)
  * @param {Object} props.style - Additional styles to apply to the container
  */
 function Breadcrumbs({ items = [], showHomeIcon = true, style = {} }) {
   if (!items || items.length === 0) return null;
-  
+
   return (
-    <nav 
+    <nav
       aria-label="Breadcrumb"
       style={{
         display: 'flex',
@@ -27,7 +27,7 @@ function Breadcrumbs({ items = [], showHomeIcon = true, style = {} }) {
         ...style
       }}
     >
-      <ol 
+      <ol
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -38,7 +38,7 @@ function Breadcrumbs({ items = [], showHomeIcon = true, style = {} }) {
       >
         {items.map((item, index) => {
           return (
-            <li 
+            <li
               key={`breadcrumb-${index}`}
               style={{
                 display: 'flex',
@@ -46,16 +46,16 @@ function Breadcrumbs({ items = [], showHomeIcon = true, style = {} }) {
               }}
             >
               {index > 0 && (
-                <ChevronRight 
-                  size={16} 
-                  style={{ 
-                    color: 'var(--text)', 
+                <ChevronRight
+                  size={16}
+                  style={{
+                    color: 'var(--text)',
                     opacity: 0.7,
                     margin: '0 0.5rem',
-                  }} 
+                  }}
                 />
               )}
-              
+
               <a
                 onClick={item.onClick}
                 style={{

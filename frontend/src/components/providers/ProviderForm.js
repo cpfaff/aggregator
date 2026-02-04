@@ -49,20 +49,20 @@ function ProviderForm({ provider, onClose, onTokenExpired, currentUser, onDirtyC
   const handleFormSubmit = async (values) => {
     setIsLoading(true);
     setError('');
-    
+
     try {
       // Clone the form values to avoid mutating
       const sanitizedFormData = { ...values };
-      
+
       // Remove any empty strings for optional URL fields
       if (!sanitizedFormData.url || sanitizedFormData.url.trim() === '') {
         sanitizedFormData.url = null;
       }
-      
+
       if (!sanitizedFormData.biocaseUrl || sanitizedFormData.biocaseUrl.trim() === '') {
         sanitizedFormData.biocaseUrl = null;
       }
-      
+
       let res;
       if (isEditing) {
         res = await apiRequest(`/data-providers/${provider.id}`, {
@@ -77,7 +77,7 @@ function ProviderForm({ provider, onClose, onTokenExpired, currentUser, onDirtyC
           body: JSON.stringify(sanitizedFormData)
         }, onTokenExpired);
       }
-      
+
       if (!res.ok) {
         let errorMessage = 'Failed to save provider';
         try {
@@ -90,12 +90,12 @@ function ProviderForm({ provider, onClose, onTokenExpired, currentUser, onDirtyC
         setIsLoading(false);
         return;
       }
-      
+
       const updatedProvider = await res.json();
       setIsLoading(false);
       showToast(
-        isEditing 
-          ? `Provider "${updatedProvider.name}" updated successfully!` 
+        isEditing
+          ? `Provider "${updatedProvider.name}" updated successfully!`
           : `Provider "${updatedProvider.name}" created successfully!`,
         'success'
       );
@@ -134,7 +134,7 @@ function ProviderForm({ provider, onClose, onTokenExpired, currentUser, onDirtyC
   return (
     <div>
       {error && <Alert type="error">{error}</Alert>}
-      
+
       <form onSubmit={form.handleSubmit} noValidate>
         <FormField
           type="text"
@@ -148,7 +148,7 @@ function ProviderForm({ provider, onClose, onTokenExpired, currentUser, onDirtyC
           placeholder="Enter datacenter name"
           required
         />
-        
+
         <FormField
           type="text"
           name="shortName"
@@ -162,7 +162,7 @@ function ProviderForm({ provider, onClose, onTokenExpired, currentUser, onDirtyC
           helpText="A brief identifier for this provider"
           required
         />
-        
+
         <FormField
           type="text"
           name="name"
@@ -175,7 +175,7 @@ function ProviderForm({ provider, onClose, onTokenExpired, currentUser, onDirtyC
           placeholder="Enter full provider name"
           required
         />
-        
+
         <FormField
           type="url"
           name="url"
@@ -188,7 +188,7 @@ function ProviderForm({ provider, onClose, onTokenExpired, currentUser, onDirtyC
           placeholder="https://example.com"
           helpText="Optional: The provider's website URL"
         />
-        
+
         <FormField
           type="url"
           name="biocaseUrl"
@@ -201,7 +201,7 @@ function ProviderForm({ provider, onClose, onTokenExpired, currentUser, onDirtyC
           placeholder="https://biocase.example.com"
           helpText="Optional: The provider's BioCASe service URL"
         />
-        
+
         {/* Data Center Checkbox - only visible to global admins */}
         {currentUser?.is_global_admin && (
           <FormField
@@ -216,7 +216,7 @@ function ProviderForm({ provider, onClose, onTokenExpired, currentUser, onDirtyC
             helpText="Designates this provider as an official data center (global admin only)"
           />
         )}
-        
+
         <div style={{
           display: 'flex',
           justifyContent: 'flex-end',

@@ -1,78 +1,70 @@
+import logging
 import time
 import uuid
-import logging
 from datetime import datetime
 
-from typing import List, Optional
-
 from fastapi import (
+    APIRouter,
+    Depends,
     FastAPI,
     HTTPException,
-    Depends,
-    status,
-    Request,
-    Body,
-    APIRouter,
     Query,
+    Request,
+    status,
 )
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import select, and_
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
-from pythonjsonlogger import jsonlogger
-
-# Import application components
-from app.core.config import settings
-from app.core.utils import apply_entity_updates
-from app.core.cache import cache_response, invalidate_cache
-from app.models import (
-    Base,
-    UserModel,
-    DataProviderModel,
-    DatasetModel,
-    XmlArchiveModel,
-    UsefulLinkModel,
-)
-from app.db import get_db
-from app.schemas import (
-    DataProvider,
-    Dataset,
-    XmlArchive,
-    UsefulLink,
-    LegacyDataset,
-    LegacyXmlArchive,
-    LegacyUsefulLink,
-)
-from app.security import (
-    get_current_user,
-    normalize_provider_roles,
-    check_global_admin,
-)
 
 # Import slowapi components for rate limiting
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from sqlalchemy import and_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 from starlette.middleware.base import BaseHTTPMiddleware
 
 # Import shared API dependencies
-from app.api.deps import limiter, csrf_protect, provider_permission
+from app.api.deps import csrf_protect, limiter, provider_permission
+from app.core.cache import cache_response, invalidate_cache
+
+# Import application components
+from app.core.config import settings
+from app.core.logging_config import configure_logging, request_id_var
+from app.core.utils import apply_entity_updates
+from app.db import get_db
+from app.models import (
+    DataProviderModel,
+    DatasetModel,
+    UsefulLinkModel,
+    UserModel,
+    XmlArchiveModel,
+)
+from app.schemas import (
+    DataProvider,
+    Dataset,
+    LegacyDataset,
+    LegacyUsefulLink,
+    LegacyXmlArchive,
+    UsefulLink,
+    XmlArchive,
+)
+from app.security import (
+    check_global_admin,
+    get_current_user,
+    normalize_provider_roles,
+)
 
 # ------------------- Logging Configuration -------------------
-log_handler = logging.StreamHandler()
-formatter = jsonlogger.JsonFormatter()
-log_handler.setFormatter(formatter)
-
+configure_logging(level=settings.LOG_LEVEL)
 logger = logging.getLogger("api")
-logger.addHandler(log_handler)
-logger.setLevel(getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO))
 
 # ------------------- Database Setup -------------------
 # Database configuration moved to app.db module
 # - Engine configuration in app.db.base
 # - Session management in app.db.session
+
 
 # ------------------- Helper Functions -------------------
 def trim_string(value: str):
@@ -80,6 +72,7 @@ def trim_string(value: str):
     if value is None:
         return None
     return value.strip()
+
 
 # ------------------- Create FastAPI app and routers -------------------
 app = FastAPI(
@@ -90,6 +83,8 @@ app = FastAPI(
     redoc_url="/api/redoc",
 )
 
+# Legacy router for old endpoints defined in main.py
+# These should be migrated to the modular routers in app/api/v1/endpoints/
 v1_router = APIRouter(prefix="/api/v1")
 
 # Register rate limiter with the app
@@ -112,14 +107,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
-        response.headers["Strict-Transport-Security"] = (
-            "max-age=31536000; includeSubDomains"
-        )
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        response.headers["Permissions-Policy"] = (
-            "camera=(), microphone=(), geolocation=()"
-        )
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
         return response
 
 
@@ -132,18 +123,20 @@ async def log_requests(request: Request, call_next):
     """Log incoming requests and their completion status."""
     request_id = str(uuid.uuid4())
     request.state.request_id = request_id
-    logger.info(
-        f"Request started: {request.method} {request.url.path}",
-        extra={
-            "request_id": request_id,
-            "method": request.method,
-            "path": request.url.path,
-            "client_ip": request.client.host if request.client else None,
-            "user_agent": request.headers.get("user-agent"),
-        },
-    )
-    start_time = time.time()
+
+    # Set request_id in contextvars so all loggers automatically include it
+    token = request_id_var.set(request_id)
     try:
+        logger.info(
+            f"Request started: {request.method} {request.url.path}",
+            extra={
+                "method": request.method,
+                "path": request.url.path,
+                "client_ip": request.client.host if request.client else None,
+                "user_agent": request.headers.get("user-agent"),
+            },
+        )
+        start_time = time.time()
         response = await call_next(request)
         process_time = time.time() - start_time
         response.headers["X-Process-Time"] = f"{process_time:.4f}"
@@ -151,7 +144,6 @@ async def log_requests(request: Request, call_next):
         logger.info(
             f"Request completed: {request.method} {request.url.path}",
             extra={
-                "request_id": request_id,
                 "method": request.method,
                 "path": request.url.path,
                 "status_code": response.status_code,
@@ -164,7 +156,6 @@ async def log_requests(request: Request, call_next):
         logger.error(
             f"Request failed: {request.method} {request.url.path}",
             extra={
-                "request_id": request_id,
                 "method": request.method,
                 "path": request.url.path,
                 "error": str(e),
@@ -173,6 +164,8 @@ async def log_requests(request: Request, call_next):
             exc_info=True,
         )
         raise
+    finally:
+        request_id_var.reset(token)
 
 
 # ------------------- Exception Handlers -------------------
@@ -180,7 +173,7 @@ class ErrorResponse(BaseModel):
     detail: str
     code: str
     timestamp: datetime = Field(default_factory=datetime.utcnow)
-    path: Optional[str] = None
+    path: str | None = None
 
 
 @app.exception_handler(RequestValidationError)
@@ -249,23 +242,22 @@ async def general_exception_handler(request: Request, exc: Exception):
         },
     )
 
+
 # ------------------- Endpoints -------------------
 # Note: Auth endpoints (csrf-token, auth-token, refresh-token) moved to app/api/v1/endpoints/auth.py
 # Note: Health check endpoint moved to app/api/v1/endpoints/health.py
 # Note: User endpoints (users, me/permissions, provider associations) moved to app/api/v1/endpoints/users.py
 
+
 # Data Provider Endpoints
-@v1_router.get(
-    "/data-providers", response_model=List[DataProvider], summary="List data providers"
-)
+# TODO-REMOVE(aggregator-6ev): Move DB logic from provider handlers to ProviderService, keep handlers thin
+@v1_router.get("/data-providers", response_model=list[DataProvider], summary="List data providers")
 @cache_response(prefix="providers", ttl_seconds=300)
 async def get_providers(
-    name: Optional[str] = Query(None, description="Filter by provider name"),
-    datacenter: Optional[str] = Query(None, description="Filter by datacenter"),
+    name: str | None = Query(None, description="Filter by provider name"),
+    datacenter: str | None = Query(None, description="Filter by datacenter"),
     skip: int = Query(0, ge=0, description="Number of items to skip"),
-    limit: int = Query(
-        100, ge=1, le=1000, description="Maximum number of items to return"
-    ),
+    limit: int = Query(100, ge=1, le=1000, description="Maximum number of items to return"),
     current_user: UserModel = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -300,7 +292,7 @@ async def get_providers(
         selectinload(DataProviderModel.datasets).selectinload(DatasetModel.xmlArchives),
         selectinload(DataProviderModel.datasets).selectinload(DatasetModel.usefulLinks),
     )
-    
+
     # Add consistent ordering by ID
     query = query.order_by(DataProviderModel.id)
 
@@ -325,20 +317,14 @@ async def get_provider(
     - **provider_id**: Must be a positive integer
     """
     if provider_id <= 0:
-        raise HTTPException(
-            status_code=400, detail="Provider ID must be a positive integer"
-        )
+        raise HTTPException(status_code=400, detail="Provider ID must be a positive integer")
 
     result = await db.execute(
         select(DataProviderModel)
         .where(DataProviderModel.id == provider_id)
         .options(
-            selectinload(DataProviderModel.datasets).selectinload(
-                DatasetModel.xmlArchives
-            ),
-            selectinload(DataProviderModel.datasets).selectinload(
-                DatasetModel.usefulLinks
-            ),
+            selectinload(DataProviderModel.datasets).selectinload(DatasetModel.xmlArchives),
+            selectinload(DataProviderModel.datasets).selectinload(DatasetModel.usefulLinks),
         )
     )
     provider = result.scalar_one_or_none()
@@ -383,9 +369,7 @@ async def create_provider(
             )
             if dataset_data.get("landingPageUrl"):
                 dataset_data["landingPageUrl"] = (
-                    str(dataset_data["landingPageUrl"])
-                    if dataset_data["landingPageUrl"]
-                    else None
+                    str(dataset_data["landingPageUrl"]) if dataset_data["landingPageUrl"] else None
                 )
             db_dataset = DatasetModel(**dataset_data)
             if dataset.xmlArchives and len(dataset.xmlArchives) > 0:
@@ -396,9 +380,7 @@ async def create_provider(
             if dataset.usefulLinks and len(dataset.usefulLinks) > 0:
                 for link in dataset.usefulLinks:
                     db_dataset.usefulLinks.append(
-                        UsefulLinkModel(
-                            title=link.title, url=str(link.url), isLatest=link.isLatest
-                        )
+                        UsefulLinkModel(title=link.title, url=str(link.url), isLatest=link.isLatest)
                     )
             provider_obj.datasets.append(db_dataset)
     db.add(provider_obj)
@@ -407,12 +389,8 @@ async def create_provider(
     result = await db.execute(
         select(DataProviderModel)
         .options(
-            selectinload(DataProviderModel.datasets).selectinload(
-                DatasetModel.xmlArchives
-            ),
-            selectinload(DataProviderModel.datasets).selectinload(
-                DatasetModel.usefulLinks
-            ),
+            selectinload(DataProviderModel.datasets).selectinload(DatasetModel.xmlArchives),
+            selectinload(DataProviderModel.datasets).selectinload(DatasetModel.usefulLinks),
         )
         .where(DataProviderModel.id == provider_obj.id)
     )
@@ -438,38 +416,32 @@ async def update_provider(
     """
     Update a data provider. Requires write permissions for the provider.
     - **provider_id**: Must be a positive integer
-    
+
     Note: The isDataCenter field can only be modified by global admins.
     """
     if provider_id <= 0:
-        raise HTTPException(
-            status_code=400, detail="Provider ID must be a positive integer"
-        )
+        raise HTTPException(status_code=400, detail="Provider ID must be a positive integer")
 
     result = await db.execute(
         select(DataProviderModel)
         .options(
-            selectinload(DataProviderModel.datasets).selectinload(
-                DatasetModel.xmlArchives
-            ),
-            selectinload(DataProviderModel.datasets).selectinload(
-                DatasetModel.usefulLinks
-            ),
+            selectinload(DataProviderModel.datasets).selectinload(DatasetModel.xmlArchives),
+            selectinload(DataProviderModel.datasets).selectinload(DatasetModel.usefulLinks),
         )
         .where(DataProviderModel.id == provider_id)
     )
     db_provider = result.scalar_one_or_none()
     if not db_provider:
         raise HTTPException(status_code=404, detail="Provider not found")
-    
+
     # Check if isDataCenter field is being updated
     provider_data = provider.model_dump(exclude={"datasets", "id"}, exclude_unset=True)
-    
+
     # Only allow global admins to modify isDataCenter field
     if "isDataCenter" in provider_data and not current_user.is_global_admin:
         # Remove isDataCenter from update if user is not a global admin
         del provider_data["isDataCenter"]
-    
+
     if provider_data.get("url"):
         provider_data["url"] = str(provider_data["url"])
     if provider_data.get("biocaseUrl"):
@@ -479,9 +451,7 @@ async def update_provider(
     async with db.begin_nested():
         # Only process datasets if they were explicitly included in the request
         if "datasets" in provider.model_dump(exclude_unset=True) and provider.datasets is not None:
-            existing_datasets = {
-                ds.id: ds for ds in db_provider.datasets if ds.id is not None
-            }
+            existing_datasets = {ds.id: ds for ds in db_provider.datasets if ds.id is not None}
             processed_dataset_ids = set()
             updated_datasets = []
             for dataset in provider.datasets:
@@ -537,9 +507,7 @@ async def update_provider(
                     if dataset.xmlArchives:
                         for archive in dataset.xmlArchives:
                             new_dataset.xmlArchives.append(
-                                XmlArchiveModel(
-                                    url=str(archive.url), isLatest=archive.isLatest
-                                )
+                                XmlArchiveModel(url=str(archive.url), isLatest=archive.isLatest)
                             )
                     if dataset.usefulLinks:
                         for link in dataset.usefulLinks:
@@ -556,12 +524,8 @@ async def update_provider(
     result = await db.execute(
         select(DataProviderModel)
         .options(
-            selectinload(DataProviderModel.datasets).selectinload(
-                DatasetModel.xmlArchives
-            ),
-            selectinload(DataProviderModel.datasets).selectinload(
-                DatasetModel.usefulLinks
-            ),
+            selectinload(DataProviderModel.datasets).selectinload(DatasetModel.xmlArchives),
+            selectinload(DataProviderModel.datasets).selectinload(DatasetModel.usefulLinks),
         )
         .where(DataProviderModel.id == provider_id)
     )
@@ -573,7 +537,9 @@ async def update_provider(
     # Trigger snapshot collection for any archives to capture unit count
     provider_result = result.scalar_one()
     if provider.datasets is not None:
+        # TODO-REMOVE(aggregator-zai): Move to module-level imports after service extraction
         from app.tasks.snapshot_tasks import collect_single_archive_snapshot
+
         for dataset in provider_result.datasets:
             for archive in dataset.xmlArchives:
                 collect_single_archive_snapshot.delay(archive.id)
@@ -582,9 +548,7 @@ async def update_provider(
 
 
 @csrf_protect.validate_csrf
-@v1_router.delete(
-    "/data-providers/{provider_id}", status_code=204, summary="Delete data provider"
-)
+@v1_router.delete("/data-providers/{provider_id}", status_code=204, summary="Delete data provider")
 async def delete_provider(
     provider_id: int,
     current_user: UserModel = Depends(get_current_user),
@@ -595,13 +559,9 @@ async def delete_provider(
     - **provider_id**: Must be a positive integer
     """
     if provider_id <= 0:
-        raise HTTPException(
-            status_code=400, detail="Provider ID must be a positive integer"
-        )
+        raise HTTPException(status_code=400, detail="Provider ID must be a positive integer")
     check_global_admin(current_user)
-    result = await db.execute(
-        select(DataProviderModel).where(DataProviderModel.id == provider_id)
-    )
+    result = await db.execute(select(DataProviderModel).where(DataProviderModel.id == provider_id))
     provider = result.scalar_one_or_none()
     if provider:
         await db.delete(provider)
@@ -615,20 +575,19 @@ async def delete_provider(
 
 
 # Dataset Endpoints
+# TODO-REMOVE(aggregator-8xx): Move DB logic from dataset handlers to DatasetService, keep handlers thin
 @v1_router.get(
     "/data-providers/{provider_id}/data-sets",
-    response_model=List[Dataset],
+    response_model=list[Dataset],
     summary="List datasets for provider",
 )
 @cache_response(prefix="datasets", ttl_seconds=300)
 async def get_datasets(
     provider_id: int,
-    title: Optional[str] = Query(None, description="Filter by dataset title"),
-    source: Optional[str] = Query(None, description="Filter by dataset source"),
+    title: str | None = Query(None, description="Filter by dataset title"),
+    source: str | None = Query(None, description="Filter by dataset source"),
     skip: int = Query(0, ge=0, description="Number of items to skip"),
-    limit: int = Query(
-        100, ge=1, le=1000, description="Maximum number of items to return"
-    ),
+    limit: int = Query(100, ge=1, le=1000, description="Maximum number of items to return"),
     current_user: UserModel = Depends(provider_permission("read")),
     db: AsyncSession = Depends(get_db),
 ):
@@ -639,9 +598,7 @@ async def get_datasets(
     Supports filtering by title or source and pagination with skip/limit.
     """
     if provider_id <= 0:
-        raise HTTPException(
-            status_code=400, detail="Provider ID must be a positive integer"
-        )
+        raise HTTPException(status_code=400, detail="Provider ID must be a positive integer")
 
     # Base query
     query = select(DatasetModel).where(DatasetModel.provider_id == provider_id)
@@ -687,9 +644,7 @@ async def get_dataset(
 
     result = await db.execute(
         select(DatasetModel)
-        .where(
-            and_(DatasetModel.provider_id == provider_id, DatasetModel.id == dataset_id)
-        )
+        .where(and_(DatasetModel.provider_id == provider_id, DatasetModel.id == dataset_id))
         .options(
             selectinload(DatasetModel.xmlArchives),
             selectinload(DatasetModel.usefulLinks),
@@ -719,13 +674,9 @@ async def create_dataset(
     - **provider_id**: Must be a positive integer
     """
     if provider_id <= 0:
-        raise HTTPException(
-            status_code=400, detail="Provider ID must be a positive integer"
-        )
+        raise HTTPException(status_code=400, detail="Provider ID must be a positive integer")
 
-    result = await db.execute(
-        select(DataProviderModel).where(DataProviderModel.id == provider_id)
-    )
+    result = await db.execute(select(DataProviderModel).where(DataProviderModel.id == provider_id))
     provider = result.scalar_one_or_none()
     if not provider:
         raise HTTPException(status_code=404, detail="Provider not found")
@@ -743,9 +694,7 @@ async def create_dataset(
     if dataset.usefulLinks:
         for link in dataset.usefulLinks:
             dataset_obj.usefulLinks.append(
-                UsefulLinkModel(
-                    title=link.title, url=str(link.url), isLatest=link.isLatest
-                )
+                UsefulLinkModel(title=link.title, url=str(link.url), isLatest=link.isLatest)
             )
     db.add(dataset_obj)
     await db.commit()
@@ -767,7 +716,9 @@ async def create_dataset(
     # Trigger snapshot collection for any archives created with this dataset
     dataset_result = result.scalar_one()
     if dataset_result.xmlArchives:
+        # TODO-REMOVE(aggregator-zai): Move to module-level imports after service extraction
         from app.tasks.snapshot_tasks import collect_single_archive_snapshot
+
         for archive in dataset_result.xmlArchives:
             collect_single_archive_snapshot.delay(archive.id)
 
@@ -801,9 +752,7 @@ async def update_dataset(
             selectinload(DatasetModel.xmlArchives),
             selectinload(DatasetModel.usefulLinks),
         )
-        .where(
-            and_(DatasetModel.provider_id == provider_id, DatasetModel.id == dataset_id)
-        )
+        .where(and_(DatasetModel.provider_id == provider_id, DatasetModel.id == dataset_id))
     )
     db_dataset = result.scalar_one_or_none()
     if not db_dataset:
@@ -859,7 +808,9 @@ async def update_dataset(
     # Trigger snapshot collection for any new archives to capture unit count
     dataset_result = result.scalar_one()
     if dataset.xmlArchives is not None:
+        # TODO-REMOVE(aggregator-zai): Move to module-level imports after service extraction
         from app.tasks.snapshot_tasks import collect_single_archive_snapshot
+
         for archive in dataset_result.xmlArchives:
             # Only trigger for archives that don't have snapshots yet
             # The task will handle the isLatest check
@@ -882,16 +833,16 @@ async def delete_dataset(
 ):
     """
     Delete a dataset for a specific provider. Requires delete permissions.
-    
+
     This performs a complete cascade deletion, removing:
     - All statistics records for the dataset
     - All validation jobs for the dataset's archives
     - All XML archives
     - All useful links
     - The dataset itself
-    
+
     After deletion, provider statistics are automatically re-aggregated.
-    
+
     - **provider_id**: Must be a positive integer
     - **dataset_id**: Must be a positive integer
     """
@@ -907,46 +858,44 @@ async def delete_dataset(
     dataset_obj = result.scalar_one_or_none()
     if not dataset_obj:
         raise HTTPException(status_code=404, detail="Dataset not found")
-    
+
     # Use the cascade deletion service
+    # TODO-REMOVE(aggregator-zai): Move to module-level imports after service extraction
     from app.services.dataset_deletion import DatasetDeletionService
-    
+
     deletion_service = DatasetDeletionService(db)
-    
+
     try:
         # Perform cascade deletion
         deletion_summary = await deletion_service.delete_dataset_cascade(
-            dataset_id=dataset_id,
-            provider_id=provider_id
+            dataset_id=dataset_id, provider_id=provider_id
         )
-        
+
         # Log the deletion summary
         logger.info(f"Dataset {dataset_id} cascade deletion completed: {deletion_summary}")
-        
+
         # Invalidate dataset and provider caches
         invalidate_cache(f"dataset:{dataset_id}")
         invalidate_cache("datasets")
         invalidate_cache(f"provider:{provider_id}")
         invalidate_cache("providers")
-        
+
         # Return deletion summary for transparency
         return {
             "message": "Dataset and all associated data deleted successfully",
-            "deletion_summary": deletion_summary
+            "deletion_summary": deletion_summary,
         }
-        
+
     except Exception as e:
         logger.error(f"Failed to delete dataset {dataset_id}: {e}")
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Failed to delete dataset: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to delete dataset: {str(e)}") from e
 
 
 # XML Archive Endpoints
+# TODO-REMOVE(aggregator-hj8): Move DB logic from archive/link handlers to ArchiveService/LinkService, keep handlers thin
 @v1_router.get(
     "/data-providers/{provider_id}/data-sets/{dataset_id}/xml-archives",
-    response_model=List[XmlArchive],
+    response_model=list[XmlArchive],
     summary="List XML archives",
 )
 @cache_response(prefix="xml-archives", ttl_seconds=300)
@@ -967,9 +916,7 @@ async def get_xml_archives(
     result = await db.execute(
         select(XmlArchiveModel)
         .join(DatasetModel)
-        .where(
-            and_(DatasetModel.provider_id == provider_id, DatasetModel.id == dataset_id)
-        )
+        .where(and_(DatasetModel.provider_id == provider_id, DatasetModel.id == dataset_id))
     )
     return result.scalars().all()
 
@@ -1020,20 +967,25 @@ async def create_xml_archive(
     invalidate_cache("datasets")
 
     # Automatically trigger validation task
+    # TODO-REMOVE(aggregator-zai): Move to module-level imports after service extraction
     from app.tasks.validator_tasks import validate_archive
+
     validate_archive.delay(xml_obj.id)
 
     # Trigger snapshot collection for this archive to capture unit count immediately
+    # TODO-REMOVE(aggregator-zai): Move to module-level imports after service extraction
     from app.tasks.snapshot_tasks import collect_single_archive_snapshot
+
     collect_single_archive_snapshot.delay(xml_obj.id)
 
     return xml_obj
 
 
 # Useful Link Endpoints
+# TODO-REMOVE(aggregator-hj8): Move DB logic from link handlers to LinkService, keep handlers thin
 @v1_router.get(
     "/data-providers/{provider_id}/data-sets/{dataset_id}/useful-links",
-    response_model=List[UsefulLink],
+    response_model=list[UsefulLink],
     summary="List useful links",
 )
 @cache_response(prefix="useful-links", ttl_seconds=300)
@@ -1054,9 +1006,7 @@ async def get_useful_links(
     result = await db.execute(
         select(UsefulLinkModel)
         .join(DatasetModel)
-        .where(
-            and_(DatasetModel.provider_id == provider_id, DatasetModel.id == dataset_id)
-        )
+        .where(and_(DatasetModel.provider_id == provider_id, DatasetModel.id == dataset_id))
     )
     return result.scalars().all()
 
@@ -1110,7 +1060,8 @@ async def create_useful_link(
 
 
 # Legacy Harvesting Endpoint
-@v1_router.get("/legacy-data-sets", response_model=List[LegacyDataset])
+# TODO-REMOVE(aggregator-lwf): Evaluate if legacy harvesting endpoint is still needed by external consumers
+@v1_router.get("/legacy-data-sets", response_model=list[LegacyDataset])
 @limiter.limit(settings.HARVEST_RATE_LIMIT)
 async def harvest_datasets(request: Request, db: AsyncSession = Depends(get_db)):
     """
@@ -1119,12 +1070,8 @@ async def harvest_datasets(request: Request, db: AsyncSession = Depends(get_db))
     try:
         # Query all providers with their datasets, xml archives, and useful links
         query = select(DataProviderModel).options(
-            selectinload(DataProviderModel.datasets).selectinload(
-                DatasetModel.xmlArchives
-            ),
-            selectinload(DataProviderModel.datasets).selectinload(
-                DatasetModel.usefulLinks
-            ),
+            selectinload(DataProviderModel.datasets).selectinload(DatasetModel.xmlArchives),
+            selectinload(DataProviderModel.datasets).selectinload(DatasetModel.usefulLinks),
         )
 
         result = await db.execute(query)
@@ -1179,15 +1126,20 @@ async def harvest_datasets(request: Request, db: AsyncSession = Depends(get_db))
         return legacy_datasets
     except Exception as e:
         logger.error(f"Error in harvest endpoint: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}") from e
 
 
-# Include v1 router in the main app
-app.include_router(v1_router)
+# Include the API router with proper versioning and backwards compatibility
+from app.api.router import api_router  # noqa: E402
 
-# Include the new API router with proper versioning
-from app.api.router import api_router
 app.include_router(api_router, prefix="/api")
+
+# Also include api_v1_router directly without prefix for backwards compatibility
+# This allows existing clients to use /users instead of /api/v1/users or /api/users
+from app.api.v1.router import api_v1_router  # noqa: E402
+
+app.include_router(api_v1_router)
+
 
 # ------------------- Startup Event -------------------
 @app.on_event("startup")

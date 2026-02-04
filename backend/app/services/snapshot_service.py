@@ -11,14 +11,10 @@ import logging
 from datetime import date, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import and_, desc, func
 from sqlalchemy.orm import Session
 
-from app.models.archive_snapshot import ArchiveSnapshotModel
-from app.models.dataset import DatasetModel, XmlArchiveModel
-from app.models.provider import DataProviderModel
-from app.models.user import UserModel
-from app.models.validation import ValidationJobModel
+from app.models import DataProviderModel, DatasetModel, UserModel
+from app.repositories.snapshot_repository import SnapshotRepository
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +24,7 @@ class SnapshotService:
 
     def __init__(self, db: Session):
         self.db = db
+        self.repo = SnapshotRepository(db)
 
     # -------------------------------------------------------------------------
     # Overview & Counts (live database queries, not from snapshots)
@@ -37,38 +34,22 @@ class SnapshotService:
         self, user: UserModel | None = None, include_sensitive: bool = False
     ) -> dict[str, Any]:
         """Get system overview statistics using live counts."""
-        total_datasets = self.db.query(func.count(DatasetModel.id)).scalar() or 0
-        total_providers = self.db.query(func.count(DataProviderModel.id)).scalar() or 0
-        total_archives = self.db.query(func.count(XmlArchiveModel.id)).scalar() or 0
-        total_datacenters = (
-            self.db.query(func.count(DataProviderModel.id))
-            .filter(DataProviderModel.isDataCenter)
-            .scalar()
-            or 0
-        )
-
         validation_success_rate = self._calculate_validation_success_rate(days=30)
 
         return {
-            "total_datasets": total_datasets,
-            "total_providers": total_providers,
-            "total_datacenters": total_datacenters,
-            "total_xml_archives": total_archives,
+            "total_datasets": self.repo.count_datasets(),
+            "total_providers": self.repo.count_providers(),
+            "total_datacenters": self.repo.count_datacenters(),
+            "total_xml_archives": self.repo.count_archives(),
             "validation_success_rate": validation_success_rate,
             "last_updated": datetime.utcnow(),
         }
 
-    def get_quality_metrics(
-        self, user: UserModel | None = None, days: int = 30
-    ) -> dict[str, Any]:
+    def get_quality_metrics(self, user: UserModel | None = None, days: int = 30) -> dict[str, Any]:
         """Get data quality metrics from validation jobs."""
         cutoff_date = date.today() - timedelta(days=days)
 
-        recent_jobs = (
-            self.db.query(ValidationJobModel)
-            .filter(ValidationJobModel.created_at >= cutoff_date)
-            .all()
-        )
+        recent_jobs = self.repo.get_validation_jobs_since(cutoff_date)
 
         total_validations = len(recent_jobs)
         successful_validations = len(
@@ -107,17 +88,7 @@ class SnapshotService:
     def _calculate_validation_success_rate(self, days: int = 30) -> float | None:
         """Calculate validation success rate for the last N days."""
         cutoff_date = date.today() - timedelta(days=days)
-
-        completed_jobs = (
-            self.db.query(ValidationJobModel)
-            .filter(
-                and_(
-                    ValidationJobModel.created_at >= cutoff_date,
-                    ValidationJobModel.status == "completed",
-                )
-            )
-            .all()
-        )
+        completed_jobs = self.repo.get_completed_validation_jobs(since=cutoff_date)
 
         if not completed_jobs:
             return None
@@ -135,105 +106,16 @@ class SnapshotService:
     # -------------------------------------------------------------------------
 
     def get_dataset_unit_count(self, dataset_id: int) -> int:
-        """
-        Get total unit count for a dataset.
-
-        Uses the LATEST snapshot for each archive belonging to this dataset.
-        Only counts archives where isLatest=True.
-        """
-        # Subquery to get latest snapshot per archive for this dataset
-        # Only include archives where isLatest=True
-        latest_per_archive = (
-            self.db.query(
-                ArchiveSnapshotModel.archive_id,
-                func.max(ArchiveSnapshotModel.recorded_at).label("max_recorded"),
-            )
-            .join(XmlArchiveModel, ArchiveSnapshotModel.archive_id == XmlArchiveModel.id)
-            .filter(XmlArchiveModel.dataset_id == dataset_id, XmlArchiveModel.isLatest)
-            .group_by(ArchiveSnapshotModel.archive_id)
-            .subquery()
-        )
-
-        # Get sum of unit counts from latest snapshots
-        result = (
-            self.db.query(func.sum(ArchiveSnapshotModel.unit_count))
-            .join(
-                latest_per_archive,
-                and_(
-                    ArchiveSnapshotModel.archive_id == latest_per_archive.c.archive_id,
-                    ArchiveSnapshotModel.recorded_at == latest_per_archive.c.max_recorded,
-                ),
-            )
-            .scalar()
-        )
-
-        return result or 0
+        """Get total unit count for a dataset."""
+        return self.repo.get_unit_count(dataset_id=dataset_id)
 
     def get_provider_unit_count(self, provider_id: int) -> int:
-        """
-        Get total unit count for a provider.
-
-        Aggregates across all datasets owned by this provider.
-        Only counts archives where isLatest=True.
-        """
-        # Subquery for latest snapshot per archive
-        # Only include archives where isLatest=True
-        latest_per_archive = (
-            self.db.query(
-                ArchiveSnapshotModel.archive_id,
-                func.max(ArchiveSnapshotModel.recorded_at).label("max_recorded"),
-            )
-            .join(XmlArchiveModel, ArchiveSnapshotModel.archive_id == XmlArchiveModel.id)
-            .join(DatasetModel, XmlArchiveModel.dataset_id == DatasetModel.id)
-            .filter(DatasetModel.provider_id == provider_id, XmlArchiveModel.isLatest)
-            .group_by(ArchiveSnapshotModel.archive_id)
-            .subquery()
-        )
-
-        result = (
-            self.db.query(func.sum(ArchiveSnapshotModel.unit_count))
-            .join(
-                latest_per_archive,
-                and_(
-                    ArchiveSnapshotModel.archive_id == latest_per_archive.c.archive_id,
-                    ArchiveSnapshotModel.recorded_at == latest_per_archive.c.max_recorded,
-                ),
-            )
-            .scalar()
-        )
-
-        return result or 0
+        """Get total unit count for a provider."""
+        return self.repo.get_unit_count(provider_id=provider_id)
 
     def get_total_biological_units(self) -> int:
-        """Get total biological units across all archives (system-wide).
-
-        Only counts archives where isLatest=True.
-        """
-        # Get latest snapshot per archive, only for isLatest=True archives
-        latest_per_archive = (
-            self.db.query(
-                ArchiveSnapshotModel.archive_id,
-                func.max(ArchiveSnapshotModel.recorded_at).label("max_recorded"),
-            )
-            .join(XmlArchiveModel, ArchiveSnapshotModel.archive_id == XmlArchiveModel.id)
-            .filter(XmlArchiveModel.isLatest)
-            .group_by(ArchiveSnapshotModel.archive_id)
-            .subquery()
-        )
-
-        result = (
-            self.db.query(func.sum(ArchiveSnapshotModel.unit_count))
-            .join(
-                latest_per_archive,
-                and_(
-                    ArchiveSnapshotModel.archive_id == latest_per_archive.c.archive_id,
-                    ArchiveSnapshotModel.recorded_at == latest_per_archive.c.max_recorded,
-                ),
-            )
-            .scalar()
-        )
-
-        return result or 0
+        """Get total biological units across all archives (system-wide)."""
+        return self.repo.get_unit_count()
 
     # -------------------------------------------------------------------------
     # Timeline Queries (for charts)
@@ -246,58 +128,16 @@ class SnapshotService:
         Get system-wide biological units timeline with forward-fill.
 
         For each date, uses the most recent snapshot for each archive up to that date.
-        This ensures the timeline shows cumulative growth and doesn't drop when
-        archives temporarily fail to be collected.
         Only counts archives where isLatest=True.
         """
-        # Get all distinct dates we have snapshots for
-        dates_query = (
-            self.db.query(func.date(ArchiveSnapshotModel.recorded_at).label("date"))
-            .distinct()
-            .order_by(desc(func.date(ArchiveSnapshotModel.recorded_at)))
-        )
-
-        if start_date:
-            dates_query = dates_query.filter(ArchiveSnapshotModel.recorded_at >= start_date)
-        if end_date:
-            dates_query = dates_query.filter(ArchiveSnapshotModel.recorded_at <= end_date)
-
-        dates = [r.date for r in dates_query.limit(limit).all()]
+        dates = self.repo.get_snapshot_dates(start_date=start_date, end_date=end_date, limit=limit)
 
         if not dates:
             return []
 
-        # For each date, calculate total using forward-fill
         timeline = []
-        for target_date in reversed(dates):  # Process chronologically
-            # Get the most recent snapshot for each archive up to this date
-            # Subquery to get max recorded_at per archive up to target_date
-            latest_per_archive = (
-                self.db.query(
-                    ArchiveSnapshotModel.archive_id,
-                    func.max(ArchiveSnapshotModel.recorded_at).label("max_recorded"),
-                )
-                .filter(func.date(ArchiveSnapshotModel.recorded_at) <= target_date)
-                .group_by(ArchiveSnapshotModel.archive_id)
-                .subquery()
-            )
-
-            # Sum units from the latest snapshot of each archive
-            total = (
-                self.db.query(func.sum(ArchiveSnapshotModel.unit_count))
-                .join(
-                    latest_per_archive,
-                    and_(
-                        ArchiveSnapshotModel.archive_id == latest_per_archive.c.archive_id,
-                        ArchiveSnapshotModel.recorded_at == latest_per_archive.c.max_recorded,
-                    ),
-                )
-                .join(XmlArchiveModel, ArchiveSnapshotModel.archive_id == XmlArchiveModel.id)
-                .filter(XmlArchiveModel.isLatest)
-                .scalar()
-                or 0
-            )
-
+        for target_date in reversed(dates):
+            total = self.repo.get_unit_count_for_date(target_date, latest_only=True)
             timeline.append({"date": target_date, "value": float(total)})
 
         return timeline
@@ -311,75 +151,23 @@ class SnapshotService:
     ) -> list[dict[str, Any]]:
         """
         Get biological units timeline for a specific provider with forward-fill.
-
-        For each date, uses the most recent snapshot for each archive up to that date.
-        This ensures the timeline shows cumulative growth and doesn't drop when
-        archives temporarily fail to be collected.
         Only counts archives where isLatest=True.
         """
-        # Get all distinct dates we have snapshots for (for this provider's archives)
-        dates_query = (
-            self.db.query(func.date(ArchiveSnapshotModel.recorded_at).label("date"))
-            .join(XmlArchiveModel, ArchiveSnapshotModel.archive_id == XmlArchiveModel.id)
-            .join(DatasetModel, XmlArchiveModel.dataset_id == DatasetModel.id)
-            .filter(DatasetModel.provider_id == provider_id)
-            .distinct()
-            .order_by(desc(func.date(ArchiveSnapshotModel.recorded_at)))
+        dates = self.repo.get_snapshot_dates(
+            start_date=start_date, end_date=end_date, provider_id=provider_id, limit=limit
         )
-
-        if start_date:
-            dates_query = dates_query.filter(ArchiveSnapshotModel.recorded_at >= start_date)
-        if end_date:
-            dates_query = dates_query.filter(ArchiveSnapshotModel.recorded_at <= end_date)
-
-        dates = [r.date for r in dates_query.limit(limit).all()]
 
         if not dates:
             return []
 
-        # Get all archive IDs for this provider (that are latest)
-        provider_archive_ids = [
-            r[0]
-            for r in self.db.query(XmlArchiveModel.id)
-            .join(DatasetModel, XmlArchiveModel.dataset_id == DatasetModel.id)
-            .filter(DatasetModel.provider_id == provider_id, XmlArchiveModel.isLatest)
-            .all()
-        ]
+        provider_archive_ids = self.repo.get_latest_archive_ids_for_provider(provider_id)
 
         if not provider_archive_ids:
             return []
 
-        # For each date, calculate total using forward-fill
         timeline = []
-        for target_date in reversed(dates):  # Process chronologically
-            # Get the most recent snapshot for each of this provider's archives up to this date
-            latest_per_archive = (
-                self.db.query(
-                    ArchiveSnapshotModel.archive_id,
-                    func.max(ArchiveSnapshotModel.recorded_at).label("max_recorded"),
-                )
-                .filter(
-                    ArchiveSnapshotModel.archive_id.in_(provider_archive_ids),
-                    func.date(ArchiveSnapshotModel.recorded_at) <= target_date,
-                )
-                .group_by(ArchiveSnapshotModel.archive_id)
-                .subquery()
-            )
-
-            # Sum units from the latest snapshot of each archive
-            total = (
-                self.db.query(func.sum(ArchiveSnapshotModel.unit_count))
-                .join(
-                    latest_per_archive,
-                    and_(
-                        ArchiveSnapshotModel.archive_id == latest_per_archive.c.archive_id,
-                        ArchiveSnapshotModel.recorded_at == latest_per_archive.c.max_recorded,
-                    ),
-                )
-                .scalar()
-                or 0
-            )
-
+        for target_date in reversed(dates):
+            total = self.repo.get_unit_count_for_date(target_date, archive_ids=provider_archive_ids)
             timeline.append({"date": target_date, "value": float(total)})
 
         return timeline
@@ -387,100 +175,30 @@ class SnapshotService:
     def get_provider_datasets_timeline(
         self, provider_id: int, period: str = "daily", months: int = 12
     ) -> list[dict[str, Any]]:
-        """
-        Get cumulative dataset count timeline for a specific provider.
-
-        Returns timeline data showing cumulative total datasets over time.
-        """
+        """Get cumulative dataset count timeline for a specific provider."""
         cutoff_date = date.today() - timedelta(days=months * 30)
 
-        if period == "monthly":
-            dataset_results = (
-                self.db.query(
-                    func.date_trunc("month", DatasetModel.created_at).label("month"),
-                    func.count(DatasetModel.id).label("count"),
-                )
-                .filter(
-                    DatasetModel.provider_id == provider_id, DatasetModel.created_at >= cutoff_date
-                )
-                .group_by(func.date_trunc("month", DatasetModel.created_at))
-                .order_by(func.date_trunc("month", DatasetModel.created_at))
-                .all()
-            )
+        rows, baseline = self.repo.get_entity_timeline(
+            DatasetModel, provider_id=provider_id, period=period, cutoff_date=cutoff_date
+        )
 
-            # Get baseline count (datasets before cutoff)
-            baseline_count = (
-                self.db.query(func.count(DatasetModel.id))
-                .filter(
-                    DatasetModel.provider_id == provider_id, DatasetModel.created_at < cutoff_date
-                )
-                .scalar()
-                or 0
-            )
-
-            cumulative = baseline_count
-            timeline = []
-            for row in dataset_results:
-                if row.month:
-                    cumulative += row.count
-                    timeline.append({"date": row.month.date(), "value": cumulative})
-            return timeline
-        else:
-            # Daily aggregation
-            dataset_results = (
-                self.db.query(
-                    func.date(DatasetModel.created_at).label("day"),
-                    func.count(DatasetModel.id).label("count"),
-                )
-                .filter(
-                    DatasetModel.provider_id == provider_id, DatasetModel.created_at >= cutoff_date
-                )
-                .group_by(func.date(DatasetModel.created_at))
-                .order_by(func.date(DatasetModel.created_at))
-                .all()
-            )
-
-            baseline_count = (
-                self.db.query(func.count(DatasetModel.id))
-                .filter(
-                    DatasetModel.provider_id == provider_id, DatasetModel.created_at < cutoff_date
-                )
-                .scalar()
-                or 0
-            )
-
-            cumulative = baseline_count
-            timeline = []
-            for row in dataset_results:
-                if row.day:
-                    cumulative += row.count
-                    timeline.append({"date": row.day, "value": cumulative})
-            return timeline
+        cumulative = baseline
+        timeline = []
+        for row in rows:
+            if row.period:
+                cumulative += row.count
+                period_date = row.period.date() if period == "monthly" else row.period
+                timeline.append({"date": period_date, "value": cumulative})
+        return timeline
 
     def get_multi_provider_timeline(
         self, start_date: date | None = None, end_date: date | None = None, limit: int = 30
     ) -> dict[str, Any]:
         """
         Get biological units timeline for all providers with forward-fill.
-
-        For each date, uses the most recent snapshot for each archive up to that date.
-        This ensures the timeline shows cumulative growth and doesn't drop when
-        archives temporarily fail to be collected.
         Only counts archives where isLatest=True.
         """
-        # Get all distinct dates we have snapshots for
-        dates_query = (
-            self.db.query(func.date(ArchiveSnapshotModel.recorded_at).label("date"))
-            .distinct()
-            .order_by(desc(func.date(ArchiveSnapshotModel.recorded_at)))
-        )
-
-        if start_date:
-            dates_query = dates_query.filter(ArchiveSnapshotModel.recorded_at >= start_date)
-        if end_date:
-            dates_query = dates_query.filter(ArchiveSnapshotModel.recorded_at <= end_date)
-
-        dates = [r.date for r in dates_query.limit(limit).all()]
+        dates = self.repo.get_snapshot_dates(start_date=start_date, end_date=end_date, limit=limit)
 
         if not dates:
             return {
@@ -493,16 +211,7 @@ class SnapshotService:
                 "total_providers": 0,
             }
 
-        # Get all providers that have snapshots and their archive IDs
-        providers = (
-            self.db.query(DataProviderModel.id, DataProviderModel.name)
-            .join(DatasetModel, DataProviderModel.id == DatasetModel.provider_id)
-            .join(XmlArchiveModel, DatasetModel.id == XmlArchiveModel.dataset_id)
-            .join(ArchiveSnapshotModel, XmlArchiveModel.id == ArchiveSnapshotModel.archive_id)
-            .filter(XmlArchiveModel.isLatest)
-            .distinct()
-            .all()
-        )
+        providers = self.repo.get_providers_with_snapshots()
 
         if not providers:
             return {
@@ -518,18 +227,12 @@ class SnapshotService:
         # Build provider archive mapping
         provider_archives = {}
         for provider_id, provider_name in providers:
-            archive_ids = [
-                r[0]
-                for r in self.db.query(XmlArchiveModel.id)
-                .join(DatasetModel, XmlArchiveModel.dataset_id == DatasetModel.id)
-                .filter(DatasetModel.provider_id == provider_id, XmlArchiveModel.isLatest)
-                .all()
-            ]
+            archive_ids = self.repo.get_latest_archive_ids_for_provider(provider_id)
             provider_archives[provider_name] = archive_ids
 
         # For each date, calculate totals per provider using forward-fill
         data_points = []
-        for target_date in reversed(dates):  # Process chronologically
+        for target_date in reversed(dates):
             date_point = {"date": target_date.isoformat()}
 
             for provider_name, archive_ids in provider_archives.items():
@@ -537,39 +240,11 @@ class SnapshotService:
                     date_point[provider_name] = 0.0
                     continue
 
-                # Get the most recent snapshot for each of this provider's archives up to this date
-                latest_per_archive = (
-                    self.db.query(
-                        ArchiveSnapshotModel.archive_id,
-                        func.max(ArchiveSnapshotModel.recorded_at).label("max_recorded"),
-                    )
-                    .filter(
-                        ArchiveSnapshotModel.archive_id.in_(archive_ids),
-                        func.date(ArchiveSnapshotModel.recorded_at) <= target_date,
-                    )
-                    .group_by(ArchiveSnapshotModel.archive_id)
-                    .subquery()
-                )
-
-                # Sum units from the latest snapshot of each archive
-                total = (
-                    self.db.query(func.sum(ArchiveSnapshotModel.unit_count))
-                    .join(
-                        latest_per_archive,
-                        and_(
-                            ArchiveSnapshotModel.archive_id == latest_per_archive.c.archive_id,
-                            ArchiveSnapshotModel.recorded_at == latest_per_archive.c.max_recorded,
-                        ),
-                    )
-                    .scalar()
-                    or 0
-                )
-
+                total = self.repo.get_unit_count_for_date(target_date, archive_ids=archive_ids)
                 date_point[provider_name] = float(total)
 
             data_points.append(date_point)
 
-        # Get provider metadata
         provider_metadata = [
             {"id": p_id, "name": p_name, "key": p_name} for p_id, p_name in providers
         ]
@@ -592,43 +267,20 @@ class SnapshotService:
         self, provider_id: int, user: UserModel | None = None
     ) -> dict[str, Any] | None:
         """Get statistics for a specific provider."""
-        provider = (
-            self.db.query(DataProviderModel).filter(DataProviderModel.id == provider_id).first()
-        )
+        provider = self.repo.get_provider_by_id(provider_id)
 
         if not provider:
             return None
 
-        dataset_count = (
-            self.db.query(func.count(DatasetModel.id))
-            .filter(DatasetModel.provider_id == provider_id)
-            .scalar()
-            or 0
-        )
-
-        archive_count = (
-            self.db.query(func.count(XmlArchiveModel.id))
-            .join(DatasetModel)
-            .filter(DatasetModel.provider_id == provider_id)
-            .scalar()
-            or 0
-        )
-
         validation_success_rate = self._calculate_provider_validation_rate(provider_id)
 
-        # Get last activity
-        last_dataset = (
-            self.db.query(DatasetModel)
-            .filter(DatasetModel.provider_id == provider_id)
-            .order_by(desc(DatasetModel.updated_at))
-            .first()
-        )
+        last_dataset = self.repo.get_last_dataset_for_provider(provider_id)
 
         return {
             "provider_id": provider_id,
             "provider_name": provider.name,
-            "dataset_count": dataset_count,
-            "xml_archive_count": archive_count,
+            "dataset_count": self.repo.count_datasets_for_provider(provider_id),
+            "xml_archive_count": self.repo.count_archives_for_provider(provider_id),
             "validation_success_rate": validation_success_rate,
             "last_activity": last_dataset.updated_at if last_dataset else None,
             "activity_score": None,  # No longer tracked
@@ -637,19 +289,8 @@ class SnapshotService:
     def _calculate_provider_validation_rate(self, provider_id: int) -> float | None:
         """Calculate validation success rate for a specific provider."""
         cutoff_date = date.today() - timedelta(days=30)
-
-        completed_jobs = (
-            self.db.query(ValidationJobModel)
-            .join(XmlArchiveModel, ValidationJobModel.archive_id == XmlArchiveModel.id)
-            .join(DatasetModel, XmlArchiveModel.dataset_id == DatasetModel.id)
-            .filter(
-                and_(
-                    DatasetModel.provider_id == provider_id,
-                    ValidationJobModel.created_at >= cutoff_date,
-                    ValidationJobModel.status == "completed",
-                )
-            )
-            .all()
+        completed_jobs = self.repo.get_completed_validation_jobs(
+            since=cutoff_date, provider_id=provider_id
         )
 
         if not completed_jobs:
@@ -667,21 +308,13 @@ class SnapshotService:
         self, dataset_id: int, user: UserModel | None = None
     ) -> dict[str, Any] | None:
         """Get statistics for a specific dataset."""
-        dataset = self.db.query(DatasetModel).filter(DatasetModel.id == dataset_id).first()
+        dataset = self.repo.get_dataset_by_id(dataset_id)
 
         if not dataset:
             return None
 
         unit_count = self.get_dataset_unit_count(dataset_id)
-
-        # Get latest validation
-        latest_validation = (
-            self.db.query(ValidationJobModel)
-            .join(XmlArchiveModel)
-            .filter(XmlArchiveModel.dataset_id == dataset_id)
-            .order_by(desc(ValidationJobModel.created_at))
-            .first()
-        )
+        latest_validation = self.repo.get_latest_validation_for_dataset(dataset_id)
 
         validation_status = None
         is_valid = None
@@ -711,17 +344,11 @@ class SnapshotService:
         self, limit: int = 20, user: UserModel | None = None
     ) -> dict[str, Any]:
         """Get statistics about top providers."""
-        providers = self.db.query(DataProviderModel).limit(limit).all()
+        providers = self.repo.get_providers(limit=limit)
 
         provider_list = []
         for provider in providers:
-            dataset_count = (
-                self.db.query(func.count(DatasetModel.id))
-                .filter(DatasetModel.provider_id == provider.id)
-                .scalar()
-                or 0
-            )
-
+            dataset_count = self.repo.count_datasets_for_provider(provider.id)
             unit_count = self.get_provider_unit_count(provider.id)
 
             provider_list.append(
@@ -733,22 +360,9 @@ class SnapshotService:
                 }
             )
 
-        # Sort by biological units descending
         provider_list.sort(key=lambda x: x["biological_units"], reverse=True)
 
-        # Get datacenter distribution for pie chart
-        datacenter_stats = (
-            self.db.query(
-                DataProviderModel.datacenter,
-                func.count(DatasetModel.id).label("dataset_count"),
-                func.count(func.distinct(DataProviderModel.id)).label("provider_count"),
-            )
-            .join(DatasetModel, DatasetModel.provider_id == DataProviderModel.id)
-            .filter(DataProviderModel.datacenter.isnot(None))
-            .group_by(DataProviderModel.datacenter)
-            .all()
-        )
-
+        datacenter_stats = self.repo.get_datacenter_stats()
         datacenters = [
             {
                 "datacenter": row.datacenter,
@@ -769,14 +383,7 @@ class SnapshotService:
     ) -> dict[str, Any]:
         """Get recent dataset registration activity."""
         cutoff_date = date.today() - timedelta(days=days)
-
-        recent_datasets = (
-            self.db.query(DatasetModel)
-            .filter(DatasetModel.created_at >= cutoff_date)
-            .order_by(desc(DatasetModel.created_at))
-            .limit(limit)
-            .all()
-        )
+        recent_datasets = self.repo.get_recent_datasets(since=cutoff_date, limit=limit)
 
         return {
             "recent_datasets": [
@@ -793,16 +400,11 @@ class SnapshotService:
 
     def get_health_status(self, user: UserModel | None = None) -> dict[str, Any]:
         """Get basic health metrics of the registry."""
-        total_datasets = self.db.query(func.count(DatasetModel.id)).scalar() or 0
-        total_archives = self.db.query(func.count(XmlArchiveModel.id)).scalar() or 0
+        total_datasets = self.repo.count_datasets()
+        total_archives = self.repo.count_archives()
 
         cutoff = date.today() - timedelta(days=7)
-        recent_validations = (
-            self.db.query(func.count(ValidationJobModel.id))
-            .filter(ValidationJobModel.created_at >= cutoff)
-            .scalar()
-            or 0
-        )
+        recent_validations = self.repo.count_recent_validations(since=cutoff)
 
         # Simple health score
         health_score = 100
@@ -834,148 +436,42 @@ class SnapshotService:
         """
         cutoff_date = date.today() - timedelta(days=months * 30)
 
-        # Datasets timeline - cumulative count by creation month
-        datasets_timeline = []
-        if period == "monthly":
-            dataset_results = (
-                self.db.query(
-                    func.date_trunc("month", DatasetModel.created_at).label("month"),
-                    func.count(DatasetModel.id).label("count"),
-                )
-                .filter(DatasetModel.created_at >= cutoff_date)
-                .group_by(func.date_trunc("month", DatasetModel.created_at))
-                .order_by(func.date_trunc("month", DatasetModel.created_at))
-                .all()
-            )
+        # Datasets timeline
+        dataset_rows, dataset_baseline = self.repo.get_entity_timeline(
+            DatasetModel, period=period, cutoff_date=cutoff_date
+        )
+        datasets_timeline = self._build_cumulative_timeline(dataset_rows, dataset_baseline, period)
 
-            # Get count of datasets created before the cutoff for cumulative baseline
-            baseline_count = (
-                self.db.query(func.count(DatasetModel.id))
-                .filter(DatasetModel.created_at < cutoff_date)
-                .scalar()
-                or 0
-            )
+        # Providers timeline
+        provider_rows, provider_baseline = self.repo.get_entity_timeline(
+            DataProviderModel, period=period, cutoff_date=cutoff_date
+        )
+        providers_timeline = self._build_cumulative_timeline(
+            provider_rows, provider_baseline, period
+        )
 
-            # Build cumulative timeline
-            cumulative = baseline_count
-            for row in dataset_results:
-                if row.month:
-                    cumulative += row.count
-                    datasets_timeline.append({"date": row.month.date(), "value": cumulative})
-        else:
-            # Daily aggregation
-            dataset_results = (
-                self.db.query(
-                    func.date(DatasetModel.created_at).label("day"),
-                    func.count(DatasetModel.id).label("count"),
-                )
-                .filter(DatasetModel.created_at >= cutoff_date)
-                .group_by(func.date(DatasetModel.created_at))
-                .order_by(func.date(DatasetModel.created_at))
-                .all()
-            )
-
-            baseline_count = (
-                self.db.query(func.count(DatasetModel.id))
-                .filter(DatasetModel.created_at < cutoff_date)
-                .scalar()
-                or 0
-            )
-
-            cumulative = baseline_count
-            for row in dataset_results:
-                if row.day:
-                    cumulative += row.count
-                    datasets_timeline.append({"date": row.day, "value": cumulative})
-
-        # Providers timeline - cumulative count by creation month
-        providers_timeline = []
-        if period == "monthly":
-            provider_results = (
-                self.db.query(
-                    func.date_trunc("month", DataProviderModel.created_at).label("month"),
-                    func.count(DataProviderModel.id).label("count"),
-                )
-                .filter(DataProviderModel.created_at >= cutoff_date)
-                .group_by(func.date_trunc("month", DataProviderModel.created_at))
-                .order_by(func.date_trunc("month", DataProviderModel.created_at))
-                .all()
-            )
-
-            baseline_count = (
-                self.db.query(func.count(DataProviderModel.id))
-                .filter(DataProviderModel.created_at < cutoff_date)
-                .scalar()
-                or 0
-            )
-
-            cumulative = baseline_count
-            for row in provider_results:
-                if row.month:
-                    cumulative += row.count
-                    providers_timeline.append({"date": row.month.date(), "value": cumulative})
-        else:
-            provider_results = (
-                self.db.query(
-                    func.date(DataProviderModel.created_at).label("day"),
-                    func.count(DataProviderModel.id).label("count"),
-                )
-                .filter(DataProviderModel.created_at >= cutoff_date)
-                .group_by(func.date(DataProviderModel.created_at))
-                .order_by(func.date(DataProviderModel.created_at))
-                .all()
-            )
-
-            baseline_count = (
-                self.db.query(func.count(DataProviderModel.id))
-                .filter(DataProviderModel.created_at < cutoff_date)
-                .scalar()
-                or 0
-            )
-
-            cumulative = baseline_count
-            for row in provider_results:
-                if row.day:
-                    cumulative += row.count
-                    providers_timeline.append({"date": row.day, "value": cumulative})
-
-        # Validation timeline - count per period (not cumulative, shows activity)
-        validation_timeline = []
-        if period == "monthly":
-            validation_results = (
-                self.db.query(
-                    func.date_trunc("month", ValidationJobModel.created_at).label("month"),
-                    func.count(ValidationJobModel.id).label("count"),
-                )
-                .filter(ValidationJobModel.created_at >= cutoff_date)
-                .group_by(func.date_trunc("month", ValidationJobModel.created_at))
-                .order_by(func.date_trunc("month", ValidationJobModel.created_at))
-                .all()
-            )
-
-            validation_timeline = [
-                {"date": row.month.date() if row.month else None, "value": row.count}
-                for row in validation_results
-                if row.month
-            ]
-        else:
-            validation_results = (
-                self.db.query(
-                    func.date(ValidationJobModel.created_at).label("day"),
-                    func.count(ValidationJobModel.id).label("count"),
-                )
-                .filter(ValidationJobModel.created_at >= cutoff_date)
-                .group_by(func.date(ValidationJobModel.created_at))
-                .order_by(func.date(ValidationJobModel.created_at))
-                .all()
-            )
-
-            validation_timeline = [
-                {"date": row.day, "value": row.count} for row in validation_results if row.day
-            ]
+        # Validation timeline (not cumulative)
+        validation_rows = self.repo.get_validation_timeline(period=period, cutoff_date=cutoff_date)
+        validation_timeline = [
+            {"date": row.period.date() if period == "monthly" else row.period, "value": row.count}
+            for row in validation_rows
+            if row.period
+        ]
 
         return {
             "datasets_timeline": datasets_timeline,
             "providers_timeline": providers_timeline,
             "validation_timeline": validation_timeline,
         }
+
+    @staticmethod
+    def _build_cumulative_timeline(rows: list, baseline: int, period: str) -> list[dict[str, Any]]:
+        """Build a cumulative timeline from period rows and baseline count."""
+        cumulative = baseline
+        timeline = []
+        for row in rows:
+            if row.period:
+                cumulative += row.count
+                period_date = row.period.date() if period == "monthly" else row.period
+                timeline.append({"date": period_date, "value": cumulative})
+        return timeline

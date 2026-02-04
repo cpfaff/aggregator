@@ -1,20 +1,14 @@
 """Pytest configuration and fixtures for tests."""
 
-import asyncio
 import pytest
+import pytest_asyncio
+from sqlalchemy import create_engine
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import Session, sessionmaker
 from testcontainers.postgres import PostgresContainer
 from testcontainers.redis import RedisContainer
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
+
 from app.models.base import Base
-
-
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create event loop for async tests."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
 
 
 @pytest.fixture(scope="session")
@@ -31,7 +25,7 @@ def redis_container():
         yield redis
 
 
-@pytest.fixture(scope="session")
+@pytest_asyncio.fixture
 async def test_engine(postgres_container):
     """Async SQLAlchemy engine with testcontainer database."""
     database_url = postgres_container.get_connection_url().replace(
@@ -49,9 +43,9 @@ async def test_engine(postgres_container):
     await engine.dispose()
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def db_session(test_engine):
-    """Clean database session for each test."""
+    """Clean database session for each test with proper isolation."""
     async_session = sessionmaker(
         test_engine,
         class_=AsyncSession,
@@ -60,7 +54,40 @@ async def db_session(test_engine):
 
     async with async_session() as session:
         yield session
-        await session.rollback()
+
+    # Clear all tables after each test to ensure isolation
+    async with test_engine.begin() as conn:
+        for table in reversed(Base.metadata.sorted_tables):
+            await conn.execute(table.delete())
+
+
+@pytest.fixture
+def sync_engine(postgres_container):
+    """Sync SQLAlchemy engine with testcontainer database."""
+    database_url = postgres_container.get_connection_url()
+    engine = create_engine(database_url, echo=False)
+
+    # Create all tables
+    Base.metadata.create_all(engine)
+
+    yield engine
+
+    engine.dispose()
+
+
+@pytest.fixture
+def sync_db_session(sync_engine):
+    """Clean sync database session for each test with proper isolation."""
+    session = Session(sync_engine, expire_on_commit=False)
+
+    yield session
+
+    session.close()
+
+    # Clear all tables after each test to ensure isolation
+    with sync_engine.begin() as conn:
+        for table in reversed(Base.metadata.sorted_tables):
+            conn.execute(table.delete())
 
 
 @pytest.fixture
