@@ -9,64 +9,49 @@ import uuid
 from datetime import datetime, timedelta
 from fastapi import status
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, select
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import select
 
 # Import FastAPI app and database dependencies
-from main import app, Base, get_db, SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
-from main import UserModel, DataProviderModel, DatasetModel, XmlArchiveModel, UsefulLinkModel
+from main import app
+from app.db import get_db
+from app.core.config import settings
+from app.models import UserModel, DataProviderModel, DatasetModel, XmlArchiveModel, UsefulLinkModel
 
-# Setup Test Database (SQLite in-memory)
-TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
-engine = create_async_engine(TEST_DATABASE_URL)
-TestingSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+# Get constants from settings
+SECRET_KEY = settings.SECRET_KEY
+ALGORITHM = settings.ALGORITHM
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
 
-# Override get_db to use test session
-async def override_get_db():
-    async with TestingSessionLocal() as session:
-        yield session
-
-app.dependency_overrides[get_db] = override_get_db
-
-# Fixtures for testing
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create an instance of the default event loop for each test case."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
-
-@pytest_asyncio.fixture(scope="session", autouse=True)
-async def setup_database():
-    """Set up the test database once for all tests."""
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    yield
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-
-@pytest_asyncio.fixture
-async def db_session(setup_database):
-    """Provide a clean database session for each test."""
-    async with TestingSessionLocal() as session:
-        yield session
-        # Rollback any changes made during the test
-        await session.rollback()
 
 @pytest.fixture
-def client():
+def app_with_overrides(db_session):
+    """Override get_db dependency with test database session."""
+    # For TestClient compatibility, we need an async generator
+    async def override_get_db():
+        yield db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+    yield app
+    app.dependency_overrides.clear()
+
+@pytest.fixture
+def client(app_with_overrides):
     """Provide a test client for the FastAPI app."""
-    return TestClient(app)
+    return TestClient(app_with_overrides)
 
 def create_access_token(data: dict, expires_delta: timedelta = None):
-    """Create a JWT token with expiration."""
+    """Create a JWT token with expiration and required claims."""
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.now() + expires_delta
+        expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.now() + timedelta(minutes=15)
-    to_encode.update({"exp": expire})
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({
+        "exp": expire,
+        "aud": "dataset-api",  # Required audience claim
+        "jti": str(uuid.uuid4()),  # JWT ID for token revocation
+        "iat": datetime.utcnow(),  # Issued-at timestamp
+    })
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
@@ -82,12 +67,12 @@ async def test_user(db_session):
     await db_session.refresh(user)
     return user
 
-@pytest.fixture
-def test_user_token(event_loop, test_user):
+@pytest_asyncio.fixture
+async def test_user_token(test_user):
     """Create a token for the test user."""
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     return create_access_token(
-        data={"sub": test_user.username}, 
+        data={"sub": test_user.username},
         expires_delta=access_token_expires
     )
 
@@ -103,12 +88,12 @@ async def admin_user(db_session):
     await db_session.refresh(admin)
     return admin
 
-@pytest.fixture
-def admin_token(event_loop, admin_user):
+@pytest_asyncio.fixture
+async def admin_token(admin_user):
     """Create a token for the admin user."""
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     return create_access_token(
-        data={"sub": admin_user.username, "is_admin": True}, 
+        data={"sub": admin_user.username, "is_admin": True},
         expires_delta=access_token_expires
     )
 
@@ -227,7 +212,8 @@ def test_user_creation(client, admin_token):
     unique_suffix = uuid.uuid4().hex[:8]
     new_user = {"username": f"newuser_{unique_suffix}", "password": "secure123", "is_global_admin": False}
     resp = client.post("/users", json=new_user, headers={"Authorization": f"Bearer {admin_token}"})
-    assert resp.status_code == 201
+    print(f"\nDEBUG: Status {resp.status_code}, Response: {resp.json()}")
+    assert resp.status_code == 201, f"Got {resp.status_code}: {resp.json()}"
     assert resp.json()["username"] == new_user["username"]
 
 def test_unauthorized_user_creation(client, test_user_token):

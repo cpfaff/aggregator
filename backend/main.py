@@ -90,6 +90,8 @@ app = FastAPI(
     redoc_url="/api/redoc",
 )
 
+# Legacy router for old endpoints defined in main.py
+# These should be migrated to the modular routers in app/api/v1/endpoints/
 v1_router = APIRouter(prefix="/api/v1")
 
 # Register rate limiter with the app
@@ -1182,12 +1184,14 @@ async def harvest_datasets(request: Request, db: AsyncSession = Depends(get_db))
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
-# Include v1 router in the main app
-app.include_router(v1_router)
-
-# Include the new API router with proper versioning
+# Include the API router with proper versioning and backwards compatibility
 from app.api.router import api_router
 app.include_router(api_router, prefix="/api")
+
+# Also include api_v1_router directly without prefix for backwards compatibility
+# This allows existing clients to use /users instead of /api/v1/users or /api/users
+from app.api.v1.router import api_v1_router
+app.include_router(api_v1_router)
 
 # ------------------- Startup Event -------------------
 @app.on_event("startup")
