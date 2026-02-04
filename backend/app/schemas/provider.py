@@ -1,6 +1,7 @@
 """
 Provider-related Pydantic schemas for validation and serialization.
 """
+
 from datetime import datetime
 from typing import List, Optional
 
@@ -11,6 +12,7 @@ from app.schemas.dataset import Dataset
 
 class DataProvider(BaseModel):
     """Schema for data provider information."""
+
     id: Optional[int] = None
     datacenter: str
     shortName: str
@@ -28,14 +30,13 @@ class DataProvider(BaseModel):
         return v.strip()
 
     model_config = ConfigDict(
-        from_attributes=True,
-        json_encoders={AnyUrl: str},
-        populate_by_name=True
+        from_attributes=True, json_encoders={AnyUrl: str}, populate_by_name=True
     )
 
 
 class ProviderAssociation(BaseModel):
     """Schema for provider role associations."""
+
     provider_id: int
     role: str  # Expected values: "admin" or "curator"
 

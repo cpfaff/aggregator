@@ -1,6 +1,7 @@
 """
 Database session management and dependencies.
 """
+
 from typing import AsyncGenerator, Generator
 
 from fastapi import Depends

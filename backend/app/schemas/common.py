@@ -1,6 +1,7 @@
 """
 Common schemas used across the application.
 """
+
 from datetime import datetime
 from typing import Generic, List, Optional, TypeVar
 
@@ -12,6 +13,7 @@ T = TypeVar("T")
 
 class PaginatedResponse(GenericModel, Generic[T]):
     """Generic paginated response model"""
+
     items: List[T]
     total: int
     page: int
@@ -20,16 +22,12 @@ class PaginatedResponse(GenericModel, Generic[T]):
     @classmethod
     def create(cls, items: List[T], total: int, page: int, size: int):
         """Factory method to create a paginated response"""
-        return cls(
-            items=items,
-            total=total,
-            page=page,
-            size=size
-        )
+        return cls(items=items, total=total, page=page, size=size)
 
 
 class TokenResponse(BaseModel):
     """Token response model for authentication endpoints"""
+
     access_token: str
     refresh_token: str
     token_type: str = "bearer"

@@ -1,6 +1,7 @@
 """
 Dataset-related Pydantic schemas for validation and serialization.
 """
+
 from datetime import datetime
 from typing import Any, List, Optional
 
@@ -9,19 +10,19 @@ from pydantic import AnyUrl, BaseModel, ConfigDict, field_validator
 
 class XmlArchive(BaseModel):
     """Schema for XML archive information."""
+
     id: Optional[int] = None
     url: AnyUrl
     isLatest: bool
 
     model_config = ConfigDict(
-        from_attributes=True,
-        json_encoders={AnyUrl: str},
-        populate_by_name=True
+        from_attributes=True, json_encoders={AnyUrl: str}, populate_by_name=True
     )
 
 
 class UsefulLink(BaseModel):
     """Schema for useful link information."""
+
     id: Optional[int] = None
     title: str
     url: AnyUrl
@@ -33,14 +34,13 @@ class UsefulLink(BaseModel):
         return v.strip()
 
     model_config = ConfigDict(
-        from_attributes=True,
-        json_encoders={AnyUrl: str},
-        populate_by_name=True
+        from_attributes=True, json_encoders={AnyUrl: str}, populate_by_name=True
     )
 
 
 class Dataset(BaseModel):
     """Schema for dataset information."""
+
     id: Optional[int] = None
     source: str
     title: str
@@ -71,27 +71,24 @@ class Dataset(BaseModel):
         return data
 
     model_config = ConfigDict(
-        from_attributes=True,
-        json_encoders={AnyUrl: str},
-        populate_by_name=True
+        from_attributes=True, json_encoders={AnyUrl: str}, populate_by_name=True
     )
 
 
 # Legacy API compatibility schemas
 class LegacyXmlArchive(BaseModel):
     """Legacy schema for XML archive information."""
+
     archive_id: int
     xml_archive: AnyUrl
     latest: bool
 
-    model_config = ConfigDict(
-        from_attributes=True,
-        json_encoders={AnyUrl: str}
-    )
+    model_config = ConfigDict(from_attributes=True, json_encoders={AnyUrl: str})
 
 
 class LegacyUsefulLink(BaseModel):
     """Legacy schema for useful link information."""
+
     link_id: int
     title: str
     url: AnyUrl
@@ -102,14 +99,12 @@ class LegacyUsefulLink(BaseModel):
     def trim_whitespace(cls, v: str) -> str:
         return v.strip()
 
-    model_config = ConfigDict(
-        from_attributes=True,
-        json_encoders={AnyUrl: str}
-    )
+    model_config = ConfigDict(from_attributes=True, json_encoders={AnyUrl: str})
 
 
 class LegacyDataset(BaseModel):
     """Legacy schema for dataset information."""
+
     dataset_id: int
     datasource: str
     dataset: str
@@ -135,7 +130,4 @@ class LegacyDataset(BaseModel):
     def trim_whitespace(cls, v: str) -> str:
         return v.strip()
 
-    model_config = ConfigDict(
-        from_attributes=True,
-        json_encoders={AnyUrl: str}
-    )
+    model_config = ConfigDict(from_attributes=True, json_encoders={AnyUrl: str})

@@ -54,5 +54,5 @@ __all__ = [
     "ProviderStats",
     "DatasetStats",
     "QualityMetrics",
-    "GrowthMetrics"
+    "GrowthMetrics",
 ]

@@ -4,6 +4,7 @@ Authentication API endpoints.
 This module contains endpoints for CSRF token generation, user authentication,
 and token refresh functionality.
 """
+
 import logging
 from datetime import datetime, timedelta, timezone
 
@@ -102,9 +103,7 @@ async def login(
 
 
 @router.post("/refresh-token", response_model=TokenResponse)
-async def refresh_token(
-    refresh_token: str = Body(...), db: AsyncSession = Depends(get_db)
-):
+async def refresh_token(refresh_token: str = Body(...), db: AsyncSession = Depends(get_db)):
     """
     Get a new access token using a refresh token.
 

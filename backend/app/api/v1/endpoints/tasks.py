@@ -1,6 +1,7 @@
 """
 API endpoints for managing background tasks with Celery.
 """
+
 from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -17,6 +18,7 @@ class TaskRequest(BaseModel):
     """
     Request model for submitting a task.
     """
+
     data: Dict[str, Any]
 
 
@@ -24,6 +26,7 @@ class TaskResponse(BaseModel):
     """
     Response model for a submitted task.
     """
+
     task_id: str
     status: str
 
@@ -46,10 +49,7 @@ async def create_task(
     # Submit the task to Celery
     task = process_data.delay(request.data, user_id=current_user.id)
 
-    return TaskResponse(
-        task_id=task.id,
-        status="pending"
-    )
+    return TaskResponse(task_id=task.id, status="pending")
 
 
 @router.get("/{task_id}", response_model=Dict[str, Any])

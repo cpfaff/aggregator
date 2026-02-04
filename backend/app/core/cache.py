@@ -25,13 +25,12 @@ class SimpleCache:
 
     def invalidate(self, prefix=None):
         if prefix:
-            keys_to_remove = [
-                key for key in self.cache.keys() if key.startswith(prefix)
-            ]
+            keys_to_remove = [key for key in self.cache.keys() if key.startswith(prefix)]
             for key in keys_to_remove:
                 del self.cache[key]
         else:
             self.cache.clear()
+
 
 # Global cache instance
 from app.core.config import settings
@@ -41,6 +40,7 @@ cache = SimpleCache(ttl_seconds=settings.CACHE_EXPIRE_SECONDS)
 
 def cache_response(prefix, ttl_seconds=None):
     """Decorator to cache function responses with prefix for key generation"""
+
     def decorator(func):
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -54,7 +54,7 @@ def cache_response(prefix, ttl_seconds=None):
             from sqlalchemy.ext.asyncio import AsyncSession
 
             from app.models.user import UserModel
-            
+
             key_parts.extend(
                 [
                     str(arg)
@@ -64,7 +64,7 @@ def cache_response(prefix, ttl_seconds=None):
                     and not isinstance(arg, UserModel)
                 ]
             )
-            
+
             # Include user identity in cache key for user-specific caching
             for k, v in sorted(kwargs.items()):
                 if k == "current_user" and hasattr(v, "username"):
@@ -72,7 +72,7 @@ def cache_response(prefix, ttl_seconds=None):
                     key_parts.append(f"user:{v.username}")
                 elif k not in ["db", "request", "current_user"]:
                     key_parts.append(f"{k}:{v}")
-            
+
             cache_key = ":".join(key_parts)
 
             cached_result = cache.get(cache_key)
@@ -82,7 +82,9 @@ def cache_response(prefix, ttl_seconds=None):
             result = await func(*args, **kwargs)
             cache.set(cache_key, result, ttl_seconds)
             return result
+
         return wrapper
+
     return decorator
 
 
@@ -94,39 +96,39 @@ def invalidate_cache(prefix):
 # Rate limiting utilities
 class RateLimiter:
     """Simple in-memory rate limiter for API endpoints."""
-    
+
     def __init__(self):
         self._requests = {}
-    
+
     def is_allowed(self, identifier: str, limit: int, window: int) -> bool:
         """
         Check if request is allowed under rate limit.
-        
+
         Args:
             identifier: Unique identifier (e.g., IP, user ID)
             limit: Maximum requests allowed
             window: Time window in seconds
-            
+
         Returns:
             bool: True if request is allowed
         """
         import time
+
         current_time = time.time()
         window_start = current_time - window
-        
+
         if identifier not in self._requests:
             self._requests[identifier] = []
-        
+
         # Clean old requests
         self._requests[identifier] = [
-            req_time for req_time in self._requests[identifier]
-            if req_time > window_start
+            req_time for req_time in self._requests[identifier] if req_time > window_start
         ]
-        
+
         # Check if under limit
         if len(self._requests[identifier]) >= limit:
             return False
-        
+
         # Add current request
         self._requests[identifier].append(current_time)
         return True

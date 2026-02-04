@@ -1,6 +1,7 @@
 """
 User-related Pydantic schemas for validation and serialization.
 """
+
 from datetime import datetime
 from typing import Dict, Optional
 
@@ -11,6 +12,7 @@ from app.core.config import settings
 
 class User(BaseModel):
     """Schema for returning user information."""
+
     username: str
     provider_roles: Dict[str, str]
     is_global_admin: bool = False
@@ -26,6 +28,7 @@ class User(BaseModel):
 
 class UserCreate(BaseModel):
     """Schema for creating a new user."""
+
     username: str
     password: str
     provider_roles: Optional[Dict[str, str]] = {}
@@ -49,6 +52,7 @@ class UserCreate(BaseModel):
 
 class UserUpdate(BaseModel):
     """Schema for updating an existing user."""
+
     password: Optional[str] = None
     provider_roles: Optional[Dict[str, str]] = None
     is_global_admin: Optional[bool] = None
@@ -66,9 +70,7 @@ class UserUpdate(BaseModel):
         if v is not None:
             min_length = settings.MIN_PASSWORD_LENGTH
             if len(v) < min_length:
-                raise ValueError(
-                    f"Password must be at least {min_length} characters long"
-                )
+                raise ValueError(f"Password must be at least {min_length} characters long")
         return v
 
     model_config = ConfigDict(from_attributes=True)
@@ -76,6 +78,7 @@ class UserUpdate(BaseModel):
 
 class UserPermissions(BaseModel):
     """Schema for retrieving user permissions."""
+
     username: str
     is_global_admin: bool
     provider_roles: Dict[str, str]

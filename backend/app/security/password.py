@@ -1,6 +1,7 @@
 """
 Password hashing and validation utilities.
 """
+
 import logging
 
 import bcrypt
@@ -13,11 +14,11 @@ logger = logging.getLogger(__name__)
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
     Verify a plain password against its hashed version.
-    
+
     Args:
         plain_password: The raw password to verify
         hashed_password: The hashed password to check against
-        
+
     Returns:
         bool: True if the password matches, False otherwise
     """
@@ -33,10 +34,10 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def get_password_hash(password: str) -> str:
     """
     Hash a password using bcrypt.
-    
+
     Args:
         password: The raw password to hash
-        
+
     Returns:
         str: The hashed password
     """

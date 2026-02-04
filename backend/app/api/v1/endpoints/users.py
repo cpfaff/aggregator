@@ -4,6 +4,7 @@ User management API endpoints.
 This module contains endpoints for user CRUD operations,
 user permissions, and provider associations.
 """
+
 import logging
 from typing import List, Optional
 
@@ -59,9 +60,7 @@ async def list_users(
     current_user: UserModel = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     skip: int = Query(0, ge=0, description="Number of users to skip"),
-    limit: int = Query(
-        100, ge=1, le=1000, description="Maximum number of users to return"
-    ),
+    limit: int = Query(100, ge=1, le=1000, description="Maximum number of users to return"),
 ):
     """
     List all users in the system. Requires global admin privileges.
@@ -113,9 +112,7 @@ async def update_user(
         raise HTTPException(status_code=404, detail="User not found")
     if user.password is not None:
         if current_user.username == username:
-            if not old_password or not verify_password(
-                old_password, user_obj.hashed_password
-            ):
+            if not old_password or not verify_password(old_password, user_obj.hashed_password):
                 raise HTTPException(status_code=400, detail="Old password is incorrect")
         hashed_pw = get_password_hash(user.password)
         if hashed_pw:
@@ -135,9 +132,7 @@ async def update_user(
 
 
 @csrf_protect.validate_csrf
-@router.post(
-    "/users", response_model=User, status_code=201, summary="Create a new user"
-)
+@router.post("/users", response_model=User, status_code=201, summary="Create a new user")
 async def create_user(
     user: UserCreate,
     current_user: UserModel = Depends(get_current_user),

@@ -6,6 +6,7 @@ focused implementation for collecting archive snapshots.
 
 Includes HTTP-based change detection to skip unchanged archives.
 """
+
 import logging
 import tempfile
 import xml.etree.ElementTree as ET
@@ -26,6 +27,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class HttpMetadata:
     """HTTP metadata from archive download for change detection."""
+
     etag: Optional[str] = None
     last_modified: Optional[str] = None
 
@@ -33,12 +35,14 @@ class HttpMetadata:
 @dataclass
 class ArchiveParseResult:
     """Result of parsing an archive including HTTP metadata."""
+
     unit_count: int
     http_metadata: HttpMetadata
 
 
 class XMLParsingError(Exception):
     """Raised when XML parsing fails."""
+
     pass
 
 
@@ -59,7 +63,7 @@ def _normalize_etag(etag: Optional[str]) -> Optional[str]:
         return None
     # Strip weak validator prefix and quotes
     normalized = etag.strip()
-    if normalized.startswith('W/'):
+    if normalized.startswith("W/"):
         normalized = normalized[2:]
     return normalized.strip('"')
 
@@ -165,7 +169,7 @@ def parse_archive_xml(xml_url: str) -> ArchiveParseResult:
         total_unit_count = 0
 
         # Use SpooledTemporaryFile: small files in memory, large on disk
-        with tempfile.SpooledTemporaryFile(max_size=10*1024*1024) as temp_file:
+        with tempfile.SpooledTemporaryFile(max_size=10 * 1024 * 1024) as temp_file:
             for chunk in response.iter_content(chunk_size=8192):
                 if chunk:
                     temp_file.write(chunk)
@@ -174,13 +178,14 @@ def parse_archive_xml(xml_url: str) -> ArchiveParseResult:
             first_bytes = temp_file.read(2)
             temp_file.seek(0)
 
-            if first_bytes == b'PK':
+            if first_bytes == b"PK":
                 # ZIP archive
                 try:
                     with zipfile.ZipFile(temp_file) as zip_file:
                         xml_files = [
-                            f for f in zip_file.namelist()
-                            if f.lower().endswith('.xml') and not f.startswith('__MACOSX/')
+                            f
+                            for f in zip_file.namelist()
+                            if f.lower().endswith(".xml") and not f.startswith("__MACOSX/")
                         ]
 
                         if not xml_files:
@@ -231,15 +236,15 @@ def _count_units(root) -> int:
     """
     # ABCD namespace URIs
     namespaces = {
-        'abcd206': 'http://www.tdwg.org/schemas/abcd/2.06',
-        'abcd21': 'http://rs.tdwg.org/abcd/2.1',
-        'abcd3': 'http://rs.tdwg.org/abcd/3.0'
+        "abcd206": "http://www.tdwg.org/schemas/abcd/2.06",
+        "abcd21": "http://rs.tdwg.org/abcd/2.1",
+        "abcd3": "http://rs.tdwg.org/abcd/3.0",
     }
 
     # Detect namespace from root element
     ns_uri = None
-    if root.tag.startswith('{'):
-        ns_uri = root.tag.split('}')[0][1:]
+    if root.tag.startswith("{"):
+        ns_uri = root.tag.split("}")[0][1:]
     else:
         # Check children for namespace
         for prefix, uri in namespaces.items():
@@ -263,7 +268,7 @@ def _count_units(root) -> int:
     return 0
 
 
-@shared_task(name="snapshots.collect_single_archive_snapshot", queue='light_tasks')
+@shared_task(name="snapshots.collect_single_archive_snapshot", queue="light_tasks")
 def collect_single_archive_snapshot(archive_id: int, force: bool = False) -> Dict[str, Any]:
     """
     Collect a snapshot for a single archive.
@@ -282,9 +287,7 @@ def collect_single_archive_snapshot(archive_id: int, force: bool = False) -> Dic
     """
     db = SessionLocal()
     try:
-        archive = db.query(XmlArchiveModel).filter(
-            XmlArchiveModel.id == archive_id
-        ).first()
+        archive = db.query(XmlArchiveModel).filter(XmlArchiveModel.id == archive_id).first()
 
         if not archive:
             logger.warning(f"Archive {archive_id} not found for snapshot")
@@ -295,9 +298,12 @@ def collect_single_archive_snapshot(archive_id: int, force: bool = False) -> Dic
             return {"status": "skipped", "message": "Archive is not latest version"}
 
         # Get the latest snapshot for this archive to check for changes
-        latest_snapshot = db.query(ArchiveSnapshotModel).filter(
-            ArchiveSnapshotModel.archive_id == archive_id
-        ).order_by(ArchiveSnapshotModel.recorded_at.desc()).first()
+        latest_snapshot = (
+            db.query(ArchiveSnapshotModel)
+            .filter(ArchiveSnapshotModel.archive_id == archive_id)
+            .order_by(ArchiveSnapshotModel.recorded_at.desc())
+            .first()
+        )
 
         # Check if archive has changed (unless force=True or no previous snapshot)
         if not force and latest_snapshot:
@@ -311,7 +317,7 @@ def collect_single_archive_snapshot(archive_id: int, force: bool = False) -> Dic
                 return {
                     "status": "unchanged",
                     "archive_id": archive_id,
-                    "message": "Archive unchanged since last snapshot"
+                    "message": "Archive unchanged since last snapshot",
                 }
 
         try:
@@ -327,11 +333,7 @@ def collect_single_archive_snapshot(archive_id: int, force: bool = False) -> Dic
             db.commit()
 
             logger.info(f"Snapshot created for archive {archive_id}: {result.unit_count} units")
-            return {
-                "status": "success",
-                "archive_id": archive_id,
-                "unit_count": result.unit_count
-            }
+            return {"status": "success", "archive_id": archive_id, "unit_count": result.unit_count}
 
         except XMLParsingError as e:
             logger.warning(f"Failed to parse archive {archive_id}: {e}")
@@ -345,7 +347,7 @@ def collect_single_archive_snapshot(archive_id: int, force: bool = False) -> Dic
         db.close()
 
 
-@shared_task(name="snapshots.collect_archive_snapshots", queue='light_tasks')
+@shared_task(name="snapshots.collect_archive_snapshots", queue="light_tasks")
 def collect_archive_snapshots():
     """
     Collect snapshots for all current archives.
@@ -366,14 +368,14 @@ def collect_archive_snapshots():
         today = date.today()
 
         # Get all current (latest) archives
-        archives = db.query(XmlArchiveModel).filter(
-            XmlArchiveModel.isLatest == True
-        ).all()
+        archives = db.query(XmlArchiveModel).filter(XmlArchiveModel.isLatest == True).all()
 
         # Get archive IDs that already have snapshots for today
-        existing_today = db.query(ArchiveSnapshotModel.archive_id).filter(
-            func.date(ArchiveSnapshotModel.recorded_at) == today
-        ).all()
+        existing_today = (
+            db.query(ArchiveSnapshotModel.archive_id)
+            .filter(func.date(ArchiveSnapshotModel.recorded_at) == today)
+            .all()
+        )
         existing_archive_ids = {r[0] for r in existing_today}
 
         # Filter to archives that need snapshots
@@ -386,7 +388,7 @@ def collect_archive_snapshots():
         latest_snapshot_subq = (
             db.query(
                 ArchiveSnapshotModel.archive_id,
-                func.max(ArchiveSnapshotModel.recorded_at).label('max_recorded')
+                func.max(ArchiveSnapshotModel.recorded_at).label("max_recorded"),
             )
             .group_by(ArchiveSnapshotModel.archive_id)
             .subquery()
@@ -396,8 +398,8 @@ def collect_archive_snapshots():
             db.query(ArchiveSnapshotModel)
             .join(
                 latest_snapshot_subq,
-                (ArchiveSnapshotModel.archive_id == latest_snapshot_subq.c.archive_id) &
-                (ArchiveSnapshotModel.recorded_at == latest_snapshot_subq.c.max_recorded)
+                (ArchiveSnapshotModel.archive_id == latest_snapshot_subq.c.archive_id)
+                & (ArchiveSnapshotModel.recorded_at == latest_snapshot_subq.c.max_recorded),
             )
             .all()
         )
@@ -439,10 +441,13 @@ def collect_archive_snapshots():
                         archive_id=archive.id,
                         unit_count=prev_unit_count,
                         http_etag=current_http_metadata.etag or prev_etag,
-                        http_last_modified=current_http_metadata.last_modified or prev_last_modified,
+                        http_last_modified=current_http_metadata.last_modified
+                        or prev_last_modified,
                     )
                     db.add(snapshot)
-                    logger.debug(f"Archive {archive.id} unchanged, using previous unit count: {prev_unit_count}")
+                    logger.debug(
+                        f"Archive {archive.id} unchanged, using previous unit count: {prev_unit_count}"
+                    )
                     unchanged_count += 1
                     continue
 
@@ -481,7 +486,7 @@ def collect_archive_snapshots():
             "unchanged_count": unchanged_count,
             "error_count": error_count,
             "skipped_today_count": skipped_today_count,
-            "total_archives": len(archives)
+            "total_archives": len(archives),
         }
 
     except Exception as e:

@@ -31,5 +31,5 @@ __all__ = [
     "check_provider_permission",
     "get_user_model",
     "normalize_provider_roles",
-    "check_global_admin"
+    "check_global_admin",
 ]
