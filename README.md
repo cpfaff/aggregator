@@ -171,7 +171,35 @@ As a developer working with Aggregator:
 
    New code must pass Ruff checks before merging.
 
-3. **API Integration**:
+3. **CI/CD Configuration**:
+
+   **GitLab Runner Compatibility:**
+   The CI pipeline supports both Docker executor and shell executor runners:
+
+   - **Docker executor runners**: Jobs run inside containers with `docker:dind` service
+   - **Shell executor runners**: Jobs run directly on host using host's Docker daemon
+
+   The test jobs automatically detect the runner type and configure Docker access accordingly.
+
+   **Requirements for shell executor runners:**
+   ```bash
+   # Docker must be installed and accessible to the gitlab-runner user
+   sudo usermod -aG docker gitlab-runner
+
+   # Verify Docker is accessible
+   sudo -u gitlab-runner docker ps
+   ```
+
+   **Testing CI configuration locally:**
+   ```bash
+   # Install gitlab-runner (if not already installed)
+   # See: https://docs.gitlab.com/runner/install/
+
+   # Test a specific job
+   gitlab-runner exec shell test-backend
+   ```
+
+4. **API Integration**:
    - Use the API documentation at `/docs` to understand available endpoints
    - Authenticate with JWT tokens
    - Make API calls to integrate with your systems

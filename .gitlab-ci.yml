@@ -35,16 +35,33 @@ cache:
     - .cache/
 
 # Backend Tests
+# NOTE: This job works with both Docker executor (with dind) and shell executor runners
 test-backend:
   stage: test
-  image: python:3.11-slim
+  image: python:3.11-slim  # Used by Docker executors, ignored by shell executors
   services:
-    - docker:dind
-  variables:
-    DOCKER_HOST: tcp://docker:2375
+    - docker:dind  # Used by Docker executors, ignored by shell executors
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends gcc postgresql-client
-    - pip install poetry
+    # Verify Docker is accessible (works for both executor types)
+    - |
+      if docker info >/dev/null 2>&1; then
+        echo "✓ Docker daemon accessible"
+        docker version
+      else
+        echo "✗ Docker daemon not accessible - testcontainers will fail"
+        exit 1
+      fi
+    # Install system dependencies (Docker executor needs these, shell executor may skip)
+    - |
+      if command -v apt-get >/dev/null 2>&1; then
+        apt-get update && apt-get install -y --no-install-recommends gcc postgresql-client
+      elif command -v yum >/dev/null 2>&1; then
+        yum install -y gcc postgresql
+      else
+        echo "Assuming dependencies already installed (shell executor)"
+      fi
+    # Install Poetry and dependencies
+    - command -v poetry >/dev/null 2>&1 || pip install poetry
     - cd backend
     - poetry install --with dev
   script:
