@@ -6,7 +6,7 @@
 
 ```bash
 # Application health (basic)
-curl -s http://localhost:8000/api/v1/health-check | python3 -m json.tool
+curl -s http://localhost:8000/api/v1/health | python3 -m json.tool
 
 # Readiness probe (checks DB + Redis)
 curl -s http://localhost:8000/api/v1/health/ready | python3 -m json.tool

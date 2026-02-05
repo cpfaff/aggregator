@@ -173,12 +173,13 @@ All services include Docker health checks:
 | Traefik | `traefik healthcheck --ping` |
 | PostgreSQL | `pg_isready` |
 | Redis | `redis-cli ping` |
-| Backend | `curl http://localhost:8000/api/v1/health-check` |
+| Backend | `curl http://localhost:8000/api/v1/health` |
 | Celery Workers | `celery -A app.core.celery_app inspect ping` |
 
 ### Application Health Endpoints
 
-- `GET /api/v1/health-check` — Basic health (always responds if backend is running)
+- `GET /api/v1/health` — Basic health with database status (always responds if backend is running)
+- `GET /api/v1/health/live` — Liveness probe (simple alive check)
 - `GET /api/v1/health/ready` — Readiness probe (checks DB and Redis connectivity, returns 503 if dependencies are down)
 
 ## Database Backup and Restore

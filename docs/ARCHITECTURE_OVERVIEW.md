@@ -203,7 +203,7 @@ DataProviderModel ──(1:N)──▶ DatasetModel ──(1:N)──▶ XmlArch
 ## Observability
 
 - **Structured Logging**: JSON format via python-json-logger with request ID correlation
-- **Health Checks**: `/api/v1/health-check` (basic), `/api/v1/health/ready` (readiness with DB + Redis checks)
+- **Health Checks**: `/api/v1/health` (basic), `/api/v1/health/live` (liveness), `/api/v1/health/ready` (readiness with DB + Redis checks)
 - **Cache**: Redis-backed with configurable TTL (default 300s)
 
 ## API
@@ -217,4 +217,4 @@ Key endpoint groups:
 - `/api/v1/datasets/` — Dataset CRUD
 - `/api/v1/validators/` — Validation job submission and results
 - `/api/v1/snapshots/` — Statistics and timeline data
-- `/api/v1/health-check`, `/api/v1/health/ready` — Health endpoints
+- `/api/v1/health`, `/api/v1/health/live`, `/api/v1/health/ready` — Health endpoints
