@@ -210,7 +210,7 @@ def get_current_user_sync(
 def get_current_user_optional(
     token: Annotated[
         str | None,
-        Depends(OAuth2PasswordBearer(tokenUrl="/api/v1/auth-token", auto_error=False)),
+        Depends(OAuth2PasswordBearer(tokenUrl="/api/v1/tokens", auto_error=False)),
     ],
     db: Annotated[Session, Depends(get_sync_db)],
 ) -> UserModel | None:

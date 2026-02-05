@@ -14,7 +14,7 @@ from fastapi.security import OAuth2PasswordBearer
 from app.core.config import settings
 
 # Create OAuth2 scheme for token authentication
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth-token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/tokens")
 
 logger = logging.getLogger(__name__)
 
