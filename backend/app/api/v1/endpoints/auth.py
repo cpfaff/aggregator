@@ -19,6 +19,7 @@ from app.api.deps import csrf_protect, limiter
 from app.core.config import settings
 from app.db import get_db
 from app.schemas import TokenResponse
+from app.schemas.common import CSRFTokenResponse
 from app.security import (
     authenticate_user,
     create_access_token,
@@ -31,7 +32,12 @@ logger = logging.getLogger("api")
 router = APIRouter()
 
 
-@router.get("/tokens/csrf", summary="Get CSRF token")
+@router.get(
+    "/tokens/csrf",
+    summary="Get CSRF token",
+    response_model=CSRFTokenResponse,
+    response_class=JSONResponse,
+)
 @limiter.limit(settings.CSRF_TOKEN_RATE_LIMIT)
 async def get_csrf_token(request: Request):
     """

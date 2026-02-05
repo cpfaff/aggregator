@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ProblemDetail(BaseModel):
@@ -28,6 +28,19 @@ class ProblemDetail(BaseModel):
         description="When the error occurred (extension field)",
     )
 
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "type": "https://api.gfbio.org/errors/not-found",
+                "title": "Resource Not Found",
+                "status": 404,
+                "detail": "Dataset with ID 12345 does not exist.",
+                "instance": "/api/v1/datasets/12345",
+                "timestamp": "2026-02-05T10:30:45.123456+00:00",
+            }
+        }
+    )
+
 
 class ValidationProblemDetail(ProblemDetail):
     """Extended problem details for validation errors with error list."""
@@ -35,4 +48,29 @@ class ValidationProblemDetail(ProblemDetail):
     errors: list[dict] = Field(
         default_factory=list,
         description="List of validation errors with field and message",
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "type": "https://api.gfbio.org/errors/validation-error",
+                "title": "Validation Error",
+                "status": 422,
+                "detail": "Request validation failed",
+                "instance": "/api/v1/providers",
+                "timestamp": "2026-02-05T10:30:45.123456+00:00",
+                "errors": [
+                    {
+                        "field": "name",
+                        "message": "Field required",
+                        "type": "missing",
+                    },
+                    {
+                        "field": "url",
+                        "message": "Invalid URL format",
+                        "type": "url_parsing",
+                    },
+                ],
+            }
+        }
     )

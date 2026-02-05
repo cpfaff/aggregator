@@ -2,7 +2,7 @@
 
 from typing import Generic, TypeVar
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 T = TypeVar("T")
 
@@ -22,6 +22,16 @@ class PaginationParams(BaseModel):
     before: str | None = Field(
         default=None,
         description="Cursor for fetching items before this position",
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "limit": 20,
+                "after": "aW1kOjEwMA==",
+                "before": None,
+            }
+        }
     )
 
     @field_validator("limit", mode="after")
@@ -50,9 +60,38 @@ class PaginationMeta(BaseModel):
         description="Total number of items (may be null for performance)",
     )
 
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "limit": 20,
+                "has_next": True,
+                "has_previous": False,
+                "next_cursor": "aW1kOjIw",
+                "previous_cursor": None,
+                "total_count": 150,
+            }
+        }
+    )
+
 
 class PaginatedResponse(BaseModel, Generic[T]):
     """Generic wrapper for paginated API responses."""
 
     data: list[T] = Field(description="List of items for this page")
     pagination: PaginationMeta = Field(description="Pagination metadata")
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "data": [{"id": 1, "name": "Example Item"}],
+                "pagination": {
+                    "limit": 20,
+                    "has_next": True,
+                    "has_previous": False,
+                    "next_cursor": "aW1kOjIw",
+                    "previous_cursor": None,
+                    "total_count": 150,
+                },
+            }
+        }
+    )

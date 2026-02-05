@@ -41,12 +41,24 @@ logger = logging.getLogger("api")
 
 
 # ------------------- Create FastAPI app -------------------
+# RFC 7807 Problem Details error responses for OpenAPI documentation
+error_responses = {
+    400: {"model": ProblemDetail, "description": "Bad Request"},
+    401: {"model": ProblemDetail, "description": "Unauthorized"},
+    403: {"model": ProblemDetail, "description": "Forbidden"},
+    404: {"model": ProblemDetail, "description": "Not Found"},
+    422: {"model": ValidationProblemDetail, "description": "Validation Error"},
+    429: {"model": ProblemDetail, "description": "Rate Limit Exceeded"},
+    500: {"model": ProblemDetail, "description": "Internal Server Error"},
+}
+
 app = FastAPI(
     title="Dataset Management API",
     version="2.0.0",
     openapi_url="/api/openapi.json",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
+    responses=error_responses,
 )
 
 # Register rate limiter with the app
