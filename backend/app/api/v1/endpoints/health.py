@@ -29,7 +29,7 @@ def _get_redis_client() -> redis.Redis:
     return redis.Redis.from_url(settings.redis_url, socket_connect_timeout=5)
 
 
-@router.get("/health-check", status_code=200, summary="Health check")
+@router.get("/health", status_code=200, summary="Health check")
 async def health_check(db: Annotated[AsyncSession, Depends(get_db)]):
     """
     Check the health of the API and database connection.
@@ -61,6 +61,17 @@ async def health_check(db: Annotated[AsyncSession, Depends(get_db)]):
                 "timestamp": datetime.now(UTC).isoformat(),
             },
         ) from e
+
+
+@router.get("/health/live", status_code=200, summary="Liveness check")
+async def liveness_check():
+    """
+    Basic liveness check - returns 200 if the service is running.
+
+    This endpoint is used by container orchestrators (like Kubernetes)
+    to determine if the service should be restarted.
+    """
+    return {"status": "alive"}
 
 
 @router.get("/health/ready", status_code=200, summary="Readiness check")

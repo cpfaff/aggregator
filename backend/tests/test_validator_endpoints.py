@@ -16,7 +16,6 @@ from app.api.v1.endpoints.validators import (
     get_validation_job,
     get_validation_results,
     list_validation_jobs,
-    validate_dataset_latest_archive,
 )
 
 # ---------------------------------------------------------------------------
@@ -92,9 +91,7 @@ class TestGetValidationJob:
         MockServiceClass.return_value = mock_service
         mock_service.get_validation_job = AsyncMock(return_value=mock_job)
 
-        result = await get_validation_job(
-            job_id=1, current_user=MagicMock(), db=MagicMock()
-        )
+        result = await get_validation_job(job_id=1, current_user=MagicMock(), db=MagicMock())
 
         assert result is mock_job
         mock_service.get_validation_job.assert_awaited_once_with(1)
@@ -110,9 +107,7 @@ class TestGetValidationJob:
         )
 
         with pytest.raises(HTTPException) as exc_info:
-            await get_validation_job(
-                job_id=999, current_user=MagicMock(), db=MagicMock()
-            )
+            await get_validation_job(job_id=999, current_user=MagicMock(), db=MagicMock())
 
         assert exc_info.value.status_code == 404
 
@@ -133,9 +128,7 @@ class TestListValidationJobs:
         MockServiceClass.return_value = mock_service
         mock_service.list_validation_jobs = AsyncMock(return_value=[])
 
-        result = await list_validation_jobs(
-            current_user=MagicMock(), db=MagicMock()
-        )
+        result = await list_validation_jobs(current_user=MagicMock(), db=MagicMock())
 
         assert result == []
 
@@ -168,9 +161,7 @@ class TestListValidationJobs:
         MockServiceClass.return_value = mock_service
         mock_service.list_validation_jobs = AsyncMock(return_value=[])
 
-        await list_validation_jobs(
-            current_user=MagicMock(), db=MagicMock()
-        )
+        await list_validation_jobs(current_user=MagicMock(), db=MagicMock())
 
         mock_service.list_validation_jobs.assert_awaited_once_with(
             archive_id=None, status_filter=None, limit=10, offset=0
@@ -195,9 +186,7 @@ class TestGetValidationResults:
             return_value={"summary": {"total_files": 10, "valid_files": 8}}
         )
 
-        result = await get_validation_results(
-            job_id=1, current_user=MagicMock(), db=MagicMock()
-        )
+        result = await get_validation_results(job_id=1, current_user=MagicMock(), db=MagicMock())
 
         assert result["summary"]["total_files"] == 10
         mock_service.get_validation_results.assert_awaited_once_with(1)
@@ -213,9 +202,7 @@ class TestGetValidationResults:
         )
 
         with pytest.raises(HTTPException) as exc_info:
-            await get_validation_results(
-                job_id=1, current_user=MagicMock(), db=MagicMock()
-            )
+            await get_validation_results(job_id=1, current_user=MagicMock(), db=MagicMock())
 
         assert exc_info.value.status_code == 400
 
@@ -230,9 +217,7 @@ class TestGetValidationResults:
         )
 
         with pytest.raises(HTTPException) as exc_info:
-            await get_validation_results(
-                job_id=1, current_user=MagicMock(), db=MagicMock()
-            )
+            await get_validation_results(job_id=1, current_user=MagicMock(), db=MagicMock())
 
         assert exc_info.value.status_code == 404
 
@@ -307,13 +292,13 @@ class TestGetDatasetValidationStatus:
 # ---------------------------------------------------------------------------
 
 
-class TestValidateDatasetLatestArchive:
-    """Tests for POST /datasets/{dataset_id}/validate endpoint."""
+class TestCreateValidationJobWithDatasetId:
+    """Tests for POST / endpoint with dataset_id (validates latest archive)."""
 
     @pytest.mark.asyncio
     @patch("app.api.v1.endpoints.validators.ValidationService")
-    async def test_creates_new_validation(self, MockServiceClass):
-        """Test happy path creates validation for dataset's latest archive."""
+    async def test_creates_validation_for_dataset(self, MockServiceClass):
+        """Test creating validation for dataset's latest archive via POST /."""
         mock_service = MagicMock()
         MockServiceClass.return_value = mock_service
         mock_service.validate_dataset_latest_archive = AsyncMock(
@@ -325,8 +310,13 @@ class TestValidateDatasetLatestArchive:
             }
         )
 
-        result = await validate_dataset_latest_archive(
-            dataset_id=1, current_user=MagicMock(), db=MagicMock()
+        mock_request = MagicMock()
+        mock_request.dataset_id = 1
+        mock_request.archive_id = None
+        mock_request.force = False
+
+        result = await create_validation_job(
+            request=mock_request, current_user=MagicMock(), db=MagicMock()
         )
 
         assert result["task_id"] == "celery-task-456"
@@ -335,8 +325,8 @@ class TestValidateDatasetLatestArchive:
 
     @pytest.mark.asyncio
     @patch("app.api.v1.endpoints.validators.ValidationService")
-    async def test_force_flag_forwarded(self, MockServiceClass):
-        """Test that force=True is forwarded to service."""
+    async def test_force_flag_forwarded_for_dataset(self, MockServiceClass):
+        """Test that force=True is forwarded to service when using dataset_id."""
         mock_service = MagicMock()
         MockServiceClass.return_value = mock_service
         mock_service.validate_dataset_latest_archive = AsyncMock(
@@ -348,15 +338,18 @@ class TestValidateDatasetLatestArchive:
             }
         )
 
-        await validate_dataset_latest_archive(
-            dataset_id=1, current_user=MagicMock(), db=MagicMock(), force=True
-        )
+        mock_request = MagicMock()
+        mock_request.dataset_id = 1
+        mock_request.archive_id = None
+        mock_request.force = True
+
+        await create_validation_job(request=mock_request, current_user=MagicMock(), db=MagicMock())
 
         mock_service.validate_dataset_latest_archive.assert_awaited_once_with(1, force=True)
 
     @pytest.mark.asyncio
     @patch("app.api.v1.endpoints.validators.ValidationService")
-    async def test_no_archive_raises_404(self, MockServiceClass):
+    async def test_no_archive_raises_404_for_dataset(self, MockServiceClass):
         """Test that dataset with no latest archive raises 404."""
         mock_service = MagicMock()
         MockServiceClass.return_value = mock_service
@@ -364,9 +357,14 @@ class TestValidateDatasetLatestArchive:
             side_effect=HTTPException(status_code=404, detail="No latest archive found")
         )
 
+        mock_request = MagicMock()
+        mock_request.dataset_id = 999
+        mock_request.archive_id = None
+        mock_request.force = False
+
         with pytest.raises(HTTPException) as exc_info:
-            await validate_dataset_latest_archive(
-                dataset_id=999, current_user=MagicMock(), db=MagicMock()
+            await create_validation_job(
+                request=mock_request, current_user=MagicMock(), db=MagicMock()
             )
 
         assert exc_info.value.status_code == 404

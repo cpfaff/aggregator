@@ -5,7 +5,7 @@ API endpoints for XML validation tasks.
 from datetime import datetime
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,12 +17,24 @@ from app.services.validation_service import ValidationService
 router = APIRouter()
 
 
-class ValidateArchiveRequest(BaseModel):
+class ValidateRequest(BaseModel):
     """
-    Request model for submitting an archive validation task.
+    Request model for submitting a validation task.
+
+    Either dataset_id or archive_id must be provided:
+    - If dataset_id is provided, validates the latest archive for that dataset
+    - If archive_id is provided, validates that specific archive
+    - If both are provided, archive_id takes precedence
     """
 
-    archive_id: int = Field(..., description="ID of the XML archive to validate")
+    dataset_id: int | None = Field(
+        None, description="ID of the dataset to validate (uses latest archive)"
+    )
+    archive_id: int | None = Field(None, description="ID of the XML archive to validate")
+    force: bool = Field(
+        False,
+        description="If True, create a new validation job even if one already exists",
+    )
 
 
 class ValidateArchiveResponse(BaseModel):
@@ -81,23 +93,43 @@ class DatasetValidationStatus(BaseModel):
 
 @router.post("/", response_model=ValidateArchiveResponse, status_code=status.HTTP_201_CREATED)
 async def create_validation_job(
-    request: ValidateArchiveRequest,
+    request: ValidateRequest,
     current_user: Annotated[UserModel, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """
     Start a validation job for an XML archive.
 
+    Either dataset_id or archive_id must be provided:
+    - If dataset_id is provided, validates the latest archive for that dataset
+    - If archive_id is provided, validates that specific archive
+    - If both are provided, archive_id takes precedence
+
     Args:
-        request: The validation request with archive ID
+        request: The validation request with dataset_id and/or archive_id
         current_user: The current authenticated user
         db: Database session
 
     Returns:
         Information about the submitted validation job
+
+    Raises:
+        HTTPException: If neither dataset_id nor archive_id is provided
     """
     service = ValidationService(db)
-    return await service.create_validation_job(request.archive_id)
+
+    # archive_id takes precedence if provided
+    if request.archive_id is not None:
+        return await service.create_validation_job(request.archive_id)
+    elif request.dataset_id is not None:
+        return await service.validate_dataset_latest_archive(
+            request.dataset_id, force=request.force
+        )
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Either dataset_id or archive_id must be provided",
+        )
 
 
 @router.get("/{job_id}", response_model=ValidationJobResponse)
@@ -193,30 +225,3 @@ async def get_dataset_validation_status(
 
     # Convert dict to Pydantic model for response
     return DatasetValidationStatus(**result)
-
-
-@router.post(
-    "/datasets/{dataset_id}/validate",
-    response_model=ValidateArchiveResponse,
-    status_code=status.HTTP_201_CREATED,
-)
-async def validate_dataset_latest_archive(
-    dataset_id: int,
-    current_user: Annotated[UserModel, Depends(get_current_user)],
-    db: Annotated[AsyncSession, Depends(get_db)],
-    force: bool = False,
-):
-    """
-    Start a validation job for the latest XML archive of a dataset.
-
-    Args:
-        dataset_id: The ID of the dataset
-        force: If True, will create a new validation job even if one already exists
-        current_user: The current authenticated user
-        db: Database session
-
-    Returns:
-        Information about the submitted validation job
-    """
-    service = ValidationService(db)
-    return await service.validate_dataset_latest_archive(dataset_id, force=force)

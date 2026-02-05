@@ -31,7 +31,7 @@ logger = logging.getLogger("api")
 router = APIRouter()
 
 
-@router.get("/csrf-token", summary="Get CSRF token")
+@router.get("/tokens/csrf", summary="Get CSRF token")
 @limiter.limit(settings.CSRF_TOKEN_RATE_LIMIT)
 async def get_csrf_token(request: Request):
     """
@@ -46,7 +46,7 @@ async def get_csrf_token(request: Request):
     return response
 
 
-@router.post("/auth-token", response_model=TokenResponse)
+@router.post("/tokens", response_model=TokenResponse)
 @limiter.limit(settings.LOGIN_RATE_LIMIT)
 async def login(
     request: Request,
@@ -103,7 +103,7 @@ async def login(
     }
 
 
-@router.post("/refresh-token", response_model=TokenResponse)
+@router.post("/tokens/refresh", response_model=TokenResponse)
 async def refresh_token(
     refresh_token: Annotated[str, Body(...)],
     db: Annotated[AsyncSession, Depends(get_db)],
