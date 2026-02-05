@@ -1,8 +1,9 @@
 """Test new tooling setup (Poetry, Ruff, Testcontainers)."""
 
 import pytest
+from testcontainers.core.container import DockerContainer
+from testcontainers.core.wait_strategies import ExecWaitStrategy
 from testcontainers.postgres import PostgresContainer
-from testcontainers.redis import RedisContainer
 
 
 def test_poetry_dependencies_installed():
@@ -36,8 +37,15 @@ async def test_postgres_testcontainer():
 
 
 def test_redis_testcontainer():
-    """Verify Redis testcontainer starts and accepts connections."""
-    with RedisContainer("redis:7-alpine") as redis:
+    """Verify Redis testcontainer starts and accepts connections.
+
+    Uses DockerContainer with ExecWaitStrategy instead of deprecated RedisContainer
+    to avoid the @wait_container_is_ready deprecation warning.
+    """
+    redis = DockerContainer("redis:7-alpine")
+    redis.with_exposed_ports(6379)
+    redis.waiting_for(ExecWaitStrategy(["redis-cli", "ping"]))
+    with redis:
         assert redis.get_container_host_ip()
         port = redis.get_exposed_port(6379)
         assert port

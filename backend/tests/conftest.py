@@ -5,8 +5,9 @@ import pytest_asyncio
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import Session, sessionmaker
+from testcontainers.core.container import DockerContainer
+from testcontainers.core.wait_strategies import ExecWaitStrategy
 from testcontainers.postgres import PostgresContainer
-from testcontainers.redis import RedisContainer
 
 from app.models.base import Base
 
@@ -20,8 +21,15 @@ def postgres_container():
 
 @pytest.fixture(scope="session")
 def redis_container():
-    """Redis testcontainer (session-scoped for speed)."""
-    with RedisContainer("redis:7-alpine") as redis:
+    """Redis testcontainer using modern wait strategy (session-scoped for speed).
+
+    Uses DockerContainer with ExecWaitStrategy instead of deprecated RedisContainer
+    to avoid the @wait_container_is_ready deprecation warning.
+    """
+    redis = DockerContainer("redis:7-alpine")
+    redis.with_exposed_ports(6379)
+    redis.waiting_for(ExecWaitStrategy(["redis-cli", "ping"]))
+    with redis:
         yield redis
 
 

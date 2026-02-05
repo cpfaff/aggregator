@@ -77,7 +77,3 @@ indent-style = "space"
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
-filterwarnings = [
-    # Ignore testcontainers deprecation warning (external library)
-    "ignore:The @wait_container_is_ready decorator is deprecated:DeprecationWarning",
-]
