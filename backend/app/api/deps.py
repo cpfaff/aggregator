@@ -7,7 +7,7 @@ including rate limiting, CSRF protection, and permission checking.
 
 from typing import Annotated
 
-from fastapi import Depends
+from fastapi import Depends, Query
 from fastapi_csrf_protect import CsrfProtect
 from pydantic_settings import BaseSettings
 from slowapi import Limiter
@@ -15,9 +15,10 @@ from slowapi.util import get_remote_address
 
 from app.core.config import settings
 from app.models import UserModel
+from app.schemas.pagination import PaginationParams
 from app.security import check_provider_permission, get_current_user
 
-__all__ = ["limiter", "csrf_protect", "provider_permission"]
+__all__ = ["limiter", "csrf_protect", "provider_permission", "get_pagination_params"]
 
 
 # ------------------- Rate Limiting -------------------
@@ -63,3 +64,13 @@ def provider_permission(operation: str = "read"):
         return current_user
 
     return dependency
+
+
+# ------------------- Pagination -------------------
+def get_pagination_params(
+    limit: int = Query(default=20, ge=1, le=100, description="Items per page (max 100)"),
+    after: str | None = Query(default=None, description="Cursor for next page"),
+    before: str | None = Query(default=None, description="Cursor for previous page"),
+) -> PaginationParams:
+    """FastAPI dependency for pagination query parameters."""
+    return PaginationParams(limit=limit, after=after, before=before)
