@@ -1,4 +1,4 @@
-.PHONY: help up down restart logs shell backup restore create-admin create-user migrate test format maintenance-on maintenance-off prod-up prod-down prod-restart refresh-stats stats-status stats-xml stats-daily stats-biological
+.PHONY: help up down restart logs shell backup restore create-admin create-user migrate test test-unit test-coverage format maintenance-on maintenance-off prod-up prod-down prod-restart refresh-stats stats-status stats-xml stats-daily stats-biological
 
 # Container name configuration - can be overridden
 BACKEND_CONTAINER ?= searchgfbioorg-aggregator_backend-1
@@ -47,7 +47,9 @@ help:
 	@echo "  ${GREEN}create-admin${NC}       Create a new admin user"
 	@echo "  ${GREEN}create-user${NC}        Create a new regular user"
 	@echo "  ${GREEN}migrate${NC}            Run database migrations"
-	@echo "  ${GREEN}test${NC}               Run tests"
+	@echo "  ${GREEN}test${NC}               Run tests from host via poetry (for testcontainers)"
+	@echo "  ${GREEN}test-unit${NC}          Run unit tests in container (quick, no testcontainers)"
+	@echo "  ${GREEN}test-coverage${NC}      Run tests with coverage report"
 	@echo "  ${GREEN}format${NC}             Format code according to project standards"
 	@echo "  ${GREEN}maintenance-on${NC}     Enable maintenance mode"
 	@echo "  ${GREEN}maintenance-off${NC}    Disable maintenance mode"
@@ -172,8 +174,16 @@ migrate:
 	@docker exec $(BACKEND_CONTAINER) alembic upgrade head
 
 test:
-	@echo "${GREEN}Running tests...${NC}"
-	@docker exec $(BACKEND_CONTAINER) pytest
+	@echo "${GREEN}Running tests from host via poetry...${NC}"
+	@cd backend && poetry run pytest tests/ -v
+
+test-unit:
+	@echo "${GREEN}Running unit tests in container...${NC}"
+	@docker exec $(BACKEND_CONTAINER) pytest tests/ -v --ignore=tests/services/ --ignore=tests/test_docker_workers.py --ignore=tests/test_tooling.py
+
+test-coverage:
+	@echo "${GREEN}Running tests with coverage...${NC}"
+	@cd backend && poetry run pytest tests/ -v --cov=app --cov-report=html
 
 # Maintenance mode
 maintenance-on:

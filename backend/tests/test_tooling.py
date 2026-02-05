@@ -75,13 +75,17 @@ def test_ruff_format_check_passes_on_formatted_file():
 
 def test_ruff_lint_runs_without_crash():
     """Verify Ruff linting runs without crashing (exit code 0 or 1, not 2+)."""
+    import os
     import subprocess
+
+    # Get the backend directory (parent of tests directory)
+    backend_dir = os.path.dirname(os.path.dirname(__file__))
 
     result = subprocess.run(
         ["poetry", "run", "ruff", "check", "app/main.py"],
         capture_output=True,
         text=True,
-        cwd="/home/ctpfaff/Claude/development/search.gfbio.org/aggregator/.worktrees/production-readiness/backend",
+        cwd=backend_dir,
     )
     # Exit codes: 0 = clean, 1 = violations found, 2+ = error/crash
     assert result.returncode in [0, 1], f"Ruff crashed: {result.stderr}"
