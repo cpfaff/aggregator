@@ -12,6 +12,7 @@ import pytest
 import pytest_asyncio
 from fastapi import HTTPException
 
+from app.core.utils import utc_now
 from app.models.dataset import DatasetModel, XmlArchiveModel
 from app.models.provider import DataProviderModel
 from app.models.validation import ValidationJobModel
@@ -380,7 +381,7 @@ async def test_get_dataset_validation_status_completed_validation(
         archive_id=sample_archive.id,
         status="completed",
         task_id="task-1",
-        completed_at=datetime.utcnow(),
+        completed_at=utc_now(),
         results={
             "summary": {
                 "total_files": 10,

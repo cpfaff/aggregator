@@ -5,12 +5,11 @@ Common schemas used across the application.
 from typing import Generic, TypeVar
 
 from pydantic import BaseModel
-from pydantic.generics import GenericModel
 
 T = TypeVar("T")
 
 
-class PaginatedResponse(GenericModel, Generic[T]):
+class PaginatedResponse(BaseModel, Generic[T]):
     """Generic paginated response model"""
 
     items: list[T]

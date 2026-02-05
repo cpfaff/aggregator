@@ -1,7 +1,7 @@
 """Tests for in-memory cache and rate limiter utilities."""
 
 import time
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -37,7 +37,7 @@ class TestSimpleCache:
         c = SimpleCache(ttl_seconds=1)
         c.set("key", "value", ttl_seconds=0)
         # Force expiration by setting the entry directly
-        c.cache["key"] = ("value", datetime.utcnow() - timedelta(seconds=1))
+        c.cache["key"] = ("value", datetime.now(UTC) - timedelta(seconds=1))
         assert c.get("key") is None
         assert "key" not in c.cache
 

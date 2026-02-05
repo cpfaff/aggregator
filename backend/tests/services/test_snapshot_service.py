@@ -10,6 +10,7 @@ from datetime import date, datetime, timedelta
 
 import pytest
 
+from app.core.utils import utc_now
 from app.models.archive_snapshot import ArchiveSnapshotModel
 from app.models.dataset import DatasetModel, XmlArchiveModel
 from app.models.provider import DataProviderModel
@@ -164,7 +165,7 @@ class TestGetOverviewStats:
             task_id="task-1",
             total_files=10,
             valid_files=10,
-            created_at=datetime.utcnow(),
+            created_at=utc_now(),
         )
         job2 = ValidationJobModel(
             archive_id=archive.id,
@@ -172,7 +173,7 @@ class TestGetOverviewStats:
             task_id="task-2",
             total_files=10,
             valid_files=5,
-            created_at=datetime.utcnow(),
+            created_at=utc_now(),
         )
         sync_db_session.add_all([job1, job2])
         sync_db_session.flush()
@@ -214,7 +215,7 @@ class TestGetQualityMetrics:
             total_files=5,
             valid_files=5,
             validation_time=1.5,
-            created_at=datetime.utcnow(),
+            created_at=utc_now(),
         )
         # Failed: completed but valid_files < total_files
         failed = ValidationJobModel(
@@ -224,14 +225,14 @@ class TestGetQualityMetrics:
             total_files=5,
             valid_files=2,
             validation_time=2.0,
-            created_at=datetime.utcnow(),
+            created_at=utc_now(),
         )
         # Pending: still running, not completed
         pending = ValidationJobModel(
             archive_id=archive.id,
             status="pending",
             task_id="task-pending",
-            created_at=datetime.utcnow(),
+            created_at=utc_now(),
         )
         sync_db_session.add_all([success, failed, pending])
         sync_db_session.flush()
@@ -252,7 +253,7 @@ class TestGetQualityMetrics:
             task_id="task-old",
             total_files=5,
             valid_files=5,
-            created_at=datetime.utcnow() - timedelta(days=60),
+            created_at=utc_now() - timedelta(days=60),
         )
         sync_db_session.add(old_job)
         sync_db_session.flush()
@@ -270,7 +271,7 @@ class TestGetQualityMetrics:
             task_id="task-empty",
             total_files=0,
             valid_files=0,
-            created_at=datetime.utcnow(),
+            created_at=utc_now(),
         )
         sync_db_session.add(job)
         sync_db_session.flush()
@@ -537,7 +538,7 @@ class TestGetProviderDatasetsTimeline:
         self, snapshot_service, sync_db_session, provider
     ):
         """Test that monthly timeline returns cumulative dataset counts."""
-        now = datetime.utcnow()
+        now = utc_now()
         ds1 = DatasetModel(
             title="DS1",
             source="src",
@@ -568,7 +569,7 @@ class TestGetProviderDatasetsTimeline:
         self, snapshot_service, sync_db_session, provider
     ):
         """Test that daily timeline returns cumulative dataset counts."""
-        now = datetime.utcnow()
+        now = utc_now()
         ds1 = DatasetModel(
             title="DS1",
             source="src",
@@ -720,7 +721,7 @@ class TestGetDatasetStatistics:
             task_id="task-1",
             total_files=10,
             valid_files=10,
-            created_at=datetime.utcnow(),
+            created_at=utc_now(),
         )
         sync_db_session.add(job)
         sync_db_session.flush()
@@ -740,7 +741,7 @@ class TestGetDatasetStatistics:
             task_id="task-1",
             total_files=10,
             valid_files=5,
-            created_at=datetime.utcnow(),
+            created_at=utc_now(),
         )
         sync_db_session.add(job)
         sync_db_session.flush()
@@ -757,7 +758,7 @@ class TestGetDatasetStatistics:
             archive_id=archive.id,
             status="pending",
             task_id="task-1",
-            created_at=datetime.utcnow(),
+            created_at=utc_now(),
         )
         sync_db_session.add(job)
         sync_db_session.flush()
@@ -855,8 +856,8 @@ class TestGetRecentActivity:
             title="Recent DS",
             source="src",
             provider_id=provider.id,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=utc_now(),
+            updated_at=utc_now(),
         )
         sync_db_session.add(ds)
         sync_db_session.flush()
@@ -874,8 +875,8 @@ class TestGetRecentActivity:
             title="Old DS",
             source="src",
             provider_id=provider.id,
-            created_at=datetime.utcnow() - timedelta(days=60),
-            updated_at=datetime.utcnow() - timedelta(days=60),
+            created_at=utc_now() - timedelta(days=60),
+            updated_at=utc_now() - timedelta(days=60),
         )
         sync_db_session.add(old_ds)
         sync_db_session.flush()
@@ -887,7 +888,7 @@ class TestGetRecentActivity:
         self, snapshot_service, sync_db_session, provider
     ):
         """Test that limit restricts the number of datasets returned."""
-        now = datetime.utcnow()
+        now = utc_now()
         for i in range(5):
             ds = DatasetModel(
                 title=f"DS {i}",
@@ -919,7 +920,7 @@ class TestGetHealthStatus:
             archive_id=archive.id,
             status="completed",
             task_id="task-1",
-            created_at=datetime.utcnow(),
+            created_at=utc_now(),
         )
         sync_db_session.add(job)
         sync_db_session.flush()
@@ -976,7 +977,7 @@ class TestGetGrowthMetrics:
         self, snapshot_service, sync_db_session, provider
     ):
         """Test monthly dataset timeline shows cumulative growth."""
-        now = datetime.utcnow()
+        now = utc_now()
         ds1 = DatasetModel(
             title="DS1",
             source="src",
@@ -1006,7 +1007,7 @@ class TestGetGrowthMetrics:
         self, snapshot_service, sync_db_session, provider
     ):
         """Test daily dataset timeline shows cumulative growth."""
-        now = datetime.utcnow()
+        now = utc_now()
         ds1 = DatasetModel(
             title="DS1",
             source="src",
@@ -1035,7 +1036,7 @@ class TestGetGrowthMetrics:
         self, snapshot_service, sync_db_session, archive
     ):
         """Test validation timeline shows per-period counts, not cumulative."""
-        now = datetime.utcnow()
+        now = utc_now()
         # Create jobs on different days
         j1 = ValidationJobModel(
             archive_id=archive.id,

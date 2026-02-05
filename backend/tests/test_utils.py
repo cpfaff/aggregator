@@ -30,6 +30,8 @@ class TestApplyEntityUpdates:
     async def test_creates_new_entities(self, mock_invalidate):
         """Test that new entities (no ID) are created."""
         db = AsyncMock()
+        # db.add is synchronous in SQLAlchemy, so use MagicMock to avoid unawaited coroutine
+        db.add = MagicMock()
 
         # Mock dataset lookup
         dataset = MagicMock()
@@ -177,6 +179,8 @@ class TestApplyEntityUpdates:
         from pydantic import AnyUrl
 
         db = AsyncMock()
+        # db.add is synchronous in SQLAlchemy, so use MagicMock to avoid unawaited coroutine
+        db.add = MagicMock()
 
         dataset = MagicMock()
         dataset.provider_id = 1

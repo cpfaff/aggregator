@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from functools import wraps
 
 
@@ -11,7 +11,7 @@ class SimpleCache:
     def get(self, key):
         if key in self.cache:
             value, expires_at = self.cache[key]
-            if expires_at > datetime.utcnow():
+            if expires_at > datetime.now(UTC):
                 return value
             else:
                 del self.cache[key]
@@ -19,7 +19,7 @@ class SimpleCache:
 
     def set(self, key, value, ttl_seconds=None):
         ttl = ttl_seconds or self.ttl_seconds
-        expires_at = datetime.utcnow() + timedelta(seconds=ttl)
+        expires_at = datetime.now(UTC) + timedelta(seconds=ttl)
         self.cache[key] = (value, expires_at)
 
     def invalidate(self, prefix=None):

@@ -1,9 +1,20 @@
+from datetime import UTC, datetime
+
 from pydantic import AnyUrl
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.cache import invalidate_cache
 from app.models.dataset import DatasetModel
+
+
+def utc_now() -> datetime:
+    """Return current UTC time as timezone-naive datetime.
+
+    This replaces the deprecated datetime.utcnow() while maintaining
+    compatibility with database columns using TIMESTAMP WITHOUT TIME ZONE.
+    """
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 async def apply_entity_updates(

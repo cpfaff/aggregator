@@ -4,7 +4,7 @@ JWT token generation and validation utilities.
 
 import logging
 import uuid
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import jwt
@@ -31,7 +31,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
         str: The encoded JWT token
     """
     to_encode = data.copy()
-    expire = datetime.utcnow() + (
+    expire = datetime.now(UTC) + (
         expires_delta if expires_delta else timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     )
     to_encode.update(
@@ -39,7 +39,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
             "exp": expire,
             "aud": settings.TOKEN_AUDIENCE,
             "jti": str(uuid.uuid4()),  # Add JWT ID for token revocation capability
-            "iat": datetime.utcnow(),
+            "iat": datetime.now(UTC),
         }
     )
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
@@ -56,13 +56,13 @@ def create_refresh_token(data: dict) -> str:
         str: The encoded JWT refresh token
     """
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    expire = datetime.now(UTC) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     to_encode.update(
         {
             "exp": expire,
             "aud": f"{settings.TOKEN_AUDIENCE}:refresh",
             "jti": str(uuid.uuid4()),
-            "iat": datetime.utcnow(),
+            "iat": datetime.now(UTC),
         }
     )
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)

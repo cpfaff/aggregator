@@ -8,7 +8,7 @@ Total: ~200 lines (vs 1,085 in the old statistics_service.py)
 """
 
 import logging
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -42,7 +42,7 @@ class SnapshotService:
             "total_datacenters": self.repo.count_datacenters(),
             "total_xml_archives": self.repo.count_archives(),
             "validation_success_rate": validation_success_rate,
-            "last_updated": datetime.utcnow(),
+            "last_updated": datetime.now(UTC),
         }
 
     def get_quality_metrics(self, user: UserModel | None = None, days: int = 30) -> dict[str, Any]:
