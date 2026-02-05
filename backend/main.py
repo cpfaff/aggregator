@@ -1,7 +1,7 @@
+import http
 import logging
 import time
 import uuid
-from datetime import datetime
 
 from fastapi import (
     FastAPI,
@@ -12,7 +12,6 @@ from fastapi import (
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
 
 # Import slowapi components for rate limiting
 from slowapi import _rate_limit_exceeded_handler
@@ -24,7 +23,12 @@ from app.api.deps import limiter
 
 # Import application components
 from app.core.config import settings
+
+# RFC 7807 Problem Details error responses
+# See: https://datatracker.ietf.org/doc/html/rfc7807
+from app.core.exceptions import APIError
 from app.core.logging_config import configure_logging, request_id_var
+from app.schemas.errors import ProblemDetail, ValidationProblemDetail
 
 # ------------------- Logging Configuration -------------------
 configure_logging(level=settings.LOG_LEVEL)
@@ -127,16 +131,42 @@ async def log_requests(request: Request, call_next):
 
 
 # ------------------- Exception Handlers -------------------
-class ErrorResponse(BaseModel):
-    detail: str
-    code: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
-    path: str | None = None
+# RFC 7807 Problem Details error responses
+# See: https://datatracker.ietf.org/doc/html/rfc7807
+
+BASE_ERROR_URL = "https://api.gfbio.org/errors"
+PROBLEM_JSON_MEDIA_TYPE = "application/problem+json"
+
+
+@app.exception_handler(APIError)
+async def api_error_handler(request: Request, exc: APIError):
+    """Handle custom API errors with RFC 7807 Problem Details format."""
+    logger.warning(
+        f"API error at {request.url.path}: {exc.title}",
+        extra={
+            "request_id": getattr(request.state, "request_id", str(uuid.uuid4())),
+            "path": request.url.path,
+            "error_type": exc.error_type,
+            "status_code": exc.status_code,
+        },
+    )
+    problem = ProblemDetail(
+        type=f"{BASE_ERROR_URL}/{exc.error_type}",
+        title=exc.title,
+        status=exc.status_code,
+        detail=exc.detail,
+        instance=str(request.url.path),
+    )
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=problem.model_dump(mode="json"),
+        media_type=PROBLEM_JSON_MEDIA_TYPE,
+    )
 
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    """Handle validation errors with detailed field-specific messages."""
+    """Handle validation errors with RFC 7807 Problem Details format."""
     logger.warning(
         f"Validation error at {request.url.path}",
         extra={
@@ -147,40 +177,62 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     )
     errors = [
         {
-            "field": error.get("loc", ["unknown"])[-1],
+            "field": ".".join(str(loc) for loc in error.get("loc", ["unknown"])),
             "message": error.get("msg", "Unknown error"),
+            "type": error.get("type", "unknown"),
         }
         for error in exc.errors()
     ]
+    problem = ValidationProblemDetail(
+        type=f"{BASE_ERROR_URL}/validation-error",
+        title="Validation Error",
+        status=422,
+        detail="Request validation failed",
+        instance=str(request.url.path),
+        errors=errors,
+    )
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content={
-            "detail": "Validation error",
-            "code": "validation_error",
-            "path": str(request.url.path),
-            "timestamp": datetime.utcnow().isoformat(),
-            "errors": errors,
-        },
+        content=problem.model_dump(mode="json"),
+        media_type=PROBLEM_JSON_MEDIA_TYPE,
     )
 
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
-    """Handle HTTP exceptions with structured responses."""
+    """Handle HTTP exceptions with RFC 7807 Problem Details format."""
+    # Map status codes to error types
+    error_type_map = {
+        400: "bad-request",
+        401: "unauthorized",
+        403: "forbidden",
+        404: "not-found",
+        405: "method-not-allowed",
+        409: "conflict",
+        422: "validation-error",
+        429: "rate-limit-exceeded",
+        500: "internal-server-error",
+    }
+    error_type = error_type_map.get(exc.status_code, "http-error")
+
+    problem = ProblemDetail(
+        type=f"{BASE_ERROR_URL}/{error_type}",
+        title=http.HTTPStatus(exc.status_code).phrase,
+        status=exc.status_code,
+        detail=exc.detail,
+        instance=str(request.url.path),
+    )
     return JSONResponse(
         status_code=exc.status_code,
-        content={
-            "detail": exc.detail,
-            "code": "http_exception",
-            "path": str(request.url.path),
-            "timestamp": datetime.utcnow().isoformat(),
-        },
+        content=problem.model_dump(mode="json"),
+        media_type=PROBLEM_JSON_MEDIA_TYPE,
+        headers=exc.headers,
     )
 
 
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
-    """Handle unexpected exceptions with logging."""
+    """Handle unexpected exceptions with RFC 7807 Problem Details format."""
     logger.error(
         f"Unhandled exception at {request.url.path}",
         extra={
@@ -190,14 +242,17 @@ async def general_exception_handler(request: Request, exc: Exception):
         },
         exc_info=True,
     )
+    problem = ProblemDetail(
+        type=f"{BASE_ERROR_URL}/internal-server-error",
+        title="Internal Server Error",
+        status=500,
+        detail="An unexpected error occurred",
+        instance=str(request.url.path),
+    )
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={
-            "detail": "An unexpected error occurred",
-            "code": "internal_server_error",
-            "path": str(request.url.path),
-            "timestamp": datetime.utcnow().isoformat(),
-        },
+        content=problem.model_dump(mode="json"),
+        media_type=PROBLEM_JSON_MEDIA_TYPE,
     )
 
 
