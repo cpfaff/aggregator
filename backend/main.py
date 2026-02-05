@@ -202,16 +202,11 @@ async def general_exception_handler(request: Request, exc: Exception):
 
 
 # ------------------- Router Includes -------------------
-# Include the API router with proper versioning and backwards compatibility
+# Include the API router with proper versioning
+# All endpoints are accessible at /api/v1/... (industry-standard REST versioning)
 from app.api.router import api_router  # noqa: E402
 
 app.include_router(api_router, prefix="/api")
-
-# Also include api_v1_router directly without prefix for backwards compatibility
-# This allows existing clients to use /users instead of /api/v1/users or /api/users
-from app.api.v1.router import api_v1_router  # noqa: E402
-
-app.include_router(api_v1_router)
 
 
 # ------------------- Startup Event -------------------
