@@ -91,6 +91,7 @@ celerybeat.pid
 backups
 
 CLAUDE.md
+AGENTS.md
 
 # Playwright MCP
 .playwright-mcp/
@@ -100,3 +101,7 @@ CLAUDE.md
 .claude/
 .serena/
 .worktrees/
+.beads/
+
+# Experimental/external
+data-catalog-with-dcat/
