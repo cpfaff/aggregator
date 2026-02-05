@@ -20,7 +20,7 @@ export const getCsrfToken = async () => {
 
     // If no token exists or we're forcing a refresh, get a new one
     if (!csrfToken) {
-      const response = await fetch(`${API_BASE}${API_VERSION}/csrf-token`, {
+      const response = await fetch(`${API_BASE}${API_VERSION}/tokens/csrf`, {
         credentials: 'include', // Important to include cookies
       });
 
@@ -85,7 +85,7 @@ export const refreshAccessToken = async () => {
     }
 
     // Call refresh endpoint
-    const response = await fetch(`${API_BASE}${API_VERSION}/refresh-token`, {
+    const response = await fetch(`${API_BASE}${API_VERSION}/tokens/refresh`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -140,7 +140,7 @@ export const fetchWithTokenExpiration = async (url, options = {}, onTokenExpired
     const response = await fetch(url, options);
 
     // Handle 401 Unauthorized errors
-    if (response.status === 401 && !url.endsWith(`${API_VERSION}/auth-token`)) {
+    if (response.status === 401 && !url.endsWith(`${API_VERSION}/tokens`)) {
       // Try to refresh the token
       const refreshSuccess = await refreshAccessToken();
 
@@ -225,6 +225,30 @@ export const initCsrfProtection = async () => {
   }
 };
 
+/**
+ * Parse error response, supporting RFC 7807 Problem Details format
+ * @param {Response} response - Fetch Response object
+ * @returns {Promise<{message: string, status: number, type: string|null}>}
+ */
+export const parseErrorResponse = async (response) => {
+  const contentType = response.headers.get('content-type') || '';
+  const status = response.status;
+
+  try {
+    if (contentType.includes('application/problem+json') || contentType.includes('application/json')) {
+      const data = await response.json();
+      // RFC 7807 format has 'detail' and 'title'
+      const message = data.detail || data.title || data.message || 'An error occurred';
+      return { message, status, type: data.type || null };
+    }
+    // Plain text error
+    const text = await response.text();
+    return { message: text || 'An error occurred', status, type: null };
+  } catch (e) {
+    return { message: 'An error occurred', status, type: null };
+  }
+};
+
 export default {
   API_BASE,
   API_VERSION,
@@ -233,5 +257,6 @@ export default {
   getCsrfToken,
   refreshAccessToken,
   updateTokens,
-  initCsrfProtection
+  initCsrfProtection,
+  parseErrorResponse
 };

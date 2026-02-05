@@ -226,7 +226,7 @@ function TimeSeriesChart({
           }}>
             {label}
           </p>
-          <p style={{
+          <div style={{
             margin: 0,
             color: payload[0].color,
             fontWeight: 700,
@@ -235,7 +235,8 @@ function TimeSeriesChart({
             alignItems: 'center',
             gap: '0.5rem'
           }}>
-            <div style={{
+            <span style={{
+              display: 'inline-block',
               width: '8px',
               height: '8px',
               borderRadius: '50%',
@@ -243,7 +244,7 @@ function TimeSeriesChart({
               boxShadow: `0 0 0 2px ${payload[0].color}20`
             }} />
             {payload[0].value.toLocaleString()}
-          </p>
+          </div>
         </div>
       );
     }

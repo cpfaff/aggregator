@@ -46,7 +46,7 @@ function Providers({ currentUser, onViewProviderDetails }) {
       }
 
       const data = await res.json();
-      setProviders(data);
+      setProviders(data.data);
       setIsLoading(false);
     } catch (err) {
       setError('Error fetching providers: ' + err.message);

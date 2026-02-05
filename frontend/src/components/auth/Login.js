@@ -34,7 +34,7 @@ function Login({ sessionExpired, onViewPublicStats }) {
       await initCsrfProtection();
 
       // We don't use apiRequest here because we're getting the token
-      const res = await fetch(`${API_BASE}${API_VERSION}/auth-token`, {
+      const res = await fetch(`${API_BASE}${API_VERSION}/tokens`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',

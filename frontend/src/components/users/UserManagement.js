@@ -50,7 +50,7 @@ function UserManagement() {
       }
 
       const data = await res.json();
-      setProviders(data);
+      setProviders(data.data);
     } catch (err) {
       console.error('Error fetching providers:', err.message);
     }
@@ -158,7 +158,7 @@ function UserManagement() {
       }
 
       const data = await res.json();
-      setUsers(data);
+      setUsers(data.data);
       setIsLoading(false);
     } catch (err) {
       setError('Error fetching users: ' + err.message);

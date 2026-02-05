@@ -164,7 +164,8 @@ const ProviderDetail = ({ currentUser }) => {
       const data = await res.json();
 
       // Ensure each dataset has properly normalized data and provider_id
-      const normalizedData = data.map(dataset => ({
+      // API returns paginated format: {data: [...], pagination: {...}}
+      const normalizedData = (data.data || data).map(dataset => ({
         ...dataset,
         provider_id: id, // Ensure provider_id is set correctly
         xmlArchives: Array.isArray(dataset.xmlArchives) ? dataset.xmlArchives : [],
