@@ -7,7 +7,7 @@ including rate limiting, CSRF protection, and permission checking.
 
 from typing import Annotated
 
-from fastapi import Depends, Query
+from fastapi import Depends, Query, Request
 from fastapi_csrf_protect import CsrfProtect
 from pydantic_settings import BaseSettings
 from slowapi import Limiter
@@ -17,8 +17,15 @@ from app.core.config import settings
 from app.models import UserModel
 from app.schemas.pagination import PaginationParams
 from app.security import check_provider_permission, get_current_user
+from app.utils.filtering import FilterParam, parse_filter_params
 
-__all__ = ["limiter", "csrf_protect", "provider_permission", "get_pagination_params"]
+__all__ = [
+    "limiter",
+    "csrf_protect",
+    "provider_permission",
+    "get_pagination_params",
+    "get_filtering_params",
+]
 
 
 # ------------------- Rate Limiting -------------------
@@ -74,3 +81,26 @@ def get_pagination_params(
 ) -> PaginationParams:
     """FastAPI dependency for pagination query parameters."""
     return PaginationParams(limit=limit, after=after, before=before)
+
+
+# ------------------- Filtering -------------------
+def get_filtering_params(allowed_fields: list[str], strict: bool = True):
+    """
+    Dependency factory for filtering parameters.
+
+    Args:
+        allowed_fields: List of field names that can be filtered
+        strict: If True, raise error for disallowed fields; if False, ignore them
+
+    Returns:
+        A dependency function that parses filter query parameters
+    """
+
+    def dependency(request: Request) -> list[FilterParam]:
+        return parse_filter_params(
+            dict(request.query_params),
+            allowed_fields=allowed_fields,
+            strict=strict,
+        )
+
+    return dependency
