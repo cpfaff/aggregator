@@ -53,23 +53,27 @@ async def admin_user(db_session):
 @pytest.mark.asyncio
 async def test_list_users_empty(user_service):
     """Test listing users when none exist."""
-    users = await user_service.list_users()
-    assert users == []
+    result = await user_service.list_users()
+    assert result.data == []
+    assert result.pagination.total_count == 0
 
 
 @pytest.mark.asyncio
 async def test_list_users_with_data(user_service, sample_user, admin_user):
     """Test listing users with multiple users."""
-    users = await user_service.list_users()
-    assert len(users) == 2
-    usernames = [u.username for u in users]
+    result = await user_service.list_users()
+    assert len(result.data) == 2
+    usernames = [u.username for u in result.data]
     assert "testuser" in usernames
     assert "admin" in usernames
+    assert result.pagination.total_count == 2
 
 
 @pytest.mark.asyncio
 async def test_list_users_pagination(user_service, db_session):
-    """Test pagination with skip and limit."""
+    """Test cursor-based pagination with limit."""
+    from app.schemas.pagination import PaginationParams
+
     # Create 5 users
     for i in range(5):
         user = UserModel(
@@ -81,17 +85,19 @@ async def test_list_users_pagination(user_service, db_session):
         db_session.add(user)
     await db_session.commit()
 
-    # Test skip
-    users = await user_service.list_users(skip=2)
-    assert len(users) == 3
-
     # Test limit
-    users = await user_service.list_users(limit=2)
-    assert len(users) == 2
+    pagination = PaginationParams(limit=2)
+    result = await user_service.list_users(pagination=pagination)
+    assert len(result.data) == 2
+    assert result.pagination.total_count == 5
+    assert result.pagination.has_next is True
+    assert result.pagination.next_cursor is not None
 
-    # Test skip and limit together
-    users = await user_service.list_users(skip=1, limit=2)
-    assert len(users) == 2
+    # Test cursor navigation (fetch next page)
+    next_pagination = PaginationParams(limit=2, after=result.pagination.next_cursor)
+    result2 = await user_service.list_users(pagination=next_pagination)
+    assert len(result2.data) == 2
+    assert result2.pagination.has_previous is True
 
 
 # Test get_user_by_username (found + not found)

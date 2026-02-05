@@ -23,7 +23,10 @@ from app.models import (
 )
 from app.repositories.dataset_repository import DatasetRepository
 from app.schemas import Dataset
+from app.schemas.pagination import PaginatedResponse, PaginationMeta, PaginationParams
 from app.services.dataset_deletion import DatasetDeletionService
+from app.utils.filtering import FilterParam
+from app.utils.sorting import SortParam
 
 logger = logging.getLogger(__name__)
 
@@ -38,23 +41,21 @@ class DatasetService:
     async def list_datasets(
         self,
         provider_id: int,
-        skip: int = 0,
-        limit: int = 100,
-        title: str | None = None,
-        source: str | None = None,
-    ) -> list[DatasetModel]:
+        filters: list[FilterParam] | None = None,
+        sorts: list[SortParam] | None = None,
+        pagination: PaginationParams | None = None,
+    ) -> PaginatedResponse:
         """
         List datasets for a provider with pagination and filtering.
 
         Args:
             provider_id: ID of the data provider
-            skip: Number of records to skip
-            limit: Maximum number of records to return
-            title: Optional title filter
-            source: Optional source filter
+            filters: List of filter parameters
+            sorts: List of sort parameters
+            pagination: Pagination parameters
 
         Returns:
-            List of DatasetModel instances
+            PaginatedResponse with datasets and pagination metadata
 
         Raises:
             HTTPException: 400 if provider_id is not positive
@@ -62,12 +63,24 @@ class DatasetService:
         if provider_id <= 0:
             raise HTTPException(status_code=400, detail="Provider ID must be a positive integer")
 
-        return await self.repo.list_for_provider(
+        items, total_count, next_cursor, previous_cursor = await self.repo.list_for_provider(
             provider_id=provider_id,
-            skip=skip,
-            limit=limit,
-            title=title,
-            source=source,
+            filters=filters,
+            sorts=sorts,
+            pagination=pagination,
+        )
+
+        limit = pagination.limit if pagination else 20
+        return PaginatedResponse(
+            data=items,
+            pagination=PaginationMeta(
+                limit=limit,
+                has_next=next_cursor is not None,
+                has_previous=previous_cursor is not None,
+                next_cursor=next_cursor,
+                previous_cursor=previous_cursor,
+                total_count=total_count,
+            ),
         )
 
     async def get_dataset_or_404(self, dataset_id: int, provider_id: int) -> DatasetModel:

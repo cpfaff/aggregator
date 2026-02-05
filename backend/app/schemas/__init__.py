@@ -3,13 +3,7 @@ Pydantic schemas for request/response validation.
 Import all schemas here for easy access from other modules.
 """
 
-from app.schemas.common import (
-    PaginatedDatasets,
-    PaginatedProviders,
-    PaginatedResponse,
-    PaginatedUsers,
-    TokenResponse,
-)
+from app.schemas.common import TokenResponse
 from app.schemas.dataset import (
     Dataset,
     LegacyDataset,
@@ -18,6 +12,7 @@ from app.schemas.dataset import (
     UsefulLink,
     XmlArchive,
 )
+from app.schemas.pagination import PaginatedResponse, PaginationMeta, PaginationParams
 from app.schemas.provider import DataProvider, ProviderAssociation
 from app.schemas.statistics import (
     DatasetStats,
@@ -44,10 +39,9 @@ __all__ = [
     "LegacyXmlArchive",
     "LegacyUsefulLink",
     "PaginatedResponse",
+    "PaginationMeta",
+    "PaginationParams",
     "TokenResponse",
-    "PaginatedProviders",
-    "PaginatedDatasets",
-    "PaginatedUsers",
     "TimeSeriesPoint",
     "TimeSeriesResponse",
     "OverviewStats",

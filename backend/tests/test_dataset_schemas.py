@@ -1,6 +1,5 @@
 """Tests for dataset-related Pydantic schemas."""
 
-
 from app.schemas.dataset import Dataset, UsefulLink, XmlArchive
 
 
@@ -74,9 +73,7 @@ class TestDatasetSchema:
         ds = Dataset(
             source="GFBio",
             title="Test",
-            xmlArchives=[
-                XmlArchive(url="https://example.com/a.xml", isLatest=True)
-            ],
+            xmlArchives=[XmlArchive(url="https://example.com/a.xml", isLatest=True)],
         )
         data = ds.model_dump()
         assert "xmlArchives" in data

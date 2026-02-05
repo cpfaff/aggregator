@@ -13,11 +13,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.cache import invalidate_cache
 from app.models import UserModel
 from app.repositories.user_repository import UserRepository
+from app.schemas.pagination import PaginatedResponse, PaginationMeta, PaginationParams
 from app.security import (
     get_password_hash,
     normalize_provider_roles,
     verify_password,
 )
+from app.utils.filtering import FilterParam
+from app.utils.sorting import SortParam
 
 logger = logging.getLogger(__name__)
 
@@ -29,18 +32,41 @@ class UserService:
         self.db = db
         self.repo = UserRepository(db)
 
-    async def list_users(self, skip: int = 0, limit: int = 100) -> list[UserModel]:
+    async def list_users(
+        self,
+        filters: list[FilterParam] | None = None,
+        sorts: list[SortParam] | None = None,
+        pagination: PaginationParams | None = None,
+    ) -> PaginatedResponse:
         """
-        List all users with pagination.
+        List all users with cursor-based pagination.
 
         Args:
-            skip: Number of users to skip
-            limit: Maximum number of users to return
+            filters: List of filter parameters
+            sorts: List of sort parameters
+            pagination: Pagination parameters
 
         Returns:
-            List of UserModel instances
+            PaginatedResponse with users and pagination metadata
         """
-        return await self.repo.list(skip=skip, limit=limit)
+        items, total_count, next_cursor, previous_cursor = await self.repo.list_paginated(
+            filters=filters,
+            sorts=sorts,
+            pagination=pagination,
+        )
+
+        limit = pagination.limit if pagination else 20
+        return PaginatedResponse(
+            data=items,
+            pagination=PaginationMeta(
+                limit=limit,
+                has_next=next_cursor is not None,
+                has_previous=previous_cursor is not None,
+                next_cursor=next_cursor,
+                previous_cursor=previous_cursor,
+                total_count=total_count,
+            ),
+        )
 
     async def get_user_by_username(self, username: str) -> UserModel | None:
         """

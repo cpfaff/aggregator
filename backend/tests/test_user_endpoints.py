@@ -114,23 +114,38 @@ class TestListUsers:
     @patch("app.api.v1.endpoints.users.UserService")
     async def test_admin_can_list_users(self, MockServiceClass):
         """Test that admin users can list all users."""
+        from app.schemas.pagination import PaginationParams
+
         mock_service = MagicMock()
         MockServiceClass.return_value = mock_service
-        mock_service.list_users = AsyncMock(return_value=[])
+        mock_service.list_users = AsyncMock(return_value=MagicMock(data=[], pagination=MagicMock()))
 
+        pagination = PaginationParams(limit=20)
         result = await list_users(
-            current_user=_admin_user(), db=MagicMock(), skip=0, limit=100
+            current_user=_admin_user(),
+            db=MagicMock(),
+            pagination=pagination,
+            filters=[],
+            sorts=[],
         )
 
-        assert result == []
-        mock_service.list_users.assert_awaited_once_with(skip=0, limit=100)
+        assert result.data == []
+        mock_service.list_users.assert_awaited_once_with(
+            filters=[], sorts=[], pagination=pagination
+        )
 
     @pytest.mark.asyncio
     async def test_non_admin_gets_403(self):
         """Test that non-admin users receive 403."""
+        from app.schemas.pagination import PaginationParams
+
         with pytest.raises(HTTPException) as exc_info:
             await list_users(
-                current_user=_regular_user(), db=MagicMock(), skip=0, limit=100
+                current_user=_regular_user(),
+                db=MagicMock(),
+                pagination=PaginationParams(),
+                filters=[],
+                sorts=[],
             )
 
         assert exc_info.value.status_code == 403
@@ -138,14 +153,29 @@ class TestListUsers:
     @pytest.mark.asyncio
     @patch("app.api.v1.endpoints.users.UserService")
     async def test_pagination_params_forwarded(self, MockServiceClass):
-        """Test that skip/limit params are forwarded to service."""
+        """Test that pagination and filter/sort params are forwarded to service."""
+        from app.schemas.pagination import PaginationParams
+        from app.utils.filtering import FilterOperator, FilterParam
+        from app.utils.sorting import SortDirection, SortParam
+
         mock_service = MagicMock()
         MockServiceClass.return_value = mock_service
-        mock_service.list_users = AsyncMock(return_value=[])
+        mock_service.list_users = AsyncMock(return_value=MagicMock(data=[], pagination=MagicMock()))
 
-        await list_users(current_user=_admin_user(), db=MagicMock(), skip=10, limit=50)
+        pagination = PaginationParams(limit=50, after="cursor123")
+        filters = [FilterParam(field="username", operator=FilterOperator.LIKE, value="test")]
+        sorts = [SortParam(field="username", direction=SortDirection.ASC)]
+        await list_users(
+            current_user=_admin_user(),
+            db=MagicMock(),
+            pagination=pagination,
+            filters=filters,
+            sorts=sorts,
+        )
 
-        mock_service.list_users.assert_awaited_once_with(skip=10, limit=50)
+        mock_service.list_users.assert_awaited_once_with(
+            filters=filters, sorts=sorts, pagination=pagination
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -193,9 +223,7 @@ class TestGetUserEndpoint:
         )
 
         with pytest.raises(HTTPException) as exc_info:
-            await get_user_endpoint(
-                username="missing", current_user=_admin_user(), db=MagicMock()
-            )
+            await get_user_endpoint(username="missing", current_user=_admin_user(), db=MagicMock())
 
         assert exc_info.value.status_code == 404
 
@@ -327,9 +355,7 @@ class TestCreateUser:
         mock_user_create = MagicMock()
 
         with pytest.raises(HTTPException) as exc_info:
-            await create_user(
-                user=mock_user_create, current_user=_regular_user(), db=MagicMock()
-            )
+            await create_user(user=mock_user_create, current_user=_regular_user(), db=MagicMock())
 
         assert exc_info.value.status_code == 403
 
@@ -350,9 +376,7 @@ class TestCreateUser:
         mock_user_create.is_global_admin = False
 
         with pytest.raises(HTTPException) as exc_info:
-            await create_user(
-                user=mock_user_create, current_user=_admin_user(), db=MagicMock()
-            )
+            await create_user(user=mock_user_create, current_user=_admin_user(), db=MagicMock())
 
         assert exc_info.value.status_code == 400
 
@@ -384,9 +408,7 @@ class TestDeleteUser:
     async def test_non_admin_gets_403(self):
         """Test that non-admin users receive 403."""
         with pytest.raises(HTTPException) as exc_info:
-            await delete_user(
-                username="anyuser", current_user=_regular_user(), db=MagicMock()
-            )
+            await delete_user(username="anyuser", current_user=_regular_user(), db=MagicMock())
 
         assert exc_info.value.status_code == 403
 
@@ -401,9 +423,7 @@ class TestDeleteUser:
         )
 
         with pytest.raises(HTTPException) as exc_info:
-            await delete_user(
-                username="missing", current_user=_admin_user(), db=MagicMock()
-            )
+            await delete_user(username="missing", current_user=_admin_user(), db=MagicMock())
 
         assert exc_info.value.status_code == 404
 

@@ -7,46 +7,60 @@ This module contains endpoints for provider CRUD operations.
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import csrf_protect, provider_permission
+from app.api.deps import (
+    csrf_protect,
+    get_filtering_params,
+    get_pagination_params,
+    get_sorting_params,
+    provider_permission,
+)
 from app.core.cache import cache_response
 from app.db import get_db
 from app.models import UserModel
-from app.schemas import DataProvider
+from app.schemas import DataProvider, PaginatedResponse
+from app.schemas.pagination import PaginationParams
 from app.security import check_global_admin, get_current_user
 from app.services.provider_service import ProviderService
+from app.utils.filtering import FilterParam
+from app.utils.sorting import SortParam
 
 logger = logging.getLogger("api")
 
 router = APIRouter()
 
+# Allowed fields for filtering and sorting providers
+PROVIDER_FILTER_FIELDS = ["name", "datacenter", "is_data_center"]
+PROVIDER_SORT_FIELDS = ["name", "datacenter", "id"]
 
-@router.get("", response_model=list[DataProvider], summary="List data providers")
+
+@router.get("", response_model=PaginatedResponse[DataProvider], summary="List data providers")
 @cache_response(prefix="providers", ttl_seconds=300)
 async def get_providers(
     current_user: Annotated[UserModel, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    name: Annotated[str | None, Query(description="Filter by provider name")] = None,
-    datacenter: Annotated[str | None, Query(description="Filter by datacenter")] = None,
-    skip: Annotated[int, Query(ge=0, description="Number of items to skip")] = 0,
-    limit: Annotated[
-        int, Query(ge=1, le=1000, description="Maximum number of items to return")
-    ] = 100,
+    pagination: Annotated[PaginationParams, Depends(get_pagination_params)],
+    filters: Annotated[list[FilterParam], Depends(get_filtering_params(PROVIDER_FILTER_FIELDS))],
+    sorts: Annotated[list[SortParam], Depends(get_sorting_params(PROVIDER_SORT_FIELDS))],
 ):
     """
     List all data providers the current user has access to.
 
-    Supports filtering by name or datacenter and pagination with skip/limit.
+    Supports standardized filtering with filter[field]=value or filter[field][op]=value syntax,
+    sorting with sort=field:direction syntax, and cursor-based pagination.
+
+    **Filterable fields:** name, datacenter, is_data_center
+    **Sortable fields:** name, datacenter, id
+    **Filter operators:** eq, ne, gt, gte, lt, lte, like, in
     """
     service = ProviderService(db)
     return await service.list_providers(
         user=current_user,
-        name=name,
-        datacenter=datacenter,
-        skip=skip,
-        limit=limit,
+        filters=filters,
+        sorts=sorts,
+        pagination=pagination,
     )
 
 

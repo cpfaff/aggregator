@@ -123,48 +123,82 @@ class TestListValidationJobs:
     @pytest.mark.asyncio
     @patch("app.api.v1.endpoints.validators.ValidationService")
     async def test_returns_list_of_jobs(self, MockServiceClass):
-        """Test happy path returns list of jobs."""
+        """Test happy path returns paginated response."""
+        from app.schemas.pagination import PaginationParams
+
         mock_service = MagicMock()
         MockServiceClass.return_value = mock_service
-        mock_service.list_validation_jobs = AsyncMock(return_value=[])
+        mock_service.list_validation_jobs = AsyncMock(
+            return_value=MagicMock(data=[], pagination=MagicMock())
+        )
 
-        result = await list_validation_jobs(current_user=MagicMock(), db=MagicMock())
+        pagination = PaginationParams(limit=20)
+        result = await list_validation_jobs(
+            current_user=MagicMock(),
+            db=MagicMock(),
+            pagination=pagination,
+            filters=[],
+            sorts=[],
+        )
 
-        assert result == []
+        assert result.data == []
 
     @pytest.mark.asyncio
     @patch("app.api.v1.endpoints.validators.ValidationService")
     async def test_forwards_filter_params(self, MockServiceClass):
-        """Test that archive_id, status, limit, offset params are forwarded."""
+        """Test that filters, sorts, and pagination params are forwarded."""
+        from app.schemas.pagination import PaginationParams
+        from app.utils.filtering import FilterOperator, FilterParam
+        from app.utils.sorting import SortDirection, SortParam
+
         mock_service = MagicMock()
         MockServiceClass.return_value = mock_service
-        mock_service.list_validation_jobs = AsyncMock(return_value=[])
+        mock_service.list_validation_jobs = AsyncMock(
+            return_value=MagicMock(data=[], pagination=MagicMock())
+        )
+
+        pagination = PaginationParams(limit=5)
+        filters = [
+            FilterParam(field="archive_id", operator=FilterOperator.EQ, value="42"),
+            FilterParam(field="status", operator=FilterOperator.EQ, value="completed"),
+        ]
+        sorts = [SortParam(field="id", direction=SortDirection.DESC)]
 
         await list_validation_jobs(
             current_user=MagicMock(),
             db=MagicMock(),
-            archive_id=42,
-            status="completed",
-            limit=5,
-            offset=10,
+            pagination=pagination,
+            filters=filters,
+            sorts=sorts,
         )
 
         mock_service.list_validation_jobs.assert_awaited_once_with(
-            archive_id=42, status_filter="completed", limit=5, offset=10
+            filters=filters, sorts=sorts, pagination=pagination
         )
 
     @pytest.mark.asyncio
     @patch("app.api.v1.endpoints.validators.ValidationService")
     async def test_defaults_no_filters(self, MockServiceClass):
-        """Test that default params use None for optional filters."""
+        """Test that default params use empty lists for filters and sorts."""
+        from app.schemas.pagination import PaginationParams
+
         mock_service = MagicMock()
         MockServiceClass.return_value = mock_service
-        mock_service.list_validation_jobs = AsyncMock(return_value=[])
+        mock_service.list_validation_jobs = AsyncMock(
+            return_value=MagicMock(data=[], pagination=MagicMock())
+        )
 
-        await list_validation_jobs(current_user=MagicMock(), db=MagicMock())
+        pagination = PaginationParams()
+        await list_validation_jobs(
+            current_user=MagicMock(),
+            db=MagicMock(),
+            pagination=pagination,
+            filters=[],
+            sorts=[],
+        )
 
         mock_service.list_validation_jobs.assert_awaited_once_with(
-            archive_id=None, status_filter=None, limit=10, offset=0
+            filters=[], sorts=[], pagination=pagination
         )
 
 

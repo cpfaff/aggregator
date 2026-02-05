@@ -90,14 +90,10 @@ class TestUserPermissionsSchema:
 
     def test_valid_permissions(self):
         """Test creating valid UserPermissions."""
-        up = UserPermissions(
-            username="alice", is_global_admin=True, provider_roles={"1": "admin"}
-        )
+        up = UserPermissions(username="alice", is_global_admin=True, provider_roles={"1": "admin"})
         assert up.username == "alice"
 
     def test_trims_whitespace(self):
         """Test that whitespace is trimmed from username."""
-        up = UserPermissions(
-            username="  alice  ", is_global_admin=False, provider_roles={}
-        )
+        up = UserPermissions(username="  alice  ", is_global_admin=False, provider_roles={})
         assert up.username == "alice"

@@ -23,7 +23,10 @@ from app.models import (
 )
 from app.repositories.provider_repository import ProviderRepository
 from app.schemas import DataProvider
+from app.schemas.pagination import PaginatedResponse, PaginationMeta, PaginationParams
 from app.security import normalize_provider_roles
+from app.utils.filtering import FilterParam
+from app.utils.sorting import SortParam
 
 logger = logging.getLogger(__name__)
 
@@ -57,31 +60,41 @@ class ProviderService:
     async def list_providers(
         self,
         user: UserModel,
-        name: str | None = None,
-        datacenter: str | None = None,
-        skip: int = 0,
-        limit: int = 100,
-    ) -> list[DataProviderModel]:
+        filters: list[FilterParam] | None = None,
+        sorts: list[SortParam] | None = None,
+        pagination: PaginationParams | None = None,
+    ) -> PaginatedResponse:
         """
         List all providers the user has access to.
 
         Args:
             user: Current user
-            name: Optional filter by provider name
-            datacenter: Optional filter by datacenter
-            skip: Number of providers to skip
-            limit: Maximum number of providers to return
+            filters: List of filter parameters
+            sorts: List of sort parameters
+            pagination: Pagination parameters
 
         Returns:
-            List of DataProviderModel instances
+            PaginatedResponse with providers and pagination metadata
         """
         allowed_ids = self._get_allowed_provider_ids(user)
-        return await self.repo.list_for_user(
+        items, total_count, next_cursor, previous_cursor = await self.repo.list_for_user(
             allowed_provider_ids=allowed_ids,
-            name=name,
-            datacenter=datacenter,
-            skip=skip,
-            limit=limit,
+            filters=filters,
+            sorts=sorts,
+            pagination=pagination,
+        )
+
+        limit = pagination.limit if pagination else 20
+        return PaginatedResponse(
+            data=items,
+            pagination=PaginationMeta(
+                limit=limit,
+                has_next=next_cursor is not None,
+                has_previous=previous_cursor is not None,
+                next_cursor=next_cursor,
+                previous_cursor=previous_cursor,
+                total_count=total_count,
+            ),
         )
 
     async def get_provider_by_id(self, provider_id: int) -> DataProviderModel | None:

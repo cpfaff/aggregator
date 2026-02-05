@@ -5,7 +5,6 @@ Tests all validation job management operations with real database via testcontai
 following TDD principles and covering edge cases.
 """
 
-from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -164,8 +163,9 @@ async def test_get_validation_job_not_found(validation_service):
 @pytest.mark.asyncio
 async def test_list_validation_jobs_empty(validation_service):
     """Test listing validation jobs when none exist."""
-    jobs = await validation_service.list_validation_jobs()
-    assert jobs == []
+    result = await validation_service.list_validation_jobs()
+    assert result.data == []
+    assert result.pagination.total_count == 0
 
 
 @pytest.mark.asyncio
@@ -179,8 +179,9 @@ async def test_list_validation_jobs_with_data(
     db_session.add_all([job1, job2])
     await db_session.flush()
 
-    jobs = await validation_service.list_validation_jobs()
-    assert len(jobs) == 2
+    result = await validation_service.list_validation_jobs()
+    assert len(result.data) == 2
+    assert result.pagination.total_count == 2
 
 
 @pytest.mark.asyncio
@@ -188,14 +189,18 @@ async def test_list_validation_jobs_filter_by_archive(
     validation_service, db_session, sample_archive, another_archive
 ):
     """Test filtering validation jobs by archive ID."""
+    from app.utils.filtering import FilterOperator, FilterParam
+
     job1 = ValidationJobModel(archive_id=sample_archive.id, status="completed", task_id="task-1")
     job2 = ValidationJobModel(archive_id=another_archive.id, status="pending", task_id="task-2")
     db_session.add_all([job1, job2])
     await db_session.flush()
 
-    jobs = await validation_service.list_validation_jobs(archive_id=sample_archive.id)
-    assert len(jobs) == 1
-    assert jobs[0].archive_id == sample_archive.id
+    filters = [FilterParam(field="archive_id", operator=FilterOperator.EQ, value=sample_archive.id)]
+    result = await validation_service.list_validation_jobs(filters=filters)
+    assert len(result.data) == 1
+    assert result.data[0].archive_id == sample_archive.id
+    assert result.pagination.total_count == 1
 
 
 @pytest.mark.asyncio
@@ -203,19 +208,25 @@ async def test_list_validation_jobs_filter_by_status(
     validation_service, db_session, sample_archive
 ):
     """Test filtering validation jobs by status."""
+    from app.utils.filtering import FilterOperator, FilterParam
+
     job1 = ValidationJobModel(archive_id=sample_archive.id, status="completed", task_id="task-1")
     job2 = ValidationJobModel(archive_id=sample_archive.id, status="pending", task_id="task-2")
     db_session.add_all([job1, job2])
     await db_session.flush()
 
-    jobs = await validation_service.list_validation_jobs(status_filter="completed")
-    assert len(jobs) == 1
-    assert jobs[0].status == "completed"
+    filters = [FilterParam(field="status", operator=FilterOperator.EQ, value="completed")]
+    result = await validation_service.list_validation_jobs(filters=filters)
+    assert len(result.data) == 1
+    assert result.data[0].status == "completed"
+    assert result.pagination.total_count == 1
 
 
 @pytest.mark.asyncio
 async def test_list_validation_jobs_pagination(validation_service, db_session, sample_archive):
-    """Test pagination with limit and offset."""
+    """Test cursor-based pagination with limit."""
+    from app.schemas.pagination import PaginationParams
+
     # Create 5 jobs
     for i in range(5):
         job = ValidationJobModel(
@@ -227,16 +238,18 @@ async def test_list_validation_jobs_pagination(validation_service, db_session, s
     await db_session.flush()
 
     # Test limit
-    jobs = await validation_service.list_validation_jobs(limit=2)
-    assert len(jobs) == 2
+    pagination = PaginationParams(limit=2)
+    result = await validation_service.list_validation_jobs(pagination=pagination)
+    assert len(result.data) == 2
+    assert result.pagination.total_count == 5
+    assert result.pagination.has_next is True
+    assert result.pagination.next_cursor is not None
 
-    # Test offset
-    jobs = await validation_service.list_validation_jobs(limit=10, offset=3)
-    assert len(jobs) == 2
-
-    # Test offset + limit
-    jobs = await validation_service.list_validation_jobs(limit=2, offset=1)
-    assert len(jobs) == 2
+    # Test cursor navigation (fetch next page)
+    next_pagination = PaginationParams(limit=2, after=result.pagination.next_cursor)
+    result2 = await validation_service.list_validation_jobs(pagination=next_pagination)
+    assert len(result2.data) == 2
+    assert result2.pagination.has_previous is True
 
 
 # Test get_validation_results (completed + not completed + no results)

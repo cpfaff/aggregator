@@ -138,7 +138,13 @@ class TestRequestIdFilterUnit:
         """Test that the filter injects request_id into log records."""
         filt = RequestIdFilter()
         record = logging.LogRecord(
-            name="test", level=logging.INFO, pathname="", lineno=0, msg="test", args=(), exc_info=None
+            name="test",
+            level=logging.INFO,
+            pathname="",
+            lineno=0,
+            msg="test",
+            args=(),
+            exc_info=None,
         )
         test_id = str(uuid.uuid4())
         token = request_id_var.set(test_id)
@@ -152,6 +158,12 @@ class TestRequestIdFilterUnit:
         """Test that filter always returns True (doesn't suppress records)."""
         filt = RequestIdFilter()
         record = logging.LogRecord(
-            name="test", level=logging.INFO, pathname="", lineno=0, msg="test", args=(), exc_info=None
+            name="test",
+            level=logging.INFO,
+            pathname="",
+            lineno=0,
+            msg="test",
+            args=(),
+            exc_info=None,
         )
         assert filt.filter(record) is True

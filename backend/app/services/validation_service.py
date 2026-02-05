@@ -13,7 +13,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import ValidationJobModel, XmlArchiveModel
 from app.repositories.validation_repository import ValidationRepository
+from app.schemas.pagination import PaginatedResponse, PaginationMeta, PaginationParams
 from app.tasks.validator_tasks import validate_archive
+from app.utils.filtering import FilterParam
+from app.utils.sorting import SortParam
 
 logger = logging.getLogger(__name__)
 
@@ -108,28 +111,38 @@ class ValidationService:
 
     async def list_validation_jobs(
         self,
-        archive_id: int | None = None,
-        status_filter: str | None = None,
-        limit: int = 10,
-        offset: int = 0,
-    ) -> list[ValidationJobModel]:
+        filters: list[FilterParam] | None = None,
+        sorts: list[SortParam] | None = None,
+        pagination: PaginationParams | None = None,
+    ) -> PaginatedResponse:
         """
-        List validation jobs with optional filtering.
+        List validation jobs with optional filtering and cursor-based pagination.
 
         Args:
-            archive_id: Optional filter by archive ID
-            status_filter: Optional filter by status
-            limit: Maximum number of jobs to return
-            offset: Offset for pagination
+            filters: List of filter parameters
+            sorts: List of sort parameters
+            pagination: Pagination parameters
 
         Returns:
-            List of validation jobs
+            PaginatedResponse with validation jobs and pagination metadata
         """
-        return await self.repo.list_jobs(
-            archive_id=archive_id,
-            status_filter=status_filter,
-            limit=limit,
-            offset=offset,
+        items, total_count, next_cursor, previous_cursor = await self.repo.list_jobs(
+            filters=filters,
+            sorts=sorts,
+            pagination=pagination,
+        )
+
+        limit = pagination.limit if pagination else 20
+        return PaginatedResponse(
+            data=items,
+            pagination=PaginationMeta(
+                limit=limit,
+                has_next=next_cursor is not None,
+                has_previous=previous_cursor is not None,
+                next_cursor=next_cursor,
+                previous_cursor=previous_cursor,
+                total_count=total_count,
+            ),
         )
 
     async def get_validation_results(self, job_id: int) -> dict[str, Any]:

@@ -8,25 +8,38 @@ user permissions, and provider associations.
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Body, Depends, Query
+from fastapi import APIRouter, Body, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import csrf_protect
+from app.api.deps import (
+    csrf_protect,
+    get_filtering_params,
+    get_pagination_params,
+    get_sorting_params,
+)
 from app.db import get_db
 from app.models import UserModel
 from app.schemas import (
+    PaginatedResponse,
     ProviderAssociation,
     User,
     UserCreate,
     UserPermissions,
     UserUpdate,
 )
+from app.schemas.pagination import PaginationParams
 from app.security import check_global_admin, get_current_user
 from app.services.user_service import UserService
+from app.utils.filtering import FilterParam
+from app.utils.sorting import SortParam
 
 logger = logging.getLogger("api")
 
 router = APIRouter()
+
+# Allowed fields for filtering and sorting users
+USER_FILTER_FIELDS = ["username", "is_global_admin"]
+USER_SORT_FIELDS = ["username", "id"]
 
 
 @router.get(
@@ -47,23 +60,27 @@ async def get_user_permissions(
     return UserPermissions(**permissions)
 
 
-@router.get("/users", response_model=list[User], summary="List all users")
+@router.get("/users", response_model=PaginatedResponse[User], summary="List all users")
 async def list_users(
     current_user: Annotated[UserModel, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    skip: Annotated[int, Query(ge=0, description="Number of users to skip")] = 0,
-    limit: Annotated[
-        int, Query(ge=1, le=1000, description="Maximum number of users to return")
-    ] = 100,
+    pagination: Annotated[PaginationParams, Depends(get_pagination_params)],
+    filters: Annotated[list[FilterParam], Depends(get_filtering_params(USER_FILTER_FIELDS))],
+    sorts: Annotated[list[SortParam], Depends(get_sorting_params(USER_SORT_FIELDS))],
 ):
     """
     List all users in the system. Requires global admin privileges.
 
-    Supports pagination with skip/limit parameters.
+    Supports standardized filtering with filter[field]=value or filter[field][op]=value syntax,
+    sorting with sort=field:direction syntax, and cursor-based pagination.
+
+    **Filterable fields:** username, is_global_admin
+    **Sortable fields:** username, id
+    **Filter operators:** eq, ne, gt, gte, lt, lte, like, in
     """
     check_global_admin(current_user)
     service = UserService(db)
-    return await service.list_users(skip=skip, limit=limit)
+    return await service.list_users(filters=filters, sorts=sorts, pagination=pagination)
 
 
 @router.get("/users/{username}", response_model=User, summary="Get user by username")

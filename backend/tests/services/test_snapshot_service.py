@@ -293,7 +293,9 @@ class TestGetDatasetUnitCount:
         result = snapshot_service.get_dataset_unit_count(dataset.id)
         assert result == 0
 
-    def test_returns_sum_of_latest_snapshots(self, snapshot_service, sync_db_session, dataset, archive):
+    def test_returns_sum_of_latest_snapshots(
+        self, snapshot_service, sync_db_session, dataset, archive
+    ):
         """Test returns sum of unit counts from latest snapshots per archive."""
         # Older snapshot
         snap1 = ArchiveSnapshotModel(
@@ -415,9 +417,7 @@ class TestGetBiologicalUnitsTimeline:
         result = snapshot_service.get_biological_units_timeline()
         assert result == []
 
-    def test_returns_chronological_data_points(
-        self, snapshot_service, sync_db_session, archive
-    ):
+    def test_returns_chronological_data_points(self, snapshot_service, sync_db_session, archive):
         """Test returns timeline sorted chronologically."""
         snap1 = ArchiveSnapshotModel(
             archive_id=archive.id,
@@ -527,16 +527,12 @@ class TestGetProviderBiologicalUnitsTimeline:
 class TestGetProviderDatasetsTimeline:
     """Tests for get_provider_datasets_timeline."""
 
-    def test_returns_empty_for_provider_without_datasets(
-        self, snapshot_service, provider
-    ):
+    def test_returns_empty_for_provider_without_datasets(self, snapshot_service, provider):
         """Test returns empty list when provider has no recent datasets."""
         result = snapshot_service.get_provider_datasets_timeline(provider.id, months=1)
         assert result == []
 
-    def test_cumulative_count_monthly(
-        self, snapshot_service, sync_db_session, provider
-    ):
+    def test_cumulative_count_monthly(self, snapshot_service, sync_db_session, provider):
         """Test that monthly timeline returns cumulative dataset counts."""
         now = utc_now()
         ds1 = DatasetModel(
@@ -565,9 +561,7 @@ class TestGetProviderDatasetsTimeline:
         # Last value should be 2 (total datasets)
         assert result[-1]["value"] >= 2
 
-    def test_cumulative_count_daily(
-        self, snapshot_service, sync_db_session, provider
-    ):
+    def test_cumulative_count_daily(self, snapshot_service, sync_db_session, provider):
         """Test that daily timeline returns cumulative dataset counts."""
         now = utc_now()
         ds1 = DatasetModel(
@@ -711,9 +705,7 @@ class TestGetDatasetStatistics:
         assert result["unit_count"] == 42
         assert result["validation_status"] is None  # no validation jobs
 
-    def test_includes_validation_status(
-        self, snapshot_service, sync_db_session, dataset, archive
-    ):
+    def test_includes_validation_status(self, snapshot_service, sync_db_session, dataset, archive):
         """Test that validation status is populated from latest validation job."""
         job = ValidationJobModel(
             archive_id=archive.id,
@@ -819,9 +811,7 @@ class TestGetProviderListStats:
         # Both providers have datacenters and datasets
         assert len(result["datacenters"]) == 2
 
-    def test_respects_limit_parameter(
-        self, snapshot_service, sync_db_session
-    ):
+    def test_respects_limit_parameter(self, snapshot_service, sync_db_session):
         """Test that limit restricts the number of providers returned."""
         # Create 3 providers
         for i in range(3):
@@ -884,9 +874,7 @@ class TestGetRecentActivity:
         result = snapshot_service.get_recent_activity(days=30)
         assert result["total_new_datasets"] == 0
 
-    def test_respects_limit_parameter(
-        self, snapshot_service, sync_db_session, provider
-    ):
+    def test_respects_limit_parameter(self, snapshot_service, sync_db_session, provider):
         """Test that limit restricts the number of datasets returned."""
         now = utc_now()
         for i in range(5):
@@ -912,9 +900,7 @@ class TestGetRecentActivity:
 class TestGetHealthStatus:
     """Tests for get_health_status."""
 
-    def test_healthy_when_data_exists(
-        self, snapshot_service, sync_db_session, dataset, archive
-    ):
+    def test_healthy_when_data_exists(self, snapshot_service, sync_db_session, dataset, archive):
         """Test health status is healthy when datasets, archives, and validations exist."""
         job = ValidationJobModel(
             archive_id=archive.id,
@@ -938,17 +924,13 @@ class TestGetHealthStatus:
         # No datasets (-30), no archives (-30), no validations (-20)
         assert result["health_score"] == 20
 
-    def test_degraded_when_no_recent_validations(
-        self, snapshot_service, dataset, archive
-    ):
+    def test_degraded_when_no_recent_validations(self, snapshot_service, dataset, archive):
         """Test health degrades when no recent validations exist."""
         result = snapshot_service.get_health_status()
 
         assert result["health_score"] == 80  # -20 for no recent validations
 
-    def test_returns_correct_counts(
-        self, snapshot_service, sync_db_session, dataset, archive
-    ):
+    def test_returns_correct_counts(self, snapshot_service, sync_db_session, dataset, archive):
         """Test health status includes correct count metrics."""
         result = snapshot_service.get_health_status()
 
@@ -973,9 +955,7 @@ class TestGetGrowthMetrics:
         assert result["providers_timeline"] == []
         assert result["validation_timeline"] == []
 
-    def test_monthly_cumulative_datasets(
-        self, snapshot_service, sync_db_session, provider
-    ):
+    def test_monthly_cumulative_datasets(self, snapshot_service, sync_db_session, provider):
         """Test monthly dataset timeline shows cumulative growth."""
         now = utc_now()
         ds1 = DatasetModel(
@@ -1003,9 +983,7 @@ class TestGetGrowthMetrics:
         for i in range(1, len(tl)):
             assert tl[i]["value"] >= tl[i - 1]["value"]
 
-    def test_daily_cumulative_datasets(
-        self, snapshot_service, sync_db_session, provider
-    ):
+    def test_daily_cumulative_datasets(self, snapshot_service, sync_db_session, provider):
         """Test daily dataset timeline shows cumulative growth."""
         now = utc_now()
         ds1 = DatasetModel(
@@ -1032,9 +1010,7 @@ class TestGetGrowthMetrics:
         for i in range(1, len(tl)):
             assert tl[i]["value"] >= tl[i - 1]["value"]
 
-    def test_validation_timeline_not_cumulative(
-        self, snapshot_service, sync_db_session, archive
-    ):
+    def test_validation_timeline_not_cumulative(self, snapshot_service, sync_db_session, archive):
         """Test validation timeline shows per-period counts, not cumulative."""
         now = utc_now()
         # Create jobs on different days

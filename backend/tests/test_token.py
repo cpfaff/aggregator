@@ -44,9 +44,7 @@ class TestCreateAccessToken:
 
     def test_custom_expiration(self):
         """Test that custom expiration delta is applied."""
-        token = create_access_token(
-            data={"sub": "testuser"}, expires_delta=timedelta(hours=2)
-        )
+        token = create_access_token(data={"sub": "testuser"}, expires_delta=timedelta(hours=2))
         payload = jwt.decode(token, options={"verify_signature": False})
         assert "exp" in payload
 
@@ -91,9 +89,7 @@ class TestDecodeToken:
 
     def test_expired_token_raises_401(self):
         """Test that an expired token raises 401."""
-        token = create_access_token(
-            data={"sub": "testuser"}, expires_delta=timedelta(seconds=-1)
-        )
+        token = create_access_token(data={"sub": "testuser"}, expires_delta=timedelta(seconds=-1))
         with pytest.raises(HTTPException) as exc_info:
             decode_token(token)
         assert exc_info.value.status_code == 401

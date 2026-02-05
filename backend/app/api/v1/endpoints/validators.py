@@ -9,12 +9,20 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import get_filtering_params, get_pagination_params, get_sorting_params
 from app.db.session import get_db
 from app.models import UserModel
+from app.schemas.pagination import PaginatedResponse, PaginationParams
 from app.security import get_current_user
 from app.services.validation_service import ValidationService
+from app.utils.filtering import FilterParam
+from app.utils.sorting import SortParam
 
 router = APIRouter()
+
+# Allowed fields for filtering and sorting validation jobs
+VALIDATION_FILTER_FIELDS = ["archive_id", "status"]
+VALIDATION_SORT_FIELDS = ["id", "created_at", "status"]
 
 
 class ValidateRequest(BaseModel):
@@ -153,33 +161,36 @@ async def get_validation_job(
     return await service.get_validation_job(job_id)
 
 
-@router.get("/", response_model=list[ValidationJobResponse])
+@router.get("/", response_model=PaginatedResponse[ValidationJobResponse])
 async def list_validation_jobs(
     current_user: Annotated[UserModel, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    archive_id: int | None = None,
-    status: str | None = None,
-    limit: int = 10,
-    offset: int = 0,
+    pagination: Annotated[PaginationParams, Depends(get_pagination_params)],
+    filters: Annotated[list[FilterParam], Depends(get_filtering_params(VALIDATION_FILTER_FIELDS))],
+    sorts: Annotated[list[SortParam], Depends(get_sorting_params(VALIDATION_SORT_FIELDS))],
 ):
     """
     List validation jobs with optional filtering.
 
+    Supports standardized filtering with filter[field]=value or filter[field][op]=value syntax,
+    sorting with sort=field:direction syntax, and cursor-based pagination.
+
+    **Filterable fields:** archive_id, status
+    **Sortable fields:** id, created_at, status
+    **Filter operators:** eq, ne, gt, gte, lt, lte, like, in
+
     Args:
-        archive_id: Optional filter by archive ID
-        status: Optional filter by status
-        limit: Maximum number of jobs to return
-        offset: Offset for pagination
+        pagination: Cursor-based pagination parameters
+        filters: Filter parameters
+        sorts: Sort parameters
         current_user: The current authenticated user
         db: Database session
 
     Returns:
-        List of validation jobs
+        Paginated list of validation jobs
     """
     service = ValidationService(db)
-    return await service.list_validation_jobs(
-        archive_id=archive_id, status_filter=status, limit=limit, offset=offset
-    )
+    return await service.list_validation_jobs(filters=filters, sorts=sorts, pagination=pagination)
 
 
 @router.get("/{job_id}/results", response_model=dict[str, Any])

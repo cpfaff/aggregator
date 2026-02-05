@@ -8,24 +8,37 @@ including listing, retrieving, creating, updating, and deleting datasets.
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import csrf_protect, provider_permission
+from app.api.deps import (
+    csrf_protect,
+    get_filtering_params,
+    get_pagination_params,
+    get_sorting_params,
+    provider_permission,
+)
 from app.core.cache import cache_response
 from app.db import get_db
 from app.models import UserModel
-from app.schemas import Dataset
+from app.schemas import Dataset, PaginatedResponse
+from app.schemas.pagination import PaginationParams
 from app.services.dataset_service import DatasetService
+from app.utils.filtering import FilterParam
+from app.utils.sorting import SortParam
 
 logger = logging.getLogger("api")
 
 router = APIRouter()
 
+# Allowed fields for filtering and sorting datasets
+DATASET_FILTER_FIELDS = ["title", "source", "provider_id"]
+DATASET_SORT_FIELDS = ["title", "source", "id"]
+
 
 @router.get(
     "/{provider_id}/data-sets",
-    response_model=list[Dataset],
+    response_model=PaginatedResponse[Dataset],
     summary="List datasets for provider",
 )
 @cache_response(prefix="datasets", ttl_seconds=300)
@@ -33,26 +46,27 @@ async def get_datasets(
     provider_id: int,
     current_user: Annotated[UserModel, Depends(provider_permission("read"))],
     db: Annotated[AsyncSession, Depends(get_db)],
-    title: Annotated[str | None, Query(description="Filter by dataset title")] = None,
-    source: Annotated[str | None, Query(description="Filter by dataset source")] = None,
-    skip: Annotated[int, Query(ge=0, description="Number of items to skip")] = 0,
-    limit: Annotated[
-        int, Query(ge=1, le=1000, description="Maximum number of items to return")
-    ] = 100,
+    pagination: Annotated[PaginationParams, Depends(get_pagination_params)],
+    filters: Annotated[list[FilterParam], Depends(get_filtering_params(DATASET_FILTER_FIELDS))],
+    sorts: Annotated[list[SortParam], Depends(get_sorting_params(DATASET_SORT_FIELDS))],
 ):
     """
     List all datasets for a specific data provider. Requires read permissions.
     - **provider_id**: Must be a positive integer
 
-    Supports filtering by title or source and pagination with skip/limit.
+    Supports standardized filtering with filter[field]=value or filter[field][op]=value syntax,
+    sorting with sort=field:direction syntax, and cursor-based pagination.
+
+    **Filterable fields:** title, source, provider_id
+    **Sortable fields:** title, source, id
+    **Filter operators:** eq, ne, gt, gte, lt, lte, like, in
     """
     service = DatasetService(db)
     return await service.list_datasets(
         provider_id=provider_id,
-        skip=skip,
-        limit=limit,
-        title=title,
-        source=source,
+        filters=filters,
+        sorts=sorts,
+        pagination=pagination,
     )
 
 

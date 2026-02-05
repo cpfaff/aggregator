@@ -2,7 +2,7 @@
 Repository for dataset data access operations including cascade deletion.
 """
 
-from sqlalchemy import and_, delete, select
+from sqlalchemy import and_, delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -14,10 +14,28 @@ from app.models import (
 )
 from app.models.archive_snapshot import ArchiveSnapshotModel
 from app.repositories.base import BaseRepository
+from app.schemas.pagination import PaginationParams
+from app.utils.filtering import FilterParam
+from app.utils.pagination import decode_cursor, encode_cursor
+from app.utils.query_utils import apply_filters, apply_sorts
+from app.utils.sorting import SortParam
 
 
 class DatasetRepository(BaseRepository[DatasetModel]):
     """Data access layer for dataset operations."""
+
+    # Field mappings for filtering and sorting
+    FILTER_FIELD_MAP = {
+        "title": DatasetModel.title,
+        "source": DatasetModel.source,
+        "provider_id": DatasetModel.provider_id,
+    }
+
+    SORT_FIELD_MAP = {
+        "title": DatasetModel.title,
+        "source": DatasetModel.source,
+        "id": DatasetModel.id,
+    }
 
     def __init__(self, db: AsyncSession):
         super().__init__(DatasetModel, db)
@@ -25,42 +43,79 @@ class DatasetRepository(BaseRepository[DatasetModel]):
     async def list_for_provider(
         self,
         provider_id: int,
-        skip: int = 0,
-        limit: int = 100,
-        title: str | None = None,
-        source: str | None = None,
-    ) -> list[DatasetModel]:
+        filters: list[FilterParam] | None = None,
+        sorts: list[SortParam] | None = None,
+        pagination: PaginationParams | None = None,
+    ) -> tuple[list[DatasetModel], int, str | None, str | None]:
         """
         List datasets for a specific provider with pagination and filtering.
 
         Args:
             provider_id: ID of the data provider
-            skip: Number of records to skip
-            limit: Maximum number of records to return
-            title: Optional title filter (case-insensitive partial match)
-            source: Optional source filter (case-insensitive partial match)
+            filters: List of filter parameters
+            sorts: List of sort parameters
+            pagination: Pagination parameters (limit, after, before cursors)
 
         Returns:
-            List of DatasetModel instances
+            Tuple of (items, total_count, next_cursor, previous_cursor)
         """
-        query = select(DatasetModel).where(DatasetModel.provider_id == provider_id)
+        if pagination is None:
+            pagination = PaginationParams()
+
+        # Base query with provider filter
+        base_query = select(DatasetModel).where(DatasetModel.provider_id == provider_id)
 
         # Apply filters if provided
-        if title:
-            query = query.filter(DatasetModel.title.ilike(f"%{title}%"))
-        if source:
-            query = query.filter(DatasetModel.source.ilike(f"%{source}%"))
+        if filters:
+            base_query = apply_filters(base_query, filters, self.FILTER_FIELD_MAP)
+
+        # Get total count
+        count_query = select(func.count()).select_from(base_query.subquery())
+        total_result = await self.db.execute(count_query)
+        total_count = total_result.scalar() or 0
 
         # Add eager loading
-        query = query.options(
+        query = base_query.options(
             selectinload(DatasetModel.xmlArchives), selectinload(DatasetModel.usefulLinks)
         )
 
-        # Apply pagination
-        query = query.offset(skip).limit(limit)
+        # Apply cursor-based pagination
+        if pagination.after:
+            cursor_data = decode_cursor(pagination.after)
+            if cursor_data and "id" in cursor_data:
+                query = query.filter(DatasetModel.id > cursor_data["id"])
 
-        result = await self.db.execute(query)
-        return list(result.scalars().all())
+        if pagination.before:
+            cursor_data = decode_cursor(pagination.before)
+            if cursor_data and "id" in cursor_data:
+                query = query.filter(DatasetModel.id < cursor_data["id"])
+
+        # Apply sorting - custom sorts first, then ID for consistent pagination
+        if sorts:
+            query = apply_sorts(query, sorts, self.SORT_FIELD_MAP)
+        # Always add ID as final sort for deterministic pagination
+        query = query.order_by(DatasetModel.id)
+
+        # Fetch one extra to check if there are more items
+        result = await self.db.execute(query.limit(pagination.limit + 1))
+        items = list(result.scalars().all())
+
+        # Determine if there are more items
+        has_next = len(items) > pagination.limit
+        if has_next:
+            items = items[: pagination.limit]
+
+        # Generate cursors
+        next_cursor = None
+        previous_cursor = None
+
+        if items:
+            if has_next:
+                next_cursor = encode_cursor({"id": items[-1].id})
+            if pagination.after:
+                previous_cursor = encode_cursor({"id": items[0].id})
+
+        return items, total_count, next_cursor, previous_cursor
 
     async def get_by_id_and_provider(
         self, dataset_id: int, provider_id: int

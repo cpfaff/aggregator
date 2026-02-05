@@ -254,9 +254,7 @@ class TestGetRecentDatasetActivity:
         mock_service.get_recent_activity.side_effect = RuntimeError("fail")
 
         with pytest.raises(HTTPException) as exc_info:
-            await get_recent_dataset_activity(
-                db=MagicMock(), current_user=None, limit=10, days=30
-            )
+            await get_recent_dataset_activity(db=MagicMock(), current_user=None, limit=10, days=30)
 
         assert exc_info.value.status_code == 500
 
@@ -337,9 +335,7 @@ class TestGetProviderStatistics:
         mock_service.get_provider_statistics.return_value = None
 
         with pytest.raises(HTTPException) as exc_info:
-            await get_provider_statistics(
-                provider_id=999, db=MagicMock(), current_user=MagicMock()
-            )
+            await get_provider_statistics(provider_id=999, db=MagicMock(), current_user=MagicMock())
 
         assert exc_info.value.status_code == 404
 
@@ -352,9 +348,7 @@ class TestGetProviderStatistics:
         mock_service.get_provider_statistics.side_effect = RuntimeError("DB error")
 
         with pytest.raises(HTTPException) as exc_info:
-            await get_provider_statistics(
-                provider_id=1, db=MagicMock(), current_user=MagicMock()
-            )
+            await get_provider_statistics(provider_id=1, db=MagicMock(), current_user=MagicMock())
 
         assert exc_info.value.status_code == 500
 
@@ -394,9 +388,7 @@ class TestGetDatasetStatistics:
         mock_service.get_dataset_statistics.return_value = None
 
         with pytest.raises(HTTPException) as exc_info:
-            await get_dataset_statistics(
-                dataset_id=999, db=MagicMock(), current_user=MagicMock()
-            )
+            await get_dataset_statistics(dataset_id=999, db=MagicMock(), current_user=MagicMock())
 
         assert exc_info.value.status_code == 404
 
@@ -409,9 +401,7 @@ class TestGetDatasetStatistics:
         mock_service.get_dataset_statistics.side_effect = RuntimeError("fail")
 
         with pytest.raises(HTTPException) as exc_info:
-            await get_dataset_statistics(
-                dataset_id=1, db=MagicMock(), current_user=MagicMock()
-            )
+            await get_dataset_statistics(dataset_id=1, db=MagicMock(), current_user=MagicMock())
 
         assert exc_info.value.status_code == 500
 
@@ -498,9 +488,7 @@ class TestGetBiologicalUnitsTimeline:
         MockServiceClass.return_value = mock_service
         mock_service.get_biological_units_timeline.return_value = []
 
-        result = await get_biological_units_timeline(
-            db=MagicMock(), current_user=MagicMock()
-        )
+        result = await get_biological_units_timeline(db=MagicMock(), current_user=MagicMock())
 
         assert result.entity_type == "system"
         assert result.entity_id is None
@@ -515,9 +503,7 @@ class TestGetBiologicalUnitsTimeline:
         mock_service.get_biological_units_timeline.side_effect = RuntimeError("fail")
 
         with pytest.raises(HTTPException) as exc_info:
-            await get_biological_units_timeline(
-                db=MagicMock(), current_user=MagicMock()
-            )
+            await get_biological_units_timeline(db=MagicMock(), current_user=MagicMock())
 
         assert exc_info.value.status_code == 500
 
