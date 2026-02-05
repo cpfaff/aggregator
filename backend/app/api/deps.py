@@ -18,6 +18,7 @@ from app.models import UserModel
 from app.schemas.pagination import PaginationParams
 from app.security import check_provider_permission, get_current_user
 from app.utils.filtering import FilterParam, parse_filter_params
+from app.utils.sorting import SortParam, parse_sort_params
 
 __all__ = [
     "limiter",
@@ -25,6 +26,7 @@ __all__ = [
     "provider_permission",
     "get_pagination_params",
     "get_filtering_params",
+    "get_sorting_params",
 ]
 
 
@@ -102,5 +104,28 @@ def get_filtering_params(allowed_fields: list[str], strict: bool = True):
             allowed_fields=allowed_fields,
             strict=strict,
         )
+
+    return dependency
+
+
+# ------------------- Sorting -------------------
+def get_sorting_params(allowed_fields: list[str], strict: bool = True):
+    """
+    Dependency factory for sorting parameters.
+
+    Args:
+        allowed_fields: List of field names that can be sorted
+        strict: If True, raise error for disallowed fields; if False, ignore them
+
+    Returns:
+        A dependency function that parses sort query parameter
+    """
+
+    def dependency(
+        sort: str | None = Query(
+            default=None, description="Sort fields (e.g., name:asc,created:desc)"
+        ),
+    ) -> list[SortParam]:
+        return parse_sort_params(sort, allowed_fields=allowed_fields, strict=strict)
 
     return dependency
