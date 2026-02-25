@@ -1,9 +1,0 @@
-ruff failed
-  Cause: Failed to parse /home/ctpfaff/Claude/development/search.gfbio.org/aggregator/.worktrees/production-readiness/backend/pyproject.toml
-  Cause: TOML parse error at line 9, column 19
-  |
-9 | requires-python = "^3.11"
-  |                   ^^^^^^^
-Failed to parse version: Unexpected end of version specifier, expected operator:
-^3.11
-^^^^^
