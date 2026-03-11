@@ -3,11 +3,33 @@
 import os
 import subprocess
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _ensure_env_files():
+    """Create minimal .env files so docker compose config can resolve env_file references."""
+    repo_root = os.path.join(os.path.dirname(__file__), "..", "..")
+    env_files = [
+        os.path.join(repo_root, "backend", ".env"),
+        os.path.join(repo_root, "frontend", ".env"),
+    ]
+    created = []
+    for path in env_files:
+        if not os.path.exists(path):
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "w") as f:
+                f.write("# placeholder for CI\nDATABASE_URL=postgresql+asyncpg://x:x@localhost/x\nSECRET_KEY=test\n")
+            created.append(path)
+    yield
+    for path in created:
+        os.remove(path)
+
 
 def test_docker_compose_validation():
     """Test that docker-compose.yml is valid."""
     result = subprocess.run(
-        ["docker-compose", "-f", "../../docker-compose.yml", "config"],
+        ["docker", "compose", "-f", "../../docker-compose.yml", "config"],
         capture_output=True,
         text=True,
         cwd=os.path.dirname(__file__),
@@ -24,7 +46,7 @@ def test_docker_compose_validation():
 def test_worker_memory_limits():
     """Test that workers have appropriate memory limits."""
     result = subprocess.run(
-        ["docker-compose", "-f", "../../docker-compose.yml", "config"],
+        ["docker", "compose", "-f", "../../docker-compose.yml", "config"],
         capture_output=True,
         text=True,
         cwd=os.path.dirname(__file__),
@@ -70,7 +92,7 @@ def test_worker_memory_limits():
 def test_worker_health_checks():
     """Test that both workers have proper health checks configured."""
     result = subprocess.run(
-        ["docker-compose", "-f", "../../docker-compose.yml", "config"],
+        ["docker", "compose", "-f", "../../docker-compose.yml", "config"],
         capture_output=True,
         text=True,
         cwd=os.path.dirname(__file__),
@@ -112,7 +134,7 @@ def test_worker_health_checks():
 def test_worker_dependencies():
     """Test that workers have correct dependencies configured."""
     result = subprocess.run(
-        ["docker-compose", "-f", "../../docker-compose.yml", "config"],
+        ["docker", "compose", "-f", "../../docker-compose.yml", "config"],
         capture_output=True,
         text=True,
         cwd=os.path.dirname(__file__),
@@ -160,7 +182,7 @@ def test_worker_dependencies():
 def test_celery_beat_dependencies():
     """Test that celery-beat depends on both new workers."""
     result = subprocess.run(
-        ["docker-compose", "-f", "../../docker-compose.yml", "config"],
+        ["docker", "compose", "-f", "../../docker-compose.yml", "config"],
         capture_output=True,
         text=True,
         cwd=os.path.dirname(__file__),
@@ -192,7 +214,7 @@ def test_celery_beat_dependencies():
 def test_worker_network_configuration():
     """Test that both workers are on the app-network."""
     result = subprocess.run(
-        ["docker-compose", "-f", "../../docker-compose.yml", "config"],
+        ["docker", "compose", "-f", "../../docker-compose.yml", "config"],
         capture_output=True,
         text=True,
         cwd=os.path.dirname(__file__),
