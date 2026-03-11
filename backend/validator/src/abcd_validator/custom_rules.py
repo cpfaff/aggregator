@@ -115,6 +115,19 @@ class ValidationCount:
 
 class CustomRuleValidator:
     _DEFAULT_VERSION = "2.1"
+    _UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    _LOWER = "abcdefghijklmnopqrstuvwxyz"
+
+    @staticmethod
+    def _local_name_pred(name: str) -> str:
+        """Generate a case-insensitive local-name() XPath predicate.
+
+        ABCD 2.06 uses PascalCase (FileURI) while ABCD 2.1 uses camelCase
+        (fileURI). Using translate() ensures paths match regardless of version.
+        """
+        upper = CustomRuleValidator._UPPER
+        lower = CustomRuleValidator._LOWER
+        return f"*[translate(local-name(),'{upper}','{lower}')='{name.lower()}']"
 
     def __init__(self, rules_file: str, schema_version: str = None):
         self.rules_file = rules_file
@@ -169,14 +182,14 @@ class CustomRuleValidator:
                 if ":" in part or part.startswith("@") or part == "*" or part.startswith("*["):
                     adapted_parts.append(part)
                 else:
-                    adapted_parts.append(f"*[local-name()='{part}']")
+                    adapted_parts.append(self._local_name_pred(part))
             return ("/" if path.startswith("/") else "") + "/".join(adapted_parts)
         return path
 
     def _convert_path_to_xpath(self, path: str) -> str:
         """Convert a simplified path to an XPath expression using local-name()."""
         parts = [p for p in path.split("/") if p]
-        xpath_parts = [f"*[local-name()='{part}']" for part in parts]
+        xpath_parts = [self._local_name_pred(part) for part in parts]
         return "//" + "/".join(xpath_parts)
 
     def _get_relative_xpath(self, full_xpath: str, parent_path: str) -> str:
@@ -188,7 +201,7 @@ class CustomRuleValidator:
             relative = full_xpath[len(parent_path) :].lstrip("/")
         else:
             relative = full_xpath
-        return "/".join(f"*[local-name()='{part}']" for part in relative.split("/") if part)
+        return "/".join(self._local_name_pred(part) for part in relative.split("/") if part)
 
     def _validate_with_validations(
         self, node: etree._Element, value: str, validations: list[dict[str, Any]], result: dict
@@ -231,7 +244,7 @@ class CustomRuleValidator:
 
         parent_path = field_def["parent_context"]["parent"]
         parent_xpath = "//" + "/".join(
-            f"*[local-name()='{part}']" for part in parent_path.split("/") if part
+            self._local_name_pred(part) for part in parent_path.split("/") if part
         )
         relative_xpath = self._get_relative_xpath(xpath, parent_path)
         parent_elements = doc.xpath(parent_xpath, namespaces=nsmap)
@@ -274,7 +287,7 @@ class CustomRuleValidator:
         if not xpath:
             return result
 
-        xpath_parts = [f"*[local-name()='{part}']" for part in xpath.split("/") if part]
+        xpath_parts = [self._local_name_pred(part) for part in xpath.split("/") if part]
         adapted_xpath = "//" + "/".join(xpath_parts)
         matches = doc.xpath(adapted_xpath, namespaces=nsmap)
         if matches:
