@@ -65,7 +65,7 @@ test-backend:
     - cd backend
     - uv sync --python 3.11 --group dev --no-install-project
   script:
-    - uv run pytest tests/ -v --cov=app --cov-report=term-missing
+    - uv run --no-project pytest tests/ -v --cov=app --cov-report=term-missing
   coverage: '/TOTAL.*\s+(\d+%)$/'
   tags:
     - dev-denbi
@@ -75,7 +75,7 @@ lint-backend:
   stage: test
   extends: .python-setup
   script:
-    - uv run ruff check app/
+    - uv run --no-project ruff check app/
   allow_failure: true  # Phase 1: document issues, don't block
   tags:
     - dev-denbi
@@ -85,7 +85,7 @@ format-check-backend:
   stage: test
   extends: .python-setup
   script:
-    - uv run ruff format --check app/
+    - uv run --no-project ruff format --check app/
   allow_failure: true  # Phase 1: document issues, don't block
   tags:
     - dev-denbi
