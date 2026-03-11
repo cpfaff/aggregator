@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
 
 from alembic import context
-from main import Base  # Import our SQLAlchemy models
+from app.models import Base  # Import Base and all models for autogenerate support
 
 # Load environment variables - try multiple locations
 # Docker will provide env vars directly, but for local dev we might need a file
