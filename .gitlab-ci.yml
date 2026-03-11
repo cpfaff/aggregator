@@ -34,39 +34,38 @@ cache:
   paths:
     - .cache/
 
+# Shared setup for Python test/lint jobs.
+# The dev-denbi runner uses a shell executor (ignores image/services directives)
+# with Python 3.8, but the project requires Python 3.11+. We use uv to install
+# Python 3.11 in user space and manage dependencies (PEP 735 dependency-groups).
+.python-setup:
+  before_script:
+    - export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+    - command -v uv >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh
+    - export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+    - cd backend
+    - uv sync --python 3.11 --group dev
+
 # Backend Tests
-# NOTE: This job works with both Docker executor (with dind) and shell executor runners
 test-backend:
   stage: test
-  image: python:3.11-slim  # Used by Docker executors, ignored by shell executors
-  services:
-    - docker:dind  # Used by Docker executors, ignored by shell executors
+  extends: .python-setup
   before_script:
-    # Verify Docker is accessible (works for both executor types)
+    - export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+    # Verify Docker is accessible (needed for testcontainers)
     - |
       if docker info >/dev/null 2>&1; then
         echo "✓ Docker daemon accessible"
-        docker version
       else
         echo "✗ Docker daemon not accessible - testcontainers will fail"
         exit 1
       fi
-    # Install system dependencies (Docker executor needs these, shell executor may skip)
-    - |
-      if command -v apt-get >/dev/null 2>&1; then
-        apt-get update && apt-get install -y --no-install-recommends gcc postgresql-client
-      elif command -v yum >/dev/null 2>&1; then
-        yum install -y gcc postgresql
-      else
-        echo "Assuming dependencies already installed (shell executor)"
-      fi
-    # Install Poetry and dependencies
-    - export PATH="$HOME/.local/bin:$PATH"
-    - command -v poetry >/dev/null 2>&1 || pip install poetry
+    - command -v uv >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh
+    - export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
     - cd backend
-    - poetry install --with dev
+    - uv sync --python 3.11 --group dev
   script:
-    - poetry run pytest tests/ -v --cov=app --cov-report=term-missing
+    - uv run pytest tests/ -v --cov=app --cov-report=term-missing
   coverage: '/TOTAL.*\s+(\d+%)$/'
   tags:
     - dev-denbi
@@ -74,14 +73,9 @@ test-backend:
 # Backend Linting
 lint-backend:
   stage: test
-  image: python:3.11-slim
-  before_script:
-    - export PATH="$HOME/.local/bin:$PATH"
-    - pip install poetry
-    - cd backend
-    - poetry install --with dev
+  extends: .python-setup
   script:
-    - poetry run ruff check app/
+    - uv run ruff check app/
   allow_failure: true  # Phase 1: document issues, don't block
   tags:
     - dev-denbi
@@ -89,14 +83,9 @@ lint-backend:
 # Backend Format Check
 format-check-backend:
   stage: test
-  image: python:3.11-slim
-  before_script:
-    - export PATH="$HOME/.local/bin:$PATH"
-    - pip install poetry
-    - cd backend
-    - poetry install --with dev
+  extends: .python-setup
   script:
-    - poetry run ruff format --check app/
+    - uv run ruff format --check app/
   allow_failure: true  # Phase 1: document issues, don't block
   tags:
     - dev-denbi
