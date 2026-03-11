@@ -214,6 +214,34 @@ async def get_validation_results(
     return await service.get_validation_results(job_id)
 
 
+@router.post(
+    "/datasets/{dataset_id}/validate",
+    response_model=ValidateArchiveResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def validate_dataset(
+    dataset_id: int,
+    current_user: Annotated[UserModel, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    request: ValidateRequest | None = None,
+):
+    """
+    Trigger validation for a dataset's latest XML archive.
+
+    Args:
+        dataset_id: The ID of the dataset to validate
+        current_user: The current authenticated user
+        db: Database session
+        request: Optional request body with force flag
+
+    Returns:
+        Information about the submitted validation job
+    """
+    force = request.force if request else False
+    service = ValidationService(db)
+    return await service.validate_dataset_latest_archive(dataset_id, force=force)
+
+
 @router.get("/datasets/{dataset_id}/validation-status", response_model=DatasetValidationStatus)
 async def get_dataset_validation_status(
     dataset_id: int,
