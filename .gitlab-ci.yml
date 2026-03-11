@@ -61,6 +61,7 @@ test-backend:
         echo "Assuming dependencies already installed (shell executor)"
       fi
     # Install Poetry and dependencies
+    - export PATH="$HOME/.local/bin:$PATH"
     - command -v poetry >/dev/null 2>&1 || pip install poetry
     - cd backend
     - poetry install --with dev
@@ -75,6 +76,7 @@ lint-backend:
   stage: test
   image: python:3.11-slim
   before_script:
+    - export PATH="$HOME/.local/bin:$PATH"
     - pip install poetry
     - cd backend
     - poetry install --with dev
@@ -89,6 +91,7 @@ format-check-backend:
   stage: test
   image: python:3.11-slim
   before_script:
+    - export PATH="$HOME/.local/bin:$PATH"
     - pip install poetry
     - cd backend
     - poetry install --with dev
