@@ -67,6 +67,7 @@ test-backend:
     - export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
     - cd backend
     - uv sync --python 3.11 --group dev --no-install-project
+    - uv pip install psutil lxml  # abcd_validator runtime deps (local package)
   script:
     - uv run --no-project pytest tests/ -v --cov=app --cov-report=term-missing
   coverage: '/TOTAL.*\s+(\d+%)$/'
