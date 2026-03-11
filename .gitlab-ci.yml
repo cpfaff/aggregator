@@ -50,6 +50,8 @@ cache:
 test-backend:
   stage: test
   extends: .python-setup
+  variables:
+    DATABASE_URL: "postgresql+asyncpg://postgres:postgres@localhost:5432/aggregator"
   before_script:
     - export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
     # Verify Docker is accessible (needed for testcontainers)
