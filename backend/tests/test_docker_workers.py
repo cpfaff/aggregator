@@ -7,7 +7,7 @@ import subprocess
 def test_docker_compose_validation():
     """Test that docker-compose.yml is valid."""
     result = subprocess.run(
-        ["docker-compose", "-f", "../../docker-compose.yml", "config"],
+        ["docker", "compose", "-f", "../../docker-compose.yml", "config"],
         capture_output=True,
         text=True,
         cwd=os.path.dirname(__file__),
@@ -24,7 +24,7 @@ def test_docker_compose_validation():
 def test_worker_memory_limits():
     """Test that workers have appropriate memory limits."""
     result = subprocess.run(
-        ["docker-compose", "-f", "../../docker-compose.yml", "config"],
+        ["docker", "compose", "-f", "../../docker-compose.yml", "config"],
         capture_output=True,
         text=True,
         cwd=os.path.dirname(__file__),
@@ -70,7 +70,7 @@ def test_worker_memory_limits():
 def test_worker_health_checks():
     """Test that both workers have proper health checks configured."""
     result = subprocess.run(
-        ["docker-compose", "-f", "../../docker-compose.yml", "config"],
+        ["docker", "compose", "-f", "../../docker-compose.yml", "config"],
         capture_output=True,
         text=True,
         cwd=os.path.dirname(__file__),
@@ -112,7 +112,7 @@ def test_worker_health_checks():
 def test_worker_dependencies():
     """Test that workers have correct dependencies configured."""
     result = subprocess.run(
-        ["docker-compose", "-f", "../../docker-compose.yml", "config"],
+        ["docker", "compose", "-f", "../../docker-compose.yml", "config"],
         capture_output=True,
         text=True,
         cwd=os.path.dirname(__file__),
@@ -160,7 +160,7 @@ def test_worker_dependencies():
 def test_celery_beat_dependencies():
     """Test that celery-beat depends on both new workers."""
     result = subprocess.run(
-        ["docker-compose", "-f", "../../docker-compose.yml", "config"],
+        ["docker", "compose", "-f", "../../docker-compose.yml", "config"],
         capture_output=True,
         text=True,
         cwd=os.path.dirname(__file__),
@@ -192,7 +192,7 @@ def test_celery_beat_dependencies():
 def test_worker_network_configuration():
     """Test that both workers are on the app-network."""
     result = subprocess.run(
-        ["docker-compose", "-f", "../../docker-compose.yml", "config"],
+        ["docker", "compose", "-f", "../../docker-compose.yml", "config"],
         capture_output=True,
         text=True,
         cwd=os.path.dirname(__file__),
