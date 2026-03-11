@@ -44,7 +44,7 @@ cache:
     - command -v uv >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh
     - export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
     - cd backend
-    - uv sync --python 3.11 --group dev
+    - uv sync --python 3.11 --group dev --no-install-project
 
 # Backend Tests
 test-backend:
@@ -63,7 +63,7 @@ test-backend:
     - command -v uv >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh
     - export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
     - cd backend
-    - uv sync --python 3.11 --group dev
+    - uv sync --python 3.11 --group dev --no-install-project
   script:
     - uv run pytest tests/ -v --cov=app --cov-report=term-missing
   coverage: '/TOTAL.*\s+(\d+%)$/'
