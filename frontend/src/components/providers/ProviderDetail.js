@@ -153,7 +153,7 @@ const ProviderDetail = ({ currentUser }) => {
     setError('');
 
     try {
-      const res = await apiRequest(`/data-providers/${id}/data-sets`, {}, handleTokenExpiration);
+      const res = await apiRequest(`/data-providers/${id}/data-sets?limit=100`, {}, handleTokenExpiration);
 
       if (!res.ok) {
         setError('Failed to fetch datasets');
