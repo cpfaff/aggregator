@@ -18,6 +18,7 @@ class DatasetModel(Base, TimestampMixin):
     source = Column(String)
     title = Column(String)
     landingPageUrl = Column(String, nullable=True)
+    isHarvestReady = Column(Boolean, nullable=False, default=False)
 
     # Relationships
     provider = relationship("DataProviderModel", back_populates="datasets")

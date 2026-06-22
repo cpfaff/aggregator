@@ -85,7 +85,8 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired, onDirtyChan
         title: values.title,
         landingPageUrl: values.landingPageUrl && values.landingPageUrl.trim() !== ''
           ? values.landingPageUrl
-          : null
+          : null,
+        isHarvestReady: values.isHarvestReady
       };
 
       // Only include non-empty arrays or empty arrays when editing (to signal deletion)
@@ -156,6 +157,7 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired, onDirtyChan
     source: dataset?.source || '',
     title: dataset?.title || '',
     landingPageUrl: dataset?.landingPageUrl || '',
+    isHarvestReady: dataset?.isHarvestReady ?? false,
     xmlArchives: dataset?.xmlArchives || [],
     usefulLinks: dataset?.usefulLinks || []
   };
@@ -367,6 +369,19 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired, onDirtyChan
           touched={form.touched.landingPageUrl}
           placeholder="https://example.com/dataset"
           helpText="Optional: The dataset's landing page URL"
+        />
+
+        {/* Harvest Ready Checkbox - available to any provider editor (not admin-gated) */}
+        <FormField
+          type="checkbox"
+          name="isHarvestReady"
+          label="Harvest ready"
+          checked={form.values.isHarvestReady}
+          onChange={form.handleChange}
+          onBlur={form.handleBlur}
+          error={form.errors.isHarvestReady}
+          touched={form.touched.isHarvestReady}
+          helpText="When checked, this dataset is published to the public harvester feed and search index. Leave unchecked to keep it staged: visible and editable here, but not yet searchable."
         />
 
         {/* XML Archives Section */}

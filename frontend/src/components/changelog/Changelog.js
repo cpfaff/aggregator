@@ -35,6 +35,14 @@ const Changelog = ({ currentUser }) => {
 
   const changelogEntries = [
     {
+      version: '2.1.0',
+      date: 'June 22, 2026',
+      changes: [
+        'New "Harvest ready" toggle on datasets — keep a dataset staged while you prepare and validate it, then mark it ready to include it in harvesting',
+        'Newly registered datasets now start staged, so nothing is harvested until you choose to publish it'
+      ]
+    },
+    {
       version: '2.0.2',
       date: 'January 9, 2026',
       changes: [

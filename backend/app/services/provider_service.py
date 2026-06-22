@@ -311,6 +311,7 @@ class ProviderService:
                             landingPageUrl=(
                                 str(dataset.landingPageUrl) if dataset.landingPageUrl else None
                             ),
+                            isHarvestReady=dataset.isHarvestReady,
                         )
                         if dataset.xmlArchives:
                             for archive in dataset.xmlArchives:
