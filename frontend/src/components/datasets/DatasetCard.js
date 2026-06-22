@@ -334,9 +334,6 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
           </div>
         )}
 
-        {/* Flexible spacer */}
-        <div style={{ flexGrow: 1, minHeight: '0.5rem' }}></div>
-
         {/* Main content sections */}
         <div style={{
           display: 'flex',
