@@ -47,6 +47,7 @@ class Dataset(BaseModel):
     landingPageUrl: AnyUrl | None = None
     xmlArchives: list[XmlArchive] = []
     usefulLinks: list[UsefulLink] = []
+    isHarvestReady: bool = False
     created_at: datetime | None = None
     updated_at: datetime | None = None
 

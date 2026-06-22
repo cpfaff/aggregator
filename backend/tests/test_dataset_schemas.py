@@ -1,5 +1,8 @@
 """Tests for dataset-related Pydantic schemas."""
 
+import pytest
+
+from app.models.dataset import DatasetModel
 from app.schemas.dataset import Dataset, UsefulLink, XmlArchive
 
 
@@ -78,3 +81,27 @@ class TestDatasetSchema:
         data = ds.model_dump()
         assert "xmlArchives" in data
         assert len(data["xmlArchives"]) == 1
+
+    def test_is_harvest_ready_defaults_to_false(self):
+        """A new dataset is staged (not harvest-ready) unless explicitly set."""
+        ds = Dataset(source="GFBio", title="Test")
+        assert ds.isHarvestReady is False
+
+    def test_is_harvest_ready_survives_model_dump(self):
+        """An explicit harvest-ready flag survives the overridden model_dump."""
+        ds = Dataset(source="GFBio", title="Test", isHarvestReady=True)
+        data = ds.model_dump()
+        assert data["isHarvestReady"] is True
+
+
+class TestDatasetModelHarvestReady:
+    """Tests for the isHarvestReady column default on the ORM model."""
+
+    @pytest.mark.asyncio
+    async def test_new_dataset_defaults_to_not_harvest_ready(self, db_session):
+        """A dataset inserted without isHarvestReady persists as False (staged)."""
+        ds = DatasetModel(source="GFBio", title="Test")
+        db_session.add(ds)
+        await db_session.flush()
+        await db_session.refresh(ds)
+        assert ds.isHarvestReady is False
