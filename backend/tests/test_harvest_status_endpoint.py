@@ -195,11 +195,25 @@ class TestGetDatasetHarvestStatus:
         assert sig.parameters["dataset_id"].annotation is int
 
     def test_router_mounts_get_route_at_expected_path(self):
-        """The v1 router exposes GET /datasets/{dataset_id}/harvest-status."""
-        from app.api.v1.router import api_v1_router
+        """The v1 router exposes GET /datasets/{dataset_id}/harvest-status.
+
+        ``api_v1_router`` is mutable module-global state assembled once at first
+        import. Another test in this suite ``importlib.reload``-s an endpoint
+        module, and under the CI runner's different import order the global can be
+        left built from a momentarily-empty endpoint router — silently dropping
+        this route and failing only in CI. The harvest_status endpoint module is
+        already fully imported (top of this file), so reloading the router module
+        here rebuilds the includes against complete routers: a deterministic,
+        order-independent mount check.
+        """
+        import importlib
+
+        import app.api.v1.router as v1_router_module
+
+        importlib.reload(v1_router_module)
 
         assert any(
             getattr(r, "path", None) == "/datasets/{dataset_id}/harvest-status"
             and "GET" in getattr(r, "methods", set())
-            for r in api_v1_router.routes
+            for r in v1_router_module.api_v1_router.routes
         )
