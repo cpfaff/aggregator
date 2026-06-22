@@ -51,6 +51,12 @@ async def harvest_datasets(request: Request, db: DbSession):
         for provider in providers:
             sorted_datasets = sorted(provider.datasets, key=lambda ds: ds.id)
             for ds in sorted_datasets:
+                # Gate the feed on harvest-ready: staged (not-ready) datasets are
+                # excluded so they never reach the public index. Skipping here
+                # preserves the ready subset's id ordering.
+                if not ds.isHarvestReady:
+                    continue
+
                 # Convert XML archives to legacy format
                 xml_archives = []
                 for archive in ds.xmlArchives:
