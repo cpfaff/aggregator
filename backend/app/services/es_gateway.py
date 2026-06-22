@@ -45,6 +45,26 @@ ES_DATESTAMP_FIELD: str = "internal-datestamp"
 URN_TEMPLATE: str = "urn:gfbio.org:abcd:{provider_id}_{dataset_id}_{archive_id}"
 
 
+def _parse_best_effort_datestamp(value: object) -> datetime | None:
+    """Best-effort parse of a hit's ``internal-datestamp`` value to a ``datetime``.
+
+    The real harvested ``pansimple`` docs frequently carry no datestamp, and ES
+    returns multi-valued fields as JSON arrays — so a present hit can yield a
+    missing / ``None`` / empty / list / non-string / unparseable value. None of
+    those is an ES-down condition: each resolves to ``None`` so the *successful*
+    presence check is never masked. A list value is reduced to its first element;
+    a trailing ``Z`` is tolerated (``fromisoformat`` rejects it pre-3.11).
+    """
+    if isinstance(value, list):
+        value = value[0] if value else None
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
 def compose_dataset_urn(provider_id: int, dataset_id: int, archive_id: int) -> str:
     """Compose the GFBio ABCD dataset URN from its integer ids.
 
@@ -126,10 +146,16 @@ class EsGateway:
     async def latest_datestamp_for_urn(self, urn: str) -> datetime | None:
         """Return the latest ``internal-datestamp`` for ``urn``, or ``None``.
 
-        Issues a size-1 ``_search`` sorted by ``internal-datestamp`` desc. A
-        successful query with zero hits returns ``None`` (no datestamp yet) — it
-        is **not** :class:`EsUnavailable`. Any ES-down path raises
-        :class:`EsUnavailable`.
+        Issues a size-1 ``_search`` sorted by ``internal-datestamp`` desc.
+
+        Transport/HTTP failure — a timeout, connection/transport error, a non-2xx
+        response, or a structurally malformed body missing the ``hits`` envelope —
+        raises :class:`EsUnavailable` (T-7 → ``unknown``). Everything *after* a
+        valid envelope is **best-effort**: zero hits, or a present hit whose
+        ``internal-datestamp`` is missing / ``None`` / empty / list-valued /
+        non-string / unparseable, returns ``None``. A missing datestamp is a
+        data-quality fact, **not** ES-down, and never masks the successful
+        presence check.
         """
         url = self._endpoint("_search")
         body = {
@@ -143,9 +169,6 @@ class EsGateway:
                 response = await client.post(url, json=body)
                 response.raise_for_status()
                 hits = response.json()["hits"]["hits"]
-                if not hits:
-                    return None
-                return datetime.fromisoformat(hits[0]["_source"][ES_DATESTAMP_FIELD])
         except (
             httpx.TimeoutException,
             httpx.TransportError,
@@ -155,3 +178,8 @@ class EsGateway:
         ) as err:
             logger.warning("ES _search unavailable for urn=%s: %s", urn, err)
             raise EsUnavailable(f"Elasticsearch _search failed for {urn}") from err
+
+        if not hits:
+            return None
+        source = hits[0].get("_source", {}) if isinstance(hits[0], dict) else {}
+        return _parse_best_effort_datestamp(source.get(ES_DATESTAMP_FIELD))

@@ -9,7 +9,7 @@ presence.
 """
 
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -172,6 +172,78 @@ async def test_latest_datestamp_parses_es56_search_hit():
 @pytest.mark.asyncio
 async def test_latest_datestamp_empty_hits_returns_none_not_unavailable():
     response = _canned_response(200, {"hits": {"total": 0, "hits": []}})
+    patcher, _ = _patch_async_client(post_result=response)
+    with patcher:
+        gateway = EsGateway(settings=_make_settings())
+        result = await gateway.latest_datestamp_for_urn(TEST_URN)
+
+    assert result is None
+
+
+# ---------------------------------------------------------------------------
+# T-9: best-effort datestamp parsing. The real harvested pansimple docs carry
+# no internal-datestamp (only a list-valued internal-source). A present hit
+# whose datestamp is missing/list-valued/unparseable is a data-quality fact —
+# NOT ES-down — and must resolve to None without masking the successful hit.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_latest_datestamp_missing_field_returns_none_not_unavailable():
+    # Real harvested doc: a present hit whose _source lacks internal-datestamp.
+    response = _canned_response(
+        200,
+        {
+            "hits": {
+                "total": 281,
+                "hits": [
+                    {"_source": {"internal-source": ["gfbio-abcd-push", "bms-provider1"]}}
+                ],
+            }
+        },
+    )
+    patcher, _ = _patch_async_client(post_result=response)
+    with patcher:
+        gateway = EsGateway(settings=_make_settings())
+        result = await gateway.latest_datestamp_for_urn(TEST_URN)
+
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_latest_datestamp_list_valued_parses_first_element():
+    # ES returns multi-valued fields as JSON arrays; take the first element.
+    response = _canned_response(
+        200,
+        {
+            "hits": {
+                "total": 3,
+                "hits": [
+                    {"_source": {ES_DATESTAMP_FIELD: ["2026-06-20T03:14:00Z"]}}
+                ],
+            }
+        },
+    )
+    patcher, _ = _patch_async_client(post_result=response)
+    with patcher:
+        gateway = EsGateway(settings=_make_settings())
+        result = await gateway.latest_datestamp_for_urn(TEST_URN)
+
+    # First element parsed; the trailing "Z" is honored as UTC.
+    assert result == datetime(2026, 6, 20, 3, 14, 0, tzinfo=UTC)
+
+
+@pytest.mark.asyncio
+async def test_latest_datestamp_unparseable_string_returns_none():
+    response = _canned_response(
+        200,
+        {
+            "hits": {
+                "total": 1,
+                "hits": [{"_source": {ES_DATESTAMP_FIELD: "not-a-date"}}],
+            }
+        },
+    )
     patcher, _ = _patch_async_client(post_result=response)
     with patcher:
         gateway = EsGateway(settings=_make_settings())
