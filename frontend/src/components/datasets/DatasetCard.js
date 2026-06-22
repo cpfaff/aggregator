@@ -1,9 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { Database, ExternalLink, FileText, Globe, Edit, Trash2, Archive, CheckCircle, XCircle, AlertCircle, RefreshCw, Dna } from 'lucide-react';
+import { Database, ExternalLink, FileText, Globe, Edit, Trash2, Archive, CheckCircle, XCircle, AlertCircle, HelpCircle, RefreshCw, Dna } from 'lucide-react';
+import useSWR from 'swr';
 import { useAuth } from '../auth/AuthContext';
 import axios from 'axios';
 import ValidationResultsModal from './ValidationResultsModal';
 import { authStatsApi } from '../../utils/statisticsApi';
+
+// SWR fetcher for the harvest-status endpoint. Reuses the already-imported axios
+// (so the existing jest.mock('axios') intercepts it) and the same token idiom as
+// the Validation fetch.
+const harvestStatusFetcher = async (url) => {
+  const token = localStorage.getItem('token');
+  const res = await axios.get(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.data;
+};
 
 const DatasetCard = ({ dataset, onEdit, onDelete }) => {
   const { currentUser, handleTokenExpiration } = useAuth();
@@ -26,6 +38,24 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
 
   // Debug the result
   console.log('Can Delete:', canDelete);
+
+  // --- Harvest-status badge (SWR) ---
+  // Only the STRICT boolean false means "definitely staged, skip fetch"; an
+  // undefined/null prop must still fetch so the server stays the source of truth.
+  const isStaged = dataset?.isHarvestReady === false;
+  // A null SWR key makes SWR NOT fetch — this makes `staged` fetch-free and also
+  // guards the missing-id case.
+  const harvestKey = (dataset?.id && !isStaged)
+    ? `${process.env.REACT_APP_API_BASE_URL || ''}/api/v1/datasets/${dataset.id}/harvest-status`
+    : null;
+  const { data: harvestData, error: harvestError } = useSWR(harvestKey, harvestStatusFetcher);
+
+  // Derive the effective status (pure; no extra state). unknown/error -> unavailable.
+  const harvestEffectiveStatus = isStaged
+    ? 'staged'
+    : (harvestError || harvestData?.harvest_status === 'unknown')
+      ? 'unknown'
+      : (harvestData?.harvest_status ?? 'loading');
 
   // Fetch validation status and dataset stats when component mounts
   useEffect(() => {
@@ -671,6 +701,140 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
               </div>
             </div>
           )}
+
+          {/* HARVEST section - peer of Validation; SWR-driven harvest-status badge */}
+          <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '1rem', position: 'relative' }}>
+            {/* Vertical border for the section */}
+            <div style={{
+              position: 'absolute',
+              top: '1rem',
+              bottom: 0,
+              left: '0.25rem',
+              width: '1.5px',
+              backgroundColor: 'var(--text-light)',
+              opacity: 0.4,
+              zIndex: 0
+            }}></div>
+
+            <div style={{
+              fontSize: '0.8125rem',
+              textTransform: 'uppercase',
+              fontWeight: 600,
+              color: 'var(--text-light)',
+              marginBottom: '0.75rem',
+              letterSpacing: '0.025em',
+              display: 'flex',
+              alignItems: 'center',
+              paddingLeft: '0.75rem',
+              position: 'relative',
+              zIndex: 1
+            }}>
+              Harvest
+            </div>
+
+            <div style={{
+              paddingLeft: '1.5rem',
+              position: 'relative',
+              zIndex: 1
+            }}>
+              {(() => {
+                // M = units present in the index; N = expected unit count (snapshot).
+                const m = harvestData?.units_in_index;
+                const n = harvestData?.units_expected;
+                const lastSeen = harvestData?.last_seen_in_index_at;
+                // Guard new Date(null/undefined) -> only format when truthy.
+                // Pin 'en-US' so the badge copy is locale-stable ("Jun 20, 2026"),
+                // matching the frozen contract copy regardless of runtime locale.
+                const lastSeenText = lastSeen
+                  ? ` · last seen ${new Date(lastSeen).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                    })}`
+                  : '';
+                const hasN = (n !== null && n !== undefined);
+                // partial visible+label use "M of N units".
+                const partialUnits = `${m} of ${n} units`;
+                // in_index: visible text is "N units" when N known (M==N), else "M units"
+                // (never "M of null"); the aria-label keeps the "M of N" form when N known.
+                const inIndexText = hasN ? `${n} units` : `${m} units`;
+                const inIndexLabel = hasN ? `${m} of ${n} units` : `${m} units`;
+
+                // amber has no CSS token; literal per ticket for partial/not-yet states.
+                const AMBER = '#d97706';
+
+                let Icon = AlertCircle;
+                let color = 'var(--text-light)';
+                let text;
+                let label;
+                switch (harvestEffectiveStatus) {
+                  case 'in_index':
+                    Icon = CheckCircle;
+                    color = 'var(--success)';
+                    text = `In index · ${inIndexText}${lastSeenText}`;
+                    label = `Harvest status: in index, ${inIndexLabel}`;
+                    break;
+                  case 'partial':
+                    Icon = AlertCircle;
+                    color = AMBER;
+                    text = `Partially in index · ${partialUnits}${lastSeenText}`;
+                    label = `Harvest status: partially in index, ${partialUnits}`;
+                    break;
+                  case 'not_in_index':
+                    Icon = AlertCircle;
+                    color = AMBER;
+                    text = 'Not yet in index';
+                    label = 'Harvest status: not yet in index';
+                    break;
+                  case 'staged':
+                    Icon = AlertCircle;
+                    color = 'var(--text-light)';
+                    text = 'Staged · not in harvester feed';
+                    label = 'Harvest status: staged';
+                    break;
+                  case 'loading':
+                    Icon = AlertCircle;
+                    color = 'var(--text-light)';
+                    text = 'Checking index…';
+                    label = 'Harvest status: checking index';
+                    break;
+                  case 'unknown':
+                  default:
+                    Icon = HelpCircle;
+                    color = 'var(--text-light)';
+                    text = 'Status unavailable';
+                    label = 'Harvest status: unavailable';
+                    break;
+                }
+
+                return (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                    }}
+                    aria-label={label}
+                  >
+                    <Icon
+                      size={15}
+                      style={{
+                        color,
+                        marginRight: '0.75rem',
+                        flexShrink: 0,
+                      }}
+                    />
+                    <span style={{
+                      fontSize: '0.8125rem',
+                      fontWeight: 600,
+                      color,
+                    }}>
+                      {text}
+                    </span>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
 
           {/* Links section with flatter design */}
           <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '1rem', position: 'relative' }}>
