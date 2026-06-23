@@ -35,6 +35,14 @@ const Changelog = ({ currentUser }) => {
 
   const changelogEntries = [
     {
+      version: '2.2.0',
+      date: 'June 22, 2026',
+      changes: [
+        'New "Harvest" status on each dataset card — see at a glance whether a dataset has been harvested into the public search index, including how many records are indexed',
+        'Confirm that your harvest-ready datasets have actually become searchable, without leaving the aggregator'
+      ]
+    },
+    {
       version: '2.1.0',
       date: 'June 22, 2026',
       changes: [

@@ -1,6 +1,8 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { SWRConfig } from 'swr';
+import axios from 'axios';
 import DatasetCard from '../DatasetCard';
 
 // Mock dependencies
@@ -12,11 +14,26 @@ jest.mock('../../auth/AuthContext', () => ({
 }));
 
 jest.mock('axios', () => ({
-  get: jest.fn().mockResolvedValue({
-    data: { validation_status: 'completed', is_valid: true, has_latest_archive: false },
-  }),
+  get: jest.fn(),
   post: jest.fn(),
 }));
+
+// Default validation payload returned for the validation-status URL.
+const VALIDATION_PAYLOAD = {
+  validation_status: 'completed',
+  is_valid: true,
+  has_latest_archive: false,
+};
+
+// Helper: wire axios.get to return a harvest payload for the harvest-status URL
+// and the validation payload for everything else (per-URL branching).
+const mockHarvest = (harvestPayload) => {
+  axios.get.mockImplementation((url) =>
+    typeof url === 'string' && url.includes('harvest-status')
+      ? Promise.resolve({ data: harvestPayload })
+      : Promise.resolve({ data: VALIDATION_PAYLOAD })
+  );
+};
 
 jest.mock('../../../utils/statisticsApi', () => ({
   authStatsApi: {
@@ -38,10 +55,21 @@ const mockDataset = {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  // Default axios.get: validation payload for any URL (overridden per-test via mockHarvest).
+  axios.get.mockResolvedValue({ data: VALIDATION_PAYLOAD });
   // Suppress console.log from DatasetCard debug statements
   jest.spyOn(console, 'log').mockImplementation(() => {});
   jest.spyOn(console, 'error').mockImplementation(() => {});
 });
+
+// Render the card inside an isolated SWR cache so harvest-status fetches
+// are deterministic and never bleed between tests.
+const renderCard = (dataset) =>
+  render(
+    <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
+      <DatasetCard dataset={dataset} onEdit={jest.fn()} onDelete={jest.fn()} />
+    </SWRConfig>
+  );
 
 afterEach(() => {
   console.log.mockRestore();
@@ -110,5 +138,228 @@ describe('DatasetCard', () => {
     render(<DatasetCard dataset={singleArchive} onEdit={jest.fn()} onDelete={jest.fn()} />);
 
     expect(screen.getByText('archive')).toBeInTheDocument();
+  });
+});
+
+describe('DatasetCard harvest-status badge', () => {
+  // A harvest-ready dataset triggers the SWR fetch (no strict-false short-circuit).
+  const harvestReadyDataset = { ...mockDataset, isHarvestReady: true };
+
+  test('renders in_index with M==N: "In index · 5 units · last seen Jun 20, 2026"', async () => {
+    mockHarvest({
+      dataset_id: 10,
+      is_harvest_ready: true,
+      harvest_status: 'in_index',
+      units_in_index: 5,
+      units_expected: 5,
+      last_seen_in_index_at: '2026-06-20T09:00:00Z',
+      index_checked_at: '2026-06-21T03:00:00Z',
+    });
+
+    renderCard(harvestReadyDataset);
+
+    expect(
+      await screen.findByLabelText('Harvest status: in index, 5 of 5 units')
+    ).toBeInTheDocument();
+    expect(screen.getByText('In index · 5 units · last seen Jun 20, 2026')).toBeInTheDocument();
+    // Adjacent wrong-state copy absent.
+    expect(screen.queryByText(/^Partially in index/)).toBeNull();
+  });
+
+  test('renders in_index with N null: "5 units" (no "of N")', async () => {
+    mockHarvest({
+      dataset_id: 10,
+      is_harvest_ready: true,
+      harvest_status: 'in_index',
+      units_in_index: 5,
+      units_expected: null,
+      last_seen_in_index_at: '2026-06-20T09:00:00Z',
+      index_checked_at: '2026-06-21T03:00:00Z',
+    });
+
+    renderCard(harvestReadyDataset);
+
+    expect(
+      await screen.findByLabelText('Harvest status: in index, 5 units')
+    ).toBeInTheDocument();
+    expect(screen.getByText('In index · 5 units · last seen Jun 20, 2026')).toBeInTheDocument();
+    // Never "5 of null"/"5 of undefined".
+    expect(screen.queryByText(/of null/)).toBeNull();
+    expect(screen.queryByText(/of undefined/)).toBeNull();
+  });
+
+  test('renders partial: "Partially in index · 3 of 5 units · last seen Jun 20, 2026"', async () => {
+    mockHarvest({
+      dataset_id: 10,
+      is_harvest_ready: true,
+      harvest_status: 'partial',
+      units_in_index: 3,
+      units_expected: 5,
+      last_seen_in_index_at: '2026-06-20T09:00:00Z',
+      index_checked_at: '2026-06-21T03:00:00Z',
+    });
+
+    renderCard(harvestReadyDataset);
+
+    expect(
+      await screen.findByLabelText('Harvest status: partially in index, 3 of 5 units')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Partially in index · 3 of 5 units · last seen Jun 20, 2026')
+    ).toBeInTheDocument();
+    // Adjacent wrong-state copy absent.
+    expect(screen.queryByText(/^In index/)).toBeNull();
+  });
+
+  test('renders not_in_index: "Not yet in index" with no last-seen segment', async () => {
+    mockHarvest({
+      dataset_id: 10,
+      is_harvest_ready: true,
+      harvest_status: 'not_in_index',
+      units_in_index: 0,
+      units_expected: 5,
+      last_seen_in_index_at: null,
+      index_checked_at: '2026-06-21T03:00:00Z',
+    });
+
+    renderCard(harvestReadyDataset);
+
+    expect(
+      await screen.findByLabelText('Harvest status: not yet in index')
+    ).toBeInTheDocument();
+    expect(screen.getByText('Not yet in index')).toBeInTheDocument();
+    // last_seen_in_index_at is null -> the segment must be absent (no Invalid Date).
+    expect(screen.queryByText(/last seen/)).toBeNull();
+    expect(screen.queryByText(/Invalid Date/)).toBeNull();
+    // Adjacent wrong-state copy absent.
+    expect(screen.queryByText(/^In index/)).toBeNull();
+  });
+
+  test('renders server unknown as "Status unavailable"', async () => {
+    mockHarvest({
+      dataset_id: 10,
+      is_harvest_ready: true,
+      harvest_status: 'unknown',
+      units_in_index: null,
+      units_expected: null,
+      last_seen_in_index_at: null,
+      index_checked_at: '2026-06-21T03:00:00Z',
+    });
+
+    renderCard(harvestReadyDataset);
+
+    expect(
+      await screen.findByLabelText('Harvest status: unavailable')
+    ).toBeInTheDocument();
+    expect(screen.getByText('Status unavailable')).toBeInTheDocument();
+    expect(screen.queryByText(/^In index/)).toBeNull();
+  });
+
+  test('renders fetch error as "Status unavailable" and card still renders', async () => {
+    axios.get.mockImplementation((url) =>
+      typeof url === 'string' && url.includes('harvest-status')
+        ? Promise.reject(new Error('boom'))
+        : Promise.resolve({ data: VALIDATION_PAYLOAD })
+    );
+
+    renderCard(harvestReadyDataset);
+
+    expect(
+      await screen.findByLabelText('Harvest status: unavailable')
+    ).toBeInTheDocument();
+    expect(screen.getByText('Status unavailable')).toBeInTheDocument();
+    // No thrown error escaped: the card body still rendered.
+    expect(screen.getByLabelText('Dataset: Test Dataset')).toBeInTheDocument();
+  });
+
+  test('staged (isHarvestReady === false) shows staged copy and does NOT fetch harvest-status', async () => {
+    const stagedDataset = { ...mockDataset, isHarvestReady: false };
+
+    renderCard(stagedDataset);
+
+    expect(
+      await screen.findByLabelText('Harvest status: staged')
+    ).toBeInTheDocument();
+    expect(screen.getByText('Staged · not in harvester feed')).toBeInTheDocument();
+    // No harvest-status request was ever made (null SWR key).
+    expect(axios.get).not.toHaveBeenCalledWith(
+      expect.stringContaining('harvest-status'),
+      expect.anything()
+    );
+  });
+
+  test('isHarvestReady === true DOES fetch harvest-status', async () => {
+    mockHarvest({
+      dataset_id: 10,
+      is_harvest_ready: true,
+      harvest_status: 'in_index',
+      units_in_index: 5,
+      units_expected: 5,
+      last_seen_in_index_at: '2026-06-20T09:00:00Z',
+      index_checked_at: '2026-06-21T03:00:00Z',
+    });
+
+    renderCard(harvestReadyDataset);
+
+    await screen.findByLabelText('Harvest status: in index, 5 of 5 units');
+    expect(axios.get).toHaveBeenCalledWith(
+      expect.stringContaining('harvest-status'),
+      expect.anything()
+    );
+  });
+
+  test('isHarvestReady undefined still fetches (not treated as staged)', async () => {
+    // mockDataset has no isHarvestReady field at all.
+    mockHarvest({
+      dataset_id: 10,
+      is_harvest_ready: true,
+      harvest_status: 'in_index',
+      units_in_index: 5,
+      units_expected: 5,
+      last_seen_in_index_at: '2026-06-20T09:00:00Z',
+      index_checked_at: '2026-06-21T03:00:00Z',
+    });
+
+    renderCard(mockDataset);
+
+    expect(
+      await screen.findByLabelText('Harvest status: in index, 5 of 5 units')
+    ).toBeInTheDocument();
+    // Must NOT be treated as staged.
+    expect(screen.queryByText('Staged · not in harvester feed')).toBeNull();
+    expect(axios.get).toHaveBeenCalledWith(
+      expect.stringContaining('harvest-status'),
+      expect.anything()
+    );
+  });
+
+  test('shows loading placeholder while harvest fetch is pending and card still renders', async () => {
+    axios.get.mockImplementation((url) =>
+      typeof url === 'string' && url.includes('harvest-status')
+        ? new Promise(() => {}) // never resolves
+        : Promise.resolve({ data: VALIDATION_PAYLOAD })
+    );
+
+    renderCard(harvestReadyDataset);
+
+    expect(await screen.findByText('Checking index…')).toBeInTheDocument();
+    // Card still renders (non-blocking placeholder).
+    expect(screen.getByLabelText('Dataset: Test Dataset')).toBeInTheDocument();
+  });
+
+  test('dataset.id undefined: no harvest-status fetch fires and card renders', async () => {
+    const noId = { ...mockDataset, id: undefined, isHarvestReady: true };
+
+    renderCard(noId);
+
+    // Card renders.
+    expect(screen.getByLabelText('Dataset: Test Dataset')).toBeInTheDocument();
+    // Null SWR key -> no harvest fetch.
+    await waitFor(() => {
+      expect(axios.get).not.toHaveBeenCalledWith(
+        expect.stringContaining('harvest-status'),
+        expect.anything()
+      );
+    });
   });
 });

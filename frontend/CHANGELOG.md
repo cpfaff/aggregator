@@ -5,6 +5,15 @@ All notable changes to the aggregator frontend are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.2.0] - 2026-06-22
+
+### Added
+
+- **Per-dataset harvest-success indicator on the dataset card** — shows whether a
+  dataset's records reached the public Elasticsearch search index (In index ·
+  M of N units / Partially / Not yet / Staged / Status unavailable), queried live
+  by the aggregator. Closes the loop opened by the harvest-ready flag. (DASS-3612)
+
 ## [2.1.0] - 2026-06-22
 
 ### Added

@@ -69,6 +69,16 @@ class Settings(BaseSettings):
     REDIS_DB: int = 0
     REDIS_PASSWORD: str = ""
 
+    # Elasticsearch settings (harvest-success indicator; see EsGateway).
+    # All have in-cluster defaults so no env is required. Empty creds ⇒
+    # unauthenticated; non-empty ⇒ httpx basic auth.
+    ES_BASE_URL: str = "http://index:9200"
+    ES_INDEX: str = "portals_v1"
+    ES_DOC_TYPE: str = "pansimple"
+    ES_TIMEOUT_SECONDS: float = 5.0
+    ES_USERNAME: str = ""
+    ES_PASSWORD: str = ""
+
     @property
     def allowed_origins_list(self) -> list[str]:
         return self.ALLOWED_ORIGINS.split(",")

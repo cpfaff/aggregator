@@ -8,6 +8,7 @@ from app.api.v1.endpoints.archives import router as archives_router
 from app.api.v1.endpoints.auth import router as auth_router
 from app.api.v1.endpoints.datasets import router as datasets_router
 from app.api.v1.endpoints.harvest import router as harvest_router
+from app.api.v1.endpoints.harvest_status import router as harvest_status_router
 from app.api.v1.endpoints.health import router as health_router
 from app.api.v1.endpoints.links import router as links_router
 from app.api.v1.endpoints.providers import router as providers_router
@@ -28,6 +29,7 @@ api_v1_router.include_router(users_router, tags=["users"])
 # Domain-specific endpoint routers with prefixes
 api_v1_router.include_router(tasks_router, prefix="/tasks", tags=["tasks"])
 api_v1_router.include_router(validators_router, prefix="/validators", tags=["validators"])
+api_v1_router.include_router(harvest_status_router, prefix="/datasets", tags=["harvest-status"])
 
 # Use snapshot-based statistics router for both public and authenticated endpoints
 api_v1_router.include_router(snapshots_router, prefix="/statistics", tags=["statistics"])
