@@ -64,6 +64,10 @@ services:
       - ENVIRONMENT=${ENVIRONMENT:-production}
       - CELERY_BROKER_URL=redis://redis:6379/${REDIS_BROKER_DB:-0}
       - CELERY_RESULT_BACKEND=redis://redis:6379/${REDIS_RESULT_DB:-0}
+      # Harvest-success indicator queries the production search ES (index portals_v1)
+      # on sahis-core-prod. Without this the backend defaults to the unreachable
+      # http://index:9200 and every harvest-status degrades to "unknown" (DASS-3615).
+      - ES_BASE_URL=${ES_BASE_URL:-http://192.168.0.184:9200}
     networks:
       - app-network
     healthcheck:
