@@ -22,7 +22,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.api.v1.endpoints.harvest_status import get_dataset_harvest_status
+from app.api.v1.endpoints.harvest_status import (
+    get_dataset_harvest_status,
+)
+from app.api.v1.endpoints.harvest_status import (
+    router as harvest_status_router,
+)
 from app.schemas.harvest_status import HarvestStatus, HarvestStatusResponse
 
 
@@ -197,23 +202,32 @@ class TestGetDatasetHarvestStatus:
     def test_router_mounts_get_route_at_expected_path(self):
         """The v1 router exposes GET /datasets/{dataset_id}/harvest-status.
 
-        ``api_v1_router`` is mutable module-global state assembled once at first
-        import. Another test in this suite ``importlib.reload``-s an endpoint
-        module, and under the CI runner's different import order the global can be
-        left built from a momentarily-empty endpoint router — silently dropping
-        this route and failing only in CI. The harvest_status endpoint module is
-        already fully imported (top of this file), so reloading the router module
-        here rebuilds the includes against complete routers: a deterministic,
-        order-independent mount check.
+        Asserted through the reverse-router (``url_path_for``) rather than by
+        scanning ``api_v1_router.routes`` for an ``APIRoute`` with a matching
+        ``.path``. Under Starlette 1.3 / FastAPI 0.138, ``include_router`` stores
+        lazy ``_IncludedRouter`` objects that resolve their sub-routes only at
+        request time and never expand into ``.routes`` — so a ``.path`` scan finds
+        nothing and the route looks unmounted. The old poetry pin shipped an older
+        FastAPI that eagerly flattened includes, so the scan passed locally and
+        only failed under CI's newer resolution. ``url_path_for`` reverse-resolves
+        the route by endpoint name through the ``/datasets`` include prefix; it is
+        stable across FastAPI versions and import order — no reload, no client.
         """
-        import importlib
+        from starlette.routing import NoMatchFound
 
-        import app.api.v1.router as v1_router_module
+        from app.api.v1.router import api_v1_router
 
-        importlib.reload(v1_router_module)
+        try:
+            mounted_path = api_v1_router.url_path_for("get_dataset_harvest_status", dataset_id=7)
+        except NoMatchFound:
+            pytest.fail("GET /datasets/{dataset_id}/harvest-status is not mounted on api_v1_router")
 
-        assert any(
-            getattr(r, "path", None) == "/datasets/{dataset_id}/harvest-status"
-            and "GET" in getattr(r, "methods", set())
-            for r in v1_router_module.api_v1_router.routes
-        )
+        # Path half of the contract: mounted at the expected template + prefix.
+        assert mounted_path == "/datasets/7/harvest-status"
+        # Method half: the included endpoint declares GET (and only GET).
+        declared_methods = {
+            method
+            for route in harvest_status_router.routes
+            for method in getattr(route, "methods", set())
+        }
+        assert "GET" in declared_methods
