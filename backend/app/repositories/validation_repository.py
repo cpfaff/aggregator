@@ -5,7 +5,7 @@ Repository for validation job and archive data access operations.
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import ValidationJobModel, XmlArchiveModel
+from app.models import DatasetModel, ValidationJobModel, XmlArchiveModel
 from app.repositories.base import BaseRepository
 from app.schemas.pagination import PaginationParams
 from app.utils.filtering import FilterParam
@@ -44,6 +44,7 @@ class ValidationRepository(BaseRepository[ValidationJobModel]):
         filters: list[FilterParam] | None = None,
         sorts: list[SortParam] | None = None,
         pagination: PaginationParams | None = None,
+        allowed_provider_ids: list[int] | None = None,
     ) -> tuple[list[ValidationJobModel], int, str | None, str | None]:
         """
         List validation jobs with optional filtering and cursor-based pagination.
@@ -61,6 +62,19 @@ class ValidationRepository(BaseRepository[ValidationJobModel]):
 
         # Base query for filtering
         base_query = select(ValidationJobModel)
+
+        # Scope to the user's providers (None = global admin, all). Empty list
+        # means no accessible providers -> no jobs (B12).
+        if allowed_provider_ids is not None:
+            if not allowed_provider_ids:
+                return [], 0, None, None
+            base_query = (
+                base_query.join(
+                    XmlArchiveModel, ValidationJobModel.archive_id == XmlArchiveModel.id
+                )
+                .join(DatasetModel, XmlArchiveModel.dataset_id == DatasetModel.id)
+                .where(DatasetModel.provider_id.in_(allowed_provider_ids))
+            )
 
         # Apply filters if provided
         if filters:
