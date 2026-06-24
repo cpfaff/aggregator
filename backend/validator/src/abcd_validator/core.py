@@ -298,6 +298,10 @@ class ABCDValidator:
         validator.schema = WORKER_SCHEMA
         validator.schema_path = schema_path or WORKER_SCHEMA_PATH
         validator.custom_validator = WORKER_CUSTOM_VALIDATOR
+        # __new__ bypasses __init__, so _detected_version is never set here; the
+        # static worker path detects no per-file version, so None is the honest
+        # default and keeps the `WORKER_SCHEMA_VERSION or ...` fallback safe.
+        validator._detected_version = None
         start_time = time.time()
         errors = []
         custom_results = []
