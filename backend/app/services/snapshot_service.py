@@ -105,17 +105,19 @@ class SnapshotService:
     # Unit Count Queries (from ArchiveSnapshot)
     # -------------------------------------------------------------------------
 
-    def get_dataset_unit_count(self, dataset_id: int) -> int:
-        """Get total unit count for a dataset."""
+    def get_dataset_unit_count(self, dataset_id: int) -> int | None:
+        """Expected unit count for a dataset, or None when unknown (no snapshot
+        data). This feeds the harvest-status N provider, which maps None to an
+        honest "unknown" rather than a misleading 0 (B4)."""
         return self.repo.get_unit_count(dataset_id=dataset_id)
 
     def get_provider_unit_count(self, provider_id: int) -> int:
-        """Get total unit count for a provider."""
-        return self.repo.get_unit_count(provider_id=provider_id)
+        """Get total unit count for a provider (0 when no snapshot data)."""
+        return self.repo.get_unit_count(provider_id=provider_id) or 0
 
     def get_total_biological_units(self) -> int:
-        """Get total biological units across all archives (system-wide)."""
-        return self.repo.get_unit_count()
+        """Get total biological units across all archives (0 when none)."""
+        return self.repo.get_unit_count() or 0
 
     # -------------------------------------------------------------------------
     # Timeline Queries (for charts)

@@ -288,10 +288,11 @@ class TestGetQualityMetrics:
 class TestGetDatasetUnitCount:
     """Tests for get_dataset_unit_count."""
 
-    def test_returns_zero_when_no_snapshots(self, snapshot_service, dataset, archive):
-        """Test returns 0 when no snapshots exist for the dataset's archives."""
+    def test_returns_none_when_no_snapshots(self, snapshot_service, dataset, archive):
+        """No snapshot data means the expected unit count is UNKNOWN (None), not a
+        misleading 0 that would mark a dataset fully-indexed (B4)."""
         result = snapshot_service.get_dataset_unit_count(dataset.id)
-        assert result == 0
+        assert result is None
 
     def test_returns_sum_of_latest_snapshots(
         self, snapshot_service, sync_db_session, dataset, archive
@@ -335,10 +336,10 @@ class TestGetDatasetUnitCount:
         result = snapshot_service.get_dataset_unit_count(dataset.id)
         assert result == 100  # old_archive excluded
 
-    def test_returns_zero_for_nonexistent_dataset(self, snapshot_service):
-        """Test returns 0 for a dataset_id with no matching data."""
+    def test_returns_none_for_nonexistent_dataset(self, snapshot_service):
+        """A dataset_id with no matching data has an unknown unit count (B4)."""
         result = snapshot_service.get_dataset_unit_count(99999)
-        assert result == 0
+        assert result is None
 
 
 # ---------------------------------------------------------------------------
