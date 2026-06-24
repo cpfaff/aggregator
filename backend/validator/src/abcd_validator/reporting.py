@@ -110,28 +110,30 @@ def extract_error_components(error: ValidationError) -> dict[str, Any]:
     Uses caching to avoid reprocessing the same error message.
     For non-schema errors, falls back to line information if an element isn’t detected.
     """
+    # Cache only the message-derived components; normalized_path depends on the
+    # per-instance error.path and must NOT be cached under the message key,
+    # otherwise errors sharing a message reuse the first one's path (B31).
     key = error.message
-    if key in _error_component_cache:
-        return _error_component_cache[key]
-    element = None
-    value = None
-    m = ELEMENT_REGEX.search(error.message)
-    if m:
-        element = m.group(1)
-    if not element and error.error_type in ("syntax", "encoding", "processing", "unknown"):
-        element = f"Line {error.line}" if error.line else "Unknown"
-    for pattern in VALUE_PATTERNS:
-        m = pattern.search(error.message)
+    cached = _error_component_cache.get(key)
+    if cached is None:
+        element = None
+        value = None
+        m = ELEMENT_REGEX.search(error.message)
         if m:
-            value = m.group(1)
-            break
-    comps = {
-        "element": element,
-        "value": value,
+            element = m.group(1)
+        if not element and error.error_type in ("syntax", "encoding", "processing", "unknown"):
+            element = f"Line {error.line}" if error.line else "Unknown"
+        for pattern in VALUE_PATTERNS:
+            m = pattern.search(error.message)
+            if m:
+                value = m.group(1)
+                break
+        cached = {"element": element, "value": value}
+        _error_component_cache[key] = cached
+    return {
+        **cached,
         "normalized_path": normalize_path(error.path) if error.path else None,
     }
-    _error_component_cache[key] = comps
-    return comps
 
 
 # --- Aggregators for batched processing ---
