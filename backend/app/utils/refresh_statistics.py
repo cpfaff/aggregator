@@ -8,13 +8,46 @@ import argparse
 import sys
 from datetime import datetime
 
-from sqlalchemy import text
+from sqlalchemy import func, select, text
 
 # Add the app directory to path
 sys.path.insert(0, "/app")
 
 from app.db.session import SessionLocal  # noqa: E402
+from app.models.archive_snapshot import ArchiveSnapshotModel  # noqa: E402
+from app.models.dataset import XmlArchiveModel  # noqa: E402
 from app.tasks.snapshot_tasks import collect_archive_snapshots  # noqa: E402
+
+
+def latest_total_units(db) -> int:
+    """Sum unit_count of only the latest snapshot per latest archive (B20).
+
+    archive_snapshots is append-only (one new row per archive per daily run,
+    even when unchanged), so a flat SUM(unit_count) inflates the total by the
+    number of collection runs. Mirror the authoritative
+    snapshot_repository.get_unit_count_for_date(latest_only=True): take
+    max(recorded_at) per archive_id and restrict to isLatest archives.
+    """
+    latest = (
+        select(
+            ArchiveSnapshotModel.archive_id.label("archive_id"),
+            func.max(ArchiveSnapshotModel.recorded_at).label("max_recorded"),
+        )
+        .group_by(ArchiveSnapshotModel.archive_id)
+        .subquery()
+    )
+    stmt = (
+        select(func.coalesce(func.sum(ArchiveSnapshotModel.unit_count), 0))
+        .select_from(ArchiveSnapshotModel)
+        .join(
+            latest,
+            (ArchiveSnapshotModel.archive_id == latest.c.archive_id)
+            & (ArchiveSnapshotModel.recorded_at == latest.c.max_recorded),
+        )
+        .join(XmlArchiveModel, XmlArchiveModel.id == ArchiveSnapshotModel.archive_id)
+        .where(XmlArchiveModel.isLatest.is_(True))
+    )
+    return int(db.execute(stmt).scalar_one())
 
 
 def queue_snapshot_collection():
@@ -36,8 +69,7 @@ def check_snapshot_status():
                 COUNT(*) as total_snapshots,
                 COUNT(DISTINCT archive_id) as unique_archives,
                 MIN(recorded_at) as earliest_snapshot,
-                MAX(recorded_at) as latest_snapshot,
-                SUM(unit_count) as total_units
+                MAX(recorded_at) as latest_snapshot
             FROM archive_snapshots
         """)
         )
@@ -50,7 +82,8 @@ def check_snapshot_status():
             print(f"Unique archives: {row.unique_archives}")
             print(f"Earliest: {row.earliest_snapshot}")
             print(f"Latest: {row.latest_snapshot}")
-            print(f"Total units (latest): {row.total_units}")
+            # Sum only the latest snapshot per latest archive, not every row.
+            print(f"Total units (latest): {latest_total_units(db)}")
 
         # Archive coverage
         coverage_result = db.execute(
