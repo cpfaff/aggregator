@@ -148,9 +148,7 @@ class UserService:
             await self.repo.commit()
         except IntegrityError as exc:
             await self.repo.rollback()
-            raise HTTPException(
-                status_code=400, detail="Username already exists"
-            ) from exc
+            raise HTTPException(status_code=400, detail="Username already exists") from exc
 
         # Invalidate user list cache
         invalidate_cache("users")

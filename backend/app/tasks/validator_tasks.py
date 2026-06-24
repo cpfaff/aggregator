@@ -163,9 +163,7 @@ def validate_archive(self, archive_id: int, job_id: int | None = None) -> dict[s
         db.rollback()
         if job_pk is not None:
             failed_job = (
-                db.query(ValidationJobModel)
-                .filter(ValidationJobModel.id == job_pk)
-                .first()
+                db.query(ValidationJobModel).filter(ValidationJobModel.id == job_pk).first()
             )
             if failed_job is not None:
                 failed_job.status = "failed"

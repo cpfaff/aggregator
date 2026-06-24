@@ -108,9 +108,7 @@ def _apply_single_filter(
         case FilterOperator.LIKE:
             # Escape LIKE wildcards so user-supplied % and _ match literally
             # instead of acting as wildcards (B17). Escape the backslash first.
-            escaped = (
-                str(value).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-            )
+            escaped = str(value).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
             query = query.filter(column.ilike(f"%{escaped}%", escape="\\"))
         case FilterOperator.IN:
             if isinstance(value, list):

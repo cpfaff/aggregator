@@ -321,6 +321,4 @@ class DatasetService:
             logger.error(f"Failed to delete dataset {dataset_id}: {e}")
             # Do not echo raw exception text (driver/infra detail) to the client;
             # the full error is logged above (B15 follow-up).
-            raise HTTPException(
-                status_code=500, detail="Failed to delete dataset"
-            ) from e
+            raise HTTPException(status_code=500, detail="Failed to delete dataset") from e
