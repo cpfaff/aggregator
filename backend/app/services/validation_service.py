@@ -77,8 +77,16 @@ class ValidationService:
         await self.repo.create(job)
         await self.repo.commit()
 
-        # Submit validation task to Celery
-        task = validate_archive.delay(archive_id, job_id=job.id)
+        # Submit validation task to Celery. If the broker is unreachable, .delay()
+        # raises; mark the just-committed job failed so it does not linger as an
+        # active 'pending' row that blocks future re-validation (B1).
+        try:
+            task = validate_archive.delay(archive_id, job_id=job.id)
+        except Exception as exc:
+            job.status = "failed"
+            job.results = {"error": f"Failed to enqueue validation task: {exc}"}
+            await self.repo.commit()
+            raise
 
         # Update job with task ID
         job.task_id = task.id
