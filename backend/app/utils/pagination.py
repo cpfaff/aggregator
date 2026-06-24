@@ -53,6 +53,11 @@ def decode_cursor(cursor: str | None) -> dict[str, Any] | None:
         raise CursorError("Cursor cannot be empty string")
     try:
         json_str = base64.urlsafe_b64decode(cursor.encode()).decode()
-        return json.loads(json_str)
+        decoded = json.loads(json_str)
     except (ValueError, json.JSONDecodeError) as e:
         raise CursorError(f"Invalid cursor: {e}") from e
+    # The contract is dict | None; a bare JSON array/scalar/null would slip
+    # through json.loads and crash callers doing decoded[...] / decoded.get(...).
+    if not isinstance(decoded, dict):
+        raise CursorError("Invalid cursor: expected a JSON object")
+    return decoded
