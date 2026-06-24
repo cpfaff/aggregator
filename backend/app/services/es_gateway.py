@@ -138,6 +138,7 @@ class EsGateway:
             httpx.TransportError,
             httpx.HTTPStatusError,
             KeyError,
+            TypeError,
             ValueError,
         ) as err:
             logger.warning("ES _count unavailable for urn=%s: %s", urn, err)
@@ -174,6 +175,7 @@ class EsGateway:
             httpx.TransportError,
             httpx.HTTPStatusError,
             KeyError,
+            TypeError,
             ValueError,
         ) as err:
             logger.warning("ES _search unavailable for urn=%s: %s", urn, err)

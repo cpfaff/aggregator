@@ -22,7 +22,13 @@ def run_celery_command(command: str, json_output: bool = True) -> dict | None:
     try:
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=10)
 
-        if json_output and result.stdout:
+        if json_output:
+            # Callers iterate the JSON result as a worker->tasks mapping. When
+            # the broker/workers are unreachable celery writes only to stderr
+            # and leaves stdout empty; return None so callers degrade cleanly
+            # instead of misreading a {"output","error"} dict (B19).
+            if not result.stdout:
+                return None
             return json.loads(result.stdout)
         return {"output": result.stdout, "error": result.stderr}
     except subprocess.TimeoutExpired:
@@ -30,7 +36,7 @@ def run_celery_command(command: str, json_output: bool = True) -> dict | None:
         return None
     except json.JSONDecodeError:
         print("⚠️  Failed to parse JSON output")
-        return {"output": result.stdout, "error": result.stderr}
+        return None
     except Exception as e:
         print(f"❌ Error running command: {e}")
         return None

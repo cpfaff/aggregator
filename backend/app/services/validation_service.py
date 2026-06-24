@@ -9,9 +9,10 @@ import logging
 from typing import Any
 
 from fastapi import HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import ValidationJobModel, XmlArchiveModel
+from app.models import DatasetModel, ValidationJobModel, XmlArchiveModel
 from app.repositories.validation_repository import ValidationRepository
 from app.schemas.pagination import PaginatedResponse, PaginationMeta, PaginationParams
 from app.tasks.validator_tasks import validate_archive
@@ -51,6 +52,37 @@ class ValidationService:
 
         return archive
 
+    # --- Provider resolution for authorization (B12) ---------------------------
+    # Validation resources are owned by a provider (archive -> dataset ->
+    # provider). Endpoints resolve the owning provider and enforce
+    # check_provider_permission, matching the dataset/archive/link endpoints.
+
+    async def get_provider_id_for_archive(self, archive_id: int) -> int | None:
+        """Resolve the owning provider id for an archive, or None if absent."""
+        result = await self.db.execute(
+            select(DatasetModel.provider_id)
+            .join(XmlArchiveModel, XmlArchiveModel.dataset_id == DatasetModel.id)
+            .where(XmlArchiveModel.id == archive_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def get_provider_id_for_dataset(self, dataset_id: int) -> int | None:
+        """Resolve the owning provider id for a dataset, or None if absent."""
+        result = await self.db.execute(
+            select(DatasetModel.provider_id).where(DatasetModel.id == dataset_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def get_provider_id_for_job(self, job_id: int) -> int | None:
+        """Resolve the owning provider id for a validation job, or None if absent."""
+        result = await self.db.execute(
+            select(DatasetModel.provider_id)
+            .join(XmlArchiveModel, XmlArchiveModel.dataset_id == DatasetModel.id)
+            .join(ValidationJobModel, ValidationJobModel.archive_id == XmlArchiveModel.id)
+            .where(ValidationJobModel.id == job_id)
+        )
+        return result.scalar_one_or_none()
+
     async def create_validation_job(self, archive_id: int) -> dict[str, Any]:
         """
         Create a new validation job for an archive.
@@ -77,8 +109,16 @@ class ValidationService:
         await self.repo.create(job)
         await self.repo.commit()
 
-        # Submit validation task to Celery
-        task = validate_archive.delay(archive_id, job_id=job.id)
+        # Submit validation task to Celery. If the broker is unreachable, .delay()
+        # raises; mark the just-committed job failed so it does not linger as an
+        # active 'pending' row that blocks future re-validation (B1).
+        try:
+            task = validate_archive.delay(archive_id, job_id=job.id)
+        except Exception as exc:
+            job.status = "failed"
+            job.results = {"error": f"Failed to enqueue validation task: {exc}"}
+            await self.repo.commit()
+            raise
 
         # Update job with task ID
         job.task_id = task.id
@@ -114,6 +154,7 @@ class ValidationService:
         filters: list[FilterParam] | None = None,
         sorts: list[SortParam] | None = None,
         pagination: PaginationParams | None = None,
+        allowed_provider_ids: list[int] | None = None,
     ) -> PaginatedResponse:
         """
         List validation jobs with optional filtering and cursor-based pagination.
@@ -130,6 +171,7 @@ class ValidationService:
             filters=filters,
             sorts=sorts,
             pagination=pagination,
+            allowed_provider_ids=allowed_provider_ids,
         )
 
         limit = pagination.limit if pagination else 20

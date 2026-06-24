@@ -37,8 +37,16 @@ from app.core.config import settings  # noqa: E402
 cache = SimpleCache(ttl_seconds=settings.CACHE_EXPIRE_SECONDS)
 
 
-def cache_response(prefix, ttl_seconds=None):
-    """Decorator to cache function responses with prefix for key generation"""
+def cache_response(prefix, ttl_seconds=None, id_param=None):
+    """Decorator to cache function responses with prefix for key generation.
+
+    For per-entity detail endpoints, pass ``id_param`` (the name of the id
+    keyword argument, e.g. "dataset_id"). The cache key then leads with
+    ``prefix:<id>`` so callers can clear it with
+    ``invalidate_cache(f"{prefix}:{id}")`` (B23). Without this the key began
+    with ``prefix:<func_name>:...`` and the id-based invalidation never matched,
+    serving stale detail responses until TTL expiry.
+    """
 
     def decorator(func):
         @wraps(func)
@@ -46,8 +54,13 @@ def cache_response(prefix, ttl_seconds=None):
             if not settings.CACHE_ENABLED:
                 return await func(*args, **kwargs)
 
-            # Generate a cache key based on function name, args, and kwargs
-            key_parts = [prefix, func.__name__]
+            # Generate a cache key based on function name, args, and kwargs.
+            # Lead with the entity id (when given) so id-based invalidation
+            # prefix-matches the generated key.
+            key_parts = [prefix]
+            if id_param is not None and id_param in kwargs:
+                key_parts.append(str(kwargs[id_param]))
+            key_parts.append(func.__name__)
             # Skip Request and AsyncSession objects
             from fastapi import Request
             from sqlalchemy.ext.asyncio import AsyncSession

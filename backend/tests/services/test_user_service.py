@@ -174,6 +174,21 @@ async def test_create_user_duplicate_username(user_service, sample_user):
     assert exc_info.value.detail == "Username already exists"
 
 
+@pytest.mark.asyncio
+async def test_create_user_race_duplicate_returns_400(user_service, sample_user):
+    """A create that passes a stale existence check but hits the DB unique
+    constraint must still surface a clean 400, not a 500 (B2 TOCTOU)."""
+    from unittest.mock import AsyncMock
+
+    # Simulate the TOCTOU window: the existence check misses the row.
+    with patch.object(user_service, "get_user_by_username", new=AsyncMock(return_value=None)):
+        with pytest.raises(HTTPException) as exc_info:
+            await user_service.create_user(username="testuser", password="password123")
+
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.detail == "Username already exists"
+
+
 # Test update_user_password (own password with verification, admin changing other)
 @pytest.mark.asyncio
 @patch("app.services.user_service.verify_password")

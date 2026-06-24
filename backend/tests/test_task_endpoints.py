@@ -59,17 +59,36 @@ class TestGetTaskStatus:
 
     @pytest.mark.asyncio
     @patch("app.api.v1.endpoints.tasks.process_data")
-    async def test_success_includes_result(self, mock_process):
-        """Test that completed task includes result."""
+    async def test_success_includes_result_for_owner(self, mock_process):
+        """The task owner receives the completed result."""
         mock_result = MagicMock()
         mock_result.status = "SUCCESS"
-        mock_result.result = {"processed": True}
+        mock_result.result = {"processed": True, "user_id": 7}
         mock_process.AsyncResult.return_value = mock_result
 
-        result = await get_task_status(task_id="task-456", current_user=MagicMock())
+        owner = MagicMock()
+        owner.id = 7
+        result = await get_task_status(task_id="task-456", current_user=owner)
 
         assert result["status"] == "SUCCESS"
-        assert result["result"] == {"processed": True}
+        assert result["result"] == {"processed": True, "user_id": 7}
+
+    @pytest.mark.asyncio
+    @patch("app.api.v1.endpoints.tasks.process_data")
+    async def test_non_owner_cannot_read_result(self, mock_process):
+        """A different authenticated user must not read another user's result (B13)."""
+        from fastapi import HTTPException
+
+        mock_result = MagicMock()
+        mock_result.status = "SUCCESS"
+        mock_result.result = {"processed": True, "user_id": 1}
+        mock_process.AsyncResult.return_value = mock_result
+
+        other = MagicMock()
+        other.id = 2
+        with pytest.raises(HTTPException) as exc_info:
+            await get_task_status(task_id="task-owned-by-1", current_user=other)
+        assert exc_info.value.status_code in (403, 404)
 
     @pytest.mark.asyncio
     @patch("app.api.v1.endpoints.tasks.process_data")

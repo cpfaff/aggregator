@@ -30,7 +30,7 @@ class TestCreateValidationJob:
     @patch("app.api.v1.endpoints.validators.ValidationService")
     async def test_creates_job_and_returns_201(self, MockServiceClass):
         """Test happy path creates a validation job."""
-        mock_service = MagicMock()
+        mock_service = AsyncMock()
         MockServiceClass.return_value = mock_service
         mock_service.create_validation_job = AsyncMock(
             return_value={
@@ -57,7 +57,7 @@ class TestCreateValidationJob:
     @patch("app.api.v1.endpoints.validators.ValidationService")
     async def test_archive_not_found_raises_404(self, MockServiceClass):
         """Test that submitting job for non-existent archive raises 404."""
-        mock_service = MagicMock()
+        mock_service = AsyncMock()
         MockServiceClass.return_value = mock_service
         mock_service.create_validation_job = AsyncMock(
             side_effect=HTTPException(status_code=404, detail="Archive not found")
@@ -87,7 +87,7 @@ class TestGetValidationJob:
     async def test_returns_job_details(self, MockServiceClass):
         """Test happy path returns validation job."""
         mock_job = MagicMock()
-        mock_service = MagicMock()
+        mock_service = AsyncMock()
         MockServiceClass.return_value = mock_service
         mock_service.get_validation_job = AsyncMock(return_value=mock_job)
 
@@ -100,7 +100,7 @@ class TestGetValidationJob:
     @patch("app.api.v1.endpoints.validators.ValidationService")
     async def test_job_not_found_raises_404(self, MockServiceClass):
         """Test that missing job raises 404."""
-        mock_service = MagicMock()
+        mock_service = AsyncMock()
         MockServiceClass.return_value = mock_service
         mock_service.get_validation_job = AsyncMock(
             side_effect=HTTPException(status_code=404, detail="Job not found")
@@ -126,7 +126,7 @@ class TestListValidationJobs:
         """Test happy path returns paginated response."""
         from app.schemas.pagination import PaginationParams
 
-        mock_service = MagicMock()
+        mock_service = AsyncMock()
         MockServiceClass.return_value = mock_service
         mock_service.list_validation_jobs = AsyncMock(
             return_value=MagicMock(data=[], pagination=MagicMock())
@@ -151,7 +151,7 @@ class TestListValidationJobs:
         from app.utils.filtering import FilterOperator, FilterParam
         from app.utils.sorting import SortDirection, SortParam
 
-        mock_service = MagicMock()
+        mock_service = AsyncMock()
         MockServiceClass.return_value = mock_service
         mock_service.list_validation_jobs = AsyncMock(
             return_value=MagicMock(data=[], pagination=MagicMock())
@@ -173,7 +173,7 @@ class TestListValidationJobs:
         )
 
         mock_service.list_validation_jobs.assert_awaited_once_with(
-            filters=filters, sorts=sorts, pagination=pagination
+            filters=filters, sorts=sorts, pagination=pagination, allowed_provider_ids=None
         )
 
     @pytest.mark.asyncio
@@ -182,7 +182,7 @@ class TestListValidationJobs:
         """Test that default params use empty lists for filters and sorts."""
         from app.schemas.pagination import PaginationParams
 
-        mock_service = MagicMock()
+        mock_service = AsyncMock()
         MockServiceClass.return_value = mock_service
         mock_service.list_validation_jobs = AsyncMock(
             return_value=MagicMock(data=[], pagination=MagicMock())
@@ -198,7 +198,7 @@ class TestListValidationJobs:
         )
 
         mock_service.list_validation_jobs.assert_awaited_once_with(
-            filters=[], sorts=[], pagination=pagination
+            filters=[], sorts=[], pagination=pagination, allowed_provider_ids=None
         )
 
 
@@ -214,7 +214,7 @@ class TestGetValidationResults:
     @patch("app.api.v1.endpoints.validators.ValidationService")
     async def test_returns_results_dict(self, MockServiceClass):
         """Test happy path returns validation results."""
-        mock_service = MagicMock()
+        mock_service = AsyncMock()
         MockServiceClass.return_value = mock_service
         mock_service.get_validation_results = AsyncMock(
             return_value={"summary": {"total_files": 10, "valid_files": 8}}
@@ -229,7 +229,7 @@ class TestGetValidationResults:
     @patch("app.api.v1.endpoints.validators.ValidationService")
     async def test_job_not_completed_raises_400(self, MockServiceClass):
         """Test that incomplete job raises 400."""
-        mock_service = MagicMock()
+        mock_service = AsyncMock()
         MockServiceClass.return_value = mock_service
         mock_service.get_validation_results = AsyncMock(
             side_effect=HTTPException(status_code=400, detail="Job not completed")
@@ -244,7 +244,7 @@ class TestGetValidationResults:
     @patch("app.api.v1.endpoints.validators.ValidationService")
     async def test_results_not_found_raises_404(self, MockServiceClass):
         """Test that missing results raises 404."""
-        mock_service = MagicMock()
+        mock_service = AsyncMock()
         MockServiceClass.return_value = mock_service
         mock_service.get_validation_results = AsyncMock(
             side_effect=HTTPException(status_code=404, detail="Results not found")
@@ -268,7 +268,7 @@ class TestGetDatasetValidationStatus:
     @patch("app.api.v1.endpoints.validators.ValidationService")
     async def test_returns_status_model(self, MockServiceClass):
         """Test happy path returns DatasetValidationStatus model."""
-        mock_service = MagicMock()
+        mock_service = AsyncMock()
         MockServiceClass.return_value = mock_service
         mock_service.get_dataset_validation_status = AsyncMock(
             return_value={
@@ -297,7 +297,7 @@ class TestGetDatasetValidationStatus:
     @patch("app.api.v1.endpoints.validators.ValidationService")
     async def test_no_archive_returns_default(self, MockServiceClass):
         """Test that dataset with no archive returns has_latest_archive=False."""
-        mock_service = MagicMock()
+        mock_service = AsyncMock()
         MockServiceClass.return_value = mock_service
         mock_service.get_dataset_validation_status = AsyncMock(
             return_value={
@@ -333,7 +333,7 @@ class TestCreateValidationJobWithDatasetId:
     @patch("app.api.v1.endpoints.validators.ValidationService")
     async def test_creates_validation_for_dataset(self, MockServiceClass):
         """Test creating validation for dataset's latest archive via POST /."""
-        mock_service = MagicMock()
+        mock_service = AsyncMock()
         MockServiceClass.return_value = mock_service
         mock_service.validate_dataset_latest_archive = AsyncMock(
             return_value={
@@ -361,7 +361,7 @@ class TestCreateValidationJobWithDatasetId:
     @patch("app.api.v1.endpoints.validators.ValidationService")
     async def test_force_flag_forwarded_for_dataset(self, MockServiceClass):
         """Test that force=True is forwarded to service when using dataset_id."""
-        mock_service = MagicMock()
+        mock_service = AsyncMock()
         MockServiceClass.return_value = mock_service
         mock_service.validate_dataset_latest_archive = AsyncMock(
             return_value={
@@ -385,7 +385,7 @@ class TestCreateValidationJobWithDatasetId:
     @patch("app.api.v1.endpoints.validators.ValidationService")
     async def test_no_archive_raises_404_for_dataset(self, MockServiceClass):
         """Test that dataset with no latest archive raises 404."""
-        mock_service = MagicMock()
+        mock_service = AsyncMock()
         MockServiceClass.return_value = mock_service
         mock_service.validate_dataset_latest_archive = AsyncMock(
             side_effect=HTTPException(status_code=404, detail="No latest archive found")

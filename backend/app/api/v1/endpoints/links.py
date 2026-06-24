@@ -10,7 +10,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import csrf_protect, provider_permission
+from app.api.deps import provider_permission
 from app.core.cache import cache_response
 from app.db import get_db
 from app.models import UserModel
@@ -43,7 +43,6 @@ async def get_useful_links(
     return await service.list_links(provider_id, dataset_id)
 
 
-@csrf_protect.validate_csrf
 @router.post(
     "/{provider_id}/data-sets/{dataset_id}/useful-links",
     response_model=UsefulLink,

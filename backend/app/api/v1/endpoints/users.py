@@ -12,7 +12,6 @@ from fastapi import APIRouter, Body, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import (
-    csrf_protect,
     get_filtering_params,
     get_pagination_params,
     get_sorting_params,
@@ -97,7 +96,6 @@ async def get_user_endpoint(
     return await service.get_user_or_404(username)
 
 
-@csrf_protect.validate_csrf
 @router.put("/users/{username}", response_model=User, summary="Update user")
 async def update_user(
     username: str,
@@ -127,7 +125,6 @@ async def update_user(
     )
 
 
-@csrf_protect.validate_csrf
 @router.post("/users", response_model=User, status_code=201, summary="Create a new user")
 async def create_user(
     user: UserCreate,
@@ -151,7 +148,6 @@ async def create_user(
     )
 
 
-@csrf_protect.validate_csrf
 @router.delete("/users/{username}", status_code=204, summary="Delete user")
 async def delete_user(
     username: str,
@@ -168,7 +164,6 @@ async def delete_user(
 
 
 # Provider Association Endpoints
-@csrf_protect.validate_csrf
 @router.post(
     "/users/{username}/data-providers",
     response_model=User,
@@ -192,7 +187,6 @@ async def add_provider_association(
     )
 
 
-@csrf_protect.validate_csrf
 @router.put(
     "/users/{username}/data-providers/{provider_id}",
     response_model=User,
@@ -217,7 +211,6 @@ async def update_provider_association(
     )
 
 
-@csrf_protect.validate_csrf
 @router.delete(
     "/users/{username}/data-providers/{provider_id}",
     response_model=User,

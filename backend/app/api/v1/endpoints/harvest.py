@@ -101,4 +101,6 @@ async def harvest_datasets(request: Request, db: DbSession):
         return legacy_datasets
     except Exception as e:
         logger.error(f"Error in harvest endpoint: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}") from e
+        # Do not echo raw exception text (driver/infra detail) to this public,
+        # unauthenticated endpoint; the full error is logged above (B15).
+        raise HTTPException(status_code=500, detail="Internal server error") from e

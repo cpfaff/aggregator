@@ -8,6 +8,7 @@ providing a clean interface for user CRUD and permission management.
 import logging
 
 from fastapi import HTTPException
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.cache import invalidate_cache
@@ -139,8 +140,15 @@ class UserService:
             is_global_admin=is_global_admin,
         )
 
-        await self.repo.create(user)
-        await self.repo.commit()
+        # The existence check above races with concurrent creates; the DB unique
+        # constraint is the real guard. Map its violation to the same clean 400
+        # instead of letting it surface as a 500 (B2).
+        try:
+            await self.repo.create(user)
+            await self.repo.commit()
+        except IntegrityError as exc:
+            await self.repo.rollback()
+            raise HTTPException(status_code=400, detail="Username already exists") from exc
 
         # Invalidate user list cache
         invalidate_cache("users")
