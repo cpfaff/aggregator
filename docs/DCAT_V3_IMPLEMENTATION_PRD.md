@@ -2,11 +2,18 @@
 
 **Version:** 1.0
 **Date:** 2026-01-15
-**Status:** Draft
+**Status:** Superseded (see status note below)
 **Author:** Technical Team
 **Stakeholders:** GFBio Development Team
 
 ---
+
+> **Status note (2026-06-24):** This PRD is **superseded**. The owner-approved
+> SAHIS project brief (2026-06-23) sets the forward direction as a cutover to an
+> **external, `nexus`-compiled DCAT-AP catalog** — the GFBio Data Catalog at
+> `catalog.gfbio.dev` — rather than building DCAT v3 inside the Aggregator. It is
+> retained for historical reference and does not describe planned work on this
+> codebase.
 
 ## Executive Summary
 

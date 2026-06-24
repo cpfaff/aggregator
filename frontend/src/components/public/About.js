@@ -8,90 +8,138 @@ const About = ({ currentUser, isDarkTheme }) => {
     { label: 'About', onClick: null }
   ];
 
-  // Current architecture diagram
-  const currentArchitectureDiagram = `
+  // System architecture diagram — the route a dataset travels from a data
+  // center, through registration and harvesting, into the search index and the
+  // public portal. Kept deliberately high-level for a non-technical audience.
+  const architectureDiagram = `
 flowchart LR
-    subgraph Providers ["Data Providers"]
+    subgraph Sources ["Data Centers and Providers"]
         direction TB
-        bioCase1("BioCASe Provider")
-        bioCase2("BioCASe Provider")
-        bioCase3("...")
-        oaiPMH1("OAI-PMH Provider")
-        oaiPMH2("OAI-PMH Provider")
-        oaiPMH3("...")
-        gbifProvider("DwC Provider")
+        collections("Natural-history collections<br/><i>ABCD / BioCASe</i>")
+        repos("PANGAEA, ENA, DataCite<br/><i>OAI-PMH</i>")
+        gbif("GBIF<br/><i>Darwin Core</i>")
     end
 
-    Aggregator("Aggregator<br/><i>registration, validation, statistics</i>")
-    panFMPHarvester("panFMP Harvester<br/><i>registration, validation, etl</i>")
-    bmsHarvester("BMS Harvester<br/><i>etl</i>")
-    gbifHarvester("GBIF Harvester<br/><i>registration, etl</i>")
+    dpm("Data Provider Manager<br/><i>register, validate, monitor</i>")
+    harvester("panFMP Harvester<br/><i>collect, crosswalk, load</i>")
+    esIndex[("Search Index<br/>Elasticsearch")]
+    portal("GFBio Search Portal<br/><i>search.gfbio.org</i>")
 
-    subgraph Search ["GFBio Search"]
-        gfbioSearch("Search Portal<br/><i>interface, api</i>")
-    end
-
-    subgraph Storage ["Storage"]
-        elasticsearchIndex[("Elasticsearch Index")]
-    end
-
-    bioCase1 & bioCase2 & bioCase3 --- Aggregator
-    oaiPMH1 & oaiPMH2 & oaiPMH3 --- panFMPHarvester
-    gbifProvider --- gbifHarvester
-    Aggregator --- bmsHarvester
-    bmsHarvester --- panFMPHarvester
-    gbifHarvester --- elasticsearchIndex
-    panFMPHarvester --- elasticsearchIndex
-    gfbioSearch --- elasticsearchIndex
+    collections -->|register| dpm
+    dpm -->|harvest feed| harvester
+    repos --> harvester
+    gbif --> harvester
+    harvester -->|harmonised records| esIndex
+    esIndex --> portal
+    dpm -. reads status .-> esIndex
 `;
 
-  // Future architecture diagram - DCAT v3 migration
-  const futureArchitectureDiagram = `
-flowchart LR
-    subgraph Providers ["Data Providers"]
-        bioCase("BioCASe")
-        oaiPMH("OAI-PMH")
-        dwcProvider("Darwin Core")
-        genericProvider("...")
-    end
+  // The end-to-end journey of a dataset, expressed as four plain-language steps.
+  const journeySteps = [
+    {
+      step: 'Step 1',
+      title: 'Register',
+      description:
+        'A data center describes its data providers and datasets in the Data Provider Manager and marks the records that are ready to be published.',
+    },
+    {
+      step: 'Step 2',
+      title: 'Validate',
+      description:
+        'Each dataset’s ABCD metadata is checked against the international TDWG standards and scored for quality, so problems are caught before publication.',
+    },
+    {
+      step: 'Step 3',
+      title: 'Harvest & harmonise',
+      description:
+        'The harvester collects metadata from every source — in whatever standard each provider speaks — and translates it all into one common format.',
+    },
+    {
+      step: 'Step 4',
+      title: 'Index & discover',
+      description:
+        'The harmonised records are loaded into the shared search index and become discoverable to researchers worldwide through the GFBio Search Portal.',
+    },
+  ];
 
-    subgraph Registry ["Registration Layer"]
-        aggregator("Universal Catalog<br/><i>protocol-agnostic, semantic metadata</i>")
-    end
+  // What the Data Provider Manager itself does, at a glance.
+  const capabilities = [
+    {
+      icon: 'registry',
+      title: 'Provider & dataset registry',
+      text:
+        'A single, authoritative record of which institutions contribute data and which datasets they publish into GFBio.',
+    },
+    {
+      icon: 'shield',
+      title: 'Quality validation',
+      text:
+        'Automated checks of ABCD metadata against the TDWG standards, with a quality score that guides curation.',
+    },
+    {
+      icon: 'flag',
+      title: 'Harvest readiness',
+      text:
+        'Curators decide exactly which datasets are ready for publication; only those are offered to the harvester.',
+    },
+    {
+      icon: 'pulse',
+      title: 'Status & statistics',
+      text:
+        'A live view of whether registered data has reached the search index, plus growth and data-quality statistics over time.',
+    },
+  ];
 
-    subgraph Harvesting ["Harvesting Pipeline"]
-        harvest("Unified Harvesting<br/><i>transformation, enrichment, validation</i>")
-    end
+  // The components of the wider infrastructure, and the services it connects to.
+  const components = [
+    {
+      name: 'Data Provider Manager',
+      tag: 'This service',
+      text:
+        'The registration front door (this application). Manages providers, datasets and quality, and publishes a feed of harvest-ready data.',
+    },
+    {
+      name: 'Harvester (panFMP)',
+      tag: 'Collection',
+      text:
+        'Gathers metadata from every source and crosswalks the many input standards into one shared schema for the index.',
+    },
+    {
+      name: 'Search Index',
+      tag: 'Storage',
+      text:
+        'An Elasticsearch catalogue holding one harmonised record per dataset — the searchable heart of the platform.',
+    },
+    {
+      name: 'GFBio Search Portal',
+      tag: 'Discovery',
+      text:
+        'The public website at search.gfbio.org where researchers find, filter, map and collect datasets for reuse.',
+    },
+    {
+      name: 'Terminology Service',
+      tag: 'Connected',
+      text:
+        'Expands searches with scientific synonyms and common names so users find data even when wording differs.',
+    },
+    {
+      name: 'Collections & VAT',
+      tag: 'Connected',
+      text:
+        'Downstream GFBio tools that let researchers package selected datasets and move them into analysis workflows.',
+    },
+  ];
 
-    subgraph Storage ["Storage Layer"]
-        openSearch[("OpenSearch<br/>(Search Index)")]
-    end
-
-    subgraph Federation ["Federation Network"]
-        nfdi("NFDI Partners")
-        euPortals("European Portals")
-        otherPartners("...")
-    end
-
-    subgraph Access ["Access Layer"]
-        api("API")
-        search("Search Portal")
-        tools("Research Tools")
-    end
-
-    %% Connections
-    bioCase & oaiPMH & dwcProvider & genericProvider --> aggregator
-    aggregator --> harvest
-    harvest --> openSearch
-
-    openSearch --> api
-    api --> search
-    api --> tools
-
-    aggregator -.-> nfdi
-    aggregator -.-> euPortals
-    aggregator -.-> otherPartners
-`;
+  // Standards and principles the platform is built on.
+  const standards = [
+    'FAIR data principles',
+    'ABCD / BioCASe',
+    'Darwin Core',
+    'OAI-PMH',
+    'DataCite',
+    'EML',
+    'NFDI4Biodiversity',
+  ];
 
   // Styles
   const styles = {
@@ -217,6 +265,84 @@ flowchart LR
       border: '1px solid var(--border)',
       overflow: 'auto',
     },
+    diagramCaption: {
+      fontSize: '0.8125rem',
+      color: 'var(--text-light)',
+      textAlign: 'center',
+      margin: '0.75rem 0 0',
+      fontStyle: 'italic',
+    },
+    // Capability + component grids (responsive without media queries)
+    featureGrid: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+      gap: '1rem',
+      marginTop: '0.5rem',
+    },
+    featureItem: {
+      display: 'flex',
+      gap: '0.875rem',
+      padding: '1.25rem',
+      backgroundColor: 'var(--subtle-bg)',
+      borderRadius: '0.75rem',
+      border: '1px solid var(--border)',
+    },
+    featureIcon: {
+      flexShrink: 0,
+      width: '22px',
+      height: '22px',
+      color: 'var(--primary)',
+      marginTop: '2px',
+    },
+    featureTitle: {
+      fontSize: '0.9375rem',
+      fontWeight: 600,
+      color: 'var(--text)',
+      marginBottom: '0.25rem',
+    },
+    featureText: {
+      fontSize: '0.875rem',
+      color: 'var(--text-light)',
+      lineHeight: '1.55',
+      margin: 0,
+    },
+    componentCard: {
+      padding: '1.25rem',
+      backgroundColor: 'var(--subtle-bg)',
+      borderRadius: '0.75rem',
+      border: '1px solid var(--border)',
+    },
+    componentTag: {
+      display: 'inline-block',
+      fontSize: '0.6875rem',
+      fontWeight: 600,
+      textTransform: 'uppercase',
+      letterSpacing: '0.04em',
+      color: 'var(--primary)',
+      marginBottom: '0.5rem',
+    },
+    componentName: {
+      fontSize: '0.9375rem',
+      fontWeight: 600,
+      color: 'var(--text)',
+      marginBottom: '0.35rem',
+    },
+    pillRow: {
+      display: 'flex',
+      flexWrap: 'wrap',
+      gap: '0.5rem',
+      marginTop: '1.25rem',
+    },
+    pill: {
+      display: 'inline-block',
+      padding: '0.35rem 0.8rem',
+      borderRadius: '999px',
+      backgroundColor: 'var(--subtle-bg)',
+      border: '1px solid var(--border)',
+      fontSize: '0.8125rem',
+      fontWeight: 500,
+      color: 'var(--text)',
+    },
     timeline: {
       display: 'flex',
       flexDirection: 'column',
@@ -256,41 +382,72 @@ flowchart LR
     },
   };
 
-  // Icons as inline SVGs
+  // Icons as inline SVGs (consistent with this page's hand-drawn icon set)
   const icons = {
     info: (
       <svg style={styles.calloutIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
       </svg>
     ),
-    current: (
+    manage: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <ellipse cx="12" cy="5" rx="9" ry="3" />
+        <path d="M3 5v14a9 3 0 0 0 18 0V5" />
+        <path d="M3 12a9 3 0 0 0 18 0" />
+      </svg>
+    ),
+    network: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
         <line x1="3" y1="9" x2="21" y2="9" />
         <line x1="9" y1="21" x2="9" y2="9" />
       </svg>
     ),
-    future: (
+    journey: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polygon points="12 2 2 7 12 12 22 7 12 2" />
-        <polyline points="2 17 12 22 22 17" />
-        <polyline points="2 12 12 17 22 12" />
+        <circle cx="6" cy="19" r="3" />
+        <path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15" />
+        <circle cx="18" cy="5" r="3" />
       </svg>
     ),
-    roadmap: (
+    grid: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="12" y1="20" x2="12" y2="10" />
-        <line x1="18" y1="20" x2="18" y2="4" />
-        <line x1="6" y1="20" x2="6" y2="16" />
+        <rect x="3" y="3" width="7" height="7" rx="1" />
+        <rect x="14" y="3" width="7" height="7" rx="1" />
+        <rect x="14" y="14" width="7" height="7" rx="1" />
+        <rect x="3" y="14" width="7" height="7" rx="1" />
+      </svg>
+    ),
+    standards: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        <path d="M9 12l2 2 4-4" />
+      </svg>
+    ),
+    // small feature icons
+    registry: (
+      <svg style={styles.featureIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 7h18M3 12h18M3 17h18" />
+      </svg>
+    ),
+    shield: (
+      <svg style={styles.featureIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        <path d="M9 12l2 2 4-4" />
+      </svg>
+    ),
+    flag: (
+      <svg style={styles.featureIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+        <line x1="4" y1="22" x2="4" y2="15" />
+      </svg>
+    ),
+    pulse: (
+      <svg style={styles.featureIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
       </svg>
     ),
   };
-
-  const roadmapItems = [
-    { phase: 'Phase 1', title: 'DCAT v3 Schema Design', description: 'Define semantic metadata model with mappings for existing providers' },
-    { phase: 'Phase 2', title: 'Protocol Abstraction Layer', description: 'Implement unified interface for multiple harvesting protocols' },
-    { phase: 'Phase 3', title: 'Federation Endpoints', description: 'Expose DCAT-compliant catalog for NFDI and European partners' },
-  ];
 
   return (
     <div style={styles.container}>
@@ -302,7 +459,8 @@ flowchart LR
         <div style={styles.pageHeader}>
           <h2 style={styles.pageHeaderTitle}>About</h2>
           <p style={styles.pageHeaderSubtitle}>
-            Learn about the Data Provider Manager, its architecture, and future development.
+            What the Data Provider Manager does, and how it fits into the GFBio
+            Search &amp; Harvesting Infrastructure.
           </p>
         </div>
       ) : (
@@ -314,27 +472,27 @@ flowchart LR
         </header>
       )}
 
-      {/* About Section */}
+      {/* About / intro Section */}
       <section style={styles.contentCard}>
         <p style={styles.text}>
-          The Data Provider Manager serves as the central registry for
-          institutional providers to enter the GFBio Search and Harvesting
-          Infrastructure (SAHIS). It is coordinating biodiversity data from
-          certified data centers and partner institutions across Germany
-          following FAIR data principles.
+          The Data Provider Manager is the central registry through which
+          institutional providers enter the GFBio Search and Harvesting
+          Infrastructure (SAHIS). It coordinates biodiversity data from certified
+          data centers and partner institutions across Germany, following the
+          FAIR data principles.
         </p>
 
         <p style={styles.text}>
           This service is operated by <strong>GFBio e.V.</strong> (Gesellschaft
-          für Biologische Daten e.V.) as part of <strong>NFDI4Biodiversity</strong> and Germany's National Research
-          Data Infrastructure, supporting the biological sciences community
-          with professional data management infrastructure.
+          für Biologische Daten e.V.) as part of <strong>NFDI4Biodiversity</strong>,
+          Germany's National Research Data Infrastructure, supporting the
+          biological sciences community with professional data management.
         </p>
 
-        <p style={{...styles.text, marginBottom: 0}}>
-          This platform is designed for data centers, scientific societies, and
-          institutions managing biological collections data. When you are interested in
-          publishing data with us get in touch with us.
+        <p style={{ ...styles.text, marginBottom: 0 }}>
+          It is designed for data centers, scientific societies and institutions
+          managing biological collections. If you are interested in publishing
+          data with us, please get in touch.
         </p>
 
         {/* Callout box for individual researchers */}
@@ -350,77 +508,149 @@ flowchart LR
         </div>
       </section>
 
-      {/* Current Architecture Section */}
+      {/* What the Data Provider Manager does */}
       <section style={styles.contentCard}>
         <div style={styles.cardHeader}>
           <div style={{ ...styles.cardIcon, backgroundColor: 'var(--subtle-bg)', color: 'var(--text-light)' }}>
-            {icons.current}
+            {icons.manage}
           </div>
           <div>
-            <h2 style={styles.sectionTitle}>Current Architecture</h2>
-            <p style={styles.sectionSubtitle}>Production system serving GFBio Search</p>
+            <h2 style={styles.sectionTitle}>What this service does</h2>
+            <p style={styles.sectionSubtitle}>The registration front door to GFBio search</p>
           </div>
         </div>
 
         <p style={styles.text}>
-          The current system consists of multiple specialized harvesters coordinating data flow from
-          various provider types. BioCASe providers are registered through the Aggregator, while OAI-PMH
-          providers connect via panFMP Harvester and Darwin Core providers through the GBIF Harvester.
-          All data flows into a shared Elasticsearch index powering the GFBio Search Portal.
+          The Data Provider Manager is where data centers describe the data they
+          contribute and prepare it for publication. It does not store the
+          research records themselves — it manages who provides data, what they
+          publish, and whether that data is fit and ready to reach researchers.
         </p>
 
-        <div style={styles.diagramContainer}>
-          <MermaidDiagram chart={currentArchitectureDiagram} isDarkTheme={isDarkTheme} />
+        <div style={styles.featureGrid}>
+          {capabilities.map((cap, i) => (
+            <div key={i} style={styles.featureItem}>
+              {icons[cap.icon]}
+              <div>
+                <div style={styles.featureTitle}>{cap.title}</div>
+                <p style={styles.featureText}>{cap.text}</p>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
-      {/* Future Architecture Section */}
+      {/* How the system fits together — architecture */}
       <section style={styles.contentCard}>
         <div style={styles.cardHeader}>
           <div style={{ ...styles.cardIcon, backgroundColor: 'var(--subtle-bg)', color: 'var(--text-light)' }}>
-            {icons.future}
+            {icons.network}
           </div>
           <div>
-            <h2 style={styles.sectionTitle}>Future Architecture with DCAT v3</h2>
-            <p style={styles.sectionSubtitle}>Next-generation federated infrastructure</p>
+            <h2 style={styles.sectionTitle}>How the system fits together</h2>
+            <p style={styles.sectionSubtitle}>From data center to search portal</p>
           </div>
         </div>
 
         <p style={styles.text}>
-          The future architecture introduces DCAT v3 as the semantic backbone, enabling
-          protocol-agnostic provider registration, richer metadata semantics, and direct
-          federation with NFDI partners and European research infrastructures.
+          GFBio search is built from a handful of cooperating parts. Data centers
+          register with the Data Provider Manager; the harvester then collects
+          metadata from every source and translates the many different input
+          standards into one shared format; the harmonised records are stored in
+          a single search index; and the public Search Portal lets researchers
+          discover them. The Data Provider Manager also reads back from the index
+          to confirm that registered data has actually been published.
         </p>
 
         <div style={styles.diagramContainer}>
-          <MermaidDiagram chart={futureArchitectureDiagram} isDarkTheme={isDarkTheme} />
+          <MermaidDiagram chart={architectureDiagram} isDarkTheme={isDarkTheme} />
         </div>
+        <p style={styles.diagramCaption}>
+          The path biodiversity metadata follows, from a contributing data center
+          through to a researcher's search.
+        </p>
       </section>
 
-      {/* Roadmap Section */}
+      {/* How your data reaches researchers — the journey */}
       <section style={styles.contentCard}>
         <div style={styles.cardHeader}>
           <div style={{ ...styles.cardIcon, backgroundColor: 'var(--subtle-bg)', color: 'var(--text-light)' }}>
-            {icons.roadmap}
+            {icons.journey}
           </div>
           <div>
-            <h2 style={styles.sectionTitle}>Migration Roadmap</h2>
-            <p style={styles.sectionSubtitle}>Key milestones for DCAT v3 transition</p>
+            <h2 style={styles.sectionTitle}>How your data reaches researchers</h2>
+            <p style={styles.sectionSubtitle}>The journey of a dataset, in four steps</p>
           </div>
         </div>
+
+        <p style={styles.text}>
+          Every dataset published through GFBio follows the same path — from the
+          moment a data center registers it, to the moment a researcher finds it
+          in the portal.
+        </p>
 
         <div style={styles.timeline}>
-          {roadmapItems.map((item, index) => (
+          {journeySteps.map((item, index) => (
             <div key={index} style={styles.timelineItem}>
               <div style={styles.timelineMarker} />
               <div style={styles.timelineContent}>
                 <h3 style={styles.timelineTitle}>
-                  <span style={{ color: 'var(--primary)', marginRight: '0.5rem' }}>{item.phase}:</span>
+                  <span style={{ color: 'var(--primary)', marginRight: '0.5rem' }}>{item.step}:</span>
                   {item.title}
                 </h3>
                 <p style={styles.timelineText}>{item.description}</p>
               </div>
             </div>
+          ))}
+        </div>
+      </section>
+
+      {/* The components at a glance */}
+      <section style={styles.contentCard}>
+        <div style={styles.cardHeader}>
+          <div style={{ ...styles.cardIcon, backgroundColor: 'var(--subtle-bg)', color: 'var(--text-light)' }}>
+            {icons.grid}
+          </div>
+          <div>
+            <h2 style={styles.sectionTitle}>The components at a glance</h2>
+            <p style={styles.sectionSubtitle}>The wider landscape this service is part of</p>
+          </div>
+        </div>
+
+        <div style={styles.featureGrid}>
+          {components.map((comp, i) => (
+            <div key={i} style={styles.componentCard}>
+              <span style={styles.componentTag}>{comp.tag}</span>
+              <div style={styles.componentName}>{comp.name}</div>
+              <p style={styles.featureText}>{comp.text}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Standards & principles */}
+      <section style={styles.contentCard}>
+        <div style={styles.cardHeader}>
+          <div style={{ ...styles.cardIcon, backgroundColor: 'var(--subtle-bg)', color: 'var(--text-light)' }}>
+            {icons.standards}
+          </div>
+          <div>
+            <h2 style={styles.sectionTitle}>Built on open standards</h2>
+            <p style={styles.sectionSubtitle}>Interoperable by design</p>
+          </div>
+        </div>
+
+        <p style={{ ...styles.text, marginBottom: 0 }}>
+          Biodiversity data arrives in many community standards. GFBio harmonises
+          them into one searchable catalogue so a single query can reach across
+          natural-history collections, environmental archives and molecular
+          repositories alike — and so the data stays Findable, Accessible,
+          Interoperable and Reusable.
+        </p>
+
+        <div style={styles.pillRow}>
+          {standards.map((s, i) => (
+            <span key={i} style={styles.pill}>{s}</span>
           ))}
         </div>
       </section>

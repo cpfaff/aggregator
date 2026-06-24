@@ -35,6 +35,15 @@ const Changelog = ({ currentUser }) => {
 
   const changelogEntries = [
     {
+      version: '2.3.0',
+      date: 'June 24, 2026',
+      changes: [
+        'Completely rewritten About page that explains, in plain language, what the Data Provider Manager does and how it fits into GFBio\'s wider search and harvesting infrastructure',
+        'New visual overview tracing a dataset\'s full journey — from a contributing data center through registration, validation, and harvesting to becoming searchable in GFBio — with a diagram that previously failed to load now displaying reliably',
+        'Wide-ranging reliability and security improvements across dataset validation, harvest-status reporting, statistics, data access, and search and filtering, with clearer and safer error messages throughout'
+      ]
+    },
+    {
       version: '2.2.0',
       date: 'June 22, 2026',
       changes: [

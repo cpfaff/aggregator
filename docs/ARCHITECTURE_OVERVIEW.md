@@ -15,7 +15,7 @@ The GFBio Aggregator is a full-stack scientific dataset management platform that
 | Task Queue | Celery | 5.3+ |
 | Message Broker / Cache | Redis 7 | alpine |
 | Frontend | React | 18.2 |
-| Reverse Proxy | Traefik | v2.10 (dev) / v3.3 (prod) |
+| Reverse Proxy | Traefik | v3 (dev) / v3.3 (prod) |
 | Python Tooling | Poetry, Ruff | |
 | CI/CD | GitLab CI | |
 

@@ -28,10 +28,17 @@ easy deployment.
 
 ## Overview
 
-Aggregator is designed to catalog and manage scientific
-datasets and their providers. It allows users to browse datasets,
-administrators to manage user access, and provides a comprehensive API for
-integration with other systems.
+Aggregator — branded the **Data Provider Manager** in its user interface — is
+the registration front door to the GFBio Search and Harvesting Infrastructure
+(SAHIS). Data centers and partner institutions use it to register the data
+providers and datasets they contribute, validate their ABCD metadata, and mark
+records as ready for publication. It publishes a harvest feed that the GFBio
+harvester collects, and it reads back from the shared Elasticsearch search
+index to report whether registered data has actually been published.
+
+It does not store the harvested research records themselves; it manages the
+registry, the data quality, and the publication status, and exposes a
+comprehensive REST API for integration with other systems.
 
 ## Features
 
@@ -48,6 +55,17 @@ integration with other systems.
   - Organize datasets under providers
   - Track dataset sources and landing pages
   - Manage XML archives and useful links
+
+- **Metadata Validation**
+  - ABCD XML validated against the TDWG ABCD schemas (2.06–3.0)
+  - Per-dataset data-quality scoring with detailed reports
+  - Runs asynchronously on Celery workers (Redis broker)
+
+- **Harvesting & Statistics**
+  - Publishes a harvest-ready feed for the GFBio panFMP harvester
+    (`/api/v1/legacy-data-sets`)
+  - Reads the shared Elasticsearch index to surface harvest status
+  - Registry statistics: growth, data quality, provider/dataset counts
 
 - **Modern Web Interface**
   - Responsive React-based frontend
@@ -123,7 +141,7 @@ As a developer working with Aggregator:
 
    **Prerequisites:**
    - Python 3.11+
-   - Poetry 1.7+ (`pip install poetry`)
+   - Poetry 2.2.1 (matches the backend Docker image; `pip install poetry==2.2.1`)
    - Docker (for testcontainers and development environment)
 
    **Installation:**
@@ -161,15 +179,9 @@ As a developer working with Aggregator:
    poetry run ruff format app/
    ```
 
-   **Known Issues:**
-   Current codebase has known linting issues being tracked:
-   - Import sorting (I001): 47 issues - tracked in bd task aggregator-dd4
-   - Formatting issues: 42 files - tracked in bd task aggregator-fdz
-   - Exception handling (B904): 24 issues - tracked in bd task aggregator-2hc
-   - Unused imports (F401): 28 issues - tracked in bd task aggregator-q9p
-   - Depends() in defaults (B008): 71 issues - tracked in bd task aggregator-53o
-
-   New code must pass Ruff checks before merging.
+   **Code Quality:**
+   Ruff (lint + format) is enforced in CI and via pre-commit. New code must pass
+   `ruff check` and `ruff format --check` before merging.
 
 3. **CI/CD Configuration**:
 
@@ -206,11 +218,17 @@ As a developer working with Aggregator:
 
 ## Architecture
 
-Aggregator follows a modern microservices architecture:
+Aggregator is a containerized, modular application:
 
-- **Backend**: FastAPI application providing RESTful API endpoints
+- **Backend**: FastAPI (async) application providing the RESTful API
 - **Frontend**: React single-page application for the user interface
-- **Database**: PostgreSQL database for persistent storage
+- **Database**: PostgreSQL for persistent storage (providers, datasets,
+  validation jobs, archive snapshots, users)
+- **Async workers**: Celery workers (heavy-validation and light/statistics
+  queues) plus a beat scheduler, with Redis as broker and result backend
+- **Validator**: a bundled ABCD XML validator used by the validation workers
+- **Search index**: reads the shared GFBio Elasticsearch index (read-only) for
+  harvest status and statistics
 - **Reverse Proxy**: Traefik for routing, load balancing, and service discovery
 
 ### Traefik Integration

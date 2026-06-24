@@ -16,8 +16,13 @@ import mermaid from 'mermaid';
 const MermaidDiagram = ({ chart, isDarkTheme }) => {
   const containerRef = useRef(null);
   const uniqueId = useId().replace(/:/g, '-');
+  const renderSeq = useRef(0);
 
   useEffect(() => {
+    // Guard against React's double-invoke (StrictMode) and rapid prop changes:
+    // each effect run gets its own render id and can be cancelled, so two
+    // concurrent mermaid.render calls never collide on a shared DOM id.
+    let cancelled = false;
     const renderDiagram = async () => {
       if (!containerRef.current || !chart) return;
 
@@ -81,7 +86,9 @@ const MermaidDiagram = ({ chart, isDarkTheme }) => {
       containerRef.current.innerHTML = '';
 
       try {
-        const { svg } = await mermaid.render(`mermaid-${uniqueId}`, chart);
+        const renderId = `mermaid-${uniqueId}-${++renderSeq.current}`;
+        const { svg } = await mermaid.render(renderId, chart);
+        if (cancelled || !containerRef.current) return;
         containerRef.current.innerHTML = svg;
 
         // Make SVG responsive
@@ -98,6 +105,7 @@ const MermaidDiagram = ({ chart, isDarkTheme }) => {
           });
         }
       } catch (error) {
+        if (cancelled || !containerRef.current) return;
         console.error('Mermaid rendering error:', error);
         containerRef.current.innerHTML = `
           <div style="
@@ -114,6 +122,9 @@ const MermaidDiagram = ({ chart, isDarkTheme }) => {
     };
 
     renderDiagram();
+    return () => {
+      cancelled = true;
+    };
   }, [chart, isDarkTheme, uniqueId]);
 
   return (
