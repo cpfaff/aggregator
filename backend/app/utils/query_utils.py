@@ -58,7 +58,12 @@ def _apply_single_filter(
         case FilterOperator.LTE:
             query = query.filter(column <= value)
         case FilterOperator.LIKE:
-            query = query.filter(column.ilike(f"%{value}%"))
+            # Escape LIKE wildcards so user-supplied % and _ match literally
+            # instead of acting as wildcards (B17). Escape the backslash first.
+            escaped = (
+                str(value).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            )
+            query = query.filter(column.ilike(f"%{escaped}%", escape="\\"))
         case FilterOperator.IN:
             if isinstance(value, list):
                 query = query.filter(column.in_(value))
