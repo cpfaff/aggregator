@@ -52,6 +52,7 @@ def validate_archive(self, archive_id: int, job_id: int | None = None) -> dict[s
     """
     db = SessionLocal()
     job = None
+    job_pk: int | None = None
 
     try:
         # Get archive details from DB - only select the columns that exist
@@ -116,6 +117,9 @@ def validate_archive(self, archive_id: int, job_id: int | None = None) -> dict[s
             job.started_at = datetime.utcnow()
             db.commit()
 
+        # Capture the pk so the failure handler can re-fetch after a rollback.
+        job_pk = job.id
+
         # Log the start of validation
         logger.info(f"Starting validation for archive {archive_id} (job ID: {job.id})")
 
@@ -151,12 +155,23 @@ def validate_archive(self, archive_id: int, job_id: int | None = None) -> dict[s
         }
 
     except Exception as e:
-        # Update job status to failed
-        if job:
-            job.status = "failed"
-            job.completed_at = datetime.utcnow()
-            job.results = {"error": str(e)}
-            db.commit()
+        # The failure may have poisoned the transaction (e.g. it WAS the
+        # success-path commit), so roll back before recording the failure;
+        # otherwise the second commit raises PendingRollbackError, masking the
+        # original error and leaving the job stuck 'running' (B25). Rollback
+        # expires the instance, so re-fetch by pk.
+        db.rollback()
+        if job_pk is not None:
+            failed_job = (
+                db.query(ValidationJobModel)
+                .filter(ValidationJobModel.id == job_pk)
+                .first()
+            )
+            if failed_job is not None:
+                failed_job.status = "failed"
+                failed_job.completed_at = datetime.utcnow()
+                failed_job.results = {"error": str(e)}
+                db.commit()
 
         logger.exception(f"Error validating archive {archive_id}: {e}")
         raise

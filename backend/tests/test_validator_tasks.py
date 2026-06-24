@@ -64,3 +64,39 @@ def test_retry_without_job_id_reuses_single_job_row(sync_engine, sync_db_session
     )
     assert len(rows) == 1
     assert rows[0].status == "completed"
+
+
+def test_failure_handler_rolls_back_poisoned_session(sync_engine, sync_db_session):
+    """If the success-path commit poisons the transaction (e.g. a NUL byte in
+    the JSONB results), the except handler must roll back, record the job
+    'failed', and surface the ORIGINAL DB error — not a masking
+    PendingRollbackError that also leaves the job stuck 'running' (B25)."""
+    from sqlalchemy.exc import InvalidRequestError
+
+    archive_id = _seed_archive(sync_db_session)
+    # A NUL byte makes the JSONB write at the success-path commit fail.
+    poison_report = {
+        "summary": {"total_files": 1, "valid_files": 1, "total_time": 0.1},
+        "bad": "a\x00b",
+    }
+
+    with (
+        patch.object(validator_tasks, "SessionLocal", _session_factory(sync_engine)),
+        patch.object(validator_tasks, "ValidatorService") as mock_vs,
+        patch.object(validate_archive, "retry", side_effect=_reraise_retry),
+    ):
+        mock_vs.return_value.validate_archive.return_value = poison_report
+        with pytest.raises(Exception) as exc_info:  # noqa: B017
+            validate_archive(archive_id)
+
+    # The original DB error surfaces, not a masking PendingRollbackError.
+    assert not isinstance(exc_info.value, InvalidRequestError)
+
+    sync_db_session.expire_all()
+    rows = (
+        sync_db_session.query(ValidationJobModel)
+        .filter(ValidationJobModel.archive_id == archive_id)
+        .all()
+    )
+    assert len(rows) == 1
+    assert rows[0].status == "failed"
