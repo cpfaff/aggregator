@@ -79,6 +79,21 @@ def validate_archive(self, archive_id: int, job_id: int | None = None) -> dict[s
                 job = None
 
         if not job:
+            # Celery autoretry re-submits the original args (no job_id) but keeps
+            # the same request.id; reuse the job created by a prior attempt of
+            # this task for this archive so retries don't insert duplicate rows
+            # (B24). task_id is "<request.id>_<uuid>" from creation below.
+            job = (
+                db.query(ValidationJobModel)
+                .filter(
+                    ValidationJobModel.archive_id == archive_id,
+                    ValidationJobModel.task_id.like(f"{self.request.id}_%"),
+                )
+                .order_by(ValidationJobModel.id.desc())
+                .first()
+            )
+
+        if not job:
             # Generate a unique task_id for this job by combining Celery task ID and a UUID
             unique_task_id = f"{self.request.id}_{str(uuid.uuid4())}"
 
@@ -93,10 +108,12 @@ def validate_archive(self, archive_id: int, job_id: int | None = None) -> dict[s
             db.commit()
             db.refresh(job)
         else:
-            # Update existing job to running state
+            # Update existing job to running state. Keep task_id unchanged: for
+            # the job_id path it already holds the Celery id, and for the retry
+            # reuse path it must keep its "<request.id>_<uuid>" form so further
+            # retries find it (B24).
             job.status = "running"
             job.started_at = datetime.utcnow()
-            job.task_id = self.request.id  # Update with current task ID
             db.commit()
 
         # Log the start of validation
