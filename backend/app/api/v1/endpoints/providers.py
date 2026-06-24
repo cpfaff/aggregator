@@ -11,7 +11,6 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import (
-    csrf_protect,
     get_filtering_params,
     get_pagination_params,
     get_sorting_params,
@@ -83,7 +82,6 @@ async def get_provider(
     return await service.get_provider_or_404(provider_id)
 
 
-@csrf_protect.validate_csrf
 @router.post(
     "",
     response_model=DataProvider,
@@ -110,7 +108,6 @@ async def create_provider(
     return await service.create_provider(provider, current_user)
 
 
-@csrf_protect.validate_csrf
 @router.put(
     "/{provider_id}",
     response_model=DataProvider,
@@ -132,7 +129,6 @@ async def update_provider(
     return await service.update_provider(provider_id, provider, current_user)
 
 
-@csrf_protect.validate_csrf
 @router.delete("/{provider_id}", status_code=204, summary="Delete data provider")
 async def delete_provider(
     provider_id: int,

@@ -12,7 +12,6 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import (
-    csrf_protect,
     get_filtering_params,
     get_pagination_params,
     get_sorting_params,
@@ -91,7 +90,6 @@ async def get_dataset(
     return await service.get_dataset_or_404(dataset_id, provider_id)
 
 
-@csrf_protect.validate_csrf
 @router.post(
     "/{provider_id}/data-sets",
     response_model=Dataset,
@@ -112,7 +110,6 @@ async def create_dataset(
     return await service.create_dataset(provider_id, dataset)
 
 
-@csrf_protect.validate_csrf
 @router.put(
     "/{provider_id}/data-sets/{dataset_id}",
     response_model=Dataset,
@@ -134,7 +131,6 @@ async def update_dataset(
     return await service.update_dataset(dataset_id, provider_id, dataset)
 
 
-@csrf_protect.validate_csrf
 @router.delete(
     "/{provider_id}/data-sets/{dataset_id}",
     status_code=204,

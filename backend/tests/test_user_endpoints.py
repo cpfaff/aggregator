@@ -5,24 +5,12 @@ response models, status codes, and error handling.
 Service logic is tested separately in tests/services/test_user_service.py.
 """
 
-import importlib
-import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
 
-# Patch the CSRF decorator before importing user endpoints.
-# The @csrf_protect.validate_csrf decorator is an async method that,
-# when used as a decorator, turns the endpoint into a coroutine object
-# instead of a callable function. We make it a passthrough.
-import app.api.deps as _deps
-
-_deps.csrf_protect.validate_csrf = lambda fn: fn
-if "app.api.v1.endpoints.users" in sys.modules:
-    importlib.reload(sys.modules["app.api.v1.endpoints.users"])
-
-from app.api.v1.endpoints.users import (  # noqa: E402
+from app.api.v1.endpoints.users import (
     add_provider_association,
     create_user,
     delete_user,
