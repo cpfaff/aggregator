@@ -103,7 +103,10 @@ def check_provider_permission(
     Args:
         provider_id: The provider ID to check
         current_user: The current user
-        operation: The operation type ("read" or "write")
+        operation: The operation type. ``"read"`` is granted to any role on the
+            provider; every other operation (``"write"``, ``"delete"``, …) is a
+            mutating operation and requires the ``admin`` or ``curator`` role
+            (default-deny — never enumerate mutating verbs).
 
     Raises:
         HTTPException: If the user doesn't have the required permission
@@ -117,10 +120,12 @@ def check_provider_permission(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Operation not permitted for this provider",
         )
-    if operation == "write" and role not in ["admin", "curator"]:
+    # Default-deny: only "read" is open to any role; all mutating operations
+    # (write, delete, and any future verb) require admin/curator privileges.
+    if operation != "read" and role not in ["admin", "curator"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Write operation requires provider admin or curator privileges",
+            detail=f"{operation.capitalize()} operation requires provider admin or curator privileges",
         )
 
 

@@ -156,6 +156,45 @@ class TestCheckProviderPermission:
         assert exc_info.value.status_code == 403
         assert "Write operation" in exc_info.value.detail
 
+    def test_viewer_role_cannot_delete(self):
+        """Viewer role must not be able to delete (delete >= write privilege)."""
+        user = MagicMock()
+        user.is_global_admin = False
+        user.provider_roles = {"1": "viewer"}
+
+        with pytest.raises(HTTPException) as exc_info:
+            check_provider_permission(1, user, "delete")
+
+        assert exc_info.value.status_code == 403
+        assert "Delete operation" in exc_info.value.detail
+
+    def test_admin_role_can_delete(self):
+        """Admin role can delete."""
+        user = MagicMock()
+        user.is_global_admin = False
+        user.provider_roles = {"1": "admin"}
+
+        check_provider_permission(1, user, "delete")  # Should not raise
+
+    def test_curator_role_can_delete(self):
+        """Curator role can delete."""
+        user = MagicMock()
+        user.is_global_admin = False
+        user.provider_roles = {"1": "curator"}
+
+        check_provider_permission(1, user, "delete")  # Should not raise
+
+    def test_unknown_operation_defaults_to_deny_for_non_privileged(self):
+        """Any non-read operation requires admin/curator (default-deny)."""
+        user = MagicMock()
+        user.is_global_admin = False
+        user.provider_roles = {"1": "viewer"}
+
+        with pytest.raises(HTTPException) as exc_info:
+            check_provider_permission(1, user, "purge")
+
+        assert exc_info.value.status_code == 403
+
     def test_no_roles_at_all_gets_403(self):
         """Test that user with no roles at all gets 403."""
         user = MagicMock()
