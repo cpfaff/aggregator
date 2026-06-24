@@ -29,6 +29,9 @@ from app.core.config import settings
 from app.core.exceptions import APIError
 from app.core.logging_config import configure_logging, request_id_var
 from app.schemas.errors import ProblemDetail, ValidationProblemDetail
+from app.utils.filtering import FilterError
+from app.utils.pagination import CursorError
+from app.utils.sorting import SortError
 
 # ------------------- Logging Configuration -------------------
 configure_logging(level=settings.LOG_LEVEL)
@@ -239,6 +242,37 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         content=problem.model_dump(mode="json"),
         media_type=PROBLEM_JSON_MEDIA_TYPE,
         headers=exc.headers,
+    )
+
+
+@app.exception_handler(CursorError)
+@app.exception_handler(FilterError)
+@app.exception_handler(SortError)
+async def query_param_error_handler(request: Request, exc: Exception):
+    """Map invalid pagination/filter/sort query params to RFC 7807 400.
+
+    Without this, these client-input errors fell through to the catch-all
+    Exception handler and surfaced as 500 (B9).
+    """
+    logger.warning(
+        f"Invalid query parameter at {request.url.path}: {exc}",
+        extra={
+            "request_id": getattr(request.state, "request_id", str(uuid.uuid4())),
+            "path": request.url.path,
+            "error_type": type(exc).__name__,
+        },
+    )
+    problem = ProblemDetail(
+        type=f"{BASE_ERROR_URL}/bad-request",
+        title="Bad Request",
+        status=400,
+        detail=str(exc),
+        instance=str(request.url.path),
+    )
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content=problem.model_dump(mode="json"),
+        media_type=PROBLEM_JSON_MEDIA_TYPE,
     )
 
 
