@@ -270,7 +270,10 @@ class SnapshotRepository:
         if start_date:
             query = query.filter(ArchiveSnapshotModel.recorded_at >= start_date)
         if end_date:
-            query = query.filter(ArchiveSnapshotModel.recorded_at <= end_date)
+            # Compare on the calendar date so same-day snapshots recorded after
+            # midnight (beat runs at 02:00) are within the inclusive upper bound,
+            # matching get_unit_count_for_date's day-granular semantics (B10/B5).
+            query = query.filter(func.date(ArchiveSnapshotModel.recorded_at) <= end_date)
 
         return [r.date for r in query.limit(limit).all()]
 

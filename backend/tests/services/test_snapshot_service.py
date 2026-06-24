@@ -440,6 +440,25 @@ class TestGetBiologicalUnitsTimeline:
         assert result[0]["value"] == 100.0
         assert result[1]["value"] == 200.0
 
+    def test_end_date_includes_same_day_snapshot_after_midnight(
+        self, snapshot_service, sync_db_session, archive
+    ):
+        """A snapshot recorded on end_date after 00:00 is within the inclusive
+        upper bound (B10): the bound is day-granular, not timestamp-at-midnight."""
+        snap = ArchiveSnapshotModel(
+            archive_id=archive.id,
+            recorded_at=datetime(2024, 9, 1, 2, 0, 0),
+            unit_count=200,
+        )
+        sync_db_session.add(snap)
+        sync_db_session.flush()
+
+        result = snapshot_service.get_biological_units_timeline(end_date=date(2024, 9, 1))
+
+        assert len(result) == 1
+        assert result[0]["date"] == date(2024, 9, 1)
+        assert result[0]["value"] == 200.0
+
     def test_respects_limit_parameter(self, snapshot_service, sync_db_session, archive):
         """Test that limit parameter restricts number of data points."""
         for i in range(5):
