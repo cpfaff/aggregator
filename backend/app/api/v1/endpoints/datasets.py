@@ -75,7 +75,7 @@ async def get_datasets(
     response_model=Dataset,
     summary="Get dataset by ID",
 )
-@cache_response(prefix="dataset", ttl_seconds=300)
+@cache_response(prefix="dataset", ttl_seconds=300, id_param="dataset_id")
 async def get_dataset(
     provider_id: int,
     dataset_id: int,

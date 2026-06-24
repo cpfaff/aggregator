@@ -69,7 +69,7 @@ async def get_providers(
     response_model=DataProvider,
     summary="Get data provider by ID",
 )
-@cache_response(prefix="provider", ttl_seconds=300)
+@cache_response(prefix="provider", ttl_seconds=300, id_param="provider_id")
 async def get_provider(
     provider_id: int,
     current_user: Annotated[UserModel, Depends(provider_permission("read"))],

@@ -6,12 +6,44 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from app.core import cache as cache_module
 from app.core.cache import (
     RateLimiter,
     SimpleCache,
     cache_response,
     invalidate_cache,
 )
+
+
+class TestDetailCacheInvalidation:
+    """Detail caches must be invalidatable by entity id (B23)."""
+
+    @pytest.mark.asyncio
+    async def test_detail_cache_invalidated_by_entity_id(self):
+        cache_module.cache.invalidate()  # start clean
+        calls = []
+        with patch.object(cache_module.settings, "CACHE_ENABLED", True):
+
+            @cache_response(prefix="dataset", id_param="dataset_id")
+            async def get_dataset(provider_id, dataset_id, current_user, db):
+                calls.append(1)
+                return f"v{len(calls)}"
+
+            user = MagicMock()
+            user.username = "admin"
+            db = MagicMock()
+
+            await get_dataset(provider_id=5, dataset_id=123, current_user=user, db=db)
+            await get_dataset(provider_id=5, dataset_id=123, current_user=user, db=db)
+            assert len(calls) == 1  # second call served from cache
+
+            # The key must lead with the prefix:id services invalidate on.
+            assert any(k.startswith("dataset:123") for k in cache_module.cache.cache)
+
+            invalidate_cache("dataset:123")
+            await get_dataset(provider_id=5, dataset_id=123, current_user=user, db=db)
+            assert len(calls) == 2  # re-executed after invalidation
+        cache_module.cache.invalidate()
 
 # ---------------------------------------------------------------------------
 # SimpleCache
