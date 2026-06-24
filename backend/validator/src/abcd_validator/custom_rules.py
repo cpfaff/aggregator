@@ -469,8 +469,8 @@ class CustomRuleValidator:
         try:
             value.encode("utf-8")
             problematic_chars = {
-                "windows_quotes": ('"', '"'),
-                "windows_apostrophe": ("'", "'"),
+                "windows_quotes": ('“', '”'),  # “ ” smart double quotes
+                "windows_apostrophe": ('‘', '’'),  # ‘ ’ smart single quotes
                 "control_chars": [chr(i) for i in range(32) if i not in (9, 10, 13)],
                 "zero_width": "\u200b\u200c\u200d\ufeff",
                 "non_breaking_space": "\u00a0",

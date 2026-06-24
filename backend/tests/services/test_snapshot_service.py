@@ -288,10 +288,11 @@ class TestGetQualityMetrics:
 class TestGetDatasetUnitCount:
     """Tests for get_dataset_unit_count."""
 
-    def test_returns_zero_when_no_snapshots(self, snapshot_service, dataset, archive):
-        """Test returns 0 when no snapshots exist for the dataset's archives."""
+    def test_returns_none_when_no_snapshots(self, snapshot_service, dataset, archive):
+        """No snapshot data means the expected unit count is UNKNOWN (None), not a
+        misleading 0 that would mark a dataset fully-indexed (B4)."""
         result = snapshot_service.get_dataset_unit_count(dataset.id)
-        assert result == 0
+        assert result is None
 
     def test_returns_sum_of_latest_snapshots(
         self, snapshot_service, sync_db_session, dataset, archive
@@ -335,10 +336,10 @@ class TestGetDatasetUnitCount:
         result = snapshot_service.get_dataset_unit_count(dataset.id)
         assert result == 100  # old_archive excluded
 
-    def test_returns_zero_for_nonexistent_dataset(self, snapshot_service):
-        """Test returns 0 for a dataset_id with no matching data."""
+    def test_returns_none_for_nonexistent_dataset(self, snapshot_service):
+        """A dataset_id with no matching data has an unknown unit count (B4)."""
         result = snapshot_service.get_dataset_unit_count(99999)
-        assert result == 0
+        assert result is None
 
 
 # ---------------------------------------------------------------------------
@@ -439,6 +440,25 @@ class TestGetBiologicalUnitsTimeline:
         assert result[0]["date"] <= result[1]["date"]
         assert result[0]["value"] == 100.0
         assert result[1]["value"] == 200.0
+
+    def test_end_date_includes_same_day_snapshot_after_midnight(
+        self, snapshot_service, sync_db_session, archive
+    ):
+        """A snapshot recorded on end_date after 00:00 is within the inclusive
+        upper bound (B10): the bound is day-granular, not timestamp-at-midnight."""
+        snap = ArchiveSnapshotModel(
+            archive_id=archive.id,
+            recorded_at=datetime(2024, 9, 1, 2, 0, 0),
+            unit_count=200,
+        )
+        sync_db_session.add(snap)
+        sync_db_session.flush()
+
+        result = snapshot_service.get_biological_units_timeline(end_date=date(2024, 9, 1))
+
+        assert len(result) == 1
+        assert result[0]["date"] == date(2024, 9, 1)
+        assert result[0]["value"] == 200.0
 
     def test_respects_limit_parameter(self, snapshot_service, sync_db_session, archive):
         """Test that limit parameter restricts number of data points."""

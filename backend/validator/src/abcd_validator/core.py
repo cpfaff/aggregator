@@ -248,6 +248,15 @@ class ABCDValidator:
         try:
             root = tree.getroot()
             nsmap = root.nsmap
+            # Prefer the explicit namespace->schema map (covers both the
+            # www.tdwg.org/schemas/abcd and rs.tdwg.org/abcd forms); B33.
+            for uri in nsmap.values():
+                schema_file = self.SCHEMA_MAPPING.get(uri)
+                if schema_file:
+                    self._detected_version = schema_file.removeprefix("abcd").removesuffix(".xsd")
+                    logging.info(f"Detected schema {uri} -> {schema_file}")
+                    return schema_file
+            # Fallback: tolerate www-form namespaces for versions not in the map.
             for uri in nsmap.values():
                 if "tdwg.org/schemas/abcd" in uri:
                     version = uri.split("/")[-1]
@@ -298,6 +307,10 @@ class ABCDValidator:
         validator.schema = WORKER_SCHEMA
         validator.schema_path = schema_path or WORKER_SCHEMA_PATH
         validator.custom_validator = WORKER_CUSTOM_VALIDATOR
+        # __new__ bypasses __init__, so _detected_version is never set here; the
+        # static worker path detects no per-file version, so None is the honest
+        # default and keeps the `WORKER_SCHEMA_VERSION or ...` fallback safe.
+        validator._detected_version = None
         start_time = time.time()
         errors = []
         custom_results = []

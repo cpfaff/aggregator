@@ -4,7 +4,7 @@ API endpoints for managing background tasks with Celery.
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
 from app.models import UserModel
@@ -74,8 +74,17 @@ async def get_task_status(
         "status": task.status,
     }
 
-    # Include result if task is completed
+    # Include result if task is completed, but only for the task's owner. The
+    # owner id is stamped into the result at submission time (B13: prevent an
+    # authenticated user from reading another user's task result via its id).
     if task.status == "SUCCESS":
-        response["result"] = task.result
+        result = task.result
+        owner_id = result.get("user_id") if isinstance(result, dict) else None
+        if owner_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to access this task",
+            )
+        response["result"] = result
 
     return response

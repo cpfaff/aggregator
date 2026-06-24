@@ -140,6 +140,22 @@ async def test_create_validation_job_archive_not_found(validation_service):
     assert exc_info.value.status_code == 404
 
 
+@pytest.mark.asyncio
+@patch("app.services.validation_service.validate_archive")
+async def test_create_validation_job_enqueue_failure_leaves_no_active_job(
+    mock_validate, validation_service, sample_archive
+):
+    """If the Celery enqueue fails (broker down), the job must not linger as an
+    active 'pending' row that blocks future re-validation (B1)."""
+    mock_validate.delay.side_effect = Exception("broker down")
+
+    with pytest.raises(Exception):  # noqa: B017 - any enqueue error propagates
+        await validation_service.create_validation_job(sample_archive.id)
+
+    # The dead job must not count as an active validation.
+    assert await validation_service.find_existing_active_validation(sample_archive.id) is None
+
+
 # Test get_validation_job (found + not found)
 @pytest.mark.asyncio
 async def test_get_validation_job_found(validation_service, sample_validation_job):

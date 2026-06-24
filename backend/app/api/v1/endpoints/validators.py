@@ -13,7 +13,8 @@ from app.api.deps import get_filtering_params, get_pagination_params, get_sortin
 from app.db.session import get_db
 from app.models import UserModel
 from app.schemas.pagination import PaginatedResponse, PaginationParams
-from app.security import get_current_user
+from app.security import check_provider_permission, get_current_user
+from app.security.permissions import normalize_provider_roles
 from app.services.validation_service import ValidationService
 from app.utils.filtering import FilterParam
 from app.utils.sorting import SortParam
@@ -23,6 +24,26 @@ router = APIRouter()
 # Allowed fields for filtering and sorting validation jobs
 VALIDATION_FILTER_FIELDS = ["archive_id", "status"]
 VALIDATION_SORT_FIELDS = ["id", "created_at", "status"]
+
+
+def _ensure_provider_access(
+    provider_id: int | None, current_user: UserModel, operation: str
+) -> None:
+    """Authorize a validation operation against the owning provider (B12).
+
+    A missing resource is a 404; a resource owned by a provider the user has no
+    role on yields 403 via check_provider_permission.
+    """
+    if provider_id is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found")
+    check_provider_permission(provider_id, current_user, operation)
+
+
+def _allowed_provider_ids(current_user: UserModel) -> list[int] | None:
+    """Provider ids the user may see (None = global admin, all)."""
+    if current_user.is_global_admin:
+        return None
+    return [int(pid) for pid in normalize_provider_roles(current_user.provider_roles)]
 
 
 class ValidateRequest(BaseModel):
@@ -128,8 +149,12 @@ async def create_validation_job(
 
     # archive_id takes precedence if provided
     if request.archive_id is not None:
+        provider_id = await service.get_provider_id_for_archive(request.archive_id)
+        _ensure_provider_access(provider_id, current_user, "write")
         return await service.create_validation_job(request.archive_id)
     elif request.dataset_id is not None:
+        provider_id = await service.get_provider_id_for_dataset(request.dataset_id)
+        _ensure_provider_access(provider_id, current_user, "write")
         return await service.validate_dataset_latest_archive(
             request.dataset_id, force=request.force
         )
@@ -158,6 +183,7 @@ async def get_validation_job(
         Details of the validation job
     """
     service = ValidationService(db)
+    _ensure_provider_access(await service.get_provider_id_for_job(job_id), current_user, "read")
     return await service.get_validation_job(job_id)
 
 
@@ -190,7 +216,12 @@ async def list_validation_jobs(
         Paginated list of validation jobs
     """
     service = ValidationService(db)
-    return await service.list_validation_jobs(filters=filters, sorts=sorts, pagination=pagination)
+    return await service.list_validation_jobs(
+        filters=filters,
+        sorts=sorts,
+        pagination=pagination,
+        allowed_provider_ids=_allowed_provider_ids(current_user),
+    )
 
 
 @router.get("/{job_id}/results", response_model=dict[str, Any])
@@ -211,6 +242,7 @@ async def get_validation_results(
         Complete validation results
     """
     service = ValidationService(db)
+    _ensure_provider_access(await service.get_provider_id_for_job(job_id), current_user, "read")
     return await service.get_validation_results(job_id)
 
 
@@ -239,6 +271,9 @@ async def validate_dataset(
     """
     force = request.force if request else False
     service = ValidationService(db)
+    _ensure_provider_access(
+        await service.get_provider_id_for_dataset(dataset_id), current_user, "write"
+    )
     return await service.validate_dataset_latest_archive(dataset_id, force=force)
 
 
@@ -260,6 +295,9 @@ async def get_dataset_validation_status(
         Status information about the latest validation for the dataset
     """
     service = ValidationService(db)
+    _ensure_provider_access(
+        await service.get_provider_id_for_dataset(dataset_id), current_user, "read"
+    )
     result = await service.get_dataset_validation_status(dataset_id)
 
     # Convert dict to Pydantic model for response

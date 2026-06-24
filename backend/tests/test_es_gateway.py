@@ -273,6 +273,14 @@ _COUNT_FAILURE_CASES = [
         {"post_result_factory": lambda: _canned_response(200, {})},
         id="garbled-body-missing-count",
     ),
+    pytest.param(
+        {"post_result_factory": lambda: _canned_response(200, [])},
+        id="garbled-body-json-array",
+    ),
+    pytest.param(
+        {"post_result_factory": lambda: _canned_response(200, {"count": None})},
+        id="garbled-body-null-count",
+    ),
 ]
 
 
@@ -304,6 +312,14 @@ _SEARCH_FAILURE_CASES = [
     pytest.param(
         {"post_result_factory": lambda: _canned_response(200, {"hits": {}})},
         id="garbled-body-missing-hits",
+    ),
+    pytest.param(
+        {"post_result_factory": lambda: _canned_response(200, [])},
+        id="garbled-body-json-array",
+    ),
+    pytest.param(
+        {"post_result_factory": lambda: _canned_response(200, {"hits": None})},
+        id="garbled-body-null-hits",
     ),
 ]
 

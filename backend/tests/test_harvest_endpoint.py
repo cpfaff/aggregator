@@ -10,6 +10,8 @@ pattern, see ``tests/services/test_validation_service.py`` for the seeding style
 import uuid
 
 import pytest
+from fastapi import HTTPException
+from sqlalchemy.exc import OperationalError
 from starlette.requests import Request
 
 from app.api.v1.endpoints.harvest import harvest_datasets
@@ -124,3 +126,21 @@ async def test_ready_dataset_without_archives_or_links_still_serializes(db_sessi
     assert legacy.dataset_id == 70
     assert legacy.xml_archives == []
     assert legacy.useful_links == []
+
+
+@pytest.mark.asyncio
+async def test_harvest_500_does_not_leak_internal_exception_text():
+    """The public harvest feed must not echo raw driver/infra text to clients (B15)."""
+
+    class _BoomDB:
+        async def execute(self, *args, **kwargs):
+            raise OperationalError(
+                "SELECT ...", {}, Exception("connection to host 192.168.0.184:5432 failed")
+            )
+
+    with pytest.raises(HTTPException) as exc_info:
+        await harvest_datasets(request=_make_request(), db=_BoomDB())
+
+    assert exc_info.value.status_code == 500
+    assert exc_info.value.detail == "Internal server error"
+    assert "192.168.0.184" not in exc_info.value.detail

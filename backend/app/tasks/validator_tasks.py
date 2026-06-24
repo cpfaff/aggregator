@@ -52,6 +52,7 @@ def validate_archive(self, archive_id: int, job_id: int | None = None) -> dict[s
     """
     db = SessionLocal()
     job = None
+    job_pk: int | None = None
 
     try:
         # Get archive details from DB - only select the columns that exist
@@ -79,6 +80,21 @@ def validate_archive(self, archive_id: int, job_id: int | None = None) -> dict[s
                 job = None
 
         if not job:
+            # Celery autoretry re-submits the original args (no job_id) but keeps
+            # the same request.id; reuse the job created by a prior attempt of
+            # this task for this archive so retries don't insert duplicate rows
+            # (B24). task_id is "<request.id>_<uuid>" from creation below.
+            job = (
+                db.query(ValidationJobModel)
+                .filter(
+                    ValidationJobModel.archive_id == archive_id,
+                    ValidationJobModel.task_id.like(f"{self.request.id}_%"),
+                )
+                .order_by(ValidationJobModel.id.desc())
+                .first()
+            )
+
+        if not job:
             # Generate a unique task_id for this job by combining Celery task ID and a UUID
             unique_task_id = f"{self.request.id}_{str(uuid.uuid4())}"
 
@@ -93,11 +109,16 @@ def validate_archive(self, archive_id: int, job_id: int | None = None) -> dict[s
             db.commit()
             db.refresh(job)
         else:
-            # Update existing job to running state
+            # Update existing job to running state. Keep task_id unchanged: for
+            # the job_id path it already holds the Celery id, and for the retry
+            # reuse path it must keep its "<request.id>_<uuid>" form so further
+            # retries find it (B24).
             job.status = "running"
             job.started_at = datetime.utcnow()
-            job.task_id = self.request.id  # Update with current task ID
             db.commit()
+
+        # Capture the pk so the failure handler can re-fetch after a rollback.
+        job_pk = job.id
 
         # Log the start of validation
         logger.info(f"Starting validation for archive {archive_id} (job ID: {job.id})")
@@ -134,12 +155,21 @@ def validate_archive(self, archive_id: int, job_id: int | None = None) -> dict[s
         }
 
     except Exception as e:
-        # Update job status to failed
-        if job:
-            job.status = "failed"
-            job.completed_at = datetime.utcnow()
-            job.results = {"error": str(e)}
-            db.commit()
+        # The failure may have poisoned the transaction (e.g. it WAS the
+        # success-path commit), so roll back before recording the failure;
+        # otherwise the second commit raises PendingRollbackError, masking the
+        # original error and leaving the job stuck 'running' (B25). Rollback
+        # expires the instance, so re-fetch by pk.
+        db.rollback()
+        if job_pk is not None:
+            failed_job = (
+                db.query(ValidationJobModel).filter(ValidationJobModel.id == job_pk).first()
+            )
+            if failed_job is not None:
+                failed_job.status = "failed"
+                failed_job.completed_at = datetime.utcnow()
+                failed_job.results = {"error": str(e)}
+                db.commit()
 
         logger.exception(f"Error validating archive {archive_id}: {e}")
         raise

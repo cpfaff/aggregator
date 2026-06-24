@@ -224,8 +224,12 @@ class SnapshotRepository:
         self,
         dataset_id: int | None = None,
         provider_id: int | None = None,
-    ) -> int:
-        """Get total unit count, optionally scoped to dataset or provider."""
+    ) -> int | None:
+        """Get total unit count, optionally scoped to dataset or provider.
+
+        Returns None when there is no matching snapshot data so callers can tell
+        "unknown" apart from a genuine zero (B4); display callers coerce to 0.
+        """
         subquery = self._latest_snapshot_subquery(dataset_id=dataset_id, provider_id=provider_id)
 
         result = (
@@ -240,7 +244,7 @@ class SnapshotRepository:
             .scalar()
         )
 
-        return result or 0
+        return result
 
     # -------------------------------------------------------------------------
     # Timeline queries
@@ -270,7 +274,10 @@ class SnapshotRepository:
         if start_date:
             query = query.filter(ArchiveSnapshotModel.recorded_at >= start_date)
         if end_date:
-            query = query.filter(ArchiveSnapshotModel.recorded_at <= end_date)
+            # Compare on the calendar date so same-day snapshots recorded after
+            # midnight (beat runs at 02:00) are within the inclusive upper bound,
+            # matching get_unit_count_for_date's day-granular semantics (B10/B5).
+            query = query.filter(func.date(ArchiveSnapshotModel.recorded_at) <= end_date)
 
         return [r.date for r in query.limit(limit).all()]
 

@@ -9,8 +9,8 @@ from app.models import UserModel
 from app.repositories.base import BaseRepository
 from app.schemas.pagination import PaginationParams
 from app.utils.filtering import FilterParam
-from app.utils.pagination import decode_cursor, encode_cursor
-from app.utils.query_utils import apply_filters, apply_sorts
+from app.utils.pagination import build_keyset_order, paginate_keyset
+from app.utils.query_utils import apply_filters
 from app.utils.sorting import SortParam
 
 
@@ -68,43 +68,11 @@ class UserRepository(BaseRepository[UserModel]):
         total_result = await self.db.execute(count_query)
         total_count = total_result.scalar() or 0
 
-        # Continue with base query
-        query = base_query
-
-        # Apply cursor-based pagination
-        if pagination.after:
-            cursor_data = decode_cursor(pagination.after)
-            if cursor_data and "id" in cursor_data:
-                query = query.filter(UserModel.id > cursor_data["id"])
-
-        if pagination.before:
-            cursor_data = decode_cursor(pagination.before)
-            if cursor_data and "id" in cursor_data:
-                query = query.filter(UserModel.id < cursor_data["id"])
-
-        # Apply sorting - custom sorts first, then ID for consistent pagination
-        if sorts:
-            query = apply_sorts(query, sorts, self.SORT_FIELD_MAP)
-        # Always add ID as final sort for deterministic pagination
-        query = query.order_by(UserModel.id)
-
-        # Fetch one extra to check if there are more items
-        result = await self.db.execute(query.limit(pagination.limit + 1))
-        items = list(result.scalars().all())
-
-        # Determine if there are more items
-        has_next = len(items) > pagination.limit
-        if has_next:
-            items = items[: pagination.limit]
-
-        # Generate cursors
-        next_cursor = None
-        previous_cursor = None
-
-        if items:
-            if has_next:
-                next_cursor = encode_cursor({"id": items[-1].id})
-            if pagination.after:
-                previous_cursor = encode_cursor({"id": items[0].id})
+        # Keyset pagination keyed on the same (sort..., id) tuple as ORDER BY
+        # (B6, B8).
+        order = build_keyset_order(sorts, self.SORT_FIELD_MAP, UserModel.id)
+        items, next_cursor, previous_cursor = await paginate_keyset(
+            self.db, base_query, order, pagination
+        )
 
         return items, total_count, next_cursor, previous_cursor

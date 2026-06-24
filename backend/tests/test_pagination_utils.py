@@ -79,6 +79,24 @@ class TestDecodeCursor:
         result = decode_cursor(None)
         assert result is None
 
+    def test_decode_cursor_json_array_raises(self):
+        """Valid base64+JSON that is not an object raises CursorError (B16)."""
+        encoded = base64.urlsafe_b64encode(b"[1, 2, 3]").decode()
+        with pytest.raises(CursorError):
+            decode_cursor(encoded)
+
+    def test_decode_cursor_json_scalar_raises(self):
+        """A bare JSON scalar is not a valid cursor object (B16)."""
+        encoded = base64.urlsafe_b64encode(b"5").decode()
+        with pytest.raises(CursorError):
+            decode_cursor(encoded)
+
+    def test_decode_cursor_json_null_raises(self):
+        """Encoded JSON null must not masquerade as 'no cursor' (B16)."""
+        encoded = base64.urlsafe_b64encode(b"null").decode()
+        with pytest.raises(CursorError):
+            decode_cursor(encoded)
+
 
 class TestPaginationParams:
     """Tests for PaginationParams schema."""

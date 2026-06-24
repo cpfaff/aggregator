@@ -95,27 +95,23 @@ class TestDecodeToken:
         assert exc_info.value.status_code == 401
         assert "expired" in exc_info.value.detail
 
-    def test_invalid_audience_raises_error(self):
-        """Test that wrong audience raises an error.
+    def test_invalid_audience_raises_401(self):
+        """Wrong audience must map to a 401 HTTPException, not an AttributeError.
 
-        Note: jwt.JWTClaimsError doesn't exist in the installed PyJWT version,
-        so the invalid audience triggers an AttributeError from the except clause.
-        This is a known issue in the production code (decode_token references
-        jwt.JWTClaimsError which doesn't exist).
+        Regression for B22: the handler caught the non-existent
+        jwt.JWTClaimsError (python-jose name), which raised AttributeError on
+        PyJWT for any non-expired token error instead of returning 401.
         """
         token = create_access_token(data={"sub": "testuser"})
-        with pytest.raises((HTTPException, AttributeError)):
+        with pytest.raises(HTTPException) as exc_info:
             decode_token(token, audience="wrong-audience")
+        assert exc_info.value.status_code == 401
 
-    def test_invalid_token_string_raises_error(self):
-        """Test that garbage token string raises an error.
-
-        Note: PyJWT raises jwt.DecodeError for malformed tokens. The handler
-        chain in decode_token hits the jwt.JWTClaimsError catch first (which
-        raises AttributeError since that class doesn't exist in PyJWT).
-        """
-        with pytest.raises((HTTPException, AttributeError)):
+    def test_invalid_token_string_raises_401(self):
+        """Garbage token string must map to a 401 HTTPException (regression B22)."""
+        with pytest.raises(HTTPException) as exc_info:
             decode_token("not-a-valid-jwt")
+        assert exc_info.value.status_code == 401
 
     def test_custom_audience_accepted(self):
         """Test that token with matching custom audience is accepted."""

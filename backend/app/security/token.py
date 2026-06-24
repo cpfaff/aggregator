@@ -99,7 +99,9 @@ def decode_token(token: str, audience: str | None = None) -> dict[str, Any]:
             detail="Token has expired",
             headers={"WWW-Authenticate": "Bearer"},
         ) from None
-    except jwt.JWTClaimsError:
+    except (jwt.InvalidAudienceError, jwt.InvalidIssuerError):
+        # PyJWT raises these specific claim errors (it has no python-jose-style
+        # JWTClaimsError); catch them before the generic PyJWTError handler.
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token claims such as audience or issuer",
