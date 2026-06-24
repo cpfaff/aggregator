@@ -701,12 +701,17 @@ def compute_data_quality(custom_rules: dict[str, list[dict[str, Any]]]) -> dict[
             quality[importance]["valid_percentage"] = round(
                 (quality[importance]["valid_count"] / total) * 100, 1
             )
+    # Renormalize the 70/30 weights over the categories that actually have
+    # rules, so an absent category's weight is not treated as a 0% score (B30).
+    w_mandatory = 0.7 if quality["mandatory"]["total_rules"] else 0.0
+    w_recommended = 0.3 if quality["recommended"]["total_rules"] else 0.0
+    total_weight = w_mandatory + w_recommended
     weighted = 0.0
-    if quality["mandatory"]["total_rules"] or quality["recommended"]["total_rules"]:
+    if total_weight > 0:
         weighted = (
-            0.7 * quality["mandatory"]["valid_percentage"]
-            + 0.3 * quality["recommended"]["valid_percentage"]
-        )
+            w_mandatory * quality["mandatory"]["valid_percentage"]
+            + w_recommended * quality["recommended"]["valid_percentage"]
+        ) / total_weight
     return {
         "mandatory": quality["mandatory"],
         "recommended": quality["recommended"],
