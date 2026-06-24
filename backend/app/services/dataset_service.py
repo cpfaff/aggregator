@@ -314,8 +314,13 @@ class DatasetService:
                 "deletion_summary": deletion_summary,
             }
 
+        except HTTPException:
+            # Preserve a meaningful status raised by the cascade (e.g. 404/409).
+            raise
         except Exception as e:
             logger.error(f"Failed to delete dataset {dataset_id}: {e}")
+            # Do not echo raw exception text (driver/infra detail) to the client;
+            # the full error is logged above (B15 follow-up).
             raise HTTPException(
-                status_code=500, detail=f"Failed to delete dataset: {str(e)}"
+                status_code=500, detail="Failed to delete dataset"
             ) from e
