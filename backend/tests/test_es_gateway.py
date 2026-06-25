@@ -23,6 +23,7 @@ from app.services.es_gateway import (
     EsGateway,
     EsUnavailable,
     compose_dataset_urn,
+    parse_dataset_urn,
 )
 
 TEST_URN = "urn:gfbio.org:abcd:17_42_99"
@@ -95,6 +96,45 @@ def test_urn_template_is_the_gfbio_abcd_scheme():
 def test_dataset_id_field_is_plain_per_t5_spike():
     # T-5 proved the plain field (.keyword sub-field returns 0).
     assert ES_DATASET_ID_FIELD == "abcdDatasetIdentifier"
+
+
+# ---------------------------------------------------------------------------
+# parse_dataset_urn — the inverse of compose_dataset_urn (validation-stats join)
+# ---------------------------------------------------------------------------
+
+
+def test_parse_dataset_urn_roundtrips_compose():
+    # parse is the exact inverse of compose for the three integer ids.
+    assert parse_dataset_urn(compose_dataset_urn(17, 42, 99)) == (17, 42, 99)
+
+
+def test_parse_dataset_urn_parses_explicit_urn():
+    assert parse_dataset_urn("urn:gfbio.org:abcd:1_204_375") == (1, 204, 375)
+
+
+def test_parse_dataset_urn_strips_unit_suffix():
+    # Unit docs carry the dataset URN plus a ':unitID' suffix
+    # (harvester ESConnector + panFMP config.xml:146); resolve to the dataset.
+    assert parse_dataset_urn("urn:gfbio.org:abcd:1_204_375:7") == (1, 204, 375)
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        "",
+        "1_204_375",  # no scheme prefix
+        "urn:gfbio.org:abcd:1_204",  # too few components
+        "urn:gfbio.org:abcd:1_204_375_9",  # too many components
+        "urn:gfbio.org:abcd:1_x_375",  # non-integer component
+        "urn:gfbio.org:abcd:1__375",  # empty middle component
+        "urn:gfbio.org:abcd:",  # empty body
+        "urn:gfbio.org:other:1_204_375",  # wrong scheme
+    ],
+)
+def test_parse_dataset_urn_rejects_malformed(bad):
+    # Malformed identifiers resolve to None (skipped, never raise) so a single
+    # bad id in a batch never fails the whole validation-stats lookup.
+    assert parse_dataset_urn(bad) is None
 
 
 # ---------------------------------------------------------------------------
