@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { authStatsApi, publicStatsApi, statsUtils } from '../../utils/statisticsApi';
 import StatCard from '../ui/StatCard';
+import Skeleton from '../ui/Skeleton';
 import TimeSeriesChart from '../ui/TimeSeriesChart';
 import MultiLineTimeSeriesChart from '../ui/MultiLineTimeSeriesChart';
 import PieChart from '../ui/PieChart';
@@ -202,20 +203,58 @@ function AdminDashboard() {
         className="content-container"
       >
         <Breadcrumbs items={breadcrumbItems} />
+
+        {/* Page title silhouette */}
+        <div style={{ marginBottom: '2rem', marginTop: '1rem' }}>
+          <Skeleton width={160} height="1.5rem" style={{ marginBottom: '0.75rem' }} />
+          <Skeleton width="min(520px, 80%)" height="1rem" />
+        </div>
+
+        {/* System overview cards: reuse StatCard's loading state with known titles */}
         <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '4rem 0'
+          display: 'grid',
+          gridTemplateColumns: getGridColumns(280),
+          gap: '1.5rem',
+          marginBottom: '2rem',
         }}>
-          <div style={{
-            width: '32px',
-            height: '32px',
-            border: '3px solid var(--border)',
-            borderRadius: '50%',
-            borderTopColor: 'var(--primary)',
-            animation: 'spin 1s linear infinite',
-          }}></div>
+          <StatCard title="Data Providers" value={0} isLoading color="var(--success)" />
+          <StatCard title="Data Centers" value={0} isLoading color="var(--warning)" />
+          <StatCard title="Total Datasets" value={0} isLoading color="var(--primary)" />
+          <StatCard title="XML Archives" value={0} isLoading color="var(--info)" />
+        </div>
+
+        {/* Charts grid silhouette (2fr / 1fr) */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile || isTablet ? '1fr' : '2fr 1fr',
+          gap: '1.5rem',
+          marginBottom: '2rem',
+        }}>
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} style={{
+              backgroundColor: 'var(--card-bg)',
+              border: '1px solid var(--border)',
+              borderRadius: '0.75rem',
+              padding: '1.5rem',
+            }}>
+              <Skeleton width="55%" height="1.25rem" style={{ marginBottom: '0.5rem' }} />
+              <Skeleton width="40%" height="0.875rem" style={{ marginBottom: '1.5rem' }} />
+              <Skeleton width="100%" height={250} radius="0.5rem" />
+            </div>
+          ))}
+        </div>
+
+        {/* Full-width chart silhouette */}
+        <div style={{
+          backgroundColor: 'var(--card-bg)',
+          border: '1px solid var(--border)',
+          borderRadius: '0.75rem',
+          padding: '1.5rem',
+          marginBottom: '2rem',
+        }}>
+          <Skeleton width="40%" height="1.25rem" style={{ marginBottom: '0.5rem' }} />
+          <Skeleton width="60%" height="0.875rem" style={{ marginBottom: '1.5rem' }} />
+          <Skeleton width="100%" height={250} radius="0.5rem" />
         </div>
       </div>
     );
