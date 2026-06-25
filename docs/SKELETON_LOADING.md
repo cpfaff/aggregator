@@ -125,3 +125,33 @@ test('skeleton is gone after data loads', async () => {
 
 Use `getAllByTestId` / `queryAllByTestId` for surfaces that render multiple
 skeletons; `data-testid="skeleton-bar"` targets the individual bars.
+
+---
+
+## Where it's used
+
+Migrated to a content-shaped skeleton (the 32px ring removed):
+
+| Surface | Silhouette |
+|---|---|
+| Providers grid | 6 provider-card placeholders in the real grid |
+| Provider detail | breadcrumb + detail card + 3 dataset rows |
+| StatCard | number-shaped block (drives LandingPage + dashboards) |
+| Public stats dashboard | header + StatCard grid + 2 chart cards |
+| Admin dashboard | breadcrumb + title + StatCard grid + chart cards |
+| Provider statistics | header + 2 timeline-chart cards |
+| User management | 6 user-card placeholders (avatar, roles, actions) |
+| `TimeSeriesChart`, `PieChart`, `MultiLineTimeSeriesChart` | in-card chart silhouette |
+
+The `spin` keyframe is intentionally **kept** for indeterminate in-place
+actions that are *not* data surfaces: `Button` (submit), the `Login` flow.
+
+Left as plain inline states by design:
+
+- **`App.js` auth bootstrap** (`Loading user data…`) — gates every protected
+  route before any page renders, so there is no single content shape to mimic;
+  a skeleton would have to guess the silhouette of an unknown destination.
+- **`BarChart`** — has no callers, so its (now-dormant) loading state was not
+  migrated.
+- Out of scope entirely: form-submit buttons, the Login spinner, the
+  DatasetCard harvest badge, the static Changelog.
