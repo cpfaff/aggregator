@@ -5,6 +5,7 @@ Tests all validation job management operations with real database via testcontai
 following TDD principles and covering edge cases.
 """
 
+from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -618,3 +619,239 @@ async def test_validate_dataset_latest_archive_no_archive(validation_service, sa
         await validation_service.validate_dataset_latest_archive(sample_dataset.id, force=False)
     assert exc_info.value.status_code == 404
     assert "No latest XML archive found" in exc_info.value.detail
+
+
+# ---------------------------------------------------------------------------
+# get_validation_stats_for_datasets — read-only batch projection that powers
+# the public validation-stats endpoint (one DB read for a whole search page).
+# Unlike get_dataset_validation_status it must NOT mutate (no obsolete-cleanup
+# commit), so a public read never writes.
+# ---------------------------------------------------------------------------
+
+_COMPLETED_RESULTS = {
+    "summary": {
+        "total_files": 12,
+        "valid_files": 11,
+        "data_quality": {
+            "total_weighted_quality": 0.86,
+            "mandatory": {"valid_percentage": 95.0},
+            "recommended": {"valid_percentage": 70.0},
+        },
+    }
+}
+
+
+async def _seed_provider(db_session, provider_id=900):
+    provider = DataProviderModel(
+        id=provider_id, datacenter="dc", shortName="DC", name="DC Provider"
+    )
+    db_session.add(provider)
+    await db_session.flush()
+    return provider
+
+
+async def _seed_dataset_with_latest_archive(
+    db_session, provider, *, dataset_id, archive_id, is_latest=True
+):
+    dataset = DatasetModel(
+        id=dataset_id,
+        title=f"DS {dataset_id}",
+        source="src",
+        provider_id=provider.id,
+        landingPageUrl="http://example.com/",
+    )
+    db_session.add(dataset)
+    await db_session.flush()
+    archive = XmlArchiveModel(
+        id=archive_id,
+        dataset_id=dataset.id,
+        url=f"http://example.com/{archive_id}.xml",
+        isLatest=is_latest,
+    )
+    db_session.add(archive)
+    await db_session.flush()
+    return dataset, archive
+
+
+@pytest.mark.asyncio
+async def test_batch_stats_empty_input_returns_empty(validation_service):
+    assert await validation_service.get_validation_stats_for_datasets([]) == {}
+
+
+@pytest.mark.asyncio
+async def test_batch_stats_completed_job_returns_summary(validation_service, db_session):
+    provider = await _seed_provider(db_session)
+    _dataset, archive = await _seed_dataset_with_latest_archive(
+        db_session, provider, dataset_id=204, archive_id=375
+    )
+    completed_at = utc_now()
+    db_session.add(
+        ValidationJobModel(
+            id=5000,
+            archive_id=archive.id,
+            status="completed",
+            task_id="t-completed",
+            results=_COMPLETED_RESULTS,
+            completed_at=completed_at,
+        )
+    )
+    await db_session.flush()
+
+    stats = await validation_service.get_validation_stats_for_datasets([204])
+
+    assert set(stats) == {204}
+    s = stats[204]
+    assert s["validation_status"] == "completed"
+    assert s["archive_id"] == 375
+    assert s["is_valid"] is False  # 11 of 12 valid
+    assert s["quality_score"] == 0.86
+    assert s["mandatory_percentage"] == 95.0
+    assert s["recommended_percentage"] == 70.0
+    assert s["total_files"] == 12
+    assert s["valid_files"] == 11
+    assert s["last_validated_at"] == completed_at
+
+
+@pytest.mark.asyncio
+async def test_batch_stats_no_job_marks_not_validated(validation_service, db_session):
+    provider = await _seed_provider(db_session)
+    await _seed_dataset_with_latest_archive(
+        db_session, provider, dataset_id=210, archive_id=410
+    )
+
+    stats = await validation_service.get_validation_stats_for_datasets([210])
+
+    assert stats[210]["validation_status"] == "not_validated"
+    assert stats[210]["archive_id"] == 410
+    assert stats[210]["quality_score"] is None
+    assert stats[210]["is_valid"] is None
+
+
+@pytest.mark.asyncio
+async def test_batch_stats_dataset_without_latest_archive_is_omitted(
+    validation_service, db_session
+):
+    provider = await _seed_provider(db_session)
+    # A dataset whose only archive is not the latest -> no current archive.
+    await _seed_dataset_with_latest_archive(
+        db_session, provider, dataset_id=220, archive_id=420, is_latest=False
+    )
+
+    stats = await validation_service.get_validation_stats_for_datasets([220])
+
+    assert 220 not in stats
+
+
+@pytest.mark.asyncio
+async def test_batch_stats_picks_latest_non_obsolete_job(validation_service, db_session):
+    provider = await _seed_provider(db_session)
+    _dataset, archive = await _seed_dataset_with_latest_archive(
+        db_session, provider, dataset_id=230, archive_id=430
+    )
+    older = utc_now() - timedelta(hours=2)
+    newer = utc_now() - timedelta(hours=1)
+    newest = utc_now()
+    db_session.add_all(
+        [
+            ValidationJobModel(
+                id=6001,
+                archive_id=archive.id,
+                status="completed",
+                task_id="t-old",
+                results={"summary": {"total_files": 1, "valid_files": 0}},
+                completed_at=older,
+                created_at=older,
+            ),
+            ValidationJobModel(
+                id=6002,
+                archive_id=archive.id,
+                status="completed",
+                task_id="t-new",
+                results=_COMPLETED_RESULTS,
+                completed_at=newer,
+                created_at=newer,
+            ),
+            # An obsolete job is newest of all but must be skipped.
+            ValidationJobModel(
+                id=6003,
+                archive_id=archive.id,
+                status="obsolete",
+                task_id="t-obsolete",
+                results={"summary": {"total_files": 99, "valid_files": 99}},
+                created_at=newest,
+            ),
+        ]
+    )
+    await db_session.flush()
+
+    stats = await validation_service.get_validation_stats_for_datasets([230])
+
+    # The newest NON-obsolete completed job wins (quality 0.86), not the obsolete one.
+    assert stats[230]["quality_score"] == 0.86
+    assert stats[230]["total_files"] == 12
+
+
+@pytest.mark.asyncio
+async def test_batch_stats_pending_job_exposes_no_quality(validation_service, db_session):
+    provider = await _seed_provider(db_session)
+    _dataset, archive = await _seed_dataset_with_latest_archive(
+        db_session, provider, dataset_id=240, archive_id=440
+    )
+    # A pending job that even carries a results blob: results must be ignored
+    # until status is 'completed', so no quality leaks for in-flight validation.
+    db_session.add(
+        ValidationJobModel(
+            id=7000,
+            archive_id=archive.id,
+            status="pending",
+            task_id="t-pending",
+            results=_COMPLETED_RESULTS,
+        )
+    )
+    await db_session.flush()
+
+    stats = await validation_service.get_validation_stats_for_datasets([240])
+
+    assert stats[240]["validation_status"] == "pending"
+    assert stats[240]["quality_score"] is None
+    assert stats[240]["total_files"] is None
+
+
+@pytest.mark.asyncio
+async def test_batch_stats_resolves_multiple_datasets_in_one_call(
+    validation_service, db_session
+):
+    provider = await _seed_provider(db_session)
+    _d1, a1 = await _seed_dataset_with_latest_archive(
+        db_session, provider, dataset_id=250, archive_id=450
+    )
+    _d2, a2 = await _seed_dataset_with_latest_archive(
+        db_session, provider, dataset_id=251, archive_id=451
+    )
+    db_session.add_all(
+        [
+            ValidationJobModel(
+                id=8001, archive_id=a1.id, status="completed",
+                task_id="t-1", results=_COMPLETED_RESULTS, completed_at=utc_now(),
+            ),
+            ValidationJobModel(
+                id=8002, archive_id=a2.id, status="completed",
+                task_id="t-2",
+                results={
+                    "summary": {
+                        "total_files": 4, "valid_files": 4,
+                        "data_quality": {"total_weighted_quality": 1.0},
+                    }
+                },
+                completed_at=utc_now(),
+            ),
+        ]
+    )
+    await db_session.flush()
+
+    stats = await validation_service.get_validation_stats_for_datasets([250, 251])
+
+    assert set(stats) == {250, 251}
+    assert stats[250]["quality_score"] == 0.86
+    assert stats[251]["quality_score"] == 1.0
+    assert stats[251]["is_valid"] is True
