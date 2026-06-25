@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { authStatsApi, statsUtils } from '../../utils/statisticsApi';
 import TimeSeriesChart from '../ui/TimeSeriesChart';
+import Skeleton from '../ui/Skeleton';
 import Alert from '../ui/Alert';
 import { Clock } from 'lucide-react';
 
@@ -109,21 +110,32 @@ function ProviderStatistics({ providerId, providerName }) {
 
   if (isLoading) {
     return (
-      <div style={{ padding: '1.5rem' }}>
+      <div style={{ padding: '0 1.5rem 2rem', maxWidth: '1200px', margin: '0 auto' }}>
+        {/* Header silhouette */}
         <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '4rem 0'
+          marginBottom: '3rem',
+          padding: '0.5rem 0 1.5rem',
+          borderBottom: '1px solid var(--border-light)',
         }}>
-          <div style={{
-            width: '32px',
-            height: '32px',
-            border: '3px solid var(--border)',
-            borderRadius: '50%',
-            borderTopColor: 'var(--primary)',
-            animation: 'spin 1s linear infinite',
-          }}></div>
+          <Skeleton width="40%" height="1.625rem" style={{ marginBottom: '1rem' }} />
+          <Skeleton width="30%" height="0.875rem" style={{ marginBottom: '1rem' }} />
+          <Skeleton width="min(700px, 80%)" height="1rem" />
+        </div>
+
+        {/* Two timeline-chart silhouettes */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '3rem' }}>
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} style={{
+              backgroundColor: 'var(--card-bg)',
+              border: '1px solid var(--border)',
+              borderRadius: '0.5rem',
+              padding: '1.5rem',
+            }}>
+              <Skeleton width="45%" height="1.125rem" style={{ marginBottom: '0.4rem' }} />
+              <Skeleton width="60%" height="0.8125rem" style={{ marginBottom: '1.25rem' }} />
+              <Skeleton width="100%" height={300} radius="0.5rem" />
+            </div>
+          ))}
         </div>
       </div>
     );
