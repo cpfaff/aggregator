@@ -53,15 +53,29 @@ beforeEach(() => {
 });
 
 describe('Providers', () => {
-  test('shows loading spinner while fetching providers', () => {
-    // Never resolve the API call to keep loading state
+  test('shows skeleton placeholders while fetching providers', () => {
+    // Never resolve the API call to keep the loading state.
     apiRequest.mockReturnValue(new Promise(() => {}));
 
     render(<Providers currentUser={adminUser} onViewProviderDetails={jest.fn()} />);
 
-    // Loading spinner is a div with animation, check loading state indirectly
-    // by confirming no providers or empty message are shown
+    expect(screen.getAllByTestId('skeleton').length).toBeGreaterThan(0);
+    // Empty/loaded states must not show while still loading.
     expect(screen.queryByText('No providers found')).not.toBeInTheDocument();
+  });
+
+  test('removes the skeleton once providers load', async () => {
+    apiRequest.mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({ data: [{ id: 1, name: 'Provider A' }] }),
+    });
+
+    render(<Providers currentUser={adminUser} onViewProviderDetails={jest.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('provider-card-1')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('skeleton')).not.toBeInTheDocument();
   });
 
   test('renders provider cards after data loads', async () => {
