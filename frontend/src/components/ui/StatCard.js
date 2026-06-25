@@ -1,4 +1,5 @@
 import React from 'react';
+import Skeleton from './Skeleton';
 
 /**
  * StatCard component for displaying key metrics
@@ -48,34 +49,15 @@ function StatCard({
     >
       {isLoading ? (
         <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '0.75rem',
           position: 'relative',
           zIndex: 1,
-          padding: '1rem 0',
           textAlign: 'center',
           marginBottom: '1.25rem'
         }}>
-          <div style={{
-            width: '40px',
-            height: '40px',
-            border: '3px solid var(--border)',
-            borderRadius: '50%',
-            borderTopColor: color,
-            borderRightColor: 'transparent',
-            animation: 'spin 1s linear infinite',
-            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
-          }} />
-          <span style={{
-            color: 'var(--text-light)',
-            fontSize: '0.875rem',
-            fontWeight: 500,
-            letterSpacing: '0.25px'
-          }}>
-            Loading...
-          </span>
+          {/* Number-shaped placeholder matching the resolved value block. */}
+          <div style={{ marginBottom: '0.75rem', display: 'flex', justifyContent: 'center' }}>
+            <Skeleton width="55%" height="2.5rem" radius="0.5rem" ariaLabel={`Loading ${title}`} />
+          </div>
         </div>
       ) : (
         <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', marginBottom: '1.25rem' }}>
