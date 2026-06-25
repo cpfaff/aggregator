@@ -67,10 +67,12 @@ describe('Providers', () => {
   test('renders provider cards after data loads', async () => {
     apiRequest.mockResolvedValue({
       ok: true,
-      json: jest.fn().mockResolvedValue([
-        { id: 1, name: 'Provider A' },
-        { id: 2, name: 'Provider B' },
-      ]),
+      json: jest.fn().mockResolvedValue({
+        data: [
+          { id: 1, name: 'Provider A' },
+          { id: 2, name: 'Provider B' },
+        ],
+      }),
     });
 
     render(<Providers currentUser={adminUser} onViewProviderDetails={jest.fn()} />);
@@ -84,7 +86,7 @@ describe('Providers', () => {
   test('shows empty state when no providers exist', async () => {
     apiRequest.mockResolvedValue({
       ok: true,
-      json: jest.fn().mockResolvedValue([]),
+      json: jest.fn().mockResolvedValue({ data: [] }),
     });
 
     render(<Providers currentUser={adminUser} onViewProviderDetails={jest.fn()} />);
@@ -111,7 +113,7 @@ describe('Providers', () => {
   test('shows action menu for admin users', async () => {
     apiRequest.mockResolvedValue({
       ok: true,
-      json: jest.fn().mockResolvedValue([]),
+      json: jest.fn().mockResolvedValue({ data: [] }),
     });
 
     render(<Providers currentUser={adminUser} onViewProviderDetails={jest.fn()} />);
@@ -122,7 +124,7 @@ describe('Providers', () => {
   test('hides action menu for non-admin users', async () => {
     apiRequest.mockResolvedValue({
       ok: true,
-      json: jest.fn().mockResolvedValue([]),
+      json: jest.fn().mockResolvedValue({ data: [] }),
     });
 
     const regularUser = { username: 'user1', is_global_admin: false, provider_roles: {} };
