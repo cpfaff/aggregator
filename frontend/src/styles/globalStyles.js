@@ -24,6 +24,36 @@ export const addGlobalStyles = () => {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.5; }
     }
+    @keyframes shimmer {
+      0% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    /* Skeleton loading placeholder. The animation lives on this class (not
+       inline) so prefers-reduced-motion can override it. Colours come from
+       theme tokens so light/dark both work. */
+    .skeleton-shimmer {
+      background-color: var(--skeleton-base);
+      background-image: linear-gradient(
+        90deg,
+        var(--skeleton-base) 0%,
+        var(--skeleton-base) 35%,
+        var(--skeleton-highlight) 50%,
+        var(--skeleton-base) 65%,
+        var(--skeleton-base) 100%
+      );
+      background-size: 400% 100%;
+      background-repeat: no-repeat;
+      animation: shimmer 1.4s ease-in-out infinite;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .skeleton-shimmer {
+        /* Swap the travelling sweep for a gentle, low-vestibular pulse. */
+        background-image: none;
+        background-color: var(--skeleton-base);
+        animation: pulse 1.6s ease-in-out infinite;
+      }
+    }
 
     /* Animation classes for statistics components */
     .fade-in {
