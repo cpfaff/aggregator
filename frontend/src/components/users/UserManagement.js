@@ -59,6 +59,7 @@ function UserManagement() {
   useEffect(() => {
     fetchUsers();
     fetchProviders();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Filter users based on search query
@@ -168,6 +169,7 @@ function UserManagement() {
 
   useEffect(() => {
     fetchUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Form submission handler
@@ -284,6 +286,7 @@ function UserManagement() {
       // Reset form for new user
       form.resetForm();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingUser, addingUser]);
 
   const handleDeleteUser = async (username) => {

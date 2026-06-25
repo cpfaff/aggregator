@@ -104,6 +104,7 @@ function ProviderStatistics({ providerId, providerName }) {
     if (providerId) {
       fetchProviderStats();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [providerId]);
 
   if (isLoading) {

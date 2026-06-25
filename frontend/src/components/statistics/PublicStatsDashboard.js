@@ -22,10 +22,10 @@ function PublicStatsDashboard() {
   const [timelineData, setTimelineData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState(null);
-  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
-  const [nextRefreshIn, setNextRefreshIn] = useState(60);
+  const [, setIsRefreshing] = useState(false);
+  const [, setLastUpdated] = useState(null);
+  const [autoRefreshEnabled] = useState(true);
+  const [, setNextRefreshIn] = useState(60);
 
   const intervalRef = useRef(null);
   const countdownRef = useRef(null);
@@ -166,26 +166,6 @@ function PublicStatsDashboard() {
       countdownRef.current = null;
     }
   }, []);
-
-  const toggleAutoRefresh = () => {
-    setAutoRefreshEnabled(prev => {
-      const newValue = !prev;
-      if (newValue) {
-        startAutoRefresh();
-      } else {
-        stopAutoRefresh();
-        setNextRefreshIn(0);
-      }
-      return newValue;
-    });
-  };
-
-  const handleManualRefresh = () => {
-    fetchAllStats(false);
-    if (autoRefreshEnabled) {
-      startAutoRefresh(); // Reset the auto-refresh timer
-    }
-  };
 
   useEffect(() => {
     fetchAllStats();

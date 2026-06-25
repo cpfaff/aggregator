@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Database, ExternalLink, FileText, Globe, Edit, Trash2, Archive, CheckCircle, XCircle, AlertCircle, HelpCircle, RefreshCw, Dna } from 'lucide-react';
+import { Database, ExternalLink, FileText, Globe, Edit, Trash2, CheckCircle, XCircle, AlertCircle, HelpCircle, RefreshCw, Dna } from 'lucide-react';
 import useSWR from 'swr';
 import { useAuth } from '../auth/AuthContext';
 import axios from 'axios';
@@ -70,6 +70,7 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
         clearInterval(pollingInterval);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataset]);
 
   // Function to fetch dataset statistics (for biological units count)
@@ -153,6 +154,7 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
         clearTimeout(validationTimeout);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isValidating]);
 
   // Function to trigger validation
@@ -545,13 +547,10 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
               }}>
                 {/* Validation Status - shows previous result during re-validation for stability */}
                 {(() => {
-                  const isRunning = isValidating || validationStatus.validation_status === 'pending' || validationStatus.validation_status === 'running';
                   const hasPreviousResult = validationStatus.is_valid !== undefined && validationStatus.is_valid !== null;
 
                   // Determine what to display: previous result if available, otherwise current status
                   const showValid = hasPreviousResult ? validationStatus.is_valid : false;
-                  const showScore = hasPreviousResult && validationStatus.is_valid;
-                  const showNotValidated = !hasPreviousResult && validationStatus.validation_status !== 'completed';
 
                   return (
                     <div style={{

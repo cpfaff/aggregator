@@ -78,8 +78,7 @@ function TimeSeriesChart({
     // For integer-only charts (like dataset counts), use nice bounds
     // to prevent small changes from appearing dramatic
     if (integerOnly) {
-      const range = maxY - minY;
-      const niceUpper = getNiceUpperBound(maxY);
+      let niceUpper = getNiceUpperBound(maxY);
 
       // For high baseline values (min > 50), start from a nice round number below min
       // This avoids wasting chart space when all values are high

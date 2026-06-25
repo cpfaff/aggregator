@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { CheckCircle, XCircle } from 'lucide-react';
 import Modal from '../ui/Modal';
 
 // CSS styles to match the HTML template
@@ -669,14 +669,6 @@ const ValidationResultsModal = ({ isOpen, onClose, validationResults }) => {
       </div>
     </Modal>
   );
-};
-
-// Helper function to determine color based on quality score
-// Thresholds: >=80% green (good), 50-79% amber (warning), <50% red (poor)
-const getQualityColor = (score) => {
-  if (score >= 80) return 'var(--success)';
-  if (score >= 50) return 'var(--warning)';
-  return 'var(--error)';
 };
 
 export default ValidationResultsModal;

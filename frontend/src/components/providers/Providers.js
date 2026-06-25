@@ -56,6 +56,7 @@ function Providers({ currentUser, onViewProviderDetails }) {
 
   useEffect(() => {
     fetchProviders();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Filter providers based on search query

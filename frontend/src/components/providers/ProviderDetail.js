@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { apiRequest } from '../../utils/apiUtils';
-import { Globe, Server, Plus, Search, ArrowLeft, Database, ExternalLink, Edit, Trash2, CheckCircle, TrendingUp } from 'lucide-react';
+import { Globe, Server, Plus, Search, Database, ExternalLink, Edit, Trash2, CheckCircle, TrendingUp } from 'lucide-react';
 import Alert from '../ui/Alert';
 import Modal from '../ui/Modal';
 import Breadcrumbs from '../ui/Breadcrumbs';
@@ -25,7 +25,7 @@ const ProviderDetail = ({ currentUser }) => {
   const [datasets, setDatasets] = useState([]);
   const [filteredDatasets, setFilteredDatasets] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
+  const [, setIsLoading] = useState(true);
   const [isLoadingProvider, setIsLoadingProvider] = useState(true);
   const [error, setError] = useState('');
   const [editingDataset, setEditingDataset] = useState(null);
@@ -52,6 +52,7 @@ const ProviderDetail = ({ currentUser }) => {
   // Fetch provider data when component mounts or ID changes
   useEffect(() => {
     fetchProvider();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   // Fetch datasets and stats when provider is loaded
@@ -60,6 +61,7 @@ const ProviderDetail = ({ currentUser }) => {
       fetchDatasets();
       fetchProviderStats();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [provider]);
 
   useEffect(() => {

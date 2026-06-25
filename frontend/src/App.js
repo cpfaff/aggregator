@@ -3,7 +3,7 @@ import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-
 import ProviderDetail from './components/providers/ProviderDetail';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
-import { API_BASE, API_VERSION, apiRequest, initCsrfProtection } from './utils/apiUtils';
+import { initCsrfProtection } from './utils/apiUtils';
 import { useAuth } from './components/auth/AuthContext';
 import { applyTheme } from './styles/theme';
 import { addGlobalStyles } from './styles/globalStyles';
@@ -53,7 +53,7 @@ function AdminRoute({ children }) {
 }
 
 function App() {
-  const { token, currentUser, logout, sessionExpired, handleTokenExpiration } = useAuth();
+  const { token, currentUser, logout, sessionExpired } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [isDarkTheme, setIsDarkTheme] = useState(() => {

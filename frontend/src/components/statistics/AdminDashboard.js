@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { authStatsApi, publicStatsApi, statsUtils } from '../../utils/statisticsApi';
 import StatCard from '../ui/StatCard';
@@ -24,7 +24,7 @@ function AdminDashboard() {
   const [multiProviderBiologicalUnits, setMultiProviderBiologicalUnits] = useState({ data: [], providers: [] });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [lastUpdated, setLastUpdated] = useState(null);
+  const [, setLastUpdated] = useState(null);
   const [biologicalUnitsScaleType, setBiologicalUnitsScaleType] = useState('log'); // Default to log for better visibility
 
   // Breadcrumb navigation items
@@ -109,6 +109,7 @@ function AdminDashboard() {
     } finally {
       setIsLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [handleTokenExpiration]);
 
   const fetchTimeSeries = async () => {
