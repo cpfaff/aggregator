@@ -35,4 +35,38 @@ describe('ErrorBoundary', () => {
       expect(screen.getByText(/something went wrong/i)).toBeInTheDocument();
     });
   });
+
+  describe('FR-18 widget bulkheads (REQ-FE-EB-2)', () => {
+    // Spec-named verification. NOTE: this assertion is satisfied by the FR-04
+    // boundary already (any ErrorBoundary contains a child throw, so a sibling
+    // outside it always survives) — it is a conformance check, not the RED lock.
+    test('contains a throwing child to its own boundary while a sibling subtree keeps rendering', () => {
+      render(
+        <>
+          <ErrorBoundary>
+            <Boom />
+          </ErrorBoundary>
+          <div>sibling-ok</div>
+        </>,
+      );
+
+      expect(screen.getByText(/something went wrong/i)).toBeInTheDocument();
+      expect(screen.getByText('sibling-ok')).toBeInTheDocument();
+    });
+
+    // Genuine RED lock for FR-18's new code: the optional fallback prop that lets
+    // ErrorBoundary act as a per-widget bulkhead with its own affordance.
+    test('renders a provided fallback prop in place of the default when a child throws', () => {
+      render(
+        <ErrorBoundary fallback={<div>custom-widget-fallback</div>}>
+          <Boom />
+        </ErrorBoundary>,
+      );
+
+      // RED (pre-FR-18): ErrorBoundary ignores the fallback prop and renders the
+      // static default, so the custom fallback is absent and the default present.
+      expect(screen.getByText('custom-widget-fallback')).toBeInTheDocument();
+      expect(screen.queryByText(/something went wrong/i)).not.toBeInTheDocument();
+    });
+  });
 });

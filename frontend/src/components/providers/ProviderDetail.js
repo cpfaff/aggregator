@@ -10,6 +10,7 @@ import ActionMenu from '../ui/ActionMenu';
 import Skeleton from '../ui/Skeleton';
 import DatasetCard from '../datasets/DatasetCard';
 import DatasetForm from '../datasets/DatasetForm';
+import ErrorBoundary from '../ui/ErrorBoundary';
 import ProviderForm from './ProviderForm';
 import ConfirmModal from '../ui/ConfirmModal';
 import { ProviderStatistics } from '../statistics';
@@ -880,16 +881,32 @@ const ProviderDetail = ({ currentUser }) => {
             }}>
               {filteredDatasets.map(dataset => (
                 <div key={dataset.id}>
-                  <DatasetCard
-                    dataset={dataset}
-                    onEdit={(dataset) => {
-                      setEditingDataset(dataset);
-                      setAddingDataset(true);
-                    }}
-                    onDelete={(dataset) => {
-                      setConfirmDelete(dataset);
-                    }}
-                  />
+                  {/* Per-card bulkhead (FR-18): a throw in one card is contained
+                      to its panel; sibling cards and the page keep rendering. */}
+                  <ErrorBoundary
+                    fallback={
+                      <div style={{
+                        padding: '1.25rem',
+                        border: '1px solid var(--border)',
+                        borderRadius: '0.75rem',
+                        color: 'var(--text-light)',
+                        fontSize: '0.875rem',
+                      }}>
+                        This dataset card could not be displayed.
+                      </div>
+                    }
+                  >
+                    <DatasetCard
+                      dataset={dataset}
+                      onEdit={(dataset) => {
+                        setEditingDataset(dataset);
+                        setAddingDataset(true);
+                      }}
+                      onDelete={(dataset) => {
+                        setConfirmDelete(dataset);
+                      }}
+                    />
+                  </ErrorBoundary>
                 </div>
               ))}
             </div>

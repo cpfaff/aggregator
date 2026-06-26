@@ -38,7 +38,7 @@ Baseline (231c82c head be51e5e): 16 suites / 73 tests pass; eslint exit 0. CONFI
 - [x] FR-15 bounded jittered retriable-only retry (REQ-FE-CLIENT-8) — apiUtils.test.js ✓ 88 tests (also updated FR-01 timeout test to advance through the retry budget)
 - [x] FR-16 dashboard auto-refresh backoff (REQ-FE-POLL-3) — PublicStatsDashboard.test.js ✓ 89 tests
 - [x] FR-17 dashboard refresh guard+abort (REQ-FE-POLL-4) — PublicStatsDashboard.test.js ✓ 90 tests (fetchWithTimeout now composes a caller signal; publicStatsApi accepts options)
-- [ ] FR-18 route/widget error boundaries (REQ-FE-EB-2) — ErrorBoundary.test.js
+- [x] FR-18 route/widget error boundaries (REQ-FE-EB-2) — ErrorBoundary.test.js ✓ 92 tests (roadmap's sibling-survives test is a tautology vs the FR-04 boundary; kept it as the spec's named conformance check and added a genuine RED test for the new fallback prop)
 
 ## Notes / gotchas carried forward
 - apiRequest throws synchronously without a token → set `localStorage.token` + future `tokenExpiry` in beforeEach.
@@ -47,7 +47,9 @@ Baseline (231c82c head be51e5e): 16 suites / 73 tests pass; eslint exit 0. CONFI
 - Do NOT push or open MR — human stop-gate precedes any remote action.
 
 ## Resume pointer
-Next unstarted item: **FR-18** (route/widget error boundaries — LAST). (Update after each commit.)
+ALL ITEMS COMPLETE: FR-01..FR-18 landed as atomic commits. Full suite 92 tests green; eslint src/ exit 0.
 
-MILESTONE: MUST block FR-01..FR-09 COMPLETE — spec's MUST set (REQ-FE-CLIENT-1..4,
--EB-1, -POLL-1..2, -DEG-1..2) satisfied. Conformance gate reported. SHOULD block in progress.
+MILESTONE 1: MUST block FR-01..FR-09 — spec's MUST set satisfied (malformed verdict cleared).
+MILESTONE 2: SHOULD block FR-10..FR-18 — resilient-client seam completed; degradation items cleared.
+
+NEXT: human stop-gate before any remote action (no push/MR performed). Awaiting review.

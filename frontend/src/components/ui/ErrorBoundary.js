@@ -29,6 +29,11 @@ class ErrorBoundary extends React.Component {
 
   render() {
     if (this.state.hasError) {
+      // A per-widget bulkhead may supply its own fallback (FR-18, REQ-FE-EB-2);
+      // otherwise render the default top-level fallback.
+      if (this.props.fallback !== undefined) {
+        return this.props.fallback;
+      }
       return (
         <div
           role="alert"
