@@ -24,6 +24,7 @@ from app.core.config import settings
 from app.db.session import SessionLocal
 from app.models.archive_snapshot import ArchiveSnapshotModel
 from app.models.dataset import XmlArchiveModel
+from app.repositories.snapshot_repository import SnapshotRepository
 
 logger = logging.getLogger(__name__)
 
@@ -476,13 +477,11 @@ def collect_archive_snapshots():
         # This is more efficient than querying per archive in the loop.
         # Note: For very large archive collections (10k+), consider chunked processing
         # to reduce memory usage. Current scale (~100-200 archives) is fine.
-        latest_snapshot_subq = (
-            db.query(
-                ArchiveSnapshotModel.archive_id,
-                func.max(ArchiveSnapshotModel.recorded_at).label("max_recorded"),
-            )
-            .group_by(ArchiveSnapshotModel.archive_id)
-            .subquery()
+        # Composes the authoritative latest-snapshot-per-archive primitive
+        # (REQ-SH-AGG-1) across ALL archives (no isLatest restriction) so the
+        # metadata lookup covers every archive's most recent snapshot.
+        latest_snapshot_subq = SnapshotRepository(db).latest_snapshot_per_archive(
+            restrict_to_latest_archive=False
         )
 
         latest_snapshots = (
