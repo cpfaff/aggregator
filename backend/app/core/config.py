@@ -55,9 +55,11 @@ class Settings(BaseSettings):
     # only a memory→disk rollover threshold, not a cap, so a huge or hostile
     # archive would otherwise exhaust the stats worker's disk/memory (RH-04 /
     # REQ-OUT-1). The running byte counter is authoritative because an archive's
-    # Content-Length may be absent (chunked) or lie. 200 MiB comfortably exceeds
-    # any legitimate GFBio provider archive.
-    MAX_ARCHIVE_BYTES: int = 200 * 1024 * 1024
+    # Content-Length may be absent (chunked) or lie. Set to 30 GiB to admit the
+    # very large archives currently registered (which must process no matter
+    # what); this still bounds the worst-case worker disk/memory a single stream
+    # can consume rather than leaving it unbounded.
+    MAX_ARCHIVE_BYTES: int = 30 * 1024 * 1024 * 1024  # 30 GiB
     # Password policy
     MIN_PASSWORD_LENGTH: int = 8
     # Celery settings
