@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import LandingPage from '../LandingPage';
+import { publicStatsApi } from '../../../utils/statisticsApi';
 
 jest.mock('../../../hooks/useMediaQuery', () => ({
   useResponsiveGrid: () => ({ getGridColumns: () => 'repeat(3, 1fr)' }),
@@ -8,6 +9,7 @@ jest.mock('../../../hooks/useMediaQuery', () => ({
 
 afterEach(() => {
   delete global.fetch;
+  jest.restoreAllMocks();
 });
 
 describe('LandingPage', () => {
@@ -65,5 +67,34 @@ describe('LandingPage', () => {
     expect(
       screen.queryByText((content) => content.replace(/\D/g, '').includes('999999'))
     ).not.toBeInTheDocument();
+  });
+
+  test('fetches overview through the shared public client with an abort signal (REQ-SH-FE-1/2)', () => {
+    // REQ-SH-FE-1: the landing page consumes publicStatsApi.getOverview rather than
+    // a hardcoded endpoint path; REQ-SH-FE-2: it passes an effect-scoped abort signal.
+    const spy = jest
+      .spyOn(publicStatsApi, 'getOverview')
+      .mockReturnValue(new Promise(() => {})); // never resolves
+
+    render(<LandingPage />);
+
+    expect(spy).toHaveBeenCalledTimes(1);
+    const options = spy.mock.calls[0][0];
+    expect(options).toBeTruthy();
+    expect(options.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  test('aborts the in-flight overview request when the landing page unmounts (REQ-SH-FE-2)', () => {
+    let capturedSignal;
+    jest.spyOn(publicStatsApi, 'getOverview').mockImplementation((options) => {
+      capturedSignal = options.signal;
+      return new Promise(() => {}); // stays in flight
+    });
+
+    const { unmount } = render(<LandingPage />);
+    expect(capturedSignal.aborted).toBe(false);
+
+    unmount();
+    expect(capturedSignal.aborted).toBe(true);
   });
 });

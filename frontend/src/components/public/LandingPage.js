@@ -2,7 +2,7 @@ import React, { memo, useCallback, useState, useEffect } from 'react';
 import Button from '../ui/Button';
 import StatCard from '../ui/StatCard';
 import { useResponsiveGrid } from '../../hooks/useMediaQuery';
-import { fetchWithTimeout, parseErrorResponse } from '../../utils/apiUtils';
+import { publicStatsApi } from '../../utils/statisticsApi';
 
 const LandingPage = memo(({ onGetStarted, onLearnMore, onViewStatistics }) => {
   const { getGridColumns } = useResponsiveGrid();
@@ -43,29 +43,30 @@ const LandingPage = memo(({ onGetStarted, onLearnMore, onViewStatistics }) => {
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [statsError, setStatsError] = useState(false);
 
-  // Fetch live statistics on component mount (FR-13, REQ-FE-CLIENT-5):
-  // timeout-bounded, guards res.ok before reading the body (no liberal
-  // acceptance), and logs the failure instead of swallowing it silently.
+  // Fetch live statistics on mount through the shared public client
+  // (REQ-SH-FE-1): publicStatsApi.getOverview encapsulates the API_BASE
+  // composition and the timeout-bounded, ok-guarded, typed-error fetch
+  // (FR-13, REQ-FE-CLIENT-5). REQ-SH-FE-2: an effect-scoped AbortController
+  // cancels the in-flight request if the page unmounts mid-flight.
   useEffect(() => {
-    fetchWithTimeout('/api/v1/statistics/overview')
-      .then(async (res) => {
-        if (!res.ok) {
-          throw await parseErrorResponse(res);
-        }
-        return res.json();
-      })
+    const controller = new AbortController();
+    publicStatsApi
+      .getOverview({ signal: controller.signal })
       .then((data) => {
         setStats(data);
         setStatsError(false);
         setIsLoadingStats(false);
       })
       .catch((err) => {
+        // Ignore the abort our own unmount cleanup fires (REQ-SH-FE-2).
+        if (controller.signal.aborted) return;
         // Keep any last-known stats (stale-while-error, a credited strength);
         // surface the failure rather than swallowing it.
         console.error('Failed to load overview statistics:', err);
         setStatsError(true);
         setIsLoadingStats(false);
       });
+    return () => controller.abort();
   }, []);
 
   const containerStyle = {
