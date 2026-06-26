@@ -22,7 +22,7 @@ Baseline (231c82c head be51e5e): 16 suites / 73 tests pass; eslint exit 0. CONFI
 - [x] FR-04 top-level ErrorBoundary (REQ-FE-EB-1) — ErrorBoundary.test.js [NEW FILE] ✓ 77 tests
 - [x] FR-05 validation poller overlap guard (REQ-FE-POLL-1) — DatasetCard.test.js ✓ 78 tests
 - [x] FR-06 validation poll abort on unmount (REQ-FE-POLL-2) — DatasetCard.test.js ✓ 79 tests
-- [ ] FR-07 UserManagement 422 per-field message (REQ-FE-DEG-1) — UserManagement.test.js
+- [x] FR-07 UserManagement 422 per-field message (REQ-FE-DEG-1) — UserManagement.test.js ✓ 80 tests
 - [ ] FR-08 DatasetForm 422 per-field message (REQ-FE-DEG-2) — DatasetForm.test.js [NEW FILE]
 - [ ] FR-09 validate POST Idempotency-Key (REQ-FE-CLIENT-4) — DatasetCard.test.js
 
@@ -47,4 +47,4 @@ Baseline (231c82c head be51e5e): 16 suites / 73 tests pass; eslint exit 0. CONFI
 - Do NOT push or open MR — human stop-gate precedes any remote action.
 
 ## Resume pointer
-Next unstarted item: **FR-07**. (Update after each commit.)
+Next unstarted item: **FR-08**. (Update after each commit.)
