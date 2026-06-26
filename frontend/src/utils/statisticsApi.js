@@ -267,20 +267,6 @@ export const statsUtils = {
   },
 
   /**
-   * Format large numbers with appropriate units
-   * @param {number} value - Number to format
-   * @returns {string} Formatted number
-   */
-  formatLargeNumber: (value) => {
-    if (value >= 1000000) {
-      return `${(value / 1000000).toFixed(1)}M`;
-    } else if (value >= 1000) {
-      return `${(value / 1000).toFixed(1)}K`;
-    }
-    return value.toString();
-  },
-
-  /**
    * Get color for metric type
    * @param {string} metricType - Metric type
    * @returns {string} Color value

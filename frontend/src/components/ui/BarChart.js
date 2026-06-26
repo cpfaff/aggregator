@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatCompactNumber } from '../../utils/numberFormat';
 import {
   BarChart as RechartsBarChart,
   Bar,
@@ -236,14 +237,7 @@ function BarChart({
                   tickLine={false}
                   axisLine={false}
                   tick={{ fill: 'var(--text-light)' }}
-                  tickFormatter={(value) => {
-                    if (value >= 1000000) {
-                      return `${(value / 1000000).toFixed(1)}M`;
-                    } else if (value >= 1000) {
-                      return `${(value / 1000).toFixed(1)}K`;
-                    }
-                    return value;
-                  }}
+                  tickFormatter={(value) => formatCompactNumber(value)}
                 />
                 <YAxis
                   type="category"
@@ -280,14 +274,7 @@ function BarChart({
                   axisLine={false}
                   tick={{ fill: 'var(--text-light)' }}
                   domain={[0, 'dataMax + 1']}
-                  tickFormatter={(value) => {
-                    if (value >= 1000000) {
-                      return `${(value / 1000000).toFixed(1)}M`;
-                    } else if (value >= 1000) {
-                      return `${(value / 1000).toFixed(1)}K`;
-                    }
-                    return value;
-                  }}
+                  tickFormatter={(value) => formatCompactNumber(value)}
                 />
               </>
             )}

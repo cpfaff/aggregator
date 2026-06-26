@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { formatCompactNumber } from '../../utils/numberFormat';
 import {
   LineChart,
   Line,
@@ -333,10 +334,8 @@ function TimeSeriesChart({
                 if (integerOnly && !Number.isInteger(value)) {
                   return '';
                 }
-                if (value >= 1000000) {
-                  return `${(value / 1000000).toFixed(integerOnly ? 0 : 1)}M`;
-                } else if (value >= 1000) {
-                  return `${(value / 1000).toFixed(integerOnly ? 0 : 1)}K`;
+                if (value >= 1000) {
+                  return formatCompactNumber(value, { decimals: integerOnly ? 0 : 1 });
                 }
                 return integerOnly ? value.toString() : value;
               }}
