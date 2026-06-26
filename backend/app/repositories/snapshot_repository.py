@@ -329,7 +329,12 @@ class SnapshotRepository:
         archive_ids: list[int] | None = None,
         latest_only: bool = True,
     ) -> int:
-        """Get total unit count as of a specific date using forward-fill."""
+        """Get the as-of unit total for one point on the **collection timeline**.
+
+        Forward-fills over ``recorded_at``: the most recent snapshot per archive up
+        to ``target_date``. This is the collection-timeline (collected-at) total,
+        not a registration-timeline figure.
+        """
         latest_per_archive = self.db.query(
             ArchiveSnapshotModel.archive_id,
             func.max(ArchiveSnapshotModel.recorded_at).label("max_recorded"),
@@ -368,9 +373,12 @@ class SnapshotRepository:
         period: str = "monthly",
         cutoff_date: date | None = None,
     ) -> tuple[list[Any], int]:
-        """Get entity creation timeline with baseline count.
+        """Get the entity-creation series for the **registration timeline**.
 
-        Returns (rows, baseline_count) where rows are (period, count) tuples.
+        The registration timeline is keyed on ``model.created_at`` (entity
+        registration), distinct from the collection timeline (which is keyed on
+        snapshot ``recorded_at``). Returns (rows, baseline_count) where rows are
+        (period, count) tuples.
         """
         if cutoff_date is None:
             cutoff_date = date.today() - timedelta(days=360)
