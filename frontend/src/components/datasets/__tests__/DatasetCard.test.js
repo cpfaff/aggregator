@@ -122,8 +122,8 @@ describe('DatasetCard', () => {
   test('renders landing page link when URL is provided', () => {
     render(<DatasetCard dataset={mockDataset} onEdit={jest.fn()} onDelete={jest.fn()} />);
 
-    const link = screen.getByText('Landing page');
-    expect(link.closest('a')).toHaveAttribute('href', 'https://example.com/dataset/10');
+    const link = screen.getByRole('link', { name: /landing page/i });
+    expect(link).toHaveAttribute('href', 'https://example.com/dataset/10');
   });
 
   test('shows "No landing page" when URL is missing', () => {
