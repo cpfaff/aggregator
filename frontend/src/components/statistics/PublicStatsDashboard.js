@@ -32,6 +32,15 @@ function PublicStatsDashboard() {
   const countdownRef = useRef(null);
   const REFRESH_INTERVAL = 60000; // 60 seconds for public dashboard
 
+  // Auto-refresh backoff (FR-16, REQ-FE-POLL-3): after BACKOFF_THRESHOLD
+  // consecutive failures the effective cadence widens — the 60s interval keeps
+  // firing but the callback skips all but every BACKOFF_FACTOR-th tick, until a
+  // success resets the cadence to 60s.
+  const BACKOFF_THRESHOLD = 3;
+  const BACKOFF_FACTOR = 4;
+  const failuresRef = useRef(0);
+  const backoffTicksRef = useRef(0);
+
   const fetchAllStats = useCallback(async (isAutoRefresh = false) => {
     try {
       if (!isAutoRefresh) {
@@ -117,7 +126,13 @@ function PublicStatsDashboard() {
       // Update last refreshed timestamp
       setLastUpdated(new Date());
 
+      // Success: reset the failure backoff to the normal 60s cadence.
+      failuresRef.current = 0;
+      backoffTicksRef.current = 0;
+
     } catch (err) {
+      // Count consecutive failures so the auto-refresh cadence can widen.
+      failuresRef.current += 1;
       console.error('Error fetching public statistics:', err);
       // Only show prominent error for manual refresh, not auto-refresh
       if (!isAutoRefresh) {
@@ -151,9 +166,20 @@ function PublicStatsDashboard() {
 
     // Start auto-refresh interval
     intervalRef.current = setInterval(() => {
-      if (autoRefreshEnabled) {
-        fetchAllStats(true);
+      if (!autoRefreshEnabled) {
+        return;
       }
+      // Backoff: while in the failure state, skip ticks so the effective cadence
+      // widens (retry only every BACKOFF_FACTOR-th tick) instead of hammering a
+      // backend that is already down.
+      if (failuresRef.current >= BACKOFF_THRESHOLD) {
+        backoffTicksRef.current += 1;
+        if (backoffTicksRef.current < BACKOFF_FACTOR) {
+          return;
+        }
+        backoffTicksRef.current = 0; // due for a retry
+      }
+      fetchAllStats(true);
     }, REFRESH_INTERVAL);
   }, [autoRefreshEnabled, fetchAllStats]);
 
