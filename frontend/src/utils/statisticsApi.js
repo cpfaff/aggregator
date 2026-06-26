@@ -241,17 +241,6 @@ export const statsUtils = {
   },
 
   /**
-   * Calculate percentage change
-   * @param {number} current - Current value
-   * @param {number} previous - Previous value
-   * @returns {number} Percentage change
-   */
-  calculatePercentageChange: (current, previous) => {
-    if (previous === 0) return current > 0 ? 100 : 0;
-    return ((current - previous) / previous) * 100;
-  },
-
-  /**
    * Format large numbers with appropriate units
    * @param {number} value - Number to format
    * @returns {string} Formatted number

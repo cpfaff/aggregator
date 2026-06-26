@@ -17,4 +17,14 @@ describe('StatCard', () => {
     expect(screen.queryByTestId('skeleton')).not.toBeInTheDocument();
     expect(screen.getByText('42')).toBeInTheDocument();
   });
+
+  test('renders no percent-change indicator — the dead %-change badge is gone (REQ-SH-DEAD-3)', () => {
+    // previousValue was a prop no consumer ever passed, so its whole change-badge
+    // block was unreachable. Even if a caller passes it, no badge is rendered.
+    render(<StatCard title="Datasets" value={120} previousValue={100} />);
+
+    expect(screen.getByText('120')).toBeInTheDocument();
+    expect(screen.queryByText(/vs previous/i)).not.toBeInTheDocument();
+    expect(screen.queryByText('20.0%')).not.toBeInTheDocument();
+  });
 });

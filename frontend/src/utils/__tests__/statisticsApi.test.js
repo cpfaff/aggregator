@@ -1,4 +1,11 @@
-import { publicStatsApi } from '../statisticsApi';
+import { publicStatsApi, statsUtils } from '../statisticsApi';
+
+describe('statsUtils dead-surface removal (REQ-SH-DEAD-3)', () => {
+  test('the unreachable calculatePercentageChange helper is removed', () => {
+    // It had zero callers and was a dead percent-change computation (F-J).
+    expect(statsUtils.calculatePercentageChange).toBeUndefined();
+  });
+});
 
 describe('publicStatsApi resilient transport', () => {
   let originalFetch;
