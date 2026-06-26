@@ -450,4 +450,41 @@ describe('DatasetCard validation poller backpressure', () => {
       jest.useRealTimers();
     }
   });
+
+  // FR-06 (REQ-FE-POLL-2): a validation request in flight at unmount must carry
+  // an AbortSignal and be aborted, so no setState runs after unmount. (React 18
+  // emits no "state update on an unmounted component" warning, so the assertion
+  // is on the signal itself, not on console.error.)
+  test('unmounting mid-validation-fetch passes an abort signal and aborts the in-flight request', async () => {
+    // The validation-status GET never resolves -> it is in flight at unmount.
+    axios.get.mockImplementation((url) =>
+      typeof url === 'string' && url.includes('validation-status')
+        ? new Promise(() => {})
+        : Promise.resolve({ data: VALIDATION_PAYLOAD })
+    );
+
+    const { unmount } = render(
+      <DatasetCard dataset={mockDataset} onEdit={jest.fn()} onDelete={jest.fn()} />
+    );
+
+    // RED (pre-fix): the GET config is { headers, timeout } with no signal, so
+    // this objectContaining matcher fails.
+    await waitFor(() => {
+      expect(axios.get).toHaveBeenCalledWith(
+        expect.stringContaining('validation-status'),
+        expect.objectContaining({ signal: expect.any(AbortSignal) })
+      );
+    });
+
+    const validationCall = axios.get.mock.calls.find(
+      ([url]) => typeof url === 'string' && url.includes('validation-status')
+    );
+    const { signal } = validationCall[1];
+    expect(signal.aborted).toBe(false);
+
+    unmount();
+
+    // RED (pre-fix): the unmount cleanup clears only the interval, never aborting.
+    expect(signal.aborted).toBe(true);
+  });
 });

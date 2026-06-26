@@ -30,6 +30,9 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
   // request is in flight, so a 3s poll tick cannot stack a second request on a
   // slow/hung backend.
   const inFlightRef = useRef(false);
+  // Abort controller for the validation requests (FR-06, REQ-FE-POLL-2): aborted
+  // on unmount so an in-flight request is cancelled and no setState runs after.
+  const abortControllerRef = useRef(null);
 
   // Debug logging
   console.log('Dataset Provider ID:', dataset.provider_id);
@@ -65,13 +68,17 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
 
   // Fetch validation status and dataset stats when component mounts
   useEffect(() => {
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     if (dataset && dataset.id) {
       fetchValidationStatus();
       fetchDatasetStats();
     }
 
-    // Clear any existing polling interval when component unmounts
+    // On unmount: abort the in-flight validation request and clear the poll.
     return () => {
+      controller.abort();
       if (pollingInterval) {
         clearInterval(pollingInterval);
       }
@@ -106,8 +113,14 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
             Authorization: `Bearer ${token}`,
           },
           timeout: REQUEST_TIMEOUT_MS,
+          signal: abortControllerRef.current?.signal,
         }
       );
+
+      // Aborted mid-flight (unmount): do not touch state.
+      if (abortControllerRef.current?.signal?.aborted) {
+        return;
+      }
 
       const newStatus = response.data;
       setValidationStatus(newStatus);
@@ -121,6 +134,10 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
         setIsValidating(false);
       }
     } catch (error) {
+      // Aborted on unmount: nothing to update.
+      if (abortControllerRef.current?.signal?.aborted) {
+        return;
+      }
       console.error('Error fetching validation status:', error);
 
       // If there's an error, stop polling and validating
