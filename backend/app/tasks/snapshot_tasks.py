@@ -12,10 +12,13 @@ import tempfile
 import xml.etree.ElementTree as ET
 import zipfile
 from dataclasses import dataclass
+from datetime import date
 from typing import Any
 
 import requests
 from celery import shared_task
+from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 
 from app.core.config import settings
 from app.db.session import SessionLocal
@@ -344,6 +347,32 @@ def collect_single_archive_snapshot(archive_id: int, force: bool = False) -> dic
             logger.info(f"Archive {archive_id} is not latest, skipping snapshot")
             return {"status": "skipped", "message": "Archive is not latest version"}
 
+        # Idempotency guard (RH-06 / REQ-CEL-3): this is an acks_late task, so a
+        # crash / lost ack / visibility-timeout redelivery can run it again for
+        # the same archive on the same calendar day. At most one snapshot per
+        # archive per day is the business rule (the functional UNIQUE index on
+        # (archive_id, date(recorded_at)) encodes it). Short-circuit before doing
+        # any network work — mirroring the change-detection short-circuit below —
+        # if today's snapshot already exists. The DB unique index is the
+        # authoritative guard under concurrent workers (see the IntegrityError
+        # catch on the insert); this check is the optimisation.
+        today = date.today()
+        existing_today = (
+            db.query(ArchiveSnapshotModel)
+            .filter(
+                ArchiveSnapshotModel.archive_id == archive_id,
+                func.date(ArchiveSnapshotModel.recorded_at) == today,
+            )
+            .first()
+        )
+        if existing_today is not None:
+            logger.info(f"Archive {archive_id} already has a snapshot for {today}, skipping insert")
+            return {
+                "status": "already_recorded",
+                "archive_id": archive_id,
+                "message": "Snapshot already recorded for today",
+            }
+
         # Get the latest snapshot for this archive to check for changes
         latest_snapshot = (
             db.query(ArchiveSnapshotModel)
@@ -377,7 +406,22 @@ def collect_single_archive_snapshot(archive_id: int, force: bool = False) -> dic
                 http_last_modified=result.http_metadata.last_modified,
             )
             db.add(snapshot)
-            db.commit()
+            try:
+                db.commit()
+            except IntegrityError:
+                # Defense-in-depth (RH-06): a concurrent worker won the race for
+                # this archive/day and the functional UNIQUE index rejected the
+                # duplicate. Treat as already-recorded rather than an error.
+                db.rollback()
+                logger.info(
+                    f"Archive {archive_id} snapshot already recorded today "
+                    "(unique index), skipping duplicate"
+                )
+                return {
+                    "status": "already_recorded",
+                    "archive_id": archive_id,
+                    "message": "Snapshot already recorded for today",
+                }
 
             logger.info(f"Snapshot created for archive {archive_id}: {result.unit_count} units")
             return {"status": "success", "archive_id": archive_id, "unit_count": result.unit_count}
@@ -521,7 +565,54 @@ def collect_archive_snapshots():
                 error_count += 1
                 continue
 
-        db.commit()
+        # Idempotency guard (RH-06 / REQ-CEL-3): the selection above already
+        # excludes archives that have a snapshot for today, but a concurrent
+        # worker (or a redelivered run racing this one) may have inserted a
+        # same-archive/same-day row between selection and commit. The functional
+        # UNIQUE index on (archive_id, date(recorded_at)) is the authoritative
+        # guard; if it rejects the batch commit, fall back to per-row commits so
+        # one conflicting row is treated as already-recorded without losing the
+        # rest of the batch.
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            logger.warning(
+                "Batch snapshot commit hit a duplicate (archive/day unique index); "
+                "retrying inserts per-row to skip the conflicting snapshot"
+            )
+            today = date.today()
+            for archive in archives_to_process:
+                existing = (
+                    db.query(ArchiveSnapshotModel)
+                    .filter(
+                        ArchiveSnapshotModel.archive_id == archive.id,
+                        func.date(ArchiveSnapshotModel.recorded_at) == today,
+                    )
+                    .first()
+                )
+                if existing is not None:
+                    continue
+                prev_etag, prev_last_modified, prev_unit_count = snapshot_metadata_map.get(
+                    archive.id, (None, None, None)
+                )
+                if prev_unit_count is None:
+                    continue
+                snapshot = ArchiveSnapshotModel(
+                    archive_id=archive.id,
+                    unit_count=prev_unit_count,
+                    http_etag=prev_etag,
+                    http_last_modified=prev_last_modified,
+                )
+                db.add(snapshot)
+                try:
+                    db.commit()
+                except IntegrityError:
+                    db.rollback()
+                    logger.info(
+                        f"Archive {archive.id} snapshot already recorded today "
+                        "(unique index), skipping duplicate"
+                    )
         logger.info(
             f"Snapshot collection complete: {success_count} downloaded, "
             f"{unchanged_count} unchanged (reused previous data), {error_count} failed, "
