@@ -54,6 +54,16 @@ class TestCeleryConfiguration:
         for module in expected_modules:
             assert module in include, f"Module '{module}' not in include list: {include}"
 
+    def test_visibility_timeout_exceeds_longest_task_limit(self):
+        """Broker visibility timeout must exceed the longest task hard limit.
+
+        validate_archive (app/tasks/validator_tasks.py) sets
+        task_time_limit=7500. With task_acks_late=True, a Redis broker
+        visibility_timeout below that hard limit causes a still-running
+        long task to be redelivered and re-run (RH-05, REQ-CEL-1).
+        """
+        assert celery_app.conf.broker_transport_options.get("visibility_timeout", 3600) > 7500
+
     def test_default_queue_still_works(self):
         """Test that tasks without explicit routing can still use default queue."""
         routes = celery_app.conf.task_routes

@@ -51,6 +51,10 @@ celery_app.conf.update(
     task_track_started=True,
     worker_prefetch_multiplier=1,  # Good practice for fairness in task processing
     task_acks_late=True,  # Only acknowledge tasks after they are completed
+    # Broker visibility timeout MUST exceed the longest task hard limit, else a
+    # still-running long task is redelivered and re-run. validate_archive's
+    # task_time_limit is 7500s; 8100 keeps a margin above it. Keep these in sync.
+    broker_transport_options={"visibility_timeout": 8100},
     worker_concurrency=stats_concurrency,  # Apply calculated concurrency
     # Dead Letter Queue configuration
     task_reject_on_worker_lost=True,  # Reject tasks when worker is lost
