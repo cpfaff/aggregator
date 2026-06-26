@@ -34,6 +34,11 @@ class Settings(BaseSettings):
     DB_POOL_SIZE: int = 10
     DB_MAX_OVERFLOW: int = 20
     DB_POOL_RECYCLE: int = 1800
+    # Server-side query deadlines (milliseconds). A slow or lock-blocked query is
+    # aborted by PostgreSQL instead of pinning a pooled connection until the pool
+    # is exhausted (RH-01 / REQ-PG-1). Applied via connect_args on both engines.
+    DB_STATEMENT_TIMEOUT_MS: int = 5000
+    DB_LOCK_TIMEOUT_MS: int = 3000
     # Password policy
     MIN_PASSWORD_LENGTH: int = 8
     # Celery settings
