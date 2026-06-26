@@ -37,7 +37,7 @@ Baseline (231c82c head be51e5e): 16 suites / 73 tests pass; eslint exit 0. CONFI
 - [x] FR-14 fail closed on CSRF token failure (REQ-FE-CLIENT-7) — apiUtils.test.js ✓ 87 tests
 - [x] FR-15 bounded jittered retriable-only retry (REQ-FE-CLIENT-8) — apiUtils.test.js ✓ 88 tests (also updated FR-01 timeout test to advance through the retry budget)
 - [x] FR-16 dashboard auto-refresh backoff (REQ-FE-POLL-3) — PublicStatsDashboard.test.js ✓ 89 tests
-- [ ] FR-17 dashboard refresh guard+abort (REQ-FE-POLL-4) — PublicStatsDashboard.test.js
+- [x] FR-17 dashboard refresh guard+abort (REQ-FE-POLL-4) — PublicStatsDashboard.test.js ✓ 90 tests (fetchWithTimeout now composes a caller signal; publicStatsApi accepts options)
 - [ ] FR-18 route/widget error boundaries (REQ-FE-EB-2) — ErrorBoundary.test.js
 
 ## Notes / gotchas carried forward
@@ -47,7 +47,7 @@ Baseline (231c82c head be51e5e): 16 suites / 73 tests pass; eslint exit 0. CONFI
 - Do NOT push or open MR — human stop-gate precedes any remote action.
 
 ## Resume pointer
-Next unstarted item: **FR-17** (dashboard refresh guard+abort). (Update after each commit.)
+Next unstarted item: **FR-18** (route/widget error boundaries — LAST). (Update after each commit.)
 
 MILESTONE: MUST block FR-01..FR-09 COMPLETE — spec's MUST set (REQ-FE-CLIENT-1..4,
 -EB-1, -POLL-1..2, -DEG-1..2) satisfied. Conformance gate reported. SHOULD block in progress.

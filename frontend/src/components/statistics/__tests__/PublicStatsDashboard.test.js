@@ -105,4 +105,41 @@ describe('PublicStatsDashboard auto-refresh backoff', () => {
       warnSpy.mockRestore();
     }
   });
+
+  // FR-17 (REQ-FE-POLL-4): the stats requests must carry an AbortSignal and be
+  // aborted on unmount. (React 18 emits no unmount warning, so assert on the
+  // signal, not on console.error.)
+  test('passes an abort signal to the stats requests and aborts them on unmount', async () => {
+    publicStatsApi.getOverview.mockResolvedValue({
+      total_providers: 1,
+      total_datacenters: 1,
+      total_datasets: 1,
+    });
+    publicStatsApi.getProviders.mockResolvedValue({ datacenters: [] });
+    publicStatsApi.getTimeline.mockResolvedValue({ datasets_timeline: [] });
+
+    const { unmount } = render(<PublicStatsDashboard />);
+
+    await waitFor(() => expect(publicStatsApi.getOverview).toHaveBeenCalled());
+
+    // RED (pre-fix): the three calls take no signal argument, so these matchers fail.
+    expect(publicStatsApi.getOverview).toHaveBeenCalledWith(
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
+    expect(publicStatsApi.getProviders).toHaveBeenCalledWith(
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
+    expect(publicStatsApi.getTimeline).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
+
+    const { signal } = publicStatsApi.getOverview.mock.calls[0][0];
+    expect(signal.aborted).toBe(false);
+
+    unmount();
+
+    // RED (pre-fix): stopAutoRefresh only clears timers, never aborting.
+    expect(signal.aborted).toBe(true);
+  });
 });

@@ -12,8 +12,8 @@ export const publicStatsApi = {
    * Get public registry overview
    * @returns {Promise<Object>} Overview statistics
    */
-  getOverview: async () => {
-    const response = await fetchWithTimeout(`${API_BASE}${API_VERSION}/statistics/overview`);
+  getOverview: async (options = {}) => {
+    const response = await fetchWithTimeout(`${API_BASE}${API_VERSION}/statistics/overview`, options);
     if (!response.ok) {
       throw await parseErrorResponse(response);
     }
@@ -25,12 +25,12 @@ export const publicStatsApi = {
    * @param {Object} params - Timeline parameters
    * @returns {Promise<Object>} Timeline data
    */
-  getTimeline: async (params = {}) => {
+  getTimeline: async (params = {}, options = {}) => {
     const queryParams = new URLSearchParams({
       period: params.period || 'daily',
       months: params.months || 1
     });
-    const response = await fetchWithTimeout(`${API_BASE}${API_VERSION}/statistics/timeline?${queryParams}`);
+    const response = await fetchWithTimeout(`${API_BASE}${API_VERSION}/statistics/timeline?${queryParams}`, options);
     if (!response.ok) {
       throw await parseErrorResponse(response);
     }
@@ -41,8 +41,8 @@ export const publicStatsApi = {
    * Get provider statistics
    * @returns {Promise<Array>} Provider statistics
    */
-  getProviders: async () => {
-    const response = await fetchWithTimeout(`${API_BASE}${API_VERSION}/statistics/providers`);
+  getProviders: async (options = {}) => {
+    const response = await fetchWithTimeout(`${API_BASE}${API_VERSION}/statistics/providers`, options);
     if (!response.ok) {
       throw await parseErrorResponse(response);
     }

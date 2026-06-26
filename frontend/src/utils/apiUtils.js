@@ -28,6 +28,15 @@ export const REQUEST_TIMEOUT_MS = 15000;
  */
 export const fetchWithTimeout = async (url, options = {}) => {
   const controller = new AbortController();
+  // Compose a caller-supplied signal (e.g. an unmount AbortController) with our
+  // timeout controller, so either source aborts the request.
+  if (options.signal) {
+    if (options.signal.aborted) {
+      controller.abort();
+    } else {
+      options.signal.addEventListener('abort', () => controller.abort(), { once: true });
+    }
+  }
   let timer;
   const timeoutPromise = new Promise((_resolve, reject) => {
     timer = setTimeout(() => {

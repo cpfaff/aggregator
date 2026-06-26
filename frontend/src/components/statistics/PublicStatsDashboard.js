@@ -40,8 +40,17 @@ function PublicStatsDashboard() {
   const BACKOFF_FACTOR = 4;
   const failuresRef = useRef(0);
   const backoffTicksRef = useRef(0);
+  // Overlap guard + abort (FR-17, REQ-FE-POLL-4): skip a tick while a batch is in
+  // flight, and abort the in-flight batch on unmount.
+  const isFetchingRef = useRef(false);
+  const abortControllerRef = useRef(null);
 
   const fetchAllStats = useCallback(async (isAutoRefresh = false) => {
+    // Overlap guard: skip this tick if a batch is still in flight.
+    if (isFetchingRef.current) {
+      return;
+    }
+    isFetchingRef.current = true;
     try {
       if (!isAutoRefresh) {
         setIsLoading(true);
@@ -50,11 +59,17 @@ function PublicStatsDashboard() {
       }
       setError('');
 
+      const signal = abortControllerRef.current?.signal;
       const [overview, providers, timeline] = await Promise.all([
-        publicStatsApi.getOverview(),
-        publicStatsApi.getProviders(),
-        publicStatsApi.getTimeline({ period: 'monthly', months: 12 })
+        publicStatsApi.getOverview({ signal }),
+        publicStatsApi.getProviders({ signal }),
+        publicStatsApi.getTimeline({ period: 'monthly', months: 12 }, { signal })
       ]);
+
+      // Aborted mid-flight (unmount): do not touch state.
+      if (signal?.aborted) {
+        return;
+      }
 
       setOverviewStats(overview);
 
@@ -131,6 +146,10 @@ function PublicStatsDashboard() {
       backoffTicksRef.current = 0;
 
     } catch (err) {
+      // Aborted on unmount: nothing to update.
+      if (abortControllerRef.current?.signal?.aborted) {
+        return;
+      }
       // Count consecutive failures so the auto-refresh cadence can widen.
       failuresRef.current += 1;
       console.error('Error fetching public statistics:', err);
@@ -142,8 +161,11 @@ function PublicStatsDashboard() {
         console.warn('Auto-refresh failed, will retry on next interval:', err.message);
       }
     } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
+      isFetchingRef.current = false;
+      if (!abortControllerRef.current?.signal?.aborted) {
+        setIsLoading(false);
+        setIsRefreshing(false);
+      }
     }
   }, []);
 
@@ -195,12 +217,17 @@ function PublicStatsDashboard() {
   }, []);
 
   useEffect(() => {
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     fetchAllStats();
     if (autoRefreshEnabled) {
       startAutoRefresh();
     }
 
     return () => {
+      // Abort the in-flight batch and stop the timers on unmount.
+      controller.abort();
       stopAutoRefresh();
     };
   }, [fetchAllStats, autoRefreshEnabled, startAutoRefresh, stopAutoRefresh]);
