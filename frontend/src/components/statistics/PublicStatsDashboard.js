@@ -51,6 +51,10 @@ function PublicStatsDashboard() {
       return;
     }
     isFetchingRef.current = true;
+    // Capture THIS batch's signal up front, so the catch/finally test the
+    // controller that owns this batch — not a newer one a remount installed into
+    // the ref (which would mis-attribute this batch's abort as a real failure).
+    const signal = abortControllerRef.current?.signal;
     try {
       if (!isAutoRefresh) {
         setIsLoading(true);
@@ -59,7 +63,6 @@ function PublicStatsDashboard() {
       }
       setError('');
 
-      const signal = abortControllerRef.current?.signal;
       const [overview, providers, timeline] = await Promise.all([
         publicStatsApi.getOverview({ signal }),
         publicStatsApi.getProviders({ signal }),
@@ -146,8 +149,9 @@ function PublicStatsDashboard() {
       backoffTicksRef.current = 0;
 
     } catch (err) {
-      // Aborted on unmount: nothing to update.
-      if (abortControllerRef.current?.signal?.aborted) {
+      // This batch was aborted (unmount/remount): not a real failure — bail
+      // without surfacing an error or counting it against the backoff.
+      if (signal?.aborted) {
         return;
       }
       // Count consecutive failures so the auto-refresh cadence can widen.
@@ -161,8 +165,10 @@ function PublicStatsDashboard() {
         console.warn('Auto-refresh failed, will retry on next interval:', err.message);
       }
     } finally {
-      isFetchingRef.current = false;
-      if (!abortControllerRef.current?.signal?.aborted) {
+      // Only this batch's owner releases the loading flags / in-flight guard. A
+      // batch cancelled by unmount/remount leaves them to whoever owns them now.
+      if (!signal?.aborted) {
+        isFetchingRef.current = false;
         setIsLoading(false);
         setIsRefreshing(false);
       }
@@ -226,8 +232,11 @@ function PublicStatsDashboard() {
     }
 
     return () => {
-      // Abort the in-flight batch and stop the timers on unmount.
+      // Abort the in-flight batch and stop the timers on unmount. Release the
+      // overlap guard too, so a remount (e.g. React StrictMode's dev
+      // double-mount) is not blocked by the aborted batch's lingering flag.
       controller.abort();
+      isFetchingRef.current = false;
       stopAutoRefresh();
     };
   }, [fetchAllStats, autoRefreshEnabled, startAutoRefresh, stopAutoRefresh]);

@@ -142,4 +142,63 @@ describe('PublicStatsDashboard auto-refresh backoff', () => {
     // RED (pre-fix): stopAutoRefresh only clears timers, never aborting.
     expect(signal.aborted).toBe(true);
   });
+
+  // Regression: the FR-17 abort handling surfaced "signal is aborted without
+  // reason" on the public stats page under React StrictMode's dev double-mount.
+  // The discarded first mount's request is aborted, but the catch checked the
+  // CURRENT controller ref (the surviving mount's, not aborted) and the overlap
+  // guard persisted across the remount, so the page errored instead of loading.
+  test('loads under StrictMode remount and does not surface the discarded mount abort as an error', async () => {
+    // Abort-aware mocks: reject with an AbortError when their signal aborts, else
+    // resolve — mirroring real fetch/AbortController behaviour (the plain
+    // mockResolvedValue mocks cannot reproduce the abort path).
+    const abortAware = (value) =>
+      jest.fn(
+        (options = {}) =>
+          new Promise((resolve, reject) => {
+            const { signal } = options;
+            const fail = () => {
+              const e = new Error('signal is aborted without reason');
+              e.name = 'AbortError';
+              reject(e);
+            };
+            if (signal?.aborted) {
+              fail();
+              return;
+            }
+            if (signal) {
+              signal.addEventListener('abort', fail, { once: true });
+            }
+            Promise.resolve().then(() => {
+              if (!signal?.aborted) {
+                resolve(value);
+              }
+            });
+          })
+      );
+
+    publicStatsApi.getOverview.mockImplementation(
+      abortAware({ total_providers: 5, total_datacenters: 3, total_datasets: 42 })
+    );
+    publicStatsApi.getProviders.mockImplementation(abortAware({ datacenters: [] }));
+    publicStatsApi.getTimeline.mockImplementation(abortAware({ datasets_timeline: [] }));
+
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      render(
+        <React.StrictMode>
+          <PublicStatsDashboard />
+        </React.StrictMode>
+      );
+
+      // The surviving (second) mount loads stats: the skeleton clears.
+      await waitFor(() => expect(screen.queryByTestId('skeleton')).not.toBeInTheDocument());
+
+      // RED (pre-fix): the discarded mount's abort is mis-attributed to the live
+      // controller and shown as a banner.
+      expect(screen.queryByText(/Failed to load statistics/i)).not.toBeInTheDocument();
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
 });
