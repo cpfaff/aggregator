@@ -46,6 +46,14 @@ class Settings(BaseSettings):
     # (RH-02 / REQ-ROUTE-1). A search page submits a few hundred short URNs, far
     # below 256 KiB, so this never clips a real request.
     MAX_REQUEST_BODY_BYTES: int = 256 * 1024
+    # Maximum bytes streamed from a provider archive download before the transfer
+    # is aborted with a typed XMLParsingError. SpooledTemporaryFile(max_size=…) is
+    # only a memory→disk rollover threshold, not a cap, so a huge or hostile
+    # archive would otherwise exhaust the stats worker's disk/memory (RH-04 /
+    # REQ-OUT-1). The running byte counter is authoritative because an archive's
+    # Content-Length may be absent (chunked) or lie. 200 MiB comfortably exceeds
+    # any legitimate GFBio provider archive.
+    MAX_ARCHIVE_BYTES: int = 200 * 1024 * 1024
     # Password policy
     MIN_PASSWORD_LENGTH: int = 8
     # Celery settings

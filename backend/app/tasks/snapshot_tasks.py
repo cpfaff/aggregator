@@ -17,6 +17,7 @@ from typing import Any
 import requests
 from celery import shared_task
 
+from app.core.config import settings
 from app.db.session import SessionLocal
 from app.models.archive_snapshot import ArchiveSnapshotModel
 from app.models.dataset import XmlArchiveModel
@@ -160,6 +161,24 @@ def parse_archive_xml(xml_url: str) -> ArchiveParseResult:
         response = requests.get(xml_url, timeout=30, stream=True)
         response.raise_for_status()
 
+        # Bound the download by a byte budget so a huge or hostile archive cannot
+        # exhaust the worker's disk/memory (RH-04 / REQ-OUT-1). The running
+        # counter below is authoritative; this Content-Length check is only an
+        # early-out optimisation — the header may be absent (chunked) or lie.
+        max_archive_bytes = settings.MAX_ARCHIVE_BYTES
+        declared_length = response.headers.get("Content-Length")
+        if declared_length is not None:
+            try:
+                if int(declared_length) > max_archive_bytes:
+                    raise XMLParsingError(
+                        f"Archive Content-Length {declared_length} exceeds "
+                        f"{max_archive_bytes} bytes"
+                    )
+            except ValueError:
+                # A non-integer Content-Length is ignored; the byte counter still
+                # enforces the cap below.
+                pass
+
         # Capture HTTP headers for change detection
         http_metadata = HttpMetadata(
             etag=response.headers.get("etag"),
@@ -170,8 +189,12 @@ def parse_archive_xml(xml_url: str) -> ArchiveParseResult:
 
         # Use SpooledTemporaryFile: small files in memory, large on disk
         with tempfile.SpooledTemporaryFile(max_size=10 * 1024 * 1024) as temp_file:
+            written = 0
             for chunk in response.iter_content(chunk_size=8192):
                 if chunk:
+                    written += len(chunk)
+                    if written > max_archive_bytes:
+                        raise XMLParsingError(f"Archive exceeds {max_archive_bytes} bytes")
                     temp_file.write(chunk)
 
             temp_file.seek(0)
@@ -216,6 +239,10 @@ def parse_archive_xml(xml_url: str) -> ArchiveParseResult:
             http_metadata=http_metadata,
         )
 
+    except XMLParsingError:
+        # Already a typed parse/budget failure — propagate it verbatim rather than
+        # re-wrapping it as an "Unexpected error" below.
+        raise
     except requests.RequestException as e:
         raise XMLParsingError(f"Download failed: {e}") from e
     except ET.ParseError as e:
