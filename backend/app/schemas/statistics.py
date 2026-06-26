@@ -52,7 +52,12 @@ class ProviderStats(BaseModel):
     xml_archive_count: int = Field(..., description="Number of XML archives")
     validation_success_rate: float | None = Field(None, description="Validation success rate")
     last_activity: datetime | None = Field(None, description="Last activity timestamp")
-    activity_score: float | None = Field(None, description="Provider activity score")
+    activity_score: float | None = Field(
+        None,
+        deprecated=True,
+        description="Deprecated (REQ-SH-DEAD-2): no longer tracked, always null. "
+        "Retained for response-shape stability; do not rely on this field.",
+    )
 
 
 class DatasetStats(BaseModel):
@@ -74,7 +79,12 @@ class QualityMetrics(BaseModel):
     successful_validations: int = Field(..., description="Successful validations")
     failed_validations: int = Field(..., description="Failed validations")
     success_rate: float = Field(..., description="Overall success rate percentage")
-    abcd_compliance_rate: float | None = Field(None, description="ABCD schema compliance rate")
+    abcd_compliance_rate: float | None = Field(
+        None,
+        deprecated=True,
+        description="Deprecated (REQ-SH-DEAD-2): no longer tracked, always null. "
+        "Retained for response-shape stability; do not rely on this field.",
+    )
     average_processing_time: float | None = Field(
         None, description="Average processing time in seconds"
     )

@@ -35,10 +35,14 @@ celery_app = Celery(
 celery_app.conf.task_routes = {
     # Validation tasks go to heavy_validation queue
     "validator.validate_archive": {"queue": "heavy_validation"},
-    # Statistics tasks go to light_tasks queue
-    "statistics.*": {"queue": "light_tasks"},
     # Tasks without explicit queue specification will use default queue
-    # maintaining backward compatibility
+    # maintaining backward compatibility.
+    #
+    # NOTE: there is intentionally NO "statistics.*" route here (REQ-SH-DEAD-1 / F-F).
+    # It was dead config left from the removed statistics_tasks module — no task uses
+    # a "statistics." namespace. The real snapshot tasks are
+    # snapshots.collect_archive_snapshots / .collect_single_archive_snapshot, already
+    # pinned to light_tasks at the @shared_task decorator.
 }
 
 # Optional configuration

@@ -15,11 +15,22 @@ class TestCeleryConfiguration:
         assert "validator.validate_archive" in routes
         assert routes["validator.validate_archive"]["queue"] == "heavy_validation"
 
-    def test_statistics_queue_routing(self):
-        """Test that statistics tasks are routed to light_tasks queue."""
+    def test_snapshot_tasks_routed_to_light_tasks(self):
+        """Snapshot tasks are pinned to light_tasks at the @shared_task decorator.
+
+        The stale ``statistics.*`` route was removed (REQ-SH-DEAD-1 / F-F): no task
+        used that namespace. Queue assignment for the real snapshot tasks lives on
+        the task itself, not in ``task_routes``.
+        """
+        from app.tasks.snapshot_tasks import (
+            collect_archive_snapshots,
+            collect_single_archive_snapshot,
+        )
+
         routes = celery_app.conf.task_routes
-        assert "statistics.*" in routes
-        assert routes["statistics.*"]["queue"] == "light_tasks"
+        assert "statistics.*" not in routes
+        assert collect_archive_snapshots.queue == "light_tasks"
+        assert collect_single_archive_snapshot.queue == "light_tasks"
 
     def test_backward_compatibility_preserved(self):
         """Test that existing Celery configuration is preserved."""
@@ -68,9 +79,10 @@ class TestCeleryConfiguration:
         """Test that tasks without explicit routing can still use default queue."""
         routes = celery_app.conf.task_routes
 
-        # The configuration should only have specific routes
-        # Tasks not in the routes will use the default queue
-        assert len(routes) == 2  # Only our two routing rules
+        # The configuration should only have specific routes. After removing the
+        # stale statistics.* glob (REQ-SH-DEAD-1), exactly one explicit route
+        # remains; tasks not in the routes use the default queue.
+        assert len(routes) == 1  # only the validator.validate_archive routing rule
 
         # Verify that we're not blocking other tasks
         assert "some.other.task" not in routes
