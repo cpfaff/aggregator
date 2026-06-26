@@ -5,11 +5,13 @@ status codes, and error handling. Service logic is tested separately
 in tests/services/test_snapshot_service.py.
 """
 
+import uuid
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
+from starlette.requests import Request
 
 from app.api.v1.endpoints.snapshots import (
     _no_cache_headers,
@@ -27,6 +29,26 @@ from app.api.v1.endpoints.snapshots import (
     get_registry_health,
     trigger_snapshot_collection,
 )
+
+
+def _make_request() -> Request:
+    """Build a minimal real ``Request`` so the ``@limiter.limit`` decorator runs.
+
+    The public ``/statistics/*`` reads now carry a per-IP rate limit; slowapi reads
+    ``request.client`` before the handler body. A unique client host per call gives
+    each invocation its own bucket, so repeated calls in the suite never exhaust
+    ``PUBLIC_STATS_RATE_LIMIT`` (same idiom as ``tests/test_harvest_endpoint.py``).
+    """
+    scope = {
+        "type": "http",
+        "method": "GET",
+        "path": "/v1/statistics",
+        "headers": [],
+        "query_string": b"",
+        "client": (f"test-{uuid.uuid4()}", 12345),
+    }
+    return Request(scope)
+
 
 # ---------------------------------------------------------------------------
 # Helper: _no_cache_headers
@@ -78,7 +100,7 @@ class TestGetOverview:
         mock_user = MagicMock()
         mock_user.is_global_admin = False
 
-        result = await get_overview(db=mock_db, current_user=mock_user)
+        result = await get_overview(request=_make_request(), db=mock_db, current_user=mock_user)
 
         assert result.total_datasets == 10
         assert result.total_providers == 5
@@ -93,7 +115,7 @@ class TestGetOverview:
         mock_service.get_overview_stats.side_effect = RuntimeError("DB down")
 
         with pytest.raises(HTTPException) as exc_info:
-            await get_overview(db=MagicMock(), current_user=None)
+            await get_overview(request=_make_request(), db=MagicMock(), current_user=None)
 
         assert exc_info.value.status_code == 500
 
@@ -112,7 +134,9 @@ class TestGetOverview:
             "last_updated": datetime(2024, 1, 1),
         }
 
-        result = await get_overview(db=MagicMock(), current_user=None, response=None)
+        result = await get_overview(
+            request=_make_request(), db=MagicMock(), current_user=None, response=None
+        )
         assert result.total_datasets == 0
 
 
@@ -134,7 +158,9 @@ class TestGetQualityMetrics:
             "average_processing_time": 1.5,
         }
 
-        result = await get_quality_metrics(db=MagicMock(), current_user=None, days=30)
+        result = await get_quality_metrics(
+            request=_make_request(), db=MagicMock(), current_user=None, days=30
+        )
 
         assert result.total_validations == 100
         assert result.success_rate == 80.0
@@ -148,7 +174,9 @@ class TestGetQualityMetrics:
         mock_service.get_quality_metrics.side_effect = RuntimeError("fail")
 
         with pytest.raises(HTTPException) as exc_info:
-            await get_quality_metrics(db=MagicMock(), current_user=None, days=30)
+            await get_quality_metrics(
+                request=_make_request(), db=MagicMock(), current_user=None, days=30
+            )
 
         assert exc_info.value.status_code == 500
 
@@ -169,7 +197,7 @@ class TestGetGrowthTimeline:
         }
 
         result = await get_growth_timeline(
-            db=MagicMock(), current_user=None, period="monthly", months=12
+            request=_make_request(), db=MagicMock(), current_user=None, period="monthly", months=12
         )
 
         assert result.datasets_timeline == []
@@ -186,7 +214,11 @@ class TestGetGrowthTimeline:
 
         with pytest.raises(HTTPException) as exc_info:
             await get_growth_timeline(
-                db=MagicMock(), current_user=None, period="monthly", months=12
+                request=_make_request(),
+                db=MagicMock(),
+                current_user=None,
+                period="monthly",
+                months=12,
             )
 
         assert exc_info.value.status_code == 500
@@ -207,7 +239,9 @@ class TestGetProviderListStats:
             "datacenters": [],
         }
 
-        result = await get_provider_list_stats(db=MagicMock(), current_user=None, limit=20)
+        result = await get_provider_list_stats(
+            request=_make_request(), db=MagicMock(), current_user=None, limit=20
+        )
 
         assert result["total_count"] == 0
 
@@ -220,7 +254,9 @@ class TestGetProviderListStats:
         mock_service.get_provider_list_stats.side_effect = RuntimeError("fail")
 
         with pytest.raises(HTTPException) as exc_info:
-            await get_provider_list_stats(db=MagicMock(), current_user=None, limit=20)
+            await get_provider_list_stats(
+                request=_make_request(), db=MagicMock(), current_user=None, limit=20
+            )
 
         assert exc_info.value.status_code == 500
 
@@ -240,7 +276,7 @@ class TestGetRecentDatasetActivity:
         }
 
         result = await get_recent_dataset_activity(
-            db=MagicMock(), current_user=None, limit=10, days=30
+            request=_make_request(), db=MagicMock(), current_user=None, limit=10, days=30
         )
 
         assert result["total_new_datasets"] == 0
@@ -254,7 +290,9 @@ class TestGetRecentDatasetActivity:
         mock_service.get_recent_activity.side_effect = RuntimeError("fail")
 
         with pytest.raises(HTTPException) as exc_info:
-            await get_recent_dataset_activity(db=MagicMock(), current_user=None, limit=10, days=30)
+            await get_recent_dataset_activity(
+                request=_make_request(), db=MagicMock(), current_user=None, limit=10, days=30
+            )
 
         assert exc_info.value.status_code == 500
 
@@ -276,7 +314,9 @@ class TestGetRegistryHealth:
             "status": "healthy",
         }
 
-        result = await get_registry_health(db=MagicMock(), current_user=None)
+        result = await get_registry_health(
+            request=_make_request(), db=MagicMock(), current_user=None
+        )
 
         assert result["status"] == "healthy"
         assert result["health_score"] == 100
@@ -290,7 +330,7 @@ class TestGetRegistryHealth:
         mock_service.get_health_status.side_effect = RuntimeError("fail")
 
         with pytest.raises(HTTPException) as exc_info:
-            await get_registry_health(db=MagicMock(), current_user=None)
+            await get_registry_health(request=_make_request(), db=MagicMock(), current_user=None)
 
         assert exc_info.value.status_code == 500
 

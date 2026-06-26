@@ -11,9 +11,11 @@ import logging
 from datetime import date
 from typing import Annotated, Any
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, Response
 from sqlalchemy.orm import Session
 
+from app.api.deps import limiter
+from app.core.config import settings
 from app.db.session import get_sync_db
 from app.models.user import UserModel
 from app.schemas.statistics import (
@@ -48,7 +50,9 @@ def _no_cache_headers(response: Response) -> None:
 
 
 @router.get("/overview", response_model=OverviewStats, summary="Registry overview statistics")
+@limiter.limit(settings.PUBLIC_STATS_RATE_LIMIT)
 async def get_overview(
+    request: Request,
     db: Annotated[Session, Depends(get_sync_db)],
     current_user: Annotated[UserModel | None, Depends(get_current_user_optional)],
     response: Response = None,
@@ -66,7 +70,9 @@ async def get_overview(
 
 
 @router.get("/quality", response_model=QualityMetrics, summary="Data quality metrics")
+@limiter.limit(settings.PUBLIC_STATS_RATE_LIMIT)
 async def get_quality_metrics(
+    request: Request,
     db: Annotated[Session, Depends(get_sync_db)],
     current_user: Annotated[UserModel | None, Depends(get_current_user_optional)],
     days: Annotated[int, Query(ge=1, le=90, description="Number of days to look back")] = 30,
@@ -84,7 +90,9 @@ async def get_quality_metrics(
 
 
 @router.get("/timeline", response_model=GrowthMetrics, summary="Registry growth timeline")
+@limiter.limit(settings.PUBLIC_STATS_RATE_LIMIT)
 async def get_growth_timeline(
+    request: Request,
     db: Annotated[Session, Depends(get_sync_db)],
     current_user: Annotated[UserModel | None, Depends(get_current_user_optional)],
     period: Annotated[str, Query(description="Time period for aggregation")] = "monthly",
@@ -107,7 +115,9 @@ async def get_growth_timeline(
 
 
 @router.get("/providers", summary="Provider statistics")
+@limiter.limit(settings.PUBLIC_STATS_RATE_LIMIT)
 async def get_provider_list_stats(
+    request: Request,
     db: Annotated[Session, Depends(get_sync_db)],
     current_user: Annotated[UserModel | None, Depends(get_current_user_optional)],
     limit: Annotated[int, Query(ge=1, le=100, description="Number of top providers to show")] = 20,
@@ -124,7 +134,9 @@ async def get_provider_list_stats(
 
 
 @router.get("/datasets/recent", summary="Recent dataset activity")
+@limiter.limit(settings.PUBLIC_STATS_RATE_LIMIT)
 async def get_recent_dataset_activity(
+    request: Request,
     db: Annotated[Session, Depends(get_sync_db)],
     current_user: Annotated[UserModel | None, Depends(get_current_user_optional)],
     limit: Annotated[
@@ -144,7 +156,9 @@ async def get_recent_dataset_activity(
 
 
 @router.get("/health", summary="Registry health status")
+@limiter.limit(settings.PUBLIC_STATS_RATE_LIMIT)
 async def get_registry_health(
+    request: Request,
     db: Annotated[Session, Depends(get_sync_db)],
     current_user: Annotated[UserModel | None, Depends(get_current_user_optional)],
     response: Response = None,

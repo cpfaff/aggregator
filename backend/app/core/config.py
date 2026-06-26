@@ -25,6 +25,10 @@ class Settings(BaseSettings):
     LOGIN_RATE_LIMIT: str = "5/minute"
     HARVEST_RATE_LIMIT: str = "30/hour"
     CSRF_TOKEN_RATE_LIMIT: str = "20/minute"
+    # Public, unauthenticated statistics reads (validation-stats + /statistics/*):
+    # generous per-IP ceiling for a dashboard, so a single client cannot saturate
+    # the DB pool. One explicit bounded value owns the shed-load behaviour (RH-08).
+    PUBLIC_STATS_RATE_LIMIT: str = "60/minute"
     # Cache settings
     CACHE_ENABLED: bool = True
     CACHE_EXPIRE_SECONDS: int = 300
