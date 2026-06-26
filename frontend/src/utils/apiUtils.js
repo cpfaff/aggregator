@@ -280,6 +280,16 @@ export const parseErrorResponse = async (response) => {
   const contentType = response.headers.get('content-type') || '';
   const status = response.status;
 
+  // Classify the failure so consumers can branch (FR-12, REQ-FE-DEG-3):
+  // 429 -> throttle (back off, honour Retry-After), 5xx -> server (transient,
+  // keep stale), else -> client (user-fixable).
+  const errorClass = status === 429
+    ? 'throttle'
+    : (Math.floor(status / 100) === 5 ? 'server' : 'client');
+  const retryAfterRaw = response.headers.get('Retry-After');
+  const retryAfter = retryAfterRaw != null ? Number(retryAfterRaw) : undefined;
+  const base = { status, class: errorClass, retryAfter };
+
   try {
     if (contentType.includes('application/problem+json') || contentType.includes('application/json')) {
       const data = await response.json();
@@ -295,17 +305,17 @@ export const parseErrorResponse = async (response) => {
             return `${field}: ${d.msg}`;
           })
           .join('; ');
-        return { message, status, type: data.type || null, fieldErrors };
+        return { message, type: data.type || null, fieldErrors, ...base };
       }
       // RFC 7807 format has 'detail' and 'title'
       const message = data.detail || data.title || data.message || 'An error occurred';
-      return { message, status, type: data.type || null };
+      return { message, type: data.type || null, ...base };
     }
     // Plain text error
     const text = await response.text();
-    return { message: text || 'An error occurred', status, type: null };
+    return { message: text || 'An error occurred', type: null, ...base };
   } catch (e) {
-    return { message: 'An error occurred', status, type: null };
+    return { message: 'An error occurred', type: null, ...base };
   }
 };
 

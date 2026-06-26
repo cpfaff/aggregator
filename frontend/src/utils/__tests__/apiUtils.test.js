@@ -106,4 +106,18 @@ describe('apiUtils resilient client', () => {
       expect(r.message).not.toContain('[object Object]');
     });
   });
+
+  describe('FR-12 status classification + Retry-After (REQ-FE-DEG-3)', () => {
+    test('parseErrorResponse classifies 429 as throttle and exposes Retry-After distinct from a 4xx client error', async () => {
+      const throttled = await parseErrorResponse(mk(429, {}, { 'Retry-After': '30' }));
+      // RED (pre-fix): the parser returns only { message, status, type } — no
+      // class, never reads Retry-After.
+      expect(throttled.class).toBe('throttle');
+      expect(throttled.retryAfter).toBe(30);
+
+      const client = await parseErrorResponse(mk(400, {}));
+      expect(client.class).toBe('client');
+      expect(client.retryAfter).toBeUndefined();
+    });
+  });
 });

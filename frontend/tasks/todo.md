@@ -32,7 +32,7 @@ Baseline (231c82c head be51e5e): 16 suites / 73 tests pass; eslint exit 0. CONFI
 
 - [x] FR-10 revive parseErrorResponse as live seam (REQ-FE-CLIENT-6) — apiUtils.test.js [SEAM] ✓ 83 tests
 - [x] FR-11 flatten 422 array in parseErrorResponse (REQ-FE-DEG-4) — apiUtils.test.js ✓ 84 tests
-- [ ] FR-12 classify status + Retry-After (REQ-FE-DEG-3) — apiUtils.test.js
+- [x] FR-12 classify status + Retry-After (REQ-FE-DEG-3) — apiUtils.test.js ✓ 85 tests
 - [ ] FR-13 LandingPage timeout/res.ok/no silent swallow (REQ-FE-CLIENT-5) — LandingPage.test.js
 - [ ] FR-14 fail closed on CSRF token failure (REQ-FE-CLIENT-7) — apiUtils.test.js
 - [ ] FR-15 bounded jittered retriable-only retry (REQ-FE-CLIENT-8) — apiUtils.test.js
@@ -47,7 +47,7 @@ Baseline (231c82c head be51e5e): 16 suites / 73 tests pass; eslint exit 0. CONFI
 - Do NOT push or open MR — human stop-gate precedes any remote action.
 
 ## Resume pointer
-Next unstarted item: **FR-12** (classify status + Retry-After). (Update after each commit.)
+Next unstarted item: **FR-13** (LandingPage timeout/res.ok/no silent swallow). (Update after each commit.)
 
 MILESTONE: MUST block FR-01..FR-09 COMPLETE — spec's MUST set (REQ-FE-CLIENT-1..4,
 -EB-1, -POLL-1..2, -DEG-1..2) satisfied. Conformance gate reported. SHOULD block in progress.
