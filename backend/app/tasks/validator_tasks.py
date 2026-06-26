@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import Any
 
 from celery import shared_task
+from sqlalchemy.exc import OperationalError
 
 from app.core.task_base import LoggingTask
 from app.db.session import SessionLocal
@@ -15,6 +16,24 @@ from app.models import ValidationJobModel, XmlArchiveModel
 from app.tasks.validator.service import ValidatorService
 
 logger = logging.getLogger(__name__)
+
+
+class PermanentTaskError(Exception):
+    """A deterministic, non-retriable task failure.
+
+    Raised for failures that are identical on every attempt (e.g. the archive
+    row does not exist, or its content is malformed) so they are NOT in
+    ``autoretry_for`` and never consume the retry budget or backoff window —
+    only genuinely transient infrastructure errors retry. Mirrors the
+    ``EsGateway`` resilience shape: one typed failure the wrapper acts on.
+    """
+
+
+# Transient infrastructure errors worth re-attempting: a flaky DB connection
+# (OperationalError), a dropped/refused socket (ConnectionError), or a hung
+# dependency (TimeoutError). Deterministic failures (PermanentTaskError) are
+# excluded so a missing/malformed archive fails fast instead of retrying.
+TRANSIENT_TASK_ERRORS = (OperationalError, ConnectionError, TimeoutError)
 
 
 @shared_task(
@@ -27,7 +46,7 @@ logger = logging.getLogger(__name__)
     retry_backoff=True,
     retry_backoff_max=120,  # Maximum backoff in seconds (2 minutes)
     retry_jitter=True,  # Add randomization to prevent thundering herd
-    autoretry_for=(Exception,),  # Auto-retry on all exceptions
+    autoretry_for=TRANSIENT_TASK_ERRORS,  # Retry only transient infra errors (RH-09)
     task_time_limit=7500,  # Hard time limit (2h 5min)
 )
 def validate_archive(self, archive_id: int, job_id: int | None = None) -> dict[str, Any]:
@@ -67,7 +86,9 @@ def validate_archive(self, archive_id: int, job_id: int | None = None) -> dict[s
             .first()
         )
         if not archive_data:
-            raise ValueError(f"Archive with ID {archive_id} not found")
+            # Deterministic: the archive is absent on every retry, so fail fast
+            # rather than spend the retry budget re-confirming it (RH-09).
+            raise PermanentTaskError(f"Archive with ID {archive_id} not found")
 
         # Extract archive data from tuple
         archive_id_db, dataset_id, archive_url, is_latest = archive_data
