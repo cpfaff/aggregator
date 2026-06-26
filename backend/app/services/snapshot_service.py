@@ -203,8 +203,12 @@ class SnapshotService:
         self, start_date: date | None = None, end_date: date | None = None, limit: int = 30
     ) -> dict[str, Any]:
         """
-        Get biological units timeline for all providers with forward-fill.
-        Only counts archives where isLatest=True.
+        Get the multi-provider **collection timeline** of biological-unit counts.
+
+        A wide-row payload: each ``series`` point is one date carrying a unit count
+        per provider, forward-filled over ``recorded_at``. Only counts archives where
+        isLatest=True. The points are provider-keyed dicts (not ``TimeSeriesPoint``),
+        so they live under ``series``, not ``data_points`` (REQ-SH-TL-2 / F-L).
         """
         dates = self.repo.get_snapshot_dates(start_date=start_date, end_date=end_date, limit=limit)
 
@@ -213,7 +217,7 @@ class SnapshotService:
                 "metric_type": "provider_biological_units",
                 "entity_type": "multi_provider",
                 "period": "daily",
-                "data_points": [],
+                "series": [],
                 "total_points": 0,
                 "providers": [],
                 "total_providers": 0,
@@ -226,7 +230,7 @@ class SnapshotService:
                 "metric_type": "provider_biological_units",
                 "entity_type": "multi_provider",
                 "period": "daily",
-                "data_points": [],
+                "series": [],
                 "total_points": 0,
                 "providers": [],
                 "total_providers": 0,
@@ -239,7 +243,7 @@ class SnapshotService:
             provider_archives[provider_name] = archive_ids
 
         # For each date, calculate totals per provider using forward-fill
-        data_points = []
+        series = []
         for target_date in reversed(dates):
             date_point = {"date": target_date.isoformat()}
 
@@ -251,7 +255,7 @@ class SnapshotService:
                 total = self.repo.get_unit_count_for_date(target_date, archive_ids=archive_ids)
                 date_point[provider_name] = float(total)
 
-            data_points.append(date_point)
+            series.append(date_point)
 
         provider_metadata = [
             {"id": p_id, "name": p_name, "key": p_name} for p_id, p_name in providers
@@ -261,8 +265,8 @@ class SnapshotService:
             "metric_type": "provider_biological_units",
             "entity_type": "multi_provider",
             "period": "daily",
-            "data_points": data_points,
-            "total_points": len(data_points),
+            "series": series,
+            "total_points": len(series),
             "providers": provider_metadata,
             "total_providers": len(provider_metadata),
         }

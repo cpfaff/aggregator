@@ -682,7 +682,7 @@ class TestGetMultiProviderTimeline:
         result = snapshot_service.get_multi_provider_timeline()
 
         assert result["metric_type"] == "provider_biological_units"
-        assert result["data_points"] == []
+        assert result["series"] == []
         assert result["total_points"] == 0
         assert result["providers"] == []
 
@@ -707,8 +707,8 @@ class TestGetMultiProviderTimeline:
 
         assert result["total_points"] >= 1
         assert result["total_providers"] == 2
-        # Each data point should have a key for each provider
-        dp = result["data_points"][0]
+        # Each series point should have a key for each provider
+        dp = result["series"][0]
         assert provider.name in dp
         assert second_provider.name in dp
 

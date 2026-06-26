@@ -98,3 +98,32 @@ class GrowthMetrics(BaseModel):
     validation_timeline: list[TimeSeriesPoint] = Field(
         ..., description="Validation activity over time"
     )
+
+
+class ProviderRef(BaseModel):
+    """Reference to a provider that appears as a series in a multi-provider timeline."""
+
+    id: int = Field(..., description="Provider ID")
+    name: str = Field(..., description="Provider name")
+    key: str = Field(..., description="Key used for this provider in the wide-row series points")
+
+
+class MultiProviderTimelineResponse(BaseModel):
+    """Multi-provider collection timeline (REQ-SH-TL-1/2).
+
+    A *wide-row* payload: each ``series`` element is one date with a float per
+    provider, ``{"date": "<iso date>", "<provider key>": <units>, ...}``. The key is
+    deliberately ``series`` (not ``data_points``) because these points are not
+    ``TimeSeriesPoint`` elements — keeping the ``data_points`` key for one element
+    type across the API (F-L).
+    """
+
+    metric_type: str = Field(..., description="Type of metric")
+    entity_type: str = Field(..., description="Type of entity")
+    period: str = Field(..., description="Time period aggregation")
+    series: list[dict[str, Any]] = Field(
+        ..., description="Wide-row points: one date with a unit count per provider"
+    )
+    total_points: int = Field(..., description="Number of series points")
+    providers: list[ProviderRef] = Field(..., description="Providers present as series")
+    total_providers: int = Field(..., description="Number of providers")

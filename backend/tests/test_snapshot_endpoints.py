@@ -559,7 +559,9 @@ class TestGetMultiProviderBiologicalUnitsTimeline:
         MockServiceClass.return_value = mock_service
         mock_service.get_multi_provider_timeline.return_value = {
             "metric_type": "provider_biological_units",
-            "data_points": [],
+            "entity_type": "multi_provider",
+            "period": "daily",
+            "series": [],
             "total_points": 0,
             "providers": [],
             "total_providers": 0,
@@ -569,7 +571,8 @@ class TestGetMultiProviderBiologicalUnitsTimeline:
             db=MagicMock(), current_user=MagicMock()
         )
 
-        assert result["total_points"] == 0
+        assert result.total_points == 0
+        assert result.series == []
 
     @pytest.mark.asyncio
     @patch("app.api.v1.endpoints.snapshots.SnapshotService")
