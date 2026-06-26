@@ -13,14 +13,20 @@ from datetime import datetime
 sys.path.insert(0, "/app")
 
 
-def run_celery_command(command: str, json_output: bool = True) -> dict | None:
-    """Run a celery command and return the result."""
-    cmd = f"celery -A app.core.celery_app {command}"
+def run_celery_command(args: list[str], json_output: bool = True) -> dict | None:
+    """Run a celery command and return the result.
+
+    ``args`` is the celery argument vector (e.g. ``["control", "revoke", task_id,
+    "--terminate"]``); it is passed as a list with ``shell=False`` so an
+    operator-supplied ``task_id`` is always a single argv element a shell never
+    parses — closing the command-injection bug class (REQ-SUB-1).
+    """
+    cmd = ["celery", "-A", "app.core.celery_app", *args]
     if json_output:
-        cmd += " --json"
+        cmd.append("--json")
 
     try:
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=10)
+        result = subprocess.run(cmd, shell=False, capture_output=True, text=True, timeout=10)
 
         if json_output:
             # Callers iterate the JSON result as a worker->tasks mapping. When
@@ -81,7 +87,7 @@ def list_tasks(show_all: bool = False):
 
     # Try to get active tasks from both workers
     # Note: Validation worker uses --pool=solo and may not respond to inspect
-    active = run_celery_command("inspect active")
+    active = run_celery_command(["inspect", "active"])
     if not active:
         print("❌ Could not retrieve active tasks from statistics worker")
 
@@ -154,7 +160,7 @@ def list_tasks(show_all: bool = False):
         print("\n\n⏰ SCHEDULED TASKS (waiting to run):")
         print("-" * 70)
 
-        scheduled = run_celery_command("inspect scheduled")
+        scheduled = run_celery_command(["inspect", "scheduled"])
         if scheduled:
             scheduled_count = 0
             for worker, tasks in scheduled.items():
@@ -178,7 +184,7 @@ def list_tasks(show_all: bool = False):
         print("\n\n📋 QUEUED TASKS (waiting for worker):")
         print("-" * 70)
 
-        reserved = run_celery_command("inspect reserved")
+        reserved = run_celery_command(["inspect", "reserved"])
         if reserved:
             queued_count = 0
             for worker, tasks in reserved.items():
@@ -204,13 +210,15 @@ def cancel_task(task_id: str, force_terminate: bool = False):
 
     if force_terminate:
         # Use terminate to force kill the task (SIGTERM)
-        result = run_celery_command(f"control terminate {task_id}", json_output=False)
+        result = run_celery_command(["control", "terminate", task_id], json_output=False)
         if result:
             print(f"⚡ Task {task_id} has been TERMINATED (force killed)")
             print("   Warning: This may leave resources in an inconsistent state.")
     else:
         # Use revoke which is gentler
-        result = run_celery_command(f"control revoke {task_id} --terminate", json_output=False)
+        result = run_celery_command(
+            ["control", "revoke", task_id, "--terminate"], json_output=False
+        )
         if result:
             print(f"✅ Task {task_id} has been revoked")
             print("   Note: Running tasks will be terminated at the next checkpoint.")
@@ -224,7 +232,7 @@ def cancel_all_tasks(force: bool = False):
     print("⚠️  WARNING: This will cancel ALL running and queued tasks!")
 
     # Get all active tasks
-    active = run_celery_command("inspect active")
+    active = run_celery_command(["inspect", "active"])
     if not active:
         print("❌ Could not retrieve active tasks")
         return
@@ -237,7 +245,7 @@ def cancel_all_tasks(force: bool = False):
             task_details.append((task["id"], task["name"]))
 
     # Get all reserved tasks
-    reserved = run_celery_command("inspect reserved")
+    reserved = run_celery_command(["inspect", "reserved"])
     if reserved:
         for _worker, tasks in reserved.items():
             for task in tasks:
@@ -256,12 +264,14 @@ def cancel_all_tasks(force: bool = False):
     for task_id, task_name in task_details:
         if force:
             # Force terminate for stuck tasks
-            result = run_celery_command(f"control terminate {task_id}", json_output=False)
+            result = run_celery_command(["control", "terminate", task_id], json_output=False)
             if result:
                 print(f"  ⚡ TERMINATED: {task_id[:8]}... ({task_name.split('.')[-1]})")
         else:
             # Regular revoke with terminate flag
-            result = run_celery_command(f"control revoke {task_id} --terminate", json_output=False)
+            result = run_celery_command(
+                ["control", "revoke", task_id, "--terminate"], json_output=False
+            )
             if result:
                 print(f"  ✅ Revoked: {task_id[:8]}... ({task_name.split('.')[-1]})")
 
@@ -279,7 +289,7 @@ def check_workers():
     print("=" * 70)
 
     # Ping workers
-    result = run_celery_command("inspect ping")
+    result = run_celery_command(["inspect", "ping"])
     if result:
         for worker, status in result.items():
             worker_type = get_worker_type(worker)
@@ -294,7 +304,7 @@ def check_workers():
     print("\n📊 WORKER STATISTICS:")
     print("-" * 70)
 
-    stats = run_celery_command("inspect stats")
+    stats = run_celery_command(["inspect", "stats"])
     if stats:
         for worker, info in stats.items():
             if info:
