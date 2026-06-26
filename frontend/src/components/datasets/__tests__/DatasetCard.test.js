@@ -410,6 +410,54 @@ describe('DatasetCard transport resilience', () => {
       );
     });
   });
+
+  // Regression (same root cause as the public-stats abort bug): under React
+  // StrictMode's dev double-mount the discarded mount's validation request is
+  // aborted; the catch must attribute that to the OWNING controller (not the
+  // surviving mount's) and the overlap guard must release on unmount, so the
+  // validation status still loads instead of silently going missing.
+  test('loads validation status under StrictMode remount without mis-attributing the discarded mount abort', async () => {
+    const abortAware = (data) => (url, config = {}) =>
+      new Promise((resolve, reject) => {
+        const { signal } = config;
+        const fail = () => {
+          const e = new Error('canceled');
+          e.name = 'CanceledError';
+          reject(e);
+        };
+        if (signal?.aborted) {
+          fail();
+          return;
+        }
+        if (signal) {
+          signal.addEventListener('abort', fail, { once: true });
+        }
+        Promise.resolve().then(() => {
+          if (!signal?.aborted) {
+            resolve({ data });
+          }
+        });
+      });
+
+    axios.get.mockImplementation((url, config) =>
+      typeof url === 'string' && url.includes('validation-status')
+        ? abortAware({ has_latest_archive: true, validation_status: 'completed', is_valid: true })(url, config)
+        : Promise.resolve({ data: VALIDATION_PAYLOAD })
+    );
+
+    render(
+      <React.StrictMode>
+        <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
+          <DatasetCard dataset={mockDataset} onEdit={jest.fn()} onDelete={jest.fn()} />
+        </SWRConfig>
+      </React.StrictMode>
+    );
+
+    // RED (pre-fix): the discarded mount's abort is mis-attributed and the
+    // remount's fetch is skipped by the stuck guard, so validationStatus stays
+    // null and the Re-validate button never renders.
+    expect(await screen.findByRole('button', { name: /re-validate/i })).toBeInTheDocument();
+  });
 });
 
 describe('DatasetCard validation poller backpressure', () => {

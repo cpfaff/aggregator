@@ -77,8 +77,11 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
     }
 
     // On unmount: abort the in-flight validation request and clear the poll.
+    // Release the overlap guard too, so a remount (React StrictMode's dev
+    // double-mount) is not blocked by the aborted request's lingering flag.
     return () => {
       controller.abort();
+      inFlightRef.current = false;
       if (pollingInterval) {
         clearInterval(pollingInterval);
       }
@@ -104,6 +107,10 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
       return;
     }
     inFlightRef.current = true;
+    // Capture THIS request's signal up front so the catch/finally test the
+    // controller that owns this request — not a newer one a remount installed
+    // into the ref (which would mis-attribute this request's abort).
+    const signal = abortControllerRef.current?.signal;
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(
@@ -113,12 +120,12 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
             Authorization: `Bearer ${token}`,
           },
           timeout: REQUEST_TIMEOUT_MS,
-          signal: abortControllerRef.current?.signal,
+          signal,
         }
       );
 
       // Aborted mid-flight (unmount): do not touch state.
-      if (abortControllerRef.current?.signal?.aborted) {
+      if (signal?.aborted) {
         return;
       }
 
@@ -134,8 +141,9 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
         setIsValidating(false);
       }
     } catch (error) {
-      // Aborted on unmount: nothing to update.
-      if (abortControllerRef.current?.signal?.aborted) {
+      // This request was aborted (unmount/remount): not a real failure — bail
+      // without logging or clearing state a newer owner may now hold.
+      if (signal?.aborted) {
         return;
       }
       console.error('Error fetching validation status:', error);
@@ -147,9 +155,12 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
       }
       setIsValidating(false);
     } finally {
-      // Release the overlap guard once the request settles. A never-resolving
-      // request never reaches here, so its guard stays set and blocks stacking.
-      inFlightRef.current = false;
+      // Release the overlap guard once the request settles (but not for a request
+      // aborted by unmount/remount — a newer owner may hold the guard now). A
+      // never-resolving request never reaches here, so its guard stays set.
+      if (!signal?.aborted) {
+        inFlightRef.current = false;
+      }
     }
   };
 
