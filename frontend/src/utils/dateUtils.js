@@ -63,6 +63,23 @@ export function formatRelativeTime(dateString) {
 }
 
 /**
+ * Format a date for a chart axis tick (REQ-SH-FE-4/5).
+ *
+ * The single shared helper for compact chart-axis dates. Pins an explicit locale
+ * (default 'en-US') rather than relying on the runtime default, so axis labels do
+ * not vary by browser/server locale (discovery F-I; the de_DE default separators
+ * gotcha). Replaces the inline, locale-default `new Date(d).toLocaleDateString()`
+ * copies in the statistics chart formatters.
+ *
+ * @param {string|Date} value - ISO date string or Date object
+ * @param {string} [locale='en-US'] - explicit locale
+ * @returns {string} Short date string in the given locale
+ */
+export function formatChartDate(value, locale = 'en-US') {
+  return new Date(value).toLocaleDateString(locale);
+}
+
+/**
  * Format a date as an absolute date and time.
  *
  * @param {string|Date} dateString - ISO date string or Date object

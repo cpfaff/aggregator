@@ -3,6 +3,7 @@
  * Provides functions to interact with the statistics endpoints
  */
 import { apiRequest, API_BASE, API_VERSION, fetchWithTimeout, parseErrorResponse } from './apiUtils';
+import { formatChartDate } from './dateUtils';
 
 /**
  * Public statistics API calls (no authentication required)
@@ -220,7 +221,7 @@ export const statsUtils = {
    */
   formatTimeSeriesForChart: (dataPoints) => {
     return dataPoints.map(point => ({
-      date: new Date(point.date).toLocaleDateString(),
+      date: formatChartDate(point.date),
       value: point.value,
       fullDate: point.date,
       ...point.extra_data
@@ -235,7 +236,7 @@ export const statsUtils = {
   formatMultiProviderTimeSeriesForChart: (dataPoints) => {
     return dataPoints.map(point => ({
       ...point,
-      date: new Date(point.date).toLocaleDateString(),
+      date: formatChartDate(point.date),
       fullDate: point.date
     }));
   },

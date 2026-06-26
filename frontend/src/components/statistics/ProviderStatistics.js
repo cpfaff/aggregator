@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { authStatsApi, statsUtils } from '../../utils/statisticsApi';
+import { formatRelativeTime } from '../../utils/dateUtils';
 import TimeSeriesChart from '../ui/TimeSeriesChart';
 import Skeleton from '../ui/Skeleton';
 import Alert from '../ui/Alert';
@@ -217,11 +218,7 @@ function ProviderStatistics({ providerId, providerName }) {
               fontWeight: 500
             }}>
               <Clock size={16} style={{ color: 'var(--primary)' }} />
-              Last activity: {new Date(stats.last_activity).toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric'
-              })}
+              Last activity: {formatRelativeTime(stats.last_activity)}
             </div>
           )}
         </div>
