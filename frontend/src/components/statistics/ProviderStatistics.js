@@ -51,7 +51,7 @@ function ProviderStatistics({ providerId, providerName }) {
       };
 
       const data = await authStatsApi.getProviderDatasetsTimeline(providerId, params, handleTokenExpiration);
-      const formattedData = statsUtils.formatTimeSeriesForChart(data.data_points);
+      const formattedData = statsUtils.toChartSeries(data);
 
       // Only update if data has actually changed to prevent chart re-renders
       setTimeSeriesData(prev => {
@@ -81,7 +81,7 @@ function ProviderStatistics({ providerId, providerName }) {
       };
 
       const data = await authStatsApi.getProviderBiologicalUnitsTimeline(providerId, params, handleTokenExpiration);
-      const formattedData = statsUtils.formatTimeSeriesForChart(data.data_points);
+      const formattedData = statsUtils.toChartSeries(data);
 
       // Only update if data has actually changed to prevent chart re-renders
       setBiologicalUnitsTimeSeriesData(prev => {

@@ -24,6 +24,7 @@ jest.mock('../../../utils/statisticsApi', () => ({
   statsUtils: {
     formatTimeSeriesForChart: jest.fn(() => []),
     formatMultiProviderTimeSeriesForChart: jest.fn(() => ({ data: [], providers: [] })),
+    toChartSeries: jest.fn(() => []),
   },
 }));
 
@@ -33,7 +34,7 @@ jest.mock('../../ui/MultiLineTimeSeriesChart', () => () => <div data-testid="mul
 jest.mock('../../ui/PieChart', () => () => <div data-testid="pie-chart" />);
 jest.mock('../../ui/Breadcrumbs', () => () => <nav data-testid="breadcrumbs" />);
 
-const { authStatsApi, publicStatsApi } = require('../../../utils/statisticsApi');
+const { authStatsApi, publicStatsApi, statsUtils } = require('../../../utils/statisticsApi');
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -49,6 +50,7 @@ describe('AdminDashboard', () => {
   });
 
   test('removes the skeleton once statistics load', async () => {
+    statsUtils.toChartSeries.mockReturnValue([]);
     authStatsApi.getOverview.mockResolvedValue({
       total_providers: 5,
       total_datacenters: 3,
@@ -57,8 +59,8 @@ describe('AdminDashboard', () => {
       validation_success_rate: null,
     });
     authStatsApi.getQualityMetrics.mockResolvedValue({ total_validations: 7 });
-    authStatsApi.getBiologicalUnitsTimeline.mockResolvedValue([]);
-    authStatsApi.getMultiProviderBiologicalUnits.mockResolvedValue({ data: [], providers: [] });
+    authStatsApi.getBiologicalUnitsTimeline.mockResolvedValue({ data_points: [] });
+    authStatsApi.getMultiProviderBiologicalUnits.mockResolvedValue({ series: [], providers: [] });
     publicStatsApi.getProviders.mockResolvedValue({ datacenters: [] });
     publicStatsApi.getTimeline.mockResolvedValue({ datasets_timeline: [] });
 
@@ -68,5 +70,34 @@ describe('AdminDashboard', () => {
       expect(screen.getByText('Statistics')).toBeInTheDocument();
     });
     expect(screen.queryByTestId('skeleton')).not.toBeInTheDocument();
+  });
+
+  test('reads the multi-provider timeline through the renamed `series` key (REQ-SH-TL-3)', async () => {
+    statsUtils.toChartSeries.mockReturnValue([]);
+    authStatsApi.getOverview.mockResolvedValue({
+      total_providers: 1,
+      total_datacenters: 1,
+      total_datasets: 1,
+      total_xml_archives: 1,
+      validation_success_rate: null,
+    });
+    authStatsApi.getQualityMetrics.mockResolvedValue({ total_validations: 0 });
+    authStatsApi.getBiologicalUnitsTimeline.mockResolvedValue({ data_points: [] });
+    const multiProvider = {
+      series: [{ date: '2024-01-01', ProvA: 5 }],
+      providers: [{ key: 'ProvA' }],
+    };
+    authStatsApi.getMultiProviderBiologicalUnits.mockResolvedValue(multiProvider);
+    publicStatsApi.getProviders.mockResolvedValue({ datacenters: [] });
+    publicStatsApi.getTimeline.mockResolvedValue({ datasets_timeline: [] });
+
+    render(<AdminDashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Statistics')).toBeInTheDocument();
+    });
+    // The dashboard hands the whole multi-provider response to the one canonical
+    // reader (which resolves the `series` key) instead of poking data_points itself.
+    expect(statsUtils.toChartSeries).toHaveBeenCalledWith(multiProvider);
   });
 });

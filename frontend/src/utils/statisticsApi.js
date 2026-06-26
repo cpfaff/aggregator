@@ -241,6 +241,32 @@ export const statsUtils = {
   },
 
   /**
+   * Read any statistics timeline response into one canonical chart series (REQ-SH-TL-3).
+   *
+   * Resolves the per-endpoint container key in ONE place so call sites never branch
+   * on it: a narrow time series ({ date, value }) lives under `data_points`
+   * (TimeSeriesResponse) or is passed as a bare array (a GrowthMetrics sub-timeline);
+   * the multi-provider wide-row payload lives under `series` (REQ-SH-TL-2). Returns a
+   * chart-ready array; [] when no recognised series is present.
+   *
+   * @param {Object|Array} response - A statistics timeline response or a points array
+   * @returns {Array} Chart-ready series points
+   */
+  toChartSeries: (response) => {
+    if (!response) return [];
+    if (Array.isArray(response)) {
+      return statsUtils.formatTimeSeriesForChart(response);
+    }
+    if (Array.isArray(response.series)) {
+      return statsUtils.formatMultiProviderTimeSeriesForChart(response.series);
+    }
+    if (Array.isArray(response.data_points)) {
+      return statsUtils.formatTimeSeriesForChart(response.data_points);
+    }
+    return [];
+  },
+
+  /**
    * Format large numbers with appropriate units
    * @param {number} value - Number to format
    * @returns {string} Formatted number

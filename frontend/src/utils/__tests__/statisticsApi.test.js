@@ -7,6 +7,34 @@ describe('statsUtils dead-surface removal (REQ-SH-DEAD-3)', () => {
   });
 });
 
+describe('statsUtils.toChartSeries reads any timeline through one shape (REQ-SH-TL-3)', () => {
+  test('reads a narrow TimeSeriesResponse via its data_points key', () => {
+    const out = statsUtils.toChartSeries({ data_points: [{ date: '2024-01-01', value: 5 }] });
+    expect(out).toHaveLength(1);
+    expect(out[0].value).toBe(5);
+  });
+
+  test('reads the renamed multi-provider wide rows via its series key (not data_points)', () => {
+    const out = statsUtils.toChartSeries({
+      series: [{ date: '2024-01-01', ProvA: 5 }],
+      providers: [{ key: 'ProvA' }],
+    });
+    expect(out).toHaveLength(1);
+    expect(out[0].ProvA).toBe(5);
+  });
+
+  test('reads a bare points array (a GrowthMetrics sub-timeline) as a narrow series', () => {
+    const out = statsUtils.toChartSeries([{ date: '2024-02-01', value: 9 }]);
+    expect(out).toHaveLength(1);
+    expect(out[0].value).toBe(9);
+  });
+
+  test('returns [] when no recognised series key is present', () => {
+    expect(statsUtils.toChartSeries({ providers: [] })).toEqual([]);
+    expect(statsUtils.toChartSeries(null)).toEqual([]);
+  });
+});
+
 describe('publicStatsApi resilient transport', () => {
   let originalFetch;
 
