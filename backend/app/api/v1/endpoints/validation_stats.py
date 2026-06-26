@@ -24,7 +24,7 @@ from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
@@ -43,7 +43,7 @@ MAX_IDENTIFIERS = 500
 class ValidationStatsRequest(BaseModel):
     """Batch request: the ``abcdDatasetIdentifier`` values from one result page."""
 
-    identifiers: list[str] = Field(
+    identifiers: list[Annotated[str, StringConstraints(max_length=512)]] = Field(
         default_factory=list,
         max_length=MAX_IDENTIFIERS,
         description="abcdDatasetIdentifier term values (dataset or unit URNs).",

@@ -39,6 +39,13 @@ class Settings(BaseSettings):
     # is exhausted (RH-01 / REQ-PG-1). Applied via connect_args on both engines.
     DB_STATEMENT_TIMEOUT_MS: int = 5000
     DB_LOCK_TIMEOUT_MS: int = 3000
+    # Maximum inbound request body size, in bytes. A request whose body exceeds
+    # this cap is rejected with HTTP 413 by BodySizeLimitMiddleware before it is
+    # buffered into memory and parsed, closing a memory-exhaustion DoS on every
+    # JSON route — including the public, unauthenticated POST /validation-stats
+    # (RH-02 / REQ-ROUTE-1). A search page submits a few hundred short URNs, far
+    # below 256 KiB, so this never clips a real request.
+    MAX_REQUEST_BODY_BYTES: int = 256 * 1024
     # Password policy
     MIN_PASSWORD_LENGTH: int = 8
     # Celery settings
