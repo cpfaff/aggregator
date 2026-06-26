@@ -23,6 +23,7 @@ describe('LandingPage', () => {
   test('removes the stat skeletons once statistics load', async () => {
     global.fetch = jest.fn(() =>
       Promise.resolve({
+        ok: true,
         json: () =>
           Promise.resolve({ total_providers: 5, total_datacenters: 3, total_datasets: 42 }),
       })
@@ -34,5 +35,35 @@ describe('LandingPage', () => {
       expect(screen.getByText('42')).toBeInTheDocument();
     });
     expect(screen.queryByTestId('skeleton')).not.toBeInTheDocument();
+  });
+
+  // FR-13 (REQ-FE-CLIENT-5): a non-ok overview response must not be rendered as
+  // stats (liberal acceptance). StatCard renders numbers via locale-dependent
+  // toLocaleString() (no locale arg), so assert with a separator-agnostic,
+  // digit-only matcher — never a hardcoded thousands separator.
+  test('does not render a stat taken from a non-ok overview response', async () => {
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: false,
+        status: 500,
+        headers: { get: (h) => (h === 'content-type' ? 'application/json' : null) },
+        json: () => Promise.resolve({ total_datasets: 999999 }),
+      })
+    );
+
+    render(<LandingPage />);
+
+    // Wait for a POSITIVE signal that the overview round-trip settled: the stat
+    // skeletons clear in BOTH the success and error paths (setIsLoadingStats(false)).
+    // Without this wait the negative assertion below is a tautology — it passes at
+    // t=0 before the fetch resolves.
+    await waitFor(() => expect(screen.queryByTestId('skeleton')).not.toBeInTheDocument());
+
+    // RED (pre-fix): res.json() runs unconditionally and setStats(data) regardless
+    // of res.ok, so the 500 body's value is rendered (in whatever locale grouping)
+    // and the digit-stripped matcher finds 999999.
+    expect(
+      screen.queryByText((content) => content.replace(/\D/g, '').includes('999999'))
+    ).not.toBeInTheDocument();
   });
 });
