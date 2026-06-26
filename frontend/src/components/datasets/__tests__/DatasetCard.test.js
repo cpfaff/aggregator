@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SWRConfig } from 'swr';
 import axios from 'axios';
@@ -378,5 +378,76 @@ describe('DatasetCard transport resilience', () => {
         expect.objectContaining({ timeout: expect.any(Number) })
       );
     });
+  });
+});
+
+describe('DatasetCard validation poller backpressure', () => {
+  // Count validation-status GETs across the lifecycle:
+  //  #1 mount  -> completed (Re-validate button enabled, no poll yet)
+  //  #2 immediate post-validate fetch -> running (interval starts)
+  //  #3+ interval ticks -> never resolve (stay in flight)
+  const wireValidationCounter = () => {
+    let validationCalls = 0;
+    axios.get.mockImplementation((url) => {
+      if (typeof url === 'string' && url.includes('validation-status')) {
+        validationCalls += 1;
+        if (validationCalls === 1) {
+          return Promise.resolve({
+            data: { has_latest_archive: true, validation_status: 'completed', is_valid: true },
+          });
+        }
+        if (validationCalls === 2) {
+          return Promise.resolve({
+            data: { has_latest_archive: true, validation_status: 'running' },
+          });
+        }
+        return new Promise(() => {}); // never resolves -> in flight
+      }
+      return Promise.resolve({ data: VALIDATION_PAYLOAD });
+    });
+    axios.post.mockResolvedValue({ data: {} });
+    return () => validationCalls;
+  };
+
+  const flush = async () => {
+    await act(async () => {
+      for (let i = 0; i < 10; i++) {
+        // eslint-disable-next-line no-await-in-loop
+        await Promise.resolve();
+      }
+    });
+  };
+
+  // FR-05 (REQ-FE-POLL-1): a never-resolving backend must not let 3s ticks
+  // accumulate overlapping in-flight validation-status requests.
+  test('validation poll does not stack a second request while the first is still pending', async () => {
+    const getCalls = wireValidationCounter();
+
+    render(<DatasetCard dataset={mockDataset} onEdit={jest.fn()} onDelete={jest.fn()} />);
+
+    // Mount fetch (#1, completed) renders the Re-validate button.
+    const button = await screen.findByRole('button', { name: /re-validate/i });
+
+    // Scope fake timers to this test (suite default is real timers).
+    jest.useFakeTimers();
+    try {
+      // userEvent v13 click already wraps the synchronous state update in act.
+      userEvent.click(button);
+      // Flush the validate POST + immediate fetch (#2) so the interval is armed.
+      await flush();
+      const callsAfterStart = getCalls(); // expect 2 (mount + immediate)
+
+      // Three 3s ticks against a never-resolving backend.
+      await act(async () => {
+        jest.advanceTimersByTime(9000);
+      });
+
+      // GREEN: the first tick starts one in-flight GET that never resolves; the
+      // overlap guard early-returns the next two ticks -> at most one extra GET.
+      // RED (pre-fix): each tick fires axios.get regardless, so the delta is 3.
+      expect(getCalls() - callsAfterStart).toBeLessThanOrEqual(1);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });

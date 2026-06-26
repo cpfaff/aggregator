@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Database, ExternalLink, FileText, Globe, Edit, Trash2, CheckCircle, XCircle, AlertCircle, HelpCircle, RefreshCw, Dna } from 'lucide-react';
 import useSWR from 'swr';
 import { useAuth } from '../auth/AuthContext';
@@ -26,6 +26,10 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [pollingInterval, setPollingInterval] = useState(null);
   const [datasetStats, setDatasetStats] = useState(null);
+  // Backpressure guard (FR-05, REQ-FE-POLL-1): true while a validation-status
+  // request is in flight, so a 3s poll tick cannot stack a second request on a
+  // slow/hung backend.
+  const inFlightRef = useRef(false);
 
   // Debug logging
   console.log('Dataset Provider ID:', dataset.provider_id);
@@ -88,6 +92,11 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
 
   // Function to fetch validation status
   const fetchValidationStatus = async () => {
+    // Overlap guard: skip this tick if a request is still in flight.
+    if (inFlightRef.current) {
+      return;
+    }
+    inFlightRef.current = true;
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(
@@ -120,6 +129,10 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
         setPollingInterval(null);
       }
       setIsValidating(false);
+    } finally {
+      // Release the overlap guard once the request settles. A never-resolving
+      // request never reaches here, so its guard stays set and blocks stacking.
+      inFlightRef.current = false;
     }
   };
 
