@@ -2,15 +2,22 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import AdminDashboard from '../AdminDashboard';
 
-jest.mock('../../auth/AuthContext', () => ({
-  useAuth: () => ({ handleTokenExpiration: jest.fn() }),
-}));
+jest.mock('../../auth/AuthContext', () => {
+  // A STABLE handler (real useAuth returns a stable one). A fresh jest.fn() per call
+  // would make the consumer's fetch useCallback unstable and re-fire its effect in a
+  // loop — harmless in the all-resolve tests, but it races setError in the error path.
+  const handleTokenExpiration = jest.fn();
+  return { useAuth: () => ({ handleTokenExpiration }) };
+});
 
 jest.mock('../../../hooks/useMediaQuery', () => ({
   useResponsiveGrid: () => ({ isMobile: false, isTablet: false, getGridColumns: () => 'repeat(4, 1fr)' }),
 }));
 
 jest.mock('../../../utils/statisticsApi', () => ({
+  // Keep the real pure helpers (e.g. statisticsErrorMessage) so the error-class
+  // mapping under test is the production one.
+  ...jest.requireActual('../../../utils/statisticsApi'),
   authStatsApi: {
     getOverview: jest.fn(),
     getQualityMetrics: jest.fn(),
@@ -99,5 +106,25 @@ describe('AdminDashboard', () => {
     // The dashboard hands the whole multi-provider response to the one canonical
     // reader (which resolves the `series` key) instead of poking data_points itself.
     expect(statsUtils.toChartSeries).toHaveBeenCalledWith(multiProvider);
+  });
+
+  test('surfaces a server-class message when a statistics request fails 5xx (REQ-SH-ERR-2)', async () => {
+    statsUtils.toChartSeries.mockReturnValue([]);
+    // The typed client error carries class: 'server'; the dashboard must derive its
+    // message from the class, not blindly echo err.message.
+    authStatsApi.getOverview.mockRejectedValue({ class: 'server', status: 503, message: 'boom' });
+    authStatsApi.getQualityMetrics.mockResolvedValue({ total_validations: 0 });
+    authStatsApi.getBiologicalUnitsTimeline.mockResolvedValue({ data_points: [] });
+    authStatsApi.getMultiProviderBiologicalUnits.mockResolvedValue({ series: [], providers: [] });
+    publicStatsApi.getProviders.mockResolvedValue({ datacenters: [] });
+    publicStatsApi.getTimeline.mockResolvedValue({ datasets_timeline: [] });
+
+    render(<AdminDashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/temporarily unavailable/i)).toBeInTheDocument();
+    });
+    // The raw err.message is not surfaced for a server-class failure.
+    expect(screen.queryByText(/boom/)).not.toBeInTheDocument();
   });
 });

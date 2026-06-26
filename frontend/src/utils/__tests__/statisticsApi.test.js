@@ -1,4 +1,34 @@
-import { publicStatsApi, statsUtils } from '../statisticsApi';
+import fs from 'fs';
+import path from 'path';
+import { publicStatsApi, authStatsApi, statsUtils } from '../statisticsApi';
+
+describe('ERR-1 both statistics clients reject with one typed error shape (REQ-SH-ERR-1)', () => {
+  afterEach(() => {
+    localStorage.removeItem('token');
+    delete global.fetch;
+  });
+
+  test('authStatsApi.getOverview rejects with the typed { status, class } shape, not a generic Error', async () => {
+    localStorage.setItem('token', 'test-token');
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: false,
+        status: 404,
+        headers: { get: (h) => (h === 'content-type' ? 'application/problem+json' : null) },
+        json: () => Promise.resolve({ title: 'Not Found' }),
+      }),
+    );
+
+    // The shared apiRequest layer already rejects non-ok with parseErrorResponse,
+    // so the typed shape must reach the caller (not a downgraded generic Error).
+    await expect(authStatsApi.getOverview()).rejects.toMatchObject({ status: 404, class: 'client' });
+  });
+
+  test('the authenticated client defines no generic Error downgrade for non-ok responses', () => {
+    const src = fs.readFileSync(path.join(__dirname, '..', 'statisticsApi.js'), 'utf8');
+    expect(src).not.toMatch(/throw new Error/);
+  });
+});
 
 describe('statsUtils dead-surface removal (REQ-SH-DEAD-3)', () => {
   test('the unreachable calculatePercentageChange helper is removed', () => {

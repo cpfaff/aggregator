@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../auth/AuthContext';
-import { authStatsApi, statsUtils } from '../../utils/statisticsApi';
+import { authStatsApi, statsUtils, statisticsErrorMessage } from '../../utils/statisticsApi';
 import { formatRelativeTime } from '../../utils/dateUtils';
 import TimeSeriesChart from '../ui/TimeSeriesChart';
 import Skeleton from '../ui/Skeleton';
@@ -36,7 +36,7 @@ function ProviderStatistics({ providerId, providerName }) {
 
     } catch (err) {
       console.error('Error fetching provider trends:', err);
-      setError('Failed to load provider trends: ' + err.message);
+      setError(statisticsErrorMessage(err, 'Failed to load provider trends: ' + err.message));
     } finally {
       setIsLoading(false);
     }

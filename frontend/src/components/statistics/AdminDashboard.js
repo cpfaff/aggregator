@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../auth/AuthContext';
-import { authStatsApi, publicStatsApi, statsUtils } from '../../utils/statisticsApi';
+import { authStatsApi, publicStatsApi, statsUtils, statisticsErrorMessage } from '../../utils/statisticsApi';
 import StatCard from '../ui/StatCard';
 import Skeleton from '../ui/Skeleton';
 import TimeSeriesChart from '../ui/TimeSeriesChart';
@@ -106,7 +106,7 @@ function AdminDashboard() {
 
     } catch (err) {
       console.error('Error fetching admin statistics:', err);
-      setError('Failed to load statistics: ' + err.message);
+      setError(statisticsErrorMessage(err, 'Failed to load statistics: ' + err.message));
     } finally {
       setIsLoading(false);
     }
