@@ -57,3 +57,34 @@ def test_cancel_task_uses_argv_not_shell():
     argv = spy.call_args.args[0]
     assert isinstance(argv, (list, tuple))
     assert injection in argv
+
+
+def _cancel_failed_proc():
+    """A celery control command that exited non-zero (e.g. task not found)."""
+    return SimpleNamespace(stdout="", stderr="Error: task not found", returncode=1)
+
+
+def test_cancel_task_reports_failure_on_nonzero_exit(capsys):
+    """A non-zero celery exit must surface as a failure, not a success (REQ-SUB-2).
+
+    The non-JSON path returned an always-truthy {"output", "error"} dict without
+    inspecting returncode, so cancel_task's `if result:` fired the "revoked"
+    success branch even when the celery child exited non-zero. Keying off
+    returncode (mirroring the es_gateway down-path-to-None discipline) lets
+    cancel_task's `if not result:` failure branch fire instead.
+    """
+    with mock.patch.object(manage_tasks.subprocess, "run", return_value=_cancel_failed_proc()):
+        manage_tasks.cancel_task("abc", force_terminate=False)
+    out = capsys.readouterr().out
+    assert "❌ Failed to cancel task" in out
+    assert "✅" not in out
+
+
+def test_cancel_task_success_on_zero_exit(capsys):
+    """A zero-exit command still reports success — returncode, not stderr, decides."""
+    zero_exit = SimpleNamespace(stdout="ok", stderr="harmless warning", returncode=0)
+    with mock.patch.object(manage_tasks.subprocess, "run", return_value=zero_exit):
+        manage_tasks.cancel_task("abc", force_terminate=False)
+    out = capsys.readouterr().out
+    assert "✅ Task abc has been revoked" in out
+    assert "❌ Failed to cancel task" not in out

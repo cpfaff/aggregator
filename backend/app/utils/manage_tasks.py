@@ -28,6 +28,14 @@ def run_celery_command(args: list[str], json_output: bool = True) -> dict | None
     try:
         result = subprocess.run(cmd, shell=False, capture_output=True, text=True, timeout=10)
 
+        # A non-zero child exit is a failed command. Return None so callers'
+        # `if not result:` failure path fires instead of presenting the
+        # always-truthy non-JSON dict as success (REQ-SUB-2, B19). returncode —
+        # not stderr presence — decides, so a zero exit with a harmless warning
+        # on stderr still counts as success.
+        if result.returncode != 0:
+            return None
+
         if json_output:
             # Callers iterate the JSON result as a worker->tasks mapping. When
             # the broker/workers are unreachable celery writes only to stderr
