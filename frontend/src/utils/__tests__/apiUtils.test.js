@@ -1,4 +1,18 @@
-import { apiRequest } from '../apiUtils';
+import { apiRequest, parseErrorResponse } from '../apiUtils';
+
+// Build a Response stub whose headers.get is keyed on the header NAME, with an
+// optional header map merged in (used to exercise parseErrorResponse directly).
+const mk = (status, body = {}, headers = {}) => ({
+  ok: status < 400,
+  status,
+  headers: {
+    get: (h) => {
+      if (h === 'content-type') return 'application/json';
+      return headers[h] ?? null;
+    },
+  },
+  json: () => Promise.resolve(body),
+});
 
 // Flush a generous number of microtask ticks so a rejection that propagates
 // through several awaited promises (Promise.race -> fetchWithTimeout ->
@@ -76,6 +90,20 @@ describe('apiUtils resilient client', () => {
         status: 409,
         message: 'Already validating',
       });
+    });
+  });
+
+  describe('FR-11 flatten 422 array detail (REQ-FE-DEG-4)', () => {
+    test('parseErrorResponse flattens a 422 array detail into a readable string, not an array', async () => {
+      const r = await parseErrorResponse(
+        mk(422, { detail: [{ loc: ['body', 'password'], msg: 'too short', type: 'x' }] }),
+      );
+
+      // RED (pre-fix): line returns data.detail (the array) as message, so
+      // typeof r.message is 'object' and the flattened text is absent.
+      expect(typeof r.message).toBe('string');
+      expect(r.message).toMatch(/password: too short/);
+      expect(r.message).not.toContain('[object Object]');
     });
   });
 });

@@ -283,6 +283,20 @@ export const parseErrorResponse = async (response) => {
   try {
     if (contentType.includes('application/problem+json') || contentType.includes('application/json')) {
       const data = await response.json();
+      // FastAPI 422 detail is an array of {loc,msg,type}; flatten it to a
+      // readable per-field string and also expose a fieldErrors map, so no
+      // consumer renders the raw array as a React child (FR-11, REQ-FE-DEG-4).
+      if (Array.isArray(data.detail)) {
+        const fieldErrors = {};
+        const message = data.detail
+          .map((d) => {
+            const field = Array.isArray(d.loc) ? d.loc.at(-1) : (d.loc ?? 'field');
+            fieldErrors[field] = d.msg;
+            return `${field}: ${d.msg}`;
+          })
+          .join('; ');
+        return { message, status, type: data.type || null, fieldErrors };
+      }
       // RFC 7807 format has 'detail' and 'title'
       const message = data.detail || data.title || data.message || 'An error occurred';
       return { message, status, type: data.type || null };
