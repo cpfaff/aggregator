@@ -23,10 +23,12 @@ record are silently skipped, so one bad id never fails the page.
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
-from pydantic import BaseModel, ConfigDict, Field
+from fastapi import APIRouter, Depends, Request
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import limiter
+from app.core.config import settings
 from app.db import get_db
 from app.services.es_gateway import parse_dataset_urn
 from app.services.validation_service import ValidationService
@@ -43,7 +45,7 @@ MAX_IDENTIFIERS = 500
 class ValidationStatsRequest(BaseModel):
     """Batch request: the ``abcdDatasetIdentifier`` values from one result page."""
 
-    identifiers: list[str] = Field(
+    identifiers: list[Annotated[str, StringConstraints(max_length=512)]] = Field(
         default_factory=list,
         max_length=MAX_IDENTIFIERS,
         description="abcdDatasetIdentifier term values (dataset or unit URNs).",
@@ -75,8 +77,9 @@ class ValidationStatsResponse(BaseModel):
 
 
 @router.post("/validation-stats", response_model=ValidationStatsResponse)
+@limiter.limit(settings.PUBLIC_STATS_RATE_LIMIT)
 async def get_validation_stats(
-    payload: ValidationStatsRequest, db: DbSession
+    request: Request, payload: ValidationStatsRequest, db: DbSession
 ) -> ValidationStatsResponse:
     """Return validation summaries for a page of ``abcdDatasetIdentifier`` values."""
     # Parse each identifier to its dataset id; skip anything malformed.

@@ -32,7 +32,29 @@ function PublicStatsDashboard() {
   const countdownRef = useRef(null);
   const REFRESH_INTERVAL = 60000; // 60 seconds for public dashboard
 
+  // Auto-refresh backoff (FR-16, REQ-FE-POLL-3): after BACKOFF_THRESHOLD
+  // consecutive failures the effective cadence widens — the 60s interval keeps
+  // firing but the callback skips all but every BACKOFF_FACTOR-th tick, until a
+  // success resets the cadence to 60s.
+  const BACKOFF_THRESHOLD = 3;
+  const BACKOFF_FACTOR = 4;
+  const failuresRef = useRef(0);
+  const backoffTicksRef = useRef(0);
+  // Overlap guard + abort (FR-17, REQ-FE-POLL-4): skip a tick while a batch is in
+  // flight, and abort the in-flight batch on unmount.
+  const isFetchingRef = useRef(false);
+  const abortControllerRef = useRef(null);
+
   const fetchAllStats = useCallback(async (isAutoRefresh = false) => {
+    // Overlap guard: skip this tick if a batch is still in flight.
+    if (isFetchingRef.current) {
+      return;
+    }
+    isFetchingRef.current = true;
+    // Capture THIS batch's signal up front, so the catch/finally test the
+    // controller that owns this batch — not a newer one a remount installed into
+    // the ref (which would mis-attribute this batch's abort as a real failure).
+    const signal = abortControllerRef.current?.signal;
     try {
       if (!isAutoRefresh) {
         setIsLoading(true);
@@ -42,10 +64,15 @@ function PublicStatsDashboard() {
       setError('');
 
       const [overview, providers, timeline] = await Promise.all([
-        publicStatsApi.getOverview(),
-        publicStatsApi.getProviders(),
-        publicStatsApi.getTimeline({ period: 'monthly', months: 12 })
+        publicStatsApi.getOverview({ signal }),
+        publicStatsApi.getProviders({ signal }),
+        publicStatsApi.getTimeline({ period: 'monthly', months: 12 }, { signal })
       ]);
+
+      // Aborted mid-flight (unmount): do not touch state.
+      if (signal?.aborted) {
+        return;
+      }
 
       setOverviewStats(overview);
 
@@ -117,7 +144,18 @@ function PublicStatsDashboard() {
       // Update last refreshed timestamp
       setLastUpdated(new Date());
 
+      // Success: reset the failure backoff to the normal 60s cadence.
+      failuresRef.current = 0;
+      backoffTicksRef.current = 0;
+
     } catch (err) {
+      // This batch was aborted (unmount/remount): not a real failure — bail
+      // without surfacing an error or counting it against the backoff.
+      if (signal?.aborted) {
+        return;
+      }
+      // Count consecutive failures so the auto-refresh cadence can widen.
+      failuresRef.current += 1;
       console.error('Error fetching public statistics:', err);
       // Only show prominent error for manual refresh, not auto-refresh
       if (!isAutoRefresh) {
@@ -127,8 +165,13 @@ function PublicStatsDashboard() {
         console.warn('Auto-refresh failed, will retry on next interval:', err.message);
       }
     } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
+      // Only this batch's owner releases the loading flags / in-flight guard. A
+      // batch cancelled by unmount/remount leaves them to whoever owns them now.
+      if (!signal?.aborted) {
+        isFetchingRef.current = false;
+        setIsLoading(false);
+        setIsRefreshing(false);
+      }
     }
   }, []);
 
@@ -151,9 +194,20 @@ function PublicStatsDashboard() {
 
     // Start auto-refresh interval
     intervalRef.current = setInterval(() => {
-      if (autoRefreshEnabled) {
-        fetchAllStats(true);
+      if (!autoRefreshEnabled) {
+        return;
       }
+      // Backoff: while in the failure state, skip ticks so the effective cadence
+      // widens (retry only every BACKOFF_FACTOR-th tick) instead of hammering a
+      // backend that is already down.
+      if (failuresRef.current >= BACKOFF_THRESHOLD) {
+        backoffTicksRef.current += 1;
+        if (backoffTicksRef.current < BACKOFF_FACTOR) {
+          return;
+        }
+        backoffTicksRef.current = 0; // due for a retry
+      }
+      fetchAllStats(true);
     }, REFRESH_INTERVAL);
   }, [autoRefreshEnabled, fetchAllStats]);
 
@@ -169,12 +223,20 @@ function PublicStatsDashboard() {
   }, []);
 
   useEffect(() => {
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     fetchAllStats();
     if (autoRefreshEnabled) {
       startAutoRefresh();
     }
 
     return () => {
+      // Abort the in-flight batch and stop the timers on unmount. Release the
+      // overlap guard too, so a remount (e.g. React StrictMode's dev
+      // double-mount) is not blocked by the aborted batch's lingering flag.
+      controller.abort();
+      isFetchingRef.current = false;
       stopAutoRefresh();
     };
   }, [fetchAllStats, autoRefreshEnabled, startAutoRefresh, stopAutoRefresh]);

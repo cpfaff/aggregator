@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Database, ExternalLink, FileText, Globe, Edit, Trash2, CheckCircle, XCircle, AlertCircle, HelpCircle, RefreshCw, Dna } from 'lucide-react';
 import useSWR from 'swr';
 import { useAuth } from '../auth/AuthContext';
 import axios from 'axios';
 import ValidationResultsModal from './ValidationResultsModal';
 import { authStatsApi } from '../../utils/statisticsApi';
+import { REQUEST_TIMEOUT_MS } from '../../utils/apiUtils';
 
 // SWR fetcher for the harvest-status endpoint. Reuses the already-imported axios
 // (so the existing jest.mock('axios') intercepts it) and the same token idiom as
@@ -13,6 +14,7 @@ const harvestStatusFetcher = async (url) => {
   const token = localStorage.getItem('token');
   const res = await axios.get(url, {
     headers: { Authorization: `Bearer ${token}` },
+    timeout: REQUEST_TIMEOUT_MS,
   });
   return res.data;
 };
@@ -24,6 +26,13 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [pollingInterval, setPollingInterval] = useState(null);
   const [datasetStats, setDatasetStats] = useState(null);
+  // Backpressure guard (FR-05, REQ-FE-POLL-1): true while a validation-status
+  // request is in flight, so a 3s poll tick cannot stack a second request on a
+  // slow/hung backend.
+  const inFlightRef = useRef(false);
+  // Abort controller for the validation requests (FR-06, REQ-FE-POLL-2): aborted
+  // on unmount so an in-flight request is cancelled and no setState runs after.
+  const abortControllerRef = useRef(null);
 
   // Debug logging
   console.log('Dataset Provider ID:', dataset.provider_id);
@@ -59,13 +68,20 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
 
   // Fetch validation status and dataset stats when component mounts
   useEffect(() => {
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     if (dataset && dataset.id) {
       fetchValidationStatus();
       fetchDatasetStats();
     }
 
-    // Clear any existing polling interval when component unmounts
+    // On unmount: abort the in-flight validation request and clear the poll.
+    // Release the overlap guard too, so a remount (React StrictMode's dev
+    // double-mount) is not blocked by the aborted request's lingering flag.
     return () => {
+      controller.abort();
+      inFlightRef.current = false;
       if (pollingInterval) {
         clearInterval(pollingInterval);
       }
@@ -86,6 +102,15 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
 
   // Function to fetch validation status
   const fetchValidationStatus = async () => {
+    // Overlap guard: skip this tick if a request is still in flight.
+    if (inFlightRef.current) {
+      return;
+    }
+    inFlightRef.current = true;
+    // Capture THIS request's signal up front so the catch/finally test the
+    // controller that owns this request — not a newer one a remount installed
+    // into the ref (which would mis-attribute this request's abort).
+    const signal = abortControllerRef.current?.signal;
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(
@@ -94,8 +119,15 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
           headers: {
             Authorization: `Bearer ${token}`,
           },
+          timeout: REQUEST_TIMEOUT_MS,
+          signal,
         }
       );
+
+      // Aborted mid-flight (unmount): do not touch state.
+      if (signal?.aborted) {
+        return;
+      }
 
       const newStatus = response.data;
       setValidationStatus(newStatus);
@@ -109,6 +141,11 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
         setIsValidating(false);
       }
     } catch (error) {
+      // This request was aborted (unmount/remount): not a real failure — bail
+      // without logging or clearing state a newer owner may now hold.
+      if (signal?.aborted) {
+        return;
+      }
       console.error('Error fetching validation status:', error);
 
       // If there's an error, stop polling and validating
@@ -117,6 +154,13 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
         setPollingInterval(null);
       }
       setIsValidating(false);
+    } finally {
+      // Release the overlap guard once the request settles (but not for a request
+      // aborted by unmount/remount — a newer owner may hold the guard now). A
+      // never-resolving request never reaches here, so its guard stays set.
+      if (!signal?.aborted) {
+        inFlightRef.current = false;
+      }
     }
   };
 
@@ -174,13 +218,22 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
 
     try {
       const token = localStorage.getItem('token');
+      // Idempotency key captured once per validation intent (FR-09,
+      // REQ-FE-CLIENT-4) so a retry or double-click cannot enqueue duplicate
+      // validation jobs; the backend deduplicates on this key.
+      const idempotencyKey =
+        typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `${dataset.id}:validate:${Date.now()}`;
       const response = await axios.post(
         `${process.env.REACT_APP_API_BASE_URL || ''}/api/v1/validators/datasets/${dataset.id}/validate`,
         { force: true },
         {
           headers: {
             Authorization: `Bearer ${token}`,
+            'Idempotency-Key': idempotencyKey,
           },
+          timeout: REQUEST_TIMEOUT_MS,
         }
       );
 

@@ -6,6 +6,7 @@ Import all models here for easy access from other modules.
 from app.models.archive_snapshot import ArchiveSnapshotModel
 from app.models.base import Base, TimestampMixin
 from app.models.dataset import DatasetModel, UsefulLinkModel, XmlArchiveModel
+from app.models.failed_task import FailedTaskModel
 from app.models.provider import DataProviderModel
 from app.models.user import UserModel
 from app.models.validation import ValidationJobModel
@@ -21,4 +22,5 @@ __all__ = [
     "UsefulLinkModel",
     "ValidationJobModel",
     "ArchiveSnapshotModel",
+    "FailedTaskModel",
 ]

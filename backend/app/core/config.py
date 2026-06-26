@@ -25,6 +25,10 @@ class Settings(BaseSettings):
     LOGIN_RATE_LIMIT: str = "5/minute"
     HARVEST_RATE_LIMIT: str = "30/hour"
     CSRF_TOKEN_RATE_LIMIT: str = "20/minute"
+    # Public, unauthenticated statistics reads (validation-stats + /statistics/*):
+    # generous per-IP ceiling for a dashboard, so a single client cannot saturate
+    # the DB pool. One explicit bounded value owns the shed-load behaviour (RH-08).
+    PUBLIC_STATS_RATE_LIMIT: str = "60/minute"
     # Cache settings
     CACHE_ENABLED: bool = True
     CACHE_EXPIRE_SECONDS: int = 300
@@ -34,6 +38,28 @@ class Settings(BaseSettings):
     DB_POOL_SIZE: int = 10
     DB_MAX_OVERFLOW: int = 20
     DB_POOL_RECYCLE: int = 1800
+    # Server-side query deadlines (milliseconds). A slow or lock-blocked query is
+    # aborted by PostgreSQL instead of pinning a pooled connection until the pool
+    # is exhausted (RH-01 / REQ-PG-1). Applied via connect_args on both engines.
+    DB_STATEMENT_TIMEOUT_MS: int = 5000
+    DB_LOCK_TIMEOUT_MS: int = 3000
+    # Maximum inbound request body size, in bytes. A request whose body exceeds
+    # this cap is rejected with HTTP 413 by BodySizeLimitMiddleware before it is
+    # buffered into memory and parsed, closing a memory-exhaustion DoS on every
+    # JSON route — including the public, unauthenticated POST /validation-stats
+    # (RH-02 / REQ-ROUTE-1). A search page submits a few hundred short URNs, far
+    # below 256 KiB, so this never clips a real request.
+    MAX_REQUEST_BODY_BYTES: int = 256 * 1024
+    # Maximum bytes streamed from a provider archive download before the transfer
+    # is aborted with a typed XMLParsingError. SpooledTemporaryFile(max_size=…) is
+    # only a memory→disk rollover threshold, not a cap, so a huge or hostile
+    # archive would otherwise exhaust the stats worker's disk/memory (RH-04 /
+    # REQ-OUT-1). The running byte counter is authoritative because an archive's
+    # Content-Length may be absent (chunked) or lie. Set to 30 GiB to admit the
+    # very large archives currently registered (which must process no matter
+    # what); this still bounds the worst-case worker disk/memory a single stream
+    # can consume rather than leaving it unbounded.
+    MAX_ARCHIVE_BYTES: int = 30 * 1024 * 1024 * 1024  # 30 GiB
     # Password policy
     MIN_PASSWORD_LENGTH: int = 8
     # Celery settings

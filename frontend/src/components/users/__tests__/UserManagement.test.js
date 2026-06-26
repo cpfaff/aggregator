@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import UserManagement from '../UserManagement';
 
 jest.mock('../../auth/AuthContext', () => ({
@@ -59,5 +60,50 @@ describe('UserManagement', () => {
       expect(screen.getByText('alice')).toBeInTheDocument();
     });
     expect(screen.queryByTestId('skeleton')).not.toBeInTheDocument();
+  });
+});
+
+describe('UserManagement 422 degradation', () => {
+  // FR-07 (REQ-FE-DEG-1): a FastAPI 422 array detail must surface the per-field
+  // message, not pass the raw array to the error Alert.
+  test('shows the per-field message when create returns a 422 array detail', async () => {
+    apiRequest.mockImplementation((url, options) => {
+      if (url === '/users' && options?.method === 'POST') {
+        return Promise.resolve({
+          ok: false,
+          status: 422,
+          json: () =>
+            Promise.resolve({
+              detail: [
+                {
+                  loc: ['body', 'password'],
+                  msg: 'String should have at least 8 characters',
+                  type: 'string_too_short',
+                },
+              ],
+            }),
+        });
+      }
+      // mount fetches (users + providers) -> empty so the empty-state Add User
+      // button renders.
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ data: [] }) });
+    });
+
+    render(<UserManagement />);
+
+    const addButton = await screen.findByRole('button', { name: /add user/i });
+    userEvent.click(addButton);
+
+    // Fill valid values so client-side validation passes (>=3 / >=8 chars) and
+    // the only "at least 8 characters" text can come from the server 422.
+    const usernameInput = await screen.findByPlaceholderText('Enter username');
+    userEvent.type(usernameInput, 'alice');
+    userEvent.type(screen.getByPlaceholderText('Enter password'), 'password123');
+    userEvent.click(screen.getByRole('button', { name: /create user/i }));
+
+    // RED (pre-fix): the truthy 422 array is stored in formError and passed to
+    // <Alert> as a React child -> React 18 throws "Objects are not valid as a
+    // React child", so the field message never appears.
+    expect(await screen.findByText(/at least 8 characters/i)).toBeInTheDocument();
   });
 });

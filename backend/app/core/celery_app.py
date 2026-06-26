@@ -51,20 +51,22 @@ celery_app.conf.update(
     task_track_started=True,
     worker_prefetch_multiplier=1,  # Good practice for fairness in task processing
     task_acks_late=True,  # Only acknowledge tasks after they are completed
+    # Broker visibility timeout MUST exceed the longest task hard limit, else a
+    # still-running long task is redelivered and re-run. validate_archive's
+    # task_time_limit is 7500s; 8100 keeps a margin above it. Keep these in sync.
+    broker_transport_options={"visibility_timeout": 8100},
     worker_concurrency=stats_concurrency,  # Apply calculated concurrency
-    # Dead Letter Queue configuration
     task_reject_on_worker_lost=True,  # Reject tasks when worker is lost
     task_ignore_result=False,  # Store task results for monitoring
     result_expires=3600,  # Results expire after 1 hour to prevent memory leak
     # Task time limits (global defaults, can be overridden per task)
     task_time_limit=7200,  # Hard time limit of 2 hours
     task_soft_time_limit=7000,  # Soft time limit slightly less than hard limit
-    # Dead letter queue routing for failed tasks
-    task_dead_letter_queue_config={
-        "max_retries_exceeded": "dead_letter",  # Queue for tasks that exceeded max retries
-        "expired": "dead_letter",  # Queue for expired tasks
-        "rejected": "dead_letter",  # Queue for rejected tasks
-    },
+    # Note: there is intentionally NO `task_dead_letter_queue_config` here. That
+    # key is not a real Celery setting — it was stored inertly and did nothing
+    # (RH-07 / REQ-CEL-2b). The durable dead-letter sink is implemented in
+    # app/core/task_base.py: LoggingTask.on_failure persists the give-up payload
+    # to the `failed_tasks` table, and task_base.redrive re-submits it.
 )
 
 # Periodic tasks schedule - simplified to single snapshot collection

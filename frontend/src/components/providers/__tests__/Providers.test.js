@@ -91,10 +91,8 @@ describe('Providers', () => {
 
     render(<Providers currentUser={adminUser} onViewProviderDetails={jest.fn()} />);
 
-    await waitFor(() => {
-      expect(screen.getByTestId('provider-card-1')).toHaveTextContent('Provider A');
-      expect(screen.getByTestId('provider-card-2')).toHaveTextContent('Provider B');
-    });
+    expect(await screen.findByTestId('provider-card-1')).toHaveTextContent('Provider A');
+    expect(screen.getByTestId('provider-card-2')).toHaveTextContent('Provider B');
   });
 
   test('shows empty state when no providers exist', async () => {
@@ -105,10 +103,8 @@ describe('Providers', () => {
 
     render(<Providers currentUser={adminUser} onViewProviderDetails={jest.fn()} />);
 
-    await waitFor(() => {
-      expect(screen.getByText('No providers found')).toBeInTheDocument();
-      expect(screen.getByText(/get started by adding/i)).toBeInTheDocument();
-    });
+    expect(await screen.findByText('No providers found')).toBeInTheDocument();
+    expect(screen.getByText(/get started by adding/i)).toBeInTheDocument();
   });
 
   test('shows error alert when API returns error', async () => {

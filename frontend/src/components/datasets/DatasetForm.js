@@ -117,7 +117,12 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired, onDirtyChan
         let errorMessage = 'Failed to save dataset';
         try {
           const errorData = await res.json();
-          errorMessage = errorData.detail || errorMessage;
+          // FastAPI 422 detail is an array of {loc,msg,type}; a truthy array
+          // passed as a React child to <Alert> throws. Flatten to a readable
+          // per-field string instead (FR-08, REQ-FE-DEG-2).
+          errorMessage = Array.isArray(errorData.detail)
+            ? errorData.detail.map((d) => `${d.loc?.at(-1) ?? 'field'}: ${d.msg}`).join('; ')
+            : (errorData.detail || errorMessage);
         } catch (e) {
           // If we can't parse the error response, use the default message
         }

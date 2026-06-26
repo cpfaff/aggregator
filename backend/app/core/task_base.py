@@ -1,5 +1,10 @@
 """
 Custom Celery task base class with enhanced error logging and retry handling.
+
+Also hosts the durable dead-letter sink (RH-07 / REQ-CEL-2): when a task reaches
+its FINAL failure path, ``LoggingTask.on_failure`` persists the give-up payload to
+the ``failed_tasks`` table so it can be inspected and redriven, instead of merely
+logging it and letting the message be acked and dropped.
 """
 
 import logging
@@ -7,7 +12,24 @@ import logging
 from celery import Task
 from celery.exceptions import MaxRetriesExceededError, SoftTimeLimitExceeded
 
+from app.db.session import SessionLocal
+from app.models.failed_task import MAX_FIELD_CHARS, FailedTaskModel
+
 logger = logging.getLogger(__name__)
+
+
+def _bounded(value: object) -> str:
+    """Serialize ``value`` to a length-bounded string for durable storage.
+
+    A failure payload (e.g. a large validation request) must never blow up the
+    dead-letter row, so the ``repr`` is truncated to ``MAX_FIELD_CHARS`` with an
+    explicit marker (RH-07 key consideration: "huge args"). ``repr`` is used so
+    the value never has to be JSON-serializable to be recorded.
+    """
+    text = repr(value)
+    if len(text) > MAX_FIELD_CHARS:
+        return text[:MAX_FIELD_CHARS] + "…[truncated]"
+    return text
 
 
 class LoggingTask(Task):
@@ -134,8 +156,49 @@ class LoggingTask(Task):
                 },
             )
 
+        # Durable dead-letter sink (RH-07 / REQ-CEL-2): persist the give-up
+        # payload so it can be inspected and redriven. Celery calls on_failure
+        # ONLY on the final give-up path (a retry goes through on_retry), so every
+        # on_failure is a give-up — persist unconditionally. The previous
+        # behaviour logged-then-acked-and-dropped, losing the payload entirely.
+        self._persist_dead_letter(exc, task_id, args, kwargs)
+
         # Call parent implementation
         super().on_failure(exc, task_id, args, kwargs, einfo)
+
+    def _persist_dead_letter(self, exc, task_id, args, kwargs) -> None:
+        """Persist a final-failure payload to the durable ``failed_tasks`` sink.
+
+        Stores a bounded record of ``{task_id, task_name, args, kwargs, last
+        exception}`` (the timestamp is the row's ``created_at`` default). If the
+        persistence itself fails the worker must NOT crash on the failure path
+        (RH-07 key consideration: "store unavailable") — we log loudly and let
+        the ORIGINAL exception propagate via ``super().on_failure``.
+        """
+        try:
+            session = SessionLocal()
+            try:
+                record = FailedTaskModel(
+                    task_id=task_id,
+                    task_name=self.name,
+                    args=_bounded(args),
+                    kwargs=_bounded(kwargs),
+                    exception=_bounded(f"{type(exc).__name__}: {exc}"),
+                )
+                session.add(record)
+                session.commit()
+            finally:
+                session.close()
+        except Exception:
+            # Never let a dead-letter write failure mask or replace the original
+            # exception. Log loudly and swallow — the original failure is already
+            # being propagated by the caller (super().on_failure).
+            logger.exception(
+                "Failed to persist dead-letter record for task %s [%s]; the "
+                "original task failure still propagates.",
+                self.name,
+                task_id,
+            )
 
     def on_success(self, retval, task_id, args, kwargs):
         """
@@ -191,3 +254,63 @@ class LoggingTask(Task):
 
         # Call parent implementation
         return super().apply_async(args=args, kwargs=kwargs, **options)
+
+
+def _literal_or_empty(text: str | None, empty):
+    """Reconstruct args/kwargs stored as a bounded ``repr`` for redrive.
+
+    The dead-letter row stores ``repr(args)`` / ``repr(kwargs)``; for the common
+    case (plain literals such as ``(42,)`` or ``{'force': True}``) this round-trips
+    via ``ast.literal_eval``. A truncated or non-literal payload (e.g. an object
+    repr) cannot be reconstructed safely, so redrive falls back to ``empty`` and
+    the operator re-supplies arguments — never executing arbitrary code.
+    """
+    import ast
+
+    if not text:
+        return empty
+    try:
+        return ast.literal_eval(text)
+    except (ValueError, SyntaxError):
+        return empty
+
+
+def redrive(task_id: str):
+    """Re-submit a previously dead-lettered task by its stored ``task_id``.
+
+    Looks up the most recent ``failed_tasks`` row for ``task_id`` and re-submits
+    the named task with its reconstructed args/kwargs (RH-07 / REQ-CEL-2 — a real
+    dead-letter sink must be redrivable). Returns the new ``AsyncResult``, or
+    ``None`` if no record exists or the task is not registered.
+    """
+    # Imported lazily to avoid importing the Celery app at module load time.
+    from app.core.celery_app import celery_app
+
+    session = SessionLocal()
+    try:
+        record = (
+            session.query(FailedTaskModel)
+            .filter(FailedTaskModel.task_id == task_id)
+            .order_by(FailedTaskModel.id.desc())
+            .first()
+        )
+    finally:
+        session.close()
+
+    if record is None:
+        logger.warning("redrive: no dead-letter record found for task_id=%s", task_id)
+        return None
+
+    task = celery_app.tasks.get(record.task_name)
+    if task is None:
+        logger.error(
+            "redrive: task %s is not registered; cannot redrive task_id=%s",
+            record.task_name,
+            task_id,
+        )
+        return None
+
+    args = _literal_or_empty(record.args, ())
+    kwargs = _literal_or_empty(record.kwargs, {})
+    logger.info("redrive: re-submitting task %s (original task_id=%s)", record.task_name, task_id)
+    return task.apply_async(args=args, kwargs=kwargs)

@@ -15,6 +15,7 @@ import About from './components/public/About';
 import LandingPage from './components/public/LandingPage';
 import { AdminDashboard, PublicStatsDashboard } from './components/statistics';
 import { ToastContainer } from './components/ui/Toast';
+import ErrorBoundary from './components/ui/ErrorBoundary';
 
 // Protected Route wrapper component
 function ProtectedRoute({ children }) {
@@ -152,7 +153,9 @@ function App() {
           } />
 
           <Route path="/statistics" element={
-            <PublicStatsDashboard />
+            <ErrorBoundary>
+              <PublicStatsDashboard />
+            </ErrorBoundary>
           } />
 
           <Route path="/login" element={
@@ -189,9 +192,11 @@ function App() {
                 display: 'flex',
                 flexDirection: 'column',
               }}>
-                <ProviderDetail
-                  currentUser={currentUser}
-                />
+                <ErrorBoundary>
+                  <ProviderDetail
+                    currentUser={currentUser}
+                  />
+                </ErrorBoundary>
               </div>
             </ProtectedRoute>
           } />
@@ -226,7 +231,9 @@ function App() {
                 display: 'flex',
                 flexDirection: 'column',
               }}>
-                <AdminDashboard />
+                <ErrorBoundary>
+                  <AdminDashboard />
+                </ErrorBoundary>
               </div>
             </ProtectedRoute>
           } />

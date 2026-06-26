@@ -11,12 +11,13 @@ from fastapi import (
 )
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 
 # Import slowapi components for rate limiting
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 # Import shared API dependencies
 from app.api.deps import limiter
@@ -76,6 +77,97 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "X-CSRF-Token"],
 )
+
+
+# ------------------- Request Body Size Limit Middleware -------------------
+class BodySizeLimitMiddleware:
+    """Reject requests whose body exceeds ``MAX_REQUEST_BODY_BYTES`` with HTTP 413.
+
+    Closes a memory-exhaustion DoS on every JSON route — including the public,
+    unauthenticated ``POST /validation-stats`` — which otherwise buffers the full
+    body into memory before any handler runs (RH-02 / REQ-ROUTE-1).
+
+    One explicit bounded value (``settings.MAX_REQUEST_BODY_BYTES``) owns the wire
+    behaviour. It is a pure-ASGI middleware (not ``BaseHTTPMiddleware``) so it can
+    short-circuit *before* the handler resolves and reject a stream without ever
+    buffering the whole body:
+
+    * a declared ``Content-Length`` over the cap is rejected immediately, before a
+      single body byte is read;
+    * because ``Content-Length`` is absent on a chunked upload, streamed bytes are
+      also counted as they arrive and the request is rejected with 413 the moment
+      the running total exceeds the cap.
+
+    Concurrency-safe. A single instance is shared across all requests, so it
+    holds NO per-request state: the request's ``scope`` is threaded through as a
+    local argument (never stashed on ``self``), so a second request's
+    ``__call__`` cannot overwrite the scope a first request is still using to
+    emit its 413 across the ``await receive()`` suspension on the streamed path.
+    """
+
+    def __init__(self, app: ASGIApp, max_body_bytes: int) -> None:
+        self.app = app
+        self.max_body_bytes = max_body_bytes
+
+    @staticmethod
+    async def _noop_receive() -> Message:
+        return {"type": "http.disconnect"}
+
+    async def _send_413(self, scope: Scope, send: Send) -> None:
+        response = PlainTextResponse(
+            "Request body too large",
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+        )
+        await response(scope, self._noop_receive, send)
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        # Fast path: a declared Content-Length over the cap is rejected before any
+        # body byte is read.
+        for name, value in scope.get("headers", []):
+            if name == b"content-length":
+                try:
+                    declared = int(value)
+                except ValueError:
+                    declared = None
+                if declared is not None and declared > self.max_body_bytes:
+                    await self._send_413(scope, send)
+                    return
+                break
+
+        # Chunked / unknown-length path: count streamed bytes as they arrive and
+        # reject once the running total exceeds the cap. Body chunks consumed
+        # before the cap is reached are held so the app still sees the whole body
+        # of a legitimately-sized request; buffering is bounded to at most
+        # ``max_body_bytes`` + one chunk and is released the moment the cap is hit.
+        prefetched: list[Message] = []
+        received = 0
+        while True:
+            message = await receive()
+            prefetched.append(message)
+            if message["type"] != "http.request":
+                break
+            received += len(message.get("body", b""))
+            if received > self.max_body_bytes:
+                await self._send_413(scope, send)
+                return
+            if not message.get("more_body", False):
+                break
+
+        async def replay_receive() -> Message:
+            if prefetched:
+                return prefetched.pop(0)
+            # Defensive: once the prefetched body is drained, fall through to the
+            # live stream (relevant only if a chunk lacked the more_body flag).
+            return await receive()
+
+        await self.app(scope, replay_receive, send)
+
+
+app.add_middleware(BodySizeLimitMiddleware, max_body_bytes=settings.MAX_REQUEST_BODY_BYTES)
 
 
 # ------------------- Security Headers Middleware -------------------

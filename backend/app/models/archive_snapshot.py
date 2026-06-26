@@ -7,7 +7,7 @@ snapshots of archive analysis results.
 
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, String
+from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, String, func
 from sqlalchemy.orm import backref, relationship
 
 from app.models.base import Base
@@ -54,6 +54,21 @@ class ArchiveSnapshotModel(Base):
         Index("idx_snapshot_archive_id", "archive_id"),
         Index("idx_snapshot_recorded_at", "recorded_at"),
         Index("idx_snapshot_archive_recorded", "archive_id", "recorded_at"),
+        # Defense-in-depth uniqueness guard for idempotent snapshot insertion
+        # (RH-06 / REQ-CEL-3): at most one snapshot per archive per calendar day.
+        # A redelivered acks_late task must not double-insert. A plain column
+        # UniqueConstraint("archive_id", "recorded_at") cannot express this — the
+        # timestamp differs by milliseconds and never collides — so we use a
+        # functional UNIQUE index on (archive_id, date(recorded_at)). The
+        # application-level check-before-insert is the primary guard; this index
+        # is the authoritative guard under concurrent workers racing the same
+        # archive/day (the insert path catches IntegrityError → already-recorded).
+        Index(
+            "uq_snapshot_archive_day",
+            "archive_id",
+            func.date(recorded_at),
+            unique=True,
+        ),
     )
 
     def __repr__(self) -> str:

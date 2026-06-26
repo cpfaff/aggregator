@@ -2,7 +2,7 @@
  * Statistics API service utilities
  * Provides functions to interact with the statistics endpoints
  */
-import { apiRequest, API_BASE, API_VERSION } from './apiUtils';
+import { apiRequest, API_BASE, API_VERSION, fetchWithTimeout, parseErrorResponse } from './apiUtils';
 
 /**
  * Public statistics API calls (no authentication required)
@@ -12,10 +12,10 @@ export const publicStatsApi = {
    * Get public registry overview
    * @returns {Promise<Object>} Overview statistics
    */
-  getOverview: async () => {
-    const response = await fetch(`${API_BASE}${API_VERSION}/statistics/overview`);
+  getOverview: async (options = {}) => {
+    const response = await fetchWithTimeout(`${API_BASE}${API_VERSION}/statistics/overview`, options);
     if (!response.ok) {
-      throw new Error(`Failed to fetch public overview: ${response.status}`);
+      throw await parseErrorResponse(response);
     }
     return response.json();
   },
@@ -25,14 +25,14 @@ export const publicStatsApi = {
    * @param {Object} params - Timeline parameters
    * @returns {Promise<Object>} Timeline data
    */
-  getTimeline: async (params = {}) => {
+  getTimeline: async (params = {}, options = {}) => {
     const queryParams = new URLSearchParams({
       period: params.period || 'daily',
       months: params.months || 1
     });
-    const response = await fetch(`${API_BASE}${API_VERSION}/statistics/timeline?${queryParams}`);
+    const response = await fetchWithTimeout(`${API_BASE}${API_VERSION}/statistics/timeline?${queryParams}`, options);
     if (!response.ok) {
-      throw new Error(`Failed to fetch timeline: ${response.status}`);
+      throw await parseErrorResponse(response);
     }
     return response.json();
   },
@@ -41,10 +41,10 @@ export const publicStatsApi = {
    * Get provider statistics
    * @returns {Promise<Array>} Provider statistics
    */
-  getProviders: async () => {
-    const response = await fetch(`${API_BASE}${API_VERSION}/statistics/providers`);
+  getProviders: async (options = {}) => {
+    const response = await fetchWithTimeout(`${API_BASE}${API_VERSION}/statistics/providers`, options);
     if (!response.ok) {
-      throw new Error(`Failed to fetch provider stats: ${response.status}`);
+      throw await parseErrorResponse(response);
     }
     return response.json();
   }

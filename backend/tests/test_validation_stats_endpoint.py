@@ -14,10 +14,12 @@ is asserted through the reverse-router (``url_path_for``), which is stable acros
 the lazy-include behaviour of the pinned FastAPI.
 """
 
+import uuid
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from starlette.requests import Request
 
 from app.api.v1.endpoints.validation_stats import (
     ValidationStatsRequest,
@@ -29,6 +31,24 @@ from app.api.v1.endpoints.validation_stats import (
 
 URN_204 = "urn:gfbio.org:abcd:1_204_375"
 URN_204_UNIT = "urn:gfbio.org:abcd:1_204_375:7"  # a unit doc of the same dataset
+
+
+def _make_request() -> Request:
+    """Build a minimal real ``Request`` so the ``@limiter.limit`` decorator runs.
+
+    A unique client host per call gives each invocation its own rate-limit bucket,
+    so repeated calls in the suite never exhaust ``PUBLIC_STATS_RATE_LIMIT`` (same
+    idiom as ``tests/test_harvest_endpoint.py``).
+    """
+    scope = {
+        "type": "http",
+        "method": "POST",
+        "path": "/v1/validation-stats",
+        "headers": [],
+        "query_string": b"",
+        "client": (f"test-{uuid.uuid4()}", 12345),
+    }
+    return Request(scope)
 
 
 def _dataset_summary(**overrides) -> dict:
@@ -59,7 +79,7 @@ async def test_returns_summary_keyed_by_identifier(MockServiceClass):
     )
 
     response = await get_validation_stats(
-        ValidationStatsRequest(identifiers=[URN_204]), db=MagicMock()
+        _make_request(), ValidationStatsRequest(identifiers=[URN_204]), db=MagicMock()
     )
 
     # Re-keyed onto the identifier the caller sent, with the headline numbers.
@@ -85,7 +105,9 @@ async def test_skips_malformed_identifiers(MockServiceClass):
     )
 
     response = await get_validation_stats(
-        ValidationStatsRequest(identifiers=["not-a-urn", URN_204]), db=MagicMock()
+        _make_request(),
+        ValidationStatsRequest(identifiers=["not-a-urn", URN_204]),
+        db=MagicMock(),
     )
 
     # Only the well-formed id reaches the DB and only it appears in the result.
@@ -102,7 +124,7 @@ async def test_omits_identifiers_with_no_validation_record(MockServiceClass):
     mock_service.get_validation_stats_for_datasets = AsyncMock(return_value={})
 
     response = await get_validation_stats(
-        ValidationStatsRequest(identifiers=[URN_204]), db=MagicMock()
+        _make_request(), ValidationStatsRequest(identifiers=[URN_204]), db=MagicMock()
     )
 
     assert response.results == {}
@@ -119,7 +141,9 @@ async def test_deduplicates_dataset_ids_but_keys_every_identifier(MockServiceCla
 
     # A dataset URN and one of its unit URNs both resolve to dataset 204.
     response = await get_validation_stats(
-        ValidationStatsRequest(identifiers=[URN_204, URN_204_UNIT]), db=MagicMock()
+        _make_request(),
+        ValidationStatsRequest(identifiers=[URN_204, URN_204_UNIT]),
+        db=MagicMock(),
     )
 
     # The DB is queried once for the deduplicated dataset id...
@@ -137,7 +161,7 @@ async def test_empty_identifiers_returns_empty(MockServiceClass):
     mock_service.get_validation_stats_for_datasets = AsyncMock(return_value={})
 
     response = await get_validation_stats(
-        ValidationStatsRequest(identifiers=[]), db=MagicMock()
+        _make_request(), ValidationStatsRequest(identifiers=[]), db=MagicMock()
     )
 
     assert response.results == {}

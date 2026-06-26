@@ -2,6 +2,7 @@ import React, { memo, useCallback, useState, useEffect } from 'react';
 import Button from '../ui/Button';
 import StatCard from '../ui/StatCard';
 import { useResponsiveGrid } from '../../hooks/useMediaQuery';
+import { fetchWithTimeout, parseErrorResponse } from '../../utils/apiUtils';
 
 const LandingPage = memo(({ onGetStarted, onLearnMore, onViewStatistics }) => {
   const { getGridColumns } = useResponsiveGrid();
@@ -40,17 +41,29 @@ const LandingPage = memo(({ onGetStarted, onLearnMore, onViewStatistics }) => {
   // State for live statistics
   const [stats, setStats] = useState(null);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
+  const [statsError, setStatsError] = useState(false);
 
-  // Fetch live statistics on component mount
+  // Fetch live statistics on component mount (FR-13, REQ-FE-CLIENT-5):
+  // timeout-bounded, guards res.ok before reading the body (no liberal
+  // acceptance), and logs the failure instead of swallowing it silently.
   useEffect(() => {
-    fetch('/api/v1/statistics/overview')
-      .then(res => res.json())
-      .then(data => {
+    fetchWithTimeout('/api/v1/statistics/overview')
+      .then(async (res) => {
+        if (!res.ok) {
+          throw await parseErrorResponse(res);
+        }
+        return res.json();
+      })
+      .then((data) => {
         setStats(data);
+        setStatsError(false);
         setIsLoadingStats(false);
       })
-      .catch(() => {
-        // Fallback silently if API fails
+      .catch((err) => {
+        // Keep any last-known stats (stale-while-error, a credited strength);
+        // surface the failure rather than swallowing it.
+        console.error('Failed to load overview statistics:', err);
+        setStatsError(true);
         setIsLoadingStats(false);
       });
   }, []);
@@ -341,6 +354,11 @@ const LandingPage = memo(({ onGetStarted, onLearnMore, onViewStatistics }) => {
       <section style={socialProofSectionStyle}>
         <div style={heroContentStyle}>
           <h2 style={sectionHeaderStyle}>Platform Overview</h2>
+          {statsError && (
+            <p style={{ textAlign: 'center', color: 'var(--text-light)', marginBottom: '1rem' }}>
+              Live statistics are currently unavailable.
+            </p>
+          )}
           <div style={{
             display: 'grid',
             gridTemplateColumns: getGridColumns(300),

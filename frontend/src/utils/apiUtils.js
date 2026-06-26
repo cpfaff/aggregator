@@ -9,6 +9,74 @@ export const API_BASE = process.env.NODE_ENV === 'production'
 // API version prefix
 export const API_VERSION = '/api/v1';
 
+// Single request timeout (ms) the resilient client enforces on every backend
+// call, so a backend that accepts the connection but never responds cannot pin
+// a request forever. See REQ-FE-CLIENT-1 / REQ-FE-CORE-1.
+export const REQUEST_TIMEOUT_MS = 15000;
+
+/**
+ * fetch bounded by REQUEST_TIMEOUT_MS via an AbortController.
+ *
+ * The returned promise always settles: when the timer fires it aborts the
+ * in-flight request (so a real fetch rejects) and rejects with a typed
+ * TimeoutError, raced against the fetch so even a fetch that never settles is
+ * bounded.
+ *
+ * @param {string} url
+ * @param {Object} options - Fetch options (a signal is merged in)
+ * @returns {Promise<Response>}
+ */
+export const fetchWithTimeout = async (url, options = {}) => {
+  const controller = new AbortController();
+  // Compose a caller-supplied signal (e.g. an unmount AbortController) with our
+  // timeout controller, so either source aborts the request.
+  if (options.signal) {
+    if (options.signal.aborted) {
+      controller.abort();
+    } else {
+      options.signal.addEventListener('abort', () => controller.abort(), { once: true });
+    }
+  }
+  let timer;
+  const timeoutPromise = new Promise((_resolve, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      const error = new Error(`Request timed out after ${REQUEST_TIMEOUT_MS}ms`);
+      error.name = 'TimeoutError';
+      reject(error);
+    }, REQUEST_TIMEOUT_MS);
+  });
+
+  try {
+    return await Promise.race([
+      fetch(url, { ...options, signal: controller.signal }),
+      timeoutPromise,
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
+// Bounded, jittered transient retry (FR-15, REQ-FE-CLIENT-8): retries fire only
+// for timeout / network-error / 5xx / 429, only for idempotent calls, at this one
+// layer (not double-stacked with SWR).
+export const MAX_RETRIES = 2;
+const RETRY_BASE_MS = 300;
+const RETRY_CAP_MS = 2000;
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Full jitter: random(0, min(cap, base * 2^attempt)).
+const computeRetryBackoff = (attempt) =>
+  Math.random() * Math.min(RETRY_CAP_MS, RETRY_BASE_MS * (2 ** attempt));
+
+const isRetriableError = (error) => {
+  if (!error) return false;
+  if (error.name === 'TimeoutError') return true; // request timeout
+  if (error instanceof TypeError) return true; // network-level failure
+  return error.class === 'server' || error.class === 'throttle'; // 5xx / 429
+};
+
 /**
  * Get CSRF token from the backend
  * @returns {Promise<string>} - CSRF token
@@ -136,8 +204,8 @@ export const fetchWithTokenExpiration = async (url, options = {}, onTokenExpired
       }
     }
 
-    // Make the API request
-    const response = await fetch(url, options);
+    // Make the API request (bounded by REQUEST_TIMEOUT_MS via AbortController)
+    const response = await fetchWithTimeout(url, options);
 
     // Handle 401 Unauthorized errors
     if (response.status === 401 && !url.endsWith(`${API_VERSION}/tokens`)) {
@@ -150,13 +218,20 @@ export const fetchWithTokenExpiration = async (url, options = {}, onTokenExpired
         if (newOptions.headers && newOptions.headers.Authorization) {
           newOptions.headers.Authorization = `Bearer ${localStorage.getItem('token')}`;
         }
-        return fetch(url, newOptions);
+        return fetchWithTimeout(url, newOptions);
       } else {
         // If refresh failed, trigger expiration callback
         if (onTokenExpired && typeof onTokenExpired === 'function') {
           onTokenExpired();
         }
       }
+    }
+
+    // Typed-error seam (FR-10, REQ-FE-CLIENT-6): on a non-ok response, reject
+    // with the typed { status, message, ... } from parseErrorResponse instead of
+    // returning a raw Response, so every caller sees one error shape.
+    if (!response.ok) {
+      throw await parseErrorResponse(response);
     }
 
     return response;
@@ -192,8 +267,13 @@ export const apiRequest = async (endpoint, options = {}, onTokenExpired) => {
       const csrfToken = await getCsrfToken();
       headers['X-CSRF-Token'] = csrfToken;
     } catch (error) {
+      // Fail closed (FR-14, REQ-FE-CLIENT-7): never send a state-changing request
+      // without its CSRF header. A security control must not degrade to a
+      // permissive send when the token cannot be obtained.
       console.error('Failed to add CSRF token to request:', error);
-      // Continue with the request even if CSRF token retrieval fails
+      const csrfError = new Error('CSRF token unavailable; request not sent');
+      csrfError.name = 'CsrfUnavailableError';
+      throw csrfError;
     }
   }
 
@@ -204,11 +284,31 @@ export const apiRequest = async (endpoint, options = {}, onTokenExpired) => {
     credentials: 'include', // Important to include cookies for CSRF validation
   };
 
-  return fetchWithTokenExpiration(
-    `${API_BASE}${API_VERSION}${endpoint}`,
-    mergedOptions,
-    onTokenExpired
-  );
+  const url = `${API_BASE}${API_VERSION}${endpoint}`;
+
+  // Only retry idempotent calls: GET/HEAD, or a side-effecting call carrying an
+  // Idempotency-Key (FR-09), so a retry cannot double-submit (FR-15).
+  const isIdempotent =
+    ['GET', 'HEAD'].includes(method.toUpperCase()) || headers['Idempotency-Key'] != null;
+
+  let lastError;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt += 1) {
+    try {
+      // return await so a rejection is caught here for the retry decision.
+      // eslint-disable-next-line no-await-in-loop
+      return await fetchWithTokenExpiration(url, mergedOptions, onTokenExpired);
+    } catch (error) {
+      lastError = error;
+      // 4xx (incl. the 401-refresh path's outcome) and non-idempotent calls are
+      // never retried; only timeout/network/5xx/429 on idempotent calls are.
+      if (!isIdempotent || attempt >= MAX_RETRIES || !isRetriableError(error)) {
+        throw error;
+      }
+      // eslint-disable-next-line no-await-in-loop
+      await sleep(computeRetryBackoff(attempt));
+    }
+  }
+  throw lastError;
 };
 
 /**
@@ -234,18 +334,42 @@ export const parseErrorResponse = async (response) => {
   const contentType = response.headers.get('content-type') || '';
   const status = response.status;
 
+  // Classify the failure so consumers can branch (FR-12, REQ-FE-DEG-3):
+  // 429 -> throttle (back off, honour Retry-After), 5xx -> server (transient,
+  // keep stale), else -> client (user-fixable).
+  const errorClass = status === 429
+    ? 'throttle'
+    : (Math.floor(status / 100) === 5 ? 'server' : 'client');
+  const retryAfterRaw = response.headers.get('Retry-After');
+  const retryAfter = retryAfterRaw != null ? Number(retryAfterRaw) : undefined;
+  const base = { status, class: errorClass, retryAfter };
+
   try {
     if (contentType.includes('application/problem+json') || contentType.includes('application/json')) {
       const data = await response.json();
+      // FastAPI 422 detail is an array of {loc,msg,type}; flatten it to a
+      // readable per-field string and also expose a fieldErrors map, so no
+      // consumer renders the raw array as a React child (FR-11, REQ-FE-DEG-4).
+      if (Array.isArray(data.detail)) {
+        const fieldErrors = {};
+        const message = data.detail
+          .map((d) => {
+            const field = Array.isArray(d.loc) ? d.loc.at(-1) : (d.loc ?? 'field');
+            fieldErrors[field] = d.msg;
+            return `${field}: ${d.msg}`;
+          })
+          .join('; ');
+        return { message, type: data.type || null, fieldErrors, ...base };
+      }
       // RFC 7807 format has 'detail' and 'title'
       const message = data.detail || data.title || data.message || 'An error occurred';
-      return { message, status, type: data.type || null };
+      return { message, type: data.type || null, ...base };
     }
     // Plain text error
     const text = await response.text();
-    return { message: text || 'An error occurred', status, type: null };
+    return { message: text || 'An error occurred', type: null, ...base };
   } catch (e) {
-    return { message: 'An error occurred', status, type: null };
+    return { message: 'An error occurred', type: null, ...base };
   }
 };
 
