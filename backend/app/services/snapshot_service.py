@@ -46,34 +46,22 @@ class SnapshotService:
         }
 
     def get_quality_metrics(self, user: UserModel | None = None, days: int = 30) -> dict[str, Any]:
-        """Get data quality metrics from validation jobs."""
+        """Get data quality metrics from validation jobs.
+
+        Computed with bounded SQL aggregates (RH-03 / REQ-PG-2): this is a public,
+        unauthenticated surface, so it must never materialize every validation-job
+        row (each carrying a JSON ``results`` blob) into memory.
+        """
         cutoff_date = date.today() - timedelta(days=days)
 
-        recent_jobs = self.repo.get_validation_jobs_since(cutoff_date)
-
-        total_validations = len(recent_jobs)
-        successful_validations = len(
-            [
-                job
-                for job in recent_jobs
-                if job.status == "completed"
-                and job.valid_files == job.total_files
-                and job.total_files > 0
-            ]
+        total_validations, successful_validations, avg_processing_time = (
+            self.repo.get_quality_metric_aggregates(cutoff_date)
         )
+
         failed_validations = total_validations - successful_validations
 
         success_rate = (
             (successful_validations / total_validations * 100) if total_validations > 0 else 0
-        )
-
-        processing_times = [
-            job.validation_time
-            for job in recent_jobs
-            if job.validation_time is not None and job.status == "completed"
-        ]
-        avg_processing_time = (
-            (sum(processing_times) / len(processing_times)) if processing_times else None
         )
 
         return {
@@ -86,20 +74,18 @@ class SnapshotService:
         }
 
     def _calculate_validation_success_rate(self, days: int = 30) -> float | None:
-        """Calculate validation success rate for the last N days."""
-        cutoff_date = date.today() - timedelta(days=days)
-        completed_jobs = self.repo.get_completed_validation_jobs(since=cutoff_date)
+        """Calculate validation success rate for the last N days.
 
-        if not completed_jobs:
+        Uses bounded SQL counts (RH-03 / REQ-PG-2) rather than materializing the
+        completed-job rows.
+        """
+        cutoff_date = date.today() - timedelta(days=days)
+        completed, successful = self.repo.get_completed_validation_counts(since=cutoff_date)
+
+        if not completed:
             return None
 
-        successful = sum(
-            1
-            for job in completed_jobs
-            if job.valid_files == job.total_files and job.total_files > 0
-        )
-
-        return (successful / len(completed_jobs) * 100) if completed_jobs else None
+        return successful / completed * 100
 
     # -------------------------------------------------------------------------
     # Unit Count Queries (from ArchiveSnapshot)
@@ -289,22 +275,20 @@ class SnapshotService:
         }
 
     def _calculate_provider_validation_rate(self, provider_id: int) -> float | None:
-        """Calculate validation success rate for a specific provider."""
+        """Calculate validation success rate for a specific provider.
+
+        Uses bounded SQL counts (RH-03 / REQ-PG-2) rather than materializing the
+        completed-job rows.
+        """
         cutoff_date = date.today() - timedelta(days=30)
-        completed_jobs = self.repo.get_completed_validation_jobs(
+        completed, successful = self.repo.get_completed_validation_counts(
             since=cutoff_date, provider_id=provider_id
         )
 
-        if not completed_jobs:
+        if not completed:
             return None
 
-        successful = sum(
-            1
-            for job in completed_jobs
-            if job.valid_files == job.total_files and job.total_files > 0
-        )
-
-        return (successful / len(completed_jobs) * 100) if completed_jobs else None
+        return successful / completed * 100
 
     def get_dataset_statistics(
         self, dataset_id: int, user: UserModel | None = None

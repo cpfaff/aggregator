@@ -56,11 +56,67 @@ class SnapshotRepository:
     # Validation queries
     # -------------------------------------------------------------------------
 
-    def get_completed_validation_jobs(
+    def count_recent_validations(self, since: date) -> int:
+        """Count validation jobs since a date."""
+        return (
+            self.db.query(func.count(ValidationJobModel.id))
+            .filter(ValidationJobModel.created_at >= since)
+            .scalar()
+            or 0
+        )
+
+    # The single SQL predicate for a "successful" validation: completed, every
+    # file valid, and at least one file (total_files > 0). Shared by the quality
+    # and success-rate aggregates so the two paths never drift.
+    _SUCCESS_FILTER = and_(
+        ValidationJobModel.status == "completed",
+        ValidationJobModel.valid_files == ValidationJobModel.total_files,
+        ValidationJobModel.total_files > 0,
+    )
+
+    def get_quality_metric_aggregates(self, since: date) -> tuple[int, int, float | None]:
+        """Compute the public quality metrics in a single bounded SQL query.
+
+        Returns ``(total, successful, avg_completed_time)`` for validation jobs
+        created since ``since``, never materializing any row (RH-03 / REQ-PG-2):
+
+        * ``total`` — ``COUNT(*)`` of all jobs in the window.
+        * ``successful`` — count matching :attr:`_SUCCESS_FILTER`.
+        * ``avg_completed_time`` — ``AVG(validation_time)`` over *completed* jobs
+          with a non-null ``validation_time`` (mirrors the old Python average,
+          which keyed off ``status == 'completed'``, not success); ``None`` when
+          no such job exists (SQL ``AVG`` over zero rows is NULL).
+        """
+        completed_with_time = and_(
+            ValidationJobModel.status == "completed",
+            ValidationJobModel.validation_time.isnot(None),
+        )
+        total, successful, avg_time = (
+            self.db.query(
+                func.count(ValidationJobModel.id),
+                func.count(ValidationJobModel.id).filter(self._SUCCESS_FILTER),
+                func.avg(ValidationJobModel.validation_time).filter(completed_with_time),
+            )
+            .filter(ValidationJobModel.created_at >= since)
+            .one()
+        )
+
+        return (total or 0), (successful or 0), (float(avg_time) if avg_time is not None else None)
+
+    def get_completed_validation_counts(
         self, since: date, provider_id: int | None = None
-    ) -> list[ValidationJobModel]:
-        """Get completed validation jobs since a cutoff date, optionally for a provider."""
-        query = self.db.query(ValidationJobModel).filter(
+    ) -> tuple[int, int]:
+        """Return ``(completed_total, completed_successful)`` via bounded SQL.
+
+        Drives the validation-success-rate paths without materializing the
+        completed-job rows (RH-03 / REQ-PG-2). ``completed_total`` counts every
+        completed job since ``since`` (optionally scoped to ``provider_id``);
+        ``completed_successful`` counts those also matching :attr:`_SUCCESS_FILTER`.
+        """
+        query = self.db.query(
+            func.count(ValidationJobModel.id),
+            func.count(ValidationJobModel.id).filter(self._SUCCESS_FILTER),
+        ).filter(
             and_(
                 ValidationJobModel.created_at >= since,
                 ValidationJobModel.status == "completed",
@@ -74,22 +130,8 @@ class SnapshotRepository:
                 .filter(DatasetModel.provider_id == provider_id)
             )
 
-        return query.all()
-
-    def get_validation_jobs_since(self, since: date) -> list[ValidationJobModel]:
-        """Get all validation jobs since a cutoff date."""
-        return (
-            self.db.query(ValidationJobModel).filter(ValidationJobModel.created_at >= since).all()
-        )
-
-    def count_recent_validations(self, since: date) -> int:
-        """Count validation jobs since a date."""
-        return (
-            self.db.query(func.count(ValidationJobModel.id))
-            .filter(ValidationJobModel.created_at >= since)
-            .scalar()
-            or 0
-        )
+        completed_total, completed_successful = query.one()
+        return (completed_total or 0), (completed_successful or 0)
 
     # -------------------------------------------------------------------------
     # Provider queries

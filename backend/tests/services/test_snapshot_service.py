@@ -279,6 +279,64 @@ class TestGetQualityMetrics:
         result = snapshot_service.get_quality_metrics()
         assert result["successful_validations"] == 0
 
+    def test_quality_metrics_does_not_materialize_all_jobs(
+        self, snapshot_service, sync_db_session, archive
+    ):
+        """Quality metrics must be computed via bounded SQL aggregates, never by
+        materializing every validation-job row (each with a JSON ``results`` blob)
+        into memory (RH-03 / REQ-PG-2).
+
+        Proven by installing a booby-trapped ``get_validation_jobs_since`` (the
+        old unbounded ``.all()`` method) on the repo: if ``get_quality_metrics``
+        ever routes through it the call explodes; with scalar SQL aggregates the
+        call succeeds and the counts are correct. Guards against reintroducing the
+        row-materializing path.
+        """
+        success = ValidationJobModel(
+            archive_id=archive.id,
+            status="completed",
+            task_id="agg-ok",
+            total_files=4,
+            valid_files=4,
+            validation_time=2.0,
+            created_at=utc_now(),
+        )
+        failed = ValidationJobModel(
+            archive_id=archive.id,
+            status="completed",
+            task_id="agg-fail",
+            total_files=4,
+            valid_files=1,
+            validation_time=4.0,
+            created_at=utc_now(),
+        )
+        pending = ValidationJobModel(
+            archive_id=archive.id,
+            status="pending",
+            task_id="agg-pending",
+            created_at=utc_now(),
+        )
+        sync_db_session.add_all([success, failed, pending])
+        sync_db_session.flush()
+
+        def _boom(*args, **kwargs):
+            raise AssertionError(
+                "get_quality_metrics materialized all jobs via "
+                "get_validation_jobs_since instead of using SQL aggregates"
+            )
+
+        snapshot_service.repo.get_validation_jobs_since = _boom
+
+        # Must not raise (no longer routes through the unbounded method)...
+        result = snapshot_service.get_quality_metrics(days=30)
+
+        # ...and must still return the correct counts.
+        assert result["total_validations"] == 3
+        assert result["successful_validations"] == 1
+        assert result["failed_validations"] == 2
+        assert result["success_rate"] == pytest.approx(33.33, abs=0.1)
+        assert result["average_processing_time"] == pytest.approx(3.0)  # (2.0+4.0)/2
+
 
 # ---------------------------------------------------------------------------
 # get_dataset_unit_count
