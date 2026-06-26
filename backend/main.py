@@ -98,30 +98,32 @@ class BodySizeLimitMiddleware:
       also counted as they arrive and the request is rejected with 413 the moment
       the running total exceeds the cap.
 
-    Per-request and stateless — no shared state, safe under concurrency.
+    Concurrency-safe. A single instance is shared across all requests, so it
+    holds NO per-request state: the request's ``scope`` is threaded through as a
+    local argument (never stashed on ``self``), so a second request's
+    ``__call__`` cannot overwrite the scope a first request is still using to
+    emit its 413 across the ``await receive()`` suspension on the streamed path.
     """
 
     def __init__(self, app: ASGIApp, max_body_bytes: int) -> None:
         self.app = app
         self.max_body_bytes = max_body_bytes
 
-    async def _send_413(self, send: Send) -> None:
+    @staticmethod
+    async def _noop_receive() -> Message:
+        return {"type": "http.disconnect"}
+
+    async def _send_413(self, scope: Scope, send: Send) -> None:
         response = PlainTextResponse(
             "Request body too large",
             status_code=status.HTTP_413_CONTENT_TOO_LARGE,
         )
-        await response(self._scope, self._noop_receive, send)
-
-    @staticmethod
-    async def _noop_receive() -> Message:
-        return {"type": "http.disconnect"}
+        await response(scope, self._noop_receive, send)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
-
-        self._scope = scope
 
         # Fast path: a declared Content-Length over the cap is rejected before any
         # body byte is read.
@@ -132,7 +134,7 @@ class BodySizeLimitMiddleware:
                 except ValueError:
                     declared = None
                 if declared is not None and declared > self.max_body_bytes:
-                    await self._send_413(send)
+                    await self._send_413(scope, send)
                     return
                 break
 
@@ -150,7 +152,7 @@ class BodySizeLimitMiddleware:
                 break
             received += len(message.get("body", b""))
             if received > self.max_body_bytes:
-                await self._send_413(send)
+                await self._send_413(scope, send)
                 return
             if not message.get("more_body", False):
                 break
