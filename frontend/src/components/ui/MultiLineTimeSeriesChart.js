@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { formatCompactNumber } from '../../utils/numberFormat';
 import {
   LineChart,
   Line,
@@ -440,11 +441,9 @@ function MultiLineTimeSeriesChart({
                 if (value < 1) {
                   return value.toFixed(2);
                 }
-                // Format large numbers with K/M suffixes
-                if (value >= 1000000) {
-                  return `${(value / 1000000).toFixed(1)}M`;
-                } else if (value >= 1000) {
-                  return `${(value / 1000).toFixed(1)}K`;
+                // K/M suffixes via the shared helper; below 1000 round to an integer.
+                if (value >= 1000) {
+                  return formatCompactNumber(value);
                 }
                 return Math.round(value).toString();
               }}

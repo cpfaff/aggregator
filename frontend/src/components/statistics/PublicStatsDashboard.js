@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { publicStatsApi } from '../../utils/statisticsApi';
+import { publicStatsApi, statisticsErrorMessage } from '../../utils/statisticsApi';
+import { formatChartDate } from '../../utils/dateUtils';
 import StatCard from '../ui/StatCard';
 import Skeleton from '../ui/Skeleton';
 import TimeSeriesChart from '../ui/TimeSeriesChart';
@@ -125,7 +126,7 @@ function PublicStatsDashboard() {
 
       // Format timeline data for the chart
       const formattedTimeline = (timeline.datasets_timeline || []).map(point => ({
-        date: new Date(point.date).toLocaleDateString(),
+        date: formatChartDate(point.date),
         value: point.value,
         fullDate: point.date,
         ...point.extra_data
@@ -159,7 +160,7 @@ function PublicStatsDashboard() {
       console.error('Error fetching public statistics:', err);
       // Only show prominent error for manual refresh, not auto-refresh
       if (!isAutoRefresh) {
-        setError('Failed to load statistics: ' + err.message);
+        setError(statisticsErrorMessage(err, 'Failed to load statistics: ' + err.message));
       } else {
         // For auto-refresh failures, just log and continue silently
         console.warn('Auto-refresh failed, will retry on next interval:', err.message);

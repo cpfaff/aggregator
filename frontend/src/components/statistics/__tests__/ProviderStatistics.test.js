@@ -14,6 +14,7 @@ jest.mock('../../../utils/statisticsApi', () => ({
   },
   statsUtils: {
     formatTimeSeriesForChart: jest.fn(() => []),
+    toChartSeries: jest.fn(() => []),
   },
 }));
 
@@ -36,8 +37,8 @@ describe('ProviderStatistics', () => {
 
   test('removes the skeleton once provider trends load', async () => {
     // CRA's jest sets resetMocks:true, so factory-default impls are wiped —
-    // set the formatter's return inside the test.
-    statsUtils.formatTimeSeriesForChart.mockReturnValue([]);
+    // set the canonical reader's return inside the test (REQ-SH-TL-3).
+    statsUtils.toChartSeries.mockReturnValue([]);
     authStatsApi.getProviderStats.mockResolvedValue({ last_activity: null });
     authStatsApi.getProviderDatasetsTimeline.mockResolvedValue({ data_points: [] });
     authStatsApi.getProviderBiologicalUnitsTimeline.mockResolvedValue({ data_points: [] });

@@ -4,15 +4,33 @@ Snapshot service for querying archive snapshot data.
 This service provides all statistics queries using the simplified
 ArchiveSnapshot model with query-time SQL aggregation.
 
+Glossary — the two timeline kinds (REQ-SH-LANG, discovery F-A)
+-------------------------------------------------------------
+The statistics surface exposes two semantically distinct "timeline" notions,
+keyed on two different timestamps. They are named distinctly throughout so they
+are never conflated:
+
+* **Collection timeline** — the as-of series of biological-unit counts,
+  forward-filled over ``ArchiveSnapshot.recorded_at`` (the collected-at instant).
+  Produced by :meth:`get_biological_units_timeline` and the per-provider /
+  multi-provider variants. Retired synonyms: "as-of timeline",
+  "biological-units timeline", "snapshot timeline".
+* **Registration timeline** — the cumulative series of entity (dataset /
+  provider / validation) counts keyed on ``created_at`` (entity registration),
+  unrelated to snapshot collection. Produced by :meth:`get_growth_metrics` and
+  :meth:`get_provider_datasets_timeline` over the repository's
+  ``get_entity_timeline`` primitive.
+
 Total: ~200 lines (vs 1,085 in the old statistics_service.py)
 """
 
 import logging
-from datetime import UTC, date, datetime, timedelta
+from datetime import date, timedelta
 from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.core.utils import utc_now
 from app.models import DataProviderModel, DatasetModel, UserModel
 from app.repositories.snapshot_repository import SnapshotRepository
 
@@ -42,7 +60,7 @@ class SnapshotService:
             "total_datacenters": self.repo.count_datacenters(),
             "total_xml_archives": self.repo.count_archives(),
             "validation_success_rate": validation_success_rate,
-            "last_updated": datetime.now(UTC),
+            "last_updated": utc_now(),
         }
 
     def get_quality_metrics(self, user: UserModel | None = None, days: int = 30) -> dict[str, Any]:
@@ -113,10 +131,12 @@ class SnapshotService:
         self, start_date: date | None = None, end_date: date | None = None, limit: int = 30
     ) -> list[dict[str, Any]]:
         """
-        Get system-wide biological units timeline with forward-fill.
+        Get the system-wide **collection timeline** of biological-unit counts.
 
-        For each date, uses the most recent snapshot for each archive up to that date.
-        Only counts archives where isLatest=True.
+        The collection timeline is the as-of series forward-filled over
+        ``recorded_at``: for each date, uses the most recent snapshot for each
+        archive up to that date. Only counts archives where isLatest=True. This is
+        a collection timeline (collected-at), never a registration timeline.
         """
         dates = self.repo.get_snapshot_dates(start_date=start_date, end_date=end_date, limit=limit)
 
@@ -183,8 +203,12 @@ class SnapshotService:
         self, start_date: date | None = None, end_date: date | None = None, limit: int = 30
     ) -> dict[str, Any]:
         """
-        Get biological units timeline for all providers with forward-fill.
-        Only counts archives where isLatest=True.
+        Get the multi-provider **collection timeline** of biological-unit counts.
+
+        A wide-row payload: each ``series`` point is one date carrying a unit count
+        per provider, forward-filled over ``recorded_at``. Only counts archives where
+        isLatest=True. The points are provider-keyed dicts (not ``TimeSeriesPoint``),
+        so they live under ``series``, not ``data_points`` (REQ-SH-TL-2 / F-L).
         """
         dates = self.repo.get_snapshot_dates(start_date=start_date, end_date=end_date, limit=limit)
 
@@ -193,7 +217,7 @@ class SnapshotService:
                 "metric_type": "provider_biological_units",
                 "entity_type": "multi_provider",
                 "period": "daily",
-                "data_points": [],
+                "series": [],
                 "total_points": 0,
                 "providers": [],
                 "total_providers": 0,
@@ -206,7 +230,7 @@ class SnapshotService:
                 "metric_type": "provider_biological_units",
                 "entity_type": "multi_provider",
                 "period": "daily",
-                "data_points": [],
+                "series": [],
                 "total_points": 0,
                 "providers": [],
                 "total_providers": 0,
@@ -219,7 +243,7 @@ class SnapshotService:
             provider_archives[provider_name] = archive_ids
 
         # For each date, calculate totals per provider using forward-fill
-        data_points = []
+        series = []
         for target_date in reversed(dates):
             date_point = {"date": target_date.isoformat()}
 
@@ -231,7 +255,7 @@ class SnapshotService:
                 total = self.repo.get_unit_count_for_date(target_date, archive_ids=archive_ids)
                 date_point[provider_name] = float(total)
 
-            data_points.append(date_point)
+            series.append(date_point)
 
         provider_metadata = [
             {"id": p_id, "name": p_name, "key": p_name} for p_id, p_name in providers
@@ -241,8 +265,8 @@ class SnapshotService:
             "metric_type": "provider_biological_units",
             "entity_type": "multi_provider",
             "period": "daily",
-            "data_points": data_points,
-            "total_points": len(data_points),
+            "series": series,
+            "total_points": len(series),
             "providers": provider_metadata,
             "total_providers": len(provider_metadata),
         }
@@ -413,9 +437,10 @@ class SnapshotService:
         self, period: str = "monthly", months: int = 12, user: UserModel | None = None
     ) -> dict[str, Any]:
         """
-        Get cumulative growth metrics over time.
+        Get the **registration timeline** — cumulative entity growth over time.
 
-        Returns timeline data showing cumulative totals:
+        The registration timeline is keyed on ``created_at`` (entity registration),
+        unrelated to snapshot collection; it is not a collection timeline. Returns:
         - datasets_timeline: Total datasets over time (cumulative)
         - providers_timeline: Total providers over time (cumulative)
         - validation_timeline: Validation activity per period (not cumulative)

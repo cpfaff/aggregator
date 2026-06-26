@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../auth/AuthContext';
-import { authStatsApi, statsUtils } from '../../utils/statisticsApi';
+import { authStatsApi, statsUtils, statisticsErrorMessage } from '../../utils/statisticsApi';
+import { formatRelativeTime } from '../../utils/dateUtils';
 import TimeSeriesChart from '../ui/TimeSeriesChart';
 import Skeleton from '../ui/Skeleton';
 import Alert from '../ui/Alert';
@@ -35,7 +36,7 @@ function ProviderStatistics({ providerId, providerName }) {
 
     } catch (err) {
       console.error('Error fetching provider trends:', err);
-      setError('Failed to load provider trends: ' + err.message);
+      setError(statisticsErrorMessage(err, 'Failed to load provider trends: ' + err.message));
     } finally {
       setIsLoading(false);
     }
@@ -51,7 +52,7 @@ function ProviderStatistics({ providerId, providerName }) {
       };
 
       const data = await authStatsApi.getProviderDatasetsTimeline(providerId, params, handleTokenExpiration);
-      const formattedData = statsUtils.formatTimeSeriesForChart(data.data_points);
+      const formattedData = statsUtils.toChartSeries(data);
 
       // Only update if data has actually changed to prevent chart re-renders
       setTimeSeriesData(prev => {
@@ -81,7 +82,7 @@ function ProviderStatistics({ providerId, providerName }) {
       };
 
       const data = await authStatsApi.getProviderBiologicalUnitsTimeline(providerId, params, handleTokenExpiration);
-      const formattedData = statsUtils.formatTimeSeriesForChart(data.data_points);
+      const formattedData = statsUtils.toChartSeries(data);
 
       // Only update if data has actually changed to prevent chart re-renders
       setBiologicalUnitsTimeSeriesData(prev => {
@@ -217,11 +218,7 @@ function ProviderStatistics({ providerId, providerName }) {
               fontWeight: 500
             }}>
               <Clock size={16} style={{ color: 'var(--primary)' }} />
-              Last activity: {new Date(stats.last_activity).toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric'
-              })}
+              Last activity: {formatRelativeTime(stats.last_activity)}
             </div>
           )}
         </div>

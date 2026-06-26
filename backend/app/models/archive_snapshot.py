@@ -5,11 +5,10 @@ This implements a true append-only storage pattern for point-in-time
 snapshots of archive analysis results.
 """
 
-from datetime import datetime
-
 from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, String, func
 from sqlalchemy.orm import backref, relationship
 
+from app.core.timeutils import utc_now
 from app.models.base import Base
 
 
@@ -35,7 +34,7 @@ class ArchiveSnapshotModel(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     archive_id = Column(Integer, ForeignKey("xml_archives.id", ondelete="CASCADE"), nullable=False)
-    recorded_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    recorded_at = Column(DateTime, nullable=False, default=utc_now)
     unit_count = Column(Integer, nullable=False, default=0)
 
     # HTTP headers for change detection (stored from last download)

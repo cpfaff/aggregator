@@ -237,17 +237,40 @@ class SnapshotRepository:
     # Unit count queries (from ArchiveSnapshot)
     # -------------------------------------------------------------------------
 
-    def _latest_snapshot_subquery(
+    def latest_snapshot_per_archive(
         self,
+        *,
         dataset_id: int | None = None,
         provider_id: int | None = None,
-        latest_only: bool = True,
+        archive_ids: list[int] | None = None,
+        as_of_date: date | None = None,
+        restrict_to_latest_archive: bool = True,
     ):
-        """Build subquery for latest snapshot per archive with optional filters."""
+        """THE single latest-snapshot-per-archive primitive (REQ-SH-AGG-1).
+
+        Builds the ``(archive_id, max(recorded_at))`` subquery that every
+        latest-per-archive read composes — the point total (:meth:`get_unit_count`),
+        the as-of collection-timeline total (:meth:`get_unit_count_for_date`), the
+        management tool's ``latest_total_units``, and the nightly task's
+        HTTP-metadata lookup. Callers join their snapshot rows onto it on
+        ``(archive_id, recorded_at == max_recorded)``.
+
+        Filters (all optional):
+
+        * ``dataset_id`` / ``provider_id`` — scope to one dataset / provider.
+        * ``archive_ids`` — restrict to an explicit archive-id set.
+        * ``as_of_date`` — forward-fill: only snapshots on/before this calendar date.
+        * ``restrict_to_latest_archive`` — keep only ``XmlArchive.isLatest`` archives.
+        """
         query = self.db.query(
             ArchiveSnapshotModel.archive_id,
             func.max(ArchiveSnapshotModel.recorded_at).label("max_recorded"),
-        ).join(XmlArchiveModel, ArchiveSnapshotModel.archive_id == XmlArchiveModel.id)
+        )
+
+        if restrict_to_latest_archive or dataset_id is not None or provider_id is not None:
+            query = query.join(
+                XmlArchiveModel, ArchiveSnapshotModel.archive_id == XmlArchiveModel.id
+            )
 
         if dataset_id is not None:
             query = query.filter(XmlArchiveModel.dataset_id == dataset_id)
@@ -257,8 +280,14 @@ class SnapshotRepository:
                 DatasetModel.provider_id == provider_id
             )
 
-        if latest_only:
+        if restrict_to_latest_archive:
             query = query.filter(XmlArchiveModel.isLatest)
+
+        if archive_ids is not None:
+            query = query.filter(ArchiveSnapshotModel.archive_id.in_(archive_ids))
+
+        if as_of_date is not None:
+            query = query.filter(func.date(ArchiveSnapshotModel.recorded_at) <= as_of_date)
 
         return query.group_by(ArchiveSnapshotModel.archive_id).subquery()
 
@@ -272,7 +301,7 @@ class SnapshotRepository:
         Returns None when there is no matching snapshot data so callers can tell
         "unknown" apart from a genuine zero (B4); display callers coerce to 0.
         """
-        subquery = self._latest_snapshot_subquery(dataset_id=dataset_id, provider_id=provider_id)
+        subquery = self.latest_snapshot_per_archive(dataset_id=dataset_id, provider_id=provider_id)
 
         result = (
             self.db.query(func.sum(ArchiveSnapshotModel.unit_count))
@@ -329,18 +358,20 @@ class SnapshotRepository:
         archive_ids: list[int] | None = None,
         latest_only: bool = True,
     ) -> int:
-        """Get total unit count as of a specific date using forward-fill."""
-        latest_per_archive = self.db.query(
-            ArchiveSnapshotModel.archive_id,
-            func.max(ArchiveSnapshotModel.recorded_at).label("max_recorded"),
-        ).filter(func.date(ArchiveSnapshotModel.recorded_at) <= target_date)
+        """Get the as-of unit total for one point on the **collection timeline**.
 
-        if archive_ids is not None:
-            latest_per_archive = latest_per_archive.filter(
-                ArchiveSnapshotModel.archive_id.in_(archive_ids)
-            )
-
-        latest_per_archive = latest_per_archive.group_by(ArchiveSnapshotModel.archive_id).subquery()
+        Forward-fills over ``recorded_at``: the most recent snapshot per archive up
+        to ``target_date``. This is the collection-timeline (collected-at) total,
+        not a registration-timeline figure.
+        """
+        # Compose the shared primitive (REQ-SH-AGG-1). isLatest is applied on the
+        # OUTER query below (only when archive_ids is None), so the subquery itself
+        # is unrestricted by archive latest-ness here.
+        latest_per_archive = self.latest_snapshot_per_archive(
+            archive_ids=archive_ids,
+            as_of_date=target_date,
+            restrict_to_latest_archive=False,
+        )
 
         query = self.db.query(func.sum(ArchiveSnapshotModel.unit_count)).join(
             latest_per_archive,
@@ -368,9 +399,12 @@ class SnapshotRepository:
         period: str = "monthly",
         cutoff_date: date | None = None,
     ) -> tuple[list[Any], int]:
-        """Get entity creation timeline with baseline count.
+        """Get the entity-creation series for the **registration timeline**.
 
-        Returns (rows, baseline_count) where rows are (period, count) tuples.
+        The registration timeline is keyed on ``model.created_at`` (entity
+        registration), distinct from the collection timeline (which is keyed on
+        snapshot ``recorded_at``). Returns (rows, baseline_count) where rows are
+        (period, count) tuples.
         """
         if cutoff_date is None:
             cutoff_date = date.today() - timedelta(days=360)

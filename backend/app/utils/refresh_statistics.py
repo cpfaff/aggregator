@@ -6,16 +6,15 @@ Can be run as: python -m app.utils.refresh_statistics
 
 import argparse
 import sys
-from datetime import datetime
 
-from sqlalchemy import func, select, text
+from sqlalchemy import text
 
 # Add the app directory to path
 sys.path.insert(0, "/app")
 
+from app.core.utils import utc_now  # noqa: E402
 from app.db.session import SessionLocal  # noqa: E402
-from app.models.archive_snapshot import ArchiveSnapshotModel  # noqa: E402
-from app.models.dataset import XmlArchiveModel  # noqa: E402
+from app.repositories.snapshot_repository import SnapshotRepository  # noqa: E402
 from app.tasks.snapshot_tasks import collect_archive_snapshots  # noqa: E402
 
 
@@ -24,30 +23,11 @@ def latest_total_units(db) -> int:
 
     archive_snapshots is append-only (one new row per archive per daily run,
     even when unchanged), so a flat SUM(unit_count) inflates the total by the
-    number of collection runs. Mirror the authoritative
-    snapshot_repository.get_unit_count_for_date(latest_only=True): take
-    max(recorded_at) per archive_id and restrict to isLatest archives.
+    number of collection runs. Composes the authoritative repository primitive
+    (REQ-SH-AGG-1) rather than re-deriving the latest-per-archive selection; the
+    repository returns None for "no snapshot data", coerced here to 0.
     """
-    latest = (
-        select(
-            ArchiveSnapshotModel.archive_id.label("archive_id"),
-            func.max(ArchiveSnapshotModel.recorded_at).label("max_recorded"),
-        )
-        .group_by(ArchiveSnapshotModel.archive_id)
-        .subquery()
-    )
-    stmt = (
-        select(func.coalesce(func.sum(ArchiveSnapshotModel.unit_count), 0))
-        .select_from(ArchiveSnapshotModel)
-        .join(
-            latest,
-            (ArchiveSnapshotModel.archive_id == latest.c.archive_id)
-            & (ArchiveSnapshotModel.recorded_at == latest.c.max_recorded),
-        )
-        .join(XmlArchiveModel, XmlArchiveModel.id == ArchiveSnapshotModel.archive_id)
-        .where(XmlArchiveModel.isLatest.is_(True))
-    )
-    return int(db.execute(stmt).scalar_one())
+    return SnapshotRepository(db).get_unit_count() or 0
 
 
 def queue_snapshot_collection():
@@ -124,7 +104,7 @@ def main():
     if not any([args.collect, args.status]):
         args.status = True
 
-    print(f"Snapshot Refresh Tool - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"Snapshot Refresh Tool (UTC) - {utc_now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 60)
 
     if args.status:

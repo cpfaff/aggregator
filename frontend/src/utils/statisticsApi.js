@@ -3,6 +3,29 @@
  * Provides functions to interact with the statistics endpoints
  */
 import { apiRequest, API_BASE, API_VERSION, fetchWithTimeout, parseErrorResponse } from './apiUtils';
+import { formatChartDate } from './dateUtils';
+
+/**
+ * Map a typed statistics-client error to a user-facing message (REQ-SH-ERR-2).
+ *
+ * Both clients reject with parseErrorResponse's typed shape ({ status, class, ... }).
+ * For a throttle (429) or server (5xx) class, surface a message derived from the
+ * error's class rather than echoing the raw err.message; otherwise fall back to the
+ * caller-supplied message so each component keeps its own wording.
+ *
+ * @param {Object} err - the typed client error
+ * @param {string} [fallback] - message used for non-throttle/server failures
+ * @returns {string}
+ */
+export function statisticsErrorMessage(err, fallback = 'Failed to load statistics.') {
+  if (err && err.class === 'throttle') {
+    return 'Statistics are temporarily rate-limited. Please retry in a moment.';
+  }
+  if (err && err.class === 'server') {
+    return 'The statistics service is temporarily unavailable. Please try again shortly.';
+  }
+  return fallback;
+}
 
 /**
  * Public statistics API calls (no authentication required)
@@ -60,10 +83,9 @@ export const authStatsApi = {
    * @returns {Promise<Object>} System overview
    */
   getOverview: async (onTokenExpired) => {
+    // apiRequest already rejects a non-ok response with the typed parseErrorResponse
+    // shape (REQ-SH-ERR-1), so no generic-Error downgrade guard is needed here.
     const response = await apiRequest('/statistics/overview', {}, onTokenExpired);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch admin overview: ${response.status}`);
-    }
     return response.json();
   },
 
@@ -75,9 +97,6 @@ export const authStatsApi = {
    */
   getProviderStats: async (providerId, onTokenExpired) => {
     const response = await apiRequest(`/statistics/providers/${providerId}`, {}, onTokenExpired);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch provider ${providerId} stats: ${response.status}`);
-    }
     return response.json();
   },
 
@@ -89,9 +108,6 @@ export const authStatsApi = {
    */
   getDatasetStats: async (datasetId, onTokenExpired) => {
     const response = await apiRequest(`/statistics/datasets/${datasetId}`, {}, onTokenExpired);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch dataset ${datasetId} stats: ${response.status}`);
-    }
     return response.json();
   },
 
@@ -113,9 +129,6 @@ export const authStatsApi = {
       {},
       onTokenExpired
     );
-    if (!response.ok) {
-      throw new Error(`Failed to fetch provider ${providerId} datasets timeline: ${response.status}`);
-    }
     return response.json();
   },
 
@@ -139,9 +152,6 @@ export const authStatsApi = {
       {},
       onTokenExpired
     );
-    if (!response.ok) {
-      throw new Error(`Failed to fetch provider ${providerId} biological units timeline: ${response.status}`);
-    }
     return response.json();
   },
 
@@ -152,9 +162,6 @@ export const authStatsApi = {
    */
   getQualityMetrics: async (onTokenExpired) => {
     const response = await apiRequest('/statistics/quality', {}, onTokenExpired);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch quality metrics: ${response.status}`);
-    }
     return response.json();
   },
 
@@ -177,9 +184,6 @@ export const authStatsApi = {
       {},
       onTokenExpired
     );
-    if (!response.ok) {
-      throw new Error(`Failed to fetch biological units timeline: ${response.status}`);
-    }
     return response.json();
   },
 
@@ -202,9 +206,6 @@ export const authStatsApi = {
       {},
       onTokenExpired
     );
-    if (!response.ok) {
-      throw new Error(`Failed to fetch multi-provider biological units: ${response.status}`);
-    }
     return response.json();
   }
 };
@@ -220,7 +221,7 @@ export const statsUtils = {
    */
   formatTimeSeriesForChart: (dataPoints) => {
     return dataPoints.map(point => ({
-      date: new Date(point.date).toLocaleDateString(),
+      date: formatChartDate(point.date),
       value: point.value,
       fullDate: point.date,
       ...point.extra_data
@@ -235,34 +236,35 @@ export const statsUtils = {
   formatMultiProviderTimeSeriesForChart: (dataPoints) => {
     return dataPoints.map(point => ({
       ...point,
-      date: new Date(point.date).toLocaleDateString(),
+      date: formatChartDate(point.date),
       fullDate: point.date
     }));
   },
 
   /**
-   * Calculate percentage change
-   * @param {number} current - Current value
-   * @param {number} previous - Previous value
-   * @returns {number} Percentage change
+   * Read any statistics timeline response into one canonical chart series (REQ-SH-TL-3).
+   *
+   * Resolves the per-endpoint container key in ONE place so call sites never branch
+   * on it: a narrow time series ({ date, value }) lives under `data_points`
+   * (TimeSeriesResponse) or is passed as a bare array (a GrowthMetrics sub-timeline);
+   * the multi-provider wide-row payload lives under `series` (REQ-SH-TL-2). Returns a
+   * chart-ready array; [] when no recognised series is present.
+   *
+   * @param {Object|Array} response - A statistics timeline response or a points array
+   * @returns {Array} Chart-ready series points
    */
-  calculatePercentageChange: (current, previous) => {
-    if (previous === 0) return current > 0 ? 100 : 0;
-    return ((current - previous) / previous) * 100;
-  },
-
-  /**
-   * Format large numbers with appropriate units
-   * @param {number} value - Number to format
-   * @returns {string} Formatted number
-   */
-  formatLargeNumber: (value) => {
-    if (value >= 1000000) {
-      return `${(value / 1000000).toFixed(1)}M`;
-    } else if (value >= 1000) {
-      return `${(value / 1000).toFixed(1)}K`;
+  toChartSeries: (response) => {
+    if (!response) return [];
+    if (Array.isArray(response)) {
+      return statsUtils.formatTimeSeriesForChart(response);
     }
-    return value.toString();
+    if (Array.isArray(response.series)) {
+      return statsUtils.formatMultiProviderTimeSeriesForChart(response.series);
+    }
+    if (Array.isArray(response.data_points)) {
+      return statsUtils.formatTimeSeriesForChart(response.data_points);
+    }
+    return [];
   },
 
   /**

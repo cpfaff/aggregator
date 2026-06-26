@@ -21,6 +21,7 @@ from app.models.user import UserModel
 from app.schemas.statistics import (
     DatasetStats,
     GrowthMetrics,
+    MultiProviderTimelineResponse,
     OverviewStats,
     ProviderStats,
     QualityMetrics,
@@ -329,7 +330,7 @@ async def get_biological_units_timeline(
 
 @router.get(
     "/multi-provider-biological-units",
-    response_model=dict[str, Any],
+    response_model=MultiProviderTimelineResponse,
     summary="Multi-provider biological units",
 )
 async def get_multi_provider_biological_units_timeline(
@@ -339,12 +340,14 @@ async def get_multi_provider_biological_units_timeline(
     start_date: Annotated[date | None, Query(description="Start date")] = None,
     end_date: Annotated[date | None, Query(description="End date")] = None,
     limit: Annotated[int, Query(ge=1, le=365, description="Maximum data points")] = 30,
-) -> dict[str, Any]:
+) -> MultiProviderTimelineResponse:
     """Get biological units timeline for all providers. Requires authentication."""
     try:
         service = SnapshotService(db)
-        return service.get_multi_provider_timeline(
-            start_date=start_date, end_date=end_date, limit=limit
+        return MultiProviderTimelineResponse(
+            **service.get_multi_provider_timeline(
+                start_date=start_date, end_date=end_date, limit=limit
+            )
         )
     except Exception as e:
         logger.error(f"Error getting multi-provider biological units timeline: {e}")

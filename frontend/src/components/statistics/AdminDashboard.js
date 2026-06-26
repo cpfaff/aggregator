@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../auth/AuthContext';
-import { authStatsApi, publicStatsApi, statsUtils } from '../../utils/statisticsApi';
+import { authStatsApi, publicStatsApi, statsUtils, statisticsErrorMessage } from '../../utils/statisticsApi';
 import StatCard from '../ui/StatCard';
 import Skeleton from '../ui/Skeleton';
 import TimeSeriesChart from '../ui/TimeSeriesChart';
@@ -106,7 +106,7 @@ function AdminDashboard() {
 
     } catch (err) {
       console.error('Error fetching admin statistics:', err);
-      setError('Failed to load statistics: ' + err.message);
+      setError(statisticsErrorMessage(err, 'Failed to load statistics: ' + err.message));
     } finally {
       setIsLoading(false);
     }
@@ -117,7 +117,7 @@ function AdminDashboard() {
     try {
       // Use the same timeline endpoint as the public dashboard
       const data = await publicStatsApi.getTimeline({ period: 'monthly', months: 12 });
-      const formattedData = statsUtils.formatTimeSeriesForChart(data.datasets_timeline || []);
+      const formattedData = statsUtils.toChartSeries(data.datasets_timeline || []);
 
       // Only update if data has actually changed to prevent chart re-renders
       setTimeSeriesData(prev => {
@@ -143,7 +143,7 @@ function AdminDashboard() {
       };
 
       const data = await authStatsApi.getBiologicalUnitsTimeline(params, handleTokenExpiration);
-      const formattedData = statsUtils.formatTimeSeriesForChart(data.data_points);
+      const formattedData = statsUtils.toChartSeries(data);
 
       // Only update if data has actually changed to prevent chart re-renders
       setBiologicalUnitsData(prev => {
@@ -169,7 +169,8 @@ function AdminDashboard() {
       };
 
       const data = await authStatsApi.getMultiProviderBiologicalUnits(params, handleTokenExpiration);
-      const formattedData = statsUtils.formatMultiProviderTimeSeriesForChart(data.data_points);
+      // Reads the renamed wide-row key `series` (REQ-SH-TL-2) via the canonical reader.
+      const formattedData = statsUtils.toChartSeries(data);
 
       // Only update if data has actually changed to prevent chart re-renders
       setMultiProviderBiologicalUnits(prev => {

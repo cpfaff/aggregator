@@ -7,6 +7,8 @@ jest.mock('../../../hooks/useMediaQuery', () => ({
 }));
 
 jest.mock('../../../utils/statisticsApi', () => ({
+  // Keep the real pure helpers (e.g. statisticsErrorMessage) used in the catch path.
+  ...jest.requireActual('../../../utils/statisticsApi'),
   publicStatsApi: {
     getOverview: jest.fn(),
     getProviders: jest.fn(),

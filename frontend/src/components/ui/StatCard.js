@@ -8,23 +8,12 @@ import Skeleton from './Skeleton';
 function StatCard({
   title,
   value,
-  previousValue,
   unit = '',
   color = 'var(--primary)',
   isLoading = false,
   isLiveData = false,
   style = {}
 }) {
-  // Calculate percentage change
-  const calculateChange = () => {
-    if (previousValue === null || previousValue === undefined || previousValue === 0) {
-      return null;
-    }
-    return ((value - previousValue) / previousValue) * 100;
-  };
-
-  const change = calculateChange();
-
   return (
     <div style={{
       backgroundColor: 'var(--card-bg)',
@@ -87,40 +76,6 @@ function StatCard({
               )}
             </div>
           </div>
-
-          {change !== null && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.5rem',
-              fontSize: '0.8rem',
-              color: change >= 0 ? 'var(--success)' : 'var(--error)',
-              backgroundColor: change >= 0 ? 'var(--success)10' : 'var(--error)10',
-              padding: '0.375rem 0.75rem',
-              borderRadius: '2rem',
-              border: `1px solid ${change >= 0 ? 'var(--success)' : 'var(--error)'}20`,
-              fontWeight: 600,
-              margin: '0 auto',
-              width: 'fit-content'
-            }}>
-              <span style={{
-                fontSize: '0.875rem',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '16px',
-                height: '16px',
-                borderRadius: '50%',
-                backgroundColor: change >= 0 ? 'var(--success)' : 'var(--error)',
-                color: 'white'
-              }}>
-                {change >= 0 ? '↗' : '↘'}
-              </span>
-              <span>{Math.abs(change).toFixed(1)}%</span>
-              <span style={{ color: 'var(--text-light)', fontSize: '0.75rem' }}>vs previous</span>
-            </div>
-          )}
         </div>
       )}
 

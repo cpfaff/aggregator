@@ -24,6 +24,7 @@ from app.core.config import settings
 from app.db.session import SessionLocal
 from app.models.archive_snapshot import ArchiveSnapshotModel
 from app.models.dataset import XmlArchiveModel
+from app.repositories.snapshot_repository import SnapshotRepository
 
 logger = logging.getLogger(__name__)
 
@@ -318,6 +319,26 @@ def _count_units(root) -> int:
     return 0
 
 
+def _today_snapshot_query(db, archive_id: int, today: date):
+    """Build the same-day existence-check query, ordered deterministically (REQ-SH-REL-6).
+
+    Selects an archive's snapshots recorded on ``today`` ordered by
+    ``recorded_at`` DESC then ``id`` DESC — aligning the idempotency check with the
+    change-detection query below and the dedup migration's keep-rule (highest
+    ``recorded_at``, tie-broken by highest ``id``, F-M). Post-unique-index at most
+    one such row can exist, so the ordering is belt-and-braces; it removes the
+    previously DB-arbitrary ``.first()``.
+    """
+    return (
+        db.query(ArchiveSnapshotModel)
+        .filter(
+            ArchiveSnapshotModel.archive_id == archive_id,
+            func.date(ArchiveSnapshotModel.recorded_at) == today,
+        )
+        .order_by(ArchiveSnapshotModel.recorded_at.desc(), ArchiveSnapshotModel.id.desc())
+    )
+
+
 @shared_task(name="snapshots.collect_single_archive_snapshot", queue="light_tasks")
 def collect_single_archive_snapshot(archive_id: int, force: bool = False) -> dict[str, Any]:
     """
@@ -357,14 +378,7 @@ def collect_single_archive_snapshot(archive_id: int, force: bool = False) -> dic
         # authoritative guard under concurrent workers (see the IntegrityError
         # catch on the insert); this check is the optimisation.
         today = date.today()
-        existing_today = (
-            db.query(ArchiveSnapshotModel)
-            .filter(
-                ArchiveSnapshotModel.archive_id == archive_id,
-                func.date(ArchiveSnapshotModel.recorded_at) == today,
-            )
-            .first()
-        )
+        existing_today = _today_snapshot_query(db, archive_id, today).first()
         if existing_today is not None:
             logger.info(f"Archive {archive_id} already has a snapshot for {today}, skipping insert")
             return {
@@ -476,13 +490,11 @@ def collect_archive_snapshots():
         # This is more efficient than querying per archive in the loop.
         # Note: For very large archive collections (10k+), consider chunked processing
         # to reduce memory usage. Current scale (~100-200 archives) is fine.
-        latest_snapshot_subq = (
-            db.query(
-                ArchiveSnapshotModel.archive_id,
-                func.max(ArchiveSnapshotModel.recorded_at).label("max_recorded"),
-            )
-            .group_by(ArchiveSnapshotModel.archive_id)
-            .subquery()
+        # Composes the authoritative latest-snapshot-per-archive primitive
+        # (REQ-SH-AGG-1) across ALL archives (no isLatest restriction) so the
+        # metadata lookup covers every archive's most recent snapshot.
+        latest_snapshot_subq = SnapshotRepository(db).latest_snapshot_per_archive(
+            restrict_to_latest_archive=False
         )
 
         latest_snapshots = (
@@ -583,14 +595,7 @@ def collect_archive_snapshots():
             )
             today = date.today()
             for archive in archives_to_process:
-                existing = (
-                    db.query(ArchiveSnapshotModel)
-                    .filter(
-                        ArchiveSnapshotModel.archive_id == archive.id,
-                        func.date(ArchiveSnapshotModel.recorded_at) == today,
-                    )
-                    .first()
-                )
+                existing = _today_snapshot_query(db, archive.id, today).first()
                 if existing is not None:
                     continue
                 prev_etag, prev_last_modified, prev_unit_count = snapshot_metadata_map.get(
