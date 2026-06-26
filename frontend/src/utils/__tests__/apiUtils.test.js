@@ -59,11 +59,17 @@ describe('apiUtils resilient client', () => {
         },
       );
 
-      // Let execution reach the awaited fetch, then advance comfortably past the
-      // configured REQUEST_TIMEOUT_MS (15000 ms) so the abort/timeout fires.
+      // Let execution reach the awaited fetch, then advance past the configured
+      // REQUEST_TIMEOUT_MS (15000 ms) so the abort/timeout fires. A timeout is
+      // retriable (FR-15), so advance repeatedly through the full retry budget
+      // (each attempt times out, with a backoff between) until apiRequest finally
+      // rejects with the TimeoutError.
       await flushMicrotasks();
-      jest.advanceTimersByTime(20000);
-      await flushMicrotasks();
+      for (let i = 0; i < 10 && outcome.name === 'NEVER_SETTLED'; i++) {
+        jest.advanceTimersByTime(20000);
+        // eslint-disable-next-line no-await-in-loop
+        await flushMicrotasks();
+      }
 
       // RED (pre-fix): no controller/timer is installed, the promise never
       // settles and no TimeoutError is produced, so outcome stays NEVER_SETTLED.
@@ -149,6 +155,90 @@ describe('apiUtils resilient client', () => {
         expect.stringContaining('/datasets/1'),
         expect.objectContaining({ method: 'POST' }),
       );
+    });
+  });
+
+  describe('FR-15 bounded retriable-only retry (REQ-FE-CLIENT-8)', () => {
+    test('apiRequest retries a 503 once with backoff and then succeeds, but does NOT retry a 400', async () => {
+      jest.useFakeTimers();
+      const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0.5);
+      try {
+        const okResponse = {
+          ok: true,
+          status: 200,
+          headers: { get: () => 'application/json' },
+          json: () => Promise.resolve({ data: 'ok' }),
+        };
+        const serverError = {
+          ok: false,
+          status: 503,
+          headers: { get: (h) => (h === 'content-type' ? 'application/json' : null) },
+          json: () => Promise.resolve({ title: 'Service Unavailable' }),
+        };
+        global.fetch = jest
+          .fn()
+          .mockResolvedValueOnce(serverError)
+          .mockResolvedValueOnce(okResponse);
+
+        let resolved;
+        let settled = false;
+        apiRequest('/retry-me').then(
+          (r) => {
+            resolved = r;
+            settled = true;
+          },
+          () => {
+            settled = true;
+          },
+        );
+        // Interleave microtask flushing with timer advancement until the call
+        // settles: flush runs the pending attempt (scheduling the backoff sleep),
+        // then advancing fires that sleep so the retry proceeds.
+        for (let i = 0; i < 10 && !settled; i++) {
+          // eslint-disable-next-line no-await-in-loop
+          await flushMicrotasks();
+          jest.advanceTimersByTime(5000);
+        }
+        await flushMicrotasks();
+
+        expect(resolved).toBe(okResponse);
+        expect(global.fetch).toHaveBeenCalledTimes(2);
+
+        // 400 is a client error and must NOT be retried.
+        const clientError = {
+          ok: false,
+          status: 400,
+          headers: { get: (h) => (h === 'content-type' ? 'application/json' : null) },
+          json: () => Promise.resolve({ detail: 'Bad request' }),
+        };
+        global.fetch = jest.fn().mockResolvedValue(clientError);
+
+        let rejected;
+        let settled2 = false;
+        apiRequest('/no-retry').then(
+          () => {
+            settled2 = true;
+          },
+          (e) => {
+            rejected = e;
+            settled2 = true;
+          },
+        );
+        for (let i = 0; i < 10 && !settled2; i++) {
+          // eslint-disable-next-line no-await-in-loop
+          await flushMicrotasks();
+          jest.advanceTimersByTime(5000);
+        }
+        await flushMicrotasks();
+
+        // RED (pre-fix): a 503 is returned as-is (fetch called once, no retry),
+        // so toHaveBeenCalledTimes(2) fails.
+        expect(rejected).toMatchObject({ status: 400 });
+        expect(global.fetch).toHaveBeenCalledTimes(1);
+      } finally {
+        jest.useRealTimers();
+        randomSpy.mockRestore();
+      }
     });
   });
 });

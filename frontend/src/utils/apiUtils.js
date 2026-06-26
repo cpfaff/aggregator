@@ -48,6 +48,26 @@ export const fetchWithTimeout = async (url, options = {}) => {
   }
 };
 
+// Bounded, jittered transient retry (FR-15, REQ-FE-CLIENT-8): retries fire only
+// for timeout / network-error / 5xx / 429, only for idempotent calls, at this one
+// layer (not double-stacked with SWR).
+export const MAX_RETRIES = 2;
+const RETRY_BASE_MS = 300;
+const RETRY_CAP_MS = 2000;
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Full jitter: random(0, min(cap, base * 2^attempt)).
+const computeRetryBackoff = (attempt) =>
+  Math.random() * Math.min(RETRY_CAP_MS, RETRY_BASE_MS * (2 ** attempt));
+
+const isRetriableError = (error) => {
+  if (!error) return false;
+  if (error.name === 'TimeoutError') return true; // request timeout
+  if (error instanceof TypeError) return true; // network-level failure
+  return error.class === 'server' || error.class === 'throttle'; // 5xx / 429
+};
+
 /**
  * Get CSRF token from the backend
  * @returns {Promise<string>} - CSRF token
@@ -255,11 +275,31 @@ export const apiRequest = async (endpoint, options = {}, onTokenExpired) => {
     credentials: 'include', // Important to include cookies for CSRF validation
   };
 
-  return fetchWithTokenExpiration(
-    `${API_BASE}${API_VERSION}${endpoint}`,
-    mergedOptions,
-    onTokenExpired
-  );
+  const url = `${API_BASE}${API_VERSION}${endpoint}`;
+
+  // Only retry idempotent calls: GET/HEAD, or a side-effecting call carrying an
+  // Idempotency-Key (FR-09), so a retry cannot double-submit (FR-15).
+  const isIdempotent =
+    ['GET', 'HEAD'].includes(method.toUpperCase()) || headers['Idempotency-Key'] != null;
+
+  let lastError;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt += 1) {
+    try {
+      // return await so a rejection is caught here for the retry decision.
+      // eslint-disable-next-line no-await-in-loop
+      return await fetchWithTokenExpiration(url, mergedOptions, onTokenExpired);
+    } catch (error) {
+      lastError = error;
+      // 4xx (incl. the 401-refresh path's outcome) and non-idempotent calls are
+      // never retried; only timeout/network/5xx/429 on idempotent calls are.
+      if (!isIdempotent || attempt >= MAX_RETRIES || !isRetriableError(error)) {
+        throw error;
+      }
+      // eslint-disable-next-line no-await-in-loop
+      await sleep(computeRetryBackoff(attempt));
+    }
+  }
+  throw lastError;
 };
 
 /**
