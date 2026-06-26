@@ -148,6 +148,13 @@ def parse_archive_xml(xml_url: str) -> ArchiveParseResult:
     Handles both direct XML files and ZIP archives containing XML files.
     Uses streaming download and memory-efficient processing.
 
+    Stance on partial ZIP failures (RH-10 / REQ-OUT-2): **fail-fast**. If any
+    ``.xml`` entry in a ZIP archive cannot be parsed, the whole snapshot is
+    rejected with ``XMLParsingError`` rather than returning the partial unit
+    count of the entries that happened to parse — symmetric with the whole-file
+    path. A silently partial count would understate the archive and be reported
+    as a clean, complete snapshot.
+
     Args:
         xml_url: URL of the XML file or ZIP archive
 
@@ -155,7 +162,8 @@ def parse_archive_xml(xml_url: str) -> ArchiveParseResult:
         ArchiveParseResult containing unit count and HTTP metadata
 
     Raises:
-        XMLParsingError: If download or parsing fails
+        XMLParsingError: If download or parsing fails, or if any ZIP entry
+            cannot be parsed.
     """
     try:
         response = requests.get(xml_url, timeout=30, stream=True)
@@ -214,6 +222,13 @@ def parse_archive_xml(xml_url: str) -> ArchiveParseResult:
                         if not xml_files:
                             raise XMLParsingError("No XML files found in ZIP archive")
 
+                        # Fail-fast on any unparseable entry (RH-10 / REQ-OUT-2):
+                        # a half-broken archive must not be reported as a clean,
+                        # complete snapshot. We collect the names of entries that
+                        # fail to parse and, if any, raise below — symmetric with
+                        # the whole-file fail-fast path. Returning a partial count
+                        # here would silently undercount units.
+                        failed_entries: list[str] = []
                         for xml_filename in xml_files:
                             try:
                                 with zip_file.open(xml_filename) as xml_file:
@@ -222,7 +237,12 @@ def parse_archive_xml(xml_url: str) -> ArchiveParseResult:
                                     total_unit_count += _count_units(root)
                             except ET.ParseError as e:
                                 logger.warning(f"Failed to parse {xml_filename}: {e}")
-                                continue
+                                failed_entries.append(xml_filename)
+
+                        if failed_entries:
+                            raise XMLParsingError(
+                                "ZIP entries failed to parse: " + ", ".join(failed_entries)
+                            )
 
                 except zipfile.BadZipFile:
                     # Not a valid ZIP, try as direct XML
