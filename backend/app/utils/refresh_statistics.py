@@ -6,13 +6,13 @@ Can be run as: python -m app.utils.refresh_statistics
 
 import argparse
 import sys
-from datetime import datetime
 
 from sqlalchemy import func, select, text
 
 # Add the app directory to path
 sys.path.insert(0, "/app")
 
+from app.core.utils import utc_now  # noqa: E402
 from app.db.session import SessionLocal  # noqa: E402
 from app.models.archive_snapshot import ArchiveSnapshotModel  # noqa: E402
 from app.models.dataset import XmlArchiveModel  # noqa: E402
@@ -124,7 +124,7 @@ def main():
     if not any([args.collect, args.status]):
         args.status = True
 
-    print(f"Snapshot Refresh Tool - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"Snapshot Refresh Tool (UTC) - {utc_now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 60)
 
     if args.status:

@@ -1,20 +1,17 @@
-from datetime import UTC, datetime
-
 from pydantic import AnyUrl
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.cache import invalidate_cache
+
+# Canonical naive-UTC "now" helper (REQ-SH-NOW). Defined in the dependency-free
+# leaf app.core.timeutils so ORM models can use it without an import cycle;
+# re-exported here so ``from app.core.utils import utc_now`` stays the canonical
+# reference path.
+from app.core.timeutils import utc_now
 from app.models.dataset import DatasetModel
 
-
-def utc_now() -> datetime:
-    """Return current UTC time as timezone-naive datetime.
-
-    This replaces the deprecated datetime.utcnow() while maintaining
-    compatibility with database columns using TIMESTAMP WITHOUT TIME ZONE.
-    """
-    return datetime.now(UTC).replace(tzinfo=None)
+__all__ = ["apply_entity_updates", "utc_now"]
 
 
 async def apply_entity_updates(
