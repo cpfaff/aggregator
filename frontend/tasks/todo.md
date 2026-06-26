@@ -34,7 +34,7 @@ Baseline (231c82c head be51e5e): 16 suites / 73 tests pass; eslint exit 0. CONFI
 - [x] FR-11 flatten 422 array in parseErrorResponse (REQ-FE-DEG-4) — apiUtils.test.js ✓ 84 tests
 - [x] FR-12 classify status + Retry-After (REQ-FE-DEG-3) — apiUtils.test.js ✓ 85 tests
 - [x] FR-13 LandingPage timeout/res.ok/no silent swallow (REQ-FE-CLIENT-5) — LandingPage.test.js ✓ 86 tests (corrected roadmap's tautological waitFor-not to a positive-wait-then-assert)
-- [ ] FR-14 fail closed on CSRF token failure (REQ-FE-CLIENT-7) — apiUtils.test.js
+- [x] FR-14 fail closed on CSRF token failure (REQ-FE-CLIENT-7) — apiUtils.test.js ✓ 87 tests
 - [ ] FR-15 bounded jittered retriable-only retry (REQ-FE-CLIENT-8) — apiUtils.test.js
 - [ ] FR-16 dashboard auto-refresh backoff (REQ-FE-POLL-3) — PublicStatsDashboard.test.js
 - [ ] FR-17 dashboard refresh guard+abort (REQ-FE-POLL-4) — PublicStatsDashboard.test.js
@@ -47,7 +47,7 @@ Baseline (231c82c head be51e5e): 16 suites / 73 tests pass; eslint exit 0. CONFI
 - Do NOT push or open MR — human stop-gate precedes any remote action.
 
 ## Resume pointer
-Next unstarted item: **FR-14** (fail closed on CSRF token failure). (Update after each commit.)
+Next unstarted item: **FR-15** (bounded jittered retriable-only retry). (Update after each commit.)
 
 MILESTONE: MUST block FR-01..FR-09 COMPLETE — spec's MUST set (REQ-FE-CLIENT-1..4,
 -EB-1, -POLL-1..2, -DEG-1..2) satisfied. Conformance gate reported. SHOULD block in progress.

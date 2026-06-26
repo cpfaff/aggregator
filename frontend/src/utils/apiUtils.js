@@ -238,8 +238,13 @@ export const apiRequest = async (endpoint, options = {}, onTokenExpired) => {
       const csrfToken = await getCsrfToken();
       headers['X-CSRF-Token'] = csrfToken;
     } catch (error) {
+      // Fail closed (FR-14, REQ-FE-CLIENT-7): never send a state-changing request
+      // without its CSRF header. A security control must not degrade to a
+      // permissive send when the token cannot be obtained.
       console.error('Failed to add CSRF token to request:', error);
-      // Continue with the request even if CSRF token retrieval fails
+      const csrfError = new Error('CSRF token unavailable; request not sent');
+      csrfError.name = 'CsrfUnavailableError';
+      throw csrfError;
     }
   }
 

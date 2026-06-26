@@ -120,4 +120,35 @@ describe('apiUtils resilient client', () => {
       expect(client.retryAfter).toBeUndefined();
     });
   });
+
+  describe('FR-14 CSRF fail-closed (REQ-FE-CLIENT-7)', () => {
+    test('apiRequest does not send a state-changing request when the CSRF token cannot be obtained', async () => {
+      // token is set in beforeEach; no csrfToken in localStorage.
+      global.fetch = jest.fn((url) => {
+        if (typeof url === 'string' && url.includes('/tokens/csrf')) {
+          // CSRF token fetch fails.
+          return Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) });
+        }
+        // Any mutating endpoint would succeed if (wrongly) reached.
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          headers: { get: () => 'application/json' },
+          json: () => Promise.resolve({}),
+        });
+      });
+
+      // RED (pre-fix): the catch only logs and falls through, so the POST to
+      // /datasets/1 IS issued and apiRequest resolves; both assertions fail.
+      await expect(apiRequest('/datasets/1', { method: 'POST' })).rejects.toMatchObject({
+        name: 'CsrfUnavailableError',
+      });
+
+      // Assert on the mutating endpoint specifically (the CSRF probe is itself a fetch).
+      expect(global.fetch).not.toHaveBeenCalledWith(
+        expect.stringContaining('/datasets/1'),
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+  });
 });
