@@ -249,7 +249,7 @@ export const parseErrorResponse = async (response) => {
   }
 };
 
-export default {
+const apiUtils = {
   API_BASE,
   API_VERSION,
   fetchWithTokenExpiration,
@@ -260,3 +260,5 @@ export default {
   initCsrfProtection,
   parseErrorResponse
 };
+
+export default apiUtils;

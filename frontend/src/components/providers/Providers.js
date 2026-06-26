@@ -7,11 +7,68 @@ import Modal from '../ui/Modal';
 import ConfirmModal from '../ui/ConfirmModal';
 import Breadcrumbs from '../ui/Breadcrumbs';
 import ActionMenu from '../ui/ActionMenu';
+import Skeleton from '../ui/Skeleton';
 import ProviderCard from '../providers/ProviderCard';
 import ProviderForm from '../providers/ProviderForm';
 import { Plus, Search } from 'lucide-react';
 import { showToast } from '../ui/Toast';
 import { useResponsiveGrid } from '../../hooks/useMediaQuery';
+
+// Loading silhouette of a ProviderCard — mirrors its header pills, title,
+// meta lines, stats/links sections and footer actions so the grid does not
+// shift when real cards resolve.
+function ProviderCardSkeleton({ showDelete }) {
+  return (
+    <div style={{
+      backgroundColor: 'var(--card-bg)',
+      borderRadius: '0.75rem',
+      border: '1px solid var(--border)',
+      overflow: 'hidden',
+      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+      display: 'flex',
+      flexDirection: 'column',
+      height: '100%',
+    }}>
+      {/* Header: Provider badge + #id badge */}
+      <div style={{
+        padding: '1.25rem 1.25rem 0.75rem',
+        borderBottom: '1px solid var(--border)',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+      }}>
+        <Skeleton width={72} height={22} radius="0.375rem" />
+        <Skeleton width={44} height={22} radius="0.375rem" />
+      </div>
+
+      {/* Content: title, datacenter, last-updated, then stats/links blocks */}
+      <div style={{ padding: '1.25rem', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        <Skeleton width="80%" height="1.125rem" />
+        <Skeleton width="55%" height="0.875rem" />
+        <Skeleton width="45%" height="0.75rem" />
+        <div style={{ flexGrow: 1, minHeight: '0.75rem' }} />
+        <Skeleton width={48} height="0.8125rem" />
+        <Skeleton width="62%" height="0.8125rem" style={{ paddingLeft: '1.5rem' }} />
+        <Skeleton width={42} height="0.8125rem" />
+        <Skeleton width="52%" height="0.8125rem" style={{ paddingLeft: '1.5rem' }} />
+      </div>
+
+      {/* Actions: 1–2 square icon buttons */}
+      <div style={{
+        display: 'flex',
+        padding: '0.75rem 1.25rem',
+        gap: '0.625rem',
+        borderTop: '1px solid var(--border)',
+        justifyContent: 'flex-end',
+        minHeight: '52px',
+        alignItems: 'center',
+      }}>
+        <Skeleton width={44} height={44} radius="0.375rem" />
+        {showDelete && <Skeleton width={44} height={44} radius="0.375rem" />}
+      </div>
+    </div>
+  );
+}
 
 // Providers component with improved nested form integration
 function Providers({ currentUser, onViewProviderDetails }) {
@@ -56,6 +113,7 @@ function Providers({ currentUser, onViewProviderDetails }) {
 
   useEffect(() => {
     fetchProviders();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Filter providers based on search query
@@ -299,19 +357,14 @@ function Providers({ currentUser, onViewProviderDetails }) {
 
       {isLoading && !addingProvider && !editingProvider ? (
         <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          padding: '4rem 0'
+          display: 'grid',
+          gridTemplateColumns: getGridColumns(300),
+          gap: '1.5rem',
+          marginBottom: '2rem',
         }}>
-          <div style={{
-            width: '32px',
-            height: '32px',
-            border: '3px solid var(--border)',
-            borderRadius: '50%',
-            borderTopColor: 'var(--primary)',
-            animation: 'spin 1s linear infinite',
-          }}></div>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <ProviderCardSkeleton key={i} showDelete={currentUser?.is_global_admin} />
+          ))}
         </div>
       ) : providers.length === 0 && !addingProvider ? (
         <div style={{

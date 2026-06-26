@@ -12,8 +12,63 @@ import Modal from '../ui/Modal';
 import ConfirmModal from '../ui/ConfirmModal';
 import Breadcrumbs from '../ui/Breadcrumbs';
 import ActionMenu from '../ui/ActionMenu';
+import Skeleton from '../ui/Skeleton';
 import { showToast } from '../ui/Toast';
 import { useResponsiveGrid } from '../../hooks/useMediaQuery';
+
+// Loading silhouette of a user card — avatar, name, roles and footer actions.
+function UserCardSkeleton() {
+  return (
+    <div style={{
+      backgroundColor: 'var(--card-bg)',
+      borderRadius: '0.75rem',
+      border: '1px solid var(--border)',
+      overflow: 'hidden',
+      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+      display: 'flex',
+      flexDirection: 'column',
+      height: '100%',
+    }}>
+      <div style={{ padding: '1.25rem', flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+        {/* Avatar + name + last-login */}
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2rem' }}>
+          <Skeleton variant="circle" width={36} style={{ marginRight: '0.75rem' }} />
+          <div style={{ flex: 1 }}>
+            <Skeleton width="60%" height="1.125rem" style={{ marginBottom: '0.4rem' }} />
+            <Skeleton width="45%" height="0.75rem" />
+          </div>
+        </div>
+
+        <div style={{ flexGrow: 1 }} />
+
+        {/* Roles label + badges */}
+        <div style={{ marginBottom: '2rem' }}>
+          <Skeleton width={48} height="0.75rem" style={{ marginBottom: '0.75rem' }} />
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <Skeleton width={110} height={34} radius="0.375rem" />
+            <Skeleton width={88} height={34} radius="0.375rem" />
+          </div>
+        </div>
+
+        <div style={{ flexGrow: 1 }} />
+      </div>
+
+      {/* Footer action buttons */}
+      <div style={{
+        borderTop: '1px solid var(--border)',
+        display: 'flex',
+        justifyContent: 'flex-end',
+        alignItems: 'center',
+        padding: '0.75rem',
+        gap: '0.5rem',
+        height: '60px',
+      }}>
+        <Skeleton width={44} height={44} radius="0.375rem" />
+        <Skeleton width={44} height={44} radius="0.375rem" />
+      </div>
+    </div>
+  );
+}
 
 // UserManagement component
 function UserManagement() {
@@ -59,6 +114,7 @@ function UserManagement() {
   useEffect(() => {
     fetchUsers();
     fetchProviders();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Filter users based on search query
@@ -168,6 +224,7 @@ function UserManagement() {
 
   useEffect(() => {
     fetchUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Form submission handler
@@ -284,6 +341,7 @@ function UserManagement() {
       // Reset form for new user
       form.resetForm();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingUser, addingUser]);
 
   const handleDeleteUser = async (username) => {
@@ -477,19 +535,14 @@ function UserManagement() {
 
       {isLoading && !addingUser ? (
         <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          padding: '4rem 0'
+          display: 'grid',
+          gridTemplateColumns: getGridColumns(300),
+          gap: '1.5rem',
+          marginBottom: '2rem',
         }}>
-          <div style={{
-            width: '32px',
-            height: '32px',
-            border: '3px solid var(--border)',
-            borderRadius: '50%',
-            borderTopColor: 'var(--primary)',
-            animation: 'spin 1s linear infinite',
-          }}></div>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <UserCardSkeleton key={i} />
+          ))}
         </div>
       ) : users.length === 0 && !addingUser ? (
         <div style={{

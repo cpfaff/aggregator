@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { publicStatsApi } from '../../utils/statisticsApi';
 import StatCard from '../ui/StatCard';
+import Skeleton from '../ui/Skeleton';
 import TimeSeriesChart from '../ui/TimeSeriesChart';
 import PieChart from '../ui/PieChart';
 import Alert from '../ui/Alert';
@@ -22,10 +23,10 @@ function PublicStatsDashboard() {
   const [timelineData, setTimelineData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState(null);
-  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
-  const [nextRefreshIn, setNextRefreshIn] = useState(60);
+  const [, setIsRefreshing] = useState(false);
+  const [, setLastUpdated] = useState(null);
+  const [autoRefreshEnabled] = useState(true);
+  const [, setNextRefreshIn] = useState(60);
 
   const intervalRef = useRef(null);
   const countdownRef = useRef(null);
@@ -167,26 +168,6 @@ function PublicStatsDashboard() {
     }
   }, []);
 
-  const toggleAutoRefresh = () => {
-    setAutoRefreshEnabled(prev => {
-      const newValue = !prev;
-      if (newValue) {
-        startAutoRefresh();
-      } else {
-        stopAutoRefresh();
-        setNextRefreshIn(0);
-      }
-      return newValue;
-    });
-  };
-
-  const handleManualRefresh = () => {
-    fetchAllStats(false);
-    if (autoRefreshEnabled) {
-      startAutoRefresh(); // Reset the auto-refresh timer
-    }
-  };
-
   useEffect(() => {
     fetchAllStats();
     if (autoRefreshEnabled) {
@@ -200,21 +181,55 @@ function PublicStatsDashboard() {
 
   if (isLoading) {
     return (
-      <div style={{ padding: '1.5rem' }}>
+      <div
+        style={{ flexGrow: 1, padding: '2rem 1rem', maxWidth: '1200px', margin: '0 auto', width: '100%' }}
+        className="content-container"
+      >
+        {/* Header silhouette */}
         <div style={{
+          textAlign: 'center',
+          marginBottom: '4rem',
+          padding: '2rem 0',
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: 'center',
-          padding: '4rem 0'
+          gap: '1.25rem',
         }}>
-          <div style={{
-            width: '32px',
-            height: '32px',
-            border: '3px solid var(--border)',
-            borderRadius: '50%',
-            borderTopColor: 'var(--primary)',
-            animation: 'spin 1s linear infinite',
-          }}></div>
+          <Skeleton width="min(440px, 70%)" height="2.5rem" />
+          <Skeleton variant="text" count={2} width="min(640px, 90%)" />
+        </div>
+
+        {/* Key metrics: reuse StatCard's own loading state with the known titles */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: getGridColumns(300),
+          gap: '2rem',
+          marginBottom: '4rem',
+        }}>
+          <StatCard title="Data Providers" value={0} isLoading color="var(--success)" />
+          <StatCard title="Data Centers" value={0} isLoading color="var(--warning)" />
+          <StatCard title="Total Datasets" value={0} isLoading color="var(--primary)" />
+        </div>
+
+        {/* Charts row silhouette */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile || isTablet ? '1fr' : 'minmax(0, 2fr) minmax(0, 1fr)',
+          gap: '2.5rem',
+          marginBottom: '4rem',
+        }}>
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} style={{
+              backgroundColor: 'var(--card-bg)',
+              border: '1px solid var(--border)',
+              borderRadius: '0.75rem',
+              padding: '1.5rem',
+            }}>
+              <Skeleton width="55%" height="1.25rem" style={{ marginBottom: '0.5rem' }} />
+              <Skeleton width="40%" height="0.875rem" style={{ marginBottom: '1.5rem' }} />
+              <Skeleton width="100%" height={300} radius="0.5rem" />
+            </div>
+          ))}
         </div>
       </div>
     );

@@ -22,6 +22,42 @@ from app.utils.sorting import SortParam
 logger = logging.getLogger(__name__)
 
 
+def summarize_validation_results(results: dict[str, Any] | None) -> dict[str, Any]:
+    """Flatten a ``ValidationJob.results`` blob to the public headline numbers.
+
+    Pure projection (no DB / IO). Returns all-``None`` when ``results`` or its
+    ``summary`` section is absent or partial. Only *aggregate* quality is
+    surfaced — total / valid file counts, the weighted quality score, and the
+    mandatory / recommended valid percentages — never the per-rule defect detail,
+    which stays behind the authenticated DPM endpoints (B12 provider-scope).
+    """
+    out: dict[str, Any] = {
+        "is_valid": None,
+        "quality_score": None,
+        "mandatory_percentage": None,
+        "recommended_percentage": None,
+        "total_files": None,
+        "valid_files": None,
+    }
+    if not results:
+        return out
+
+    summary = results.get("summary") or {}
+    total_files = summary.get("total_files")
+    valid_files = summary.get("valid_files")
+    out["total_files"] = total_files
+    out["valid_files"] = valid_files
+    if total_files is not None and valid_files is not None:
+        out["is_valid"] = total_files == valid_files
+
+    data_quality = summary.get("data_quality") or {}
+    if "total_weighted_quality" in data_quality:
+        out["quality_score"] = data_quality["total_weighted_quality"]
+    out["mandatory_percentage"] = (data_quality.get("mandatory") or {}).get("valid_percentage")
+    out["recommended_percentage"] = (data_quality.get("recommended") or {}).get("valid_percentage")
+    return out
+
+
 class ValidationService:
     """Service for validation job operations."""
 
@@ -308,6 +344,58 @@ class ValidationService:
                     status_response["quality_score"] = data_quality["total_weighted_quality"]
 
         return status_response
+
+    async def get_validation_stats_for_datasets(
+        self, dataset_ids: list[int]
+    ) -> dict[int, dict[str, Any]]:
+        """Return a read-only validation summary for each given dataset.
+
+        Powers the public ``/validation-stats`` endpoint: one batched DB read for
+        a whole search-results page. For each dataset, the current (``isLatest``)
+        archive's most recent non-obsolete validation job is projected to headline
+        numbers via :func:`summarize_validation_results`.
+
+        * Datasets with no current archive are **omitted** from the map.
+        * A current archive with no validation job is reported ``not_validated``.
+        * Results are only read for ``completed`` jobs (in-flight quality never
+          leaks).
+
+        Unlike :meth:`get_dataset_validation_status`, this performs **no writes**
+        (no obsolete-pending cleanup / commit) — a public read must never mutate.
+        """
+        if not dataset_ids:
+            return {}
+
+        archives = await self.repo.get_latest_archives_for_datasets(dataset_ids)
+        if not archives:
+            return {}
+
+        jobs = await self.repo.get_latest_non_obsolete_jobs_for_archives(
+            [archive.id for archive in archives.values()]
+        )
+
+        stats: dict[int, dict[str, Any]] = {}
+        for dataset_id, archive in archives.items():
+            job = jobs.get(archive.id)
+            if job is None:
+                stats[dataset_id] = {
+                    "dataset_id": dataset_id,
+                    "archive_id": archive.id,
+                    "validation_status": "not_validated",
+                    "last_validated_at": None,
+                    **summarize_validation_results(None),
+                }
+                continue
+
+            results = job.results if job.status == "completed" else None
+            stats[dataset_id] = {
+                "dataset_id": dataset_id,
+                "archive_id": archive.id,
+                "validation_status": job.status,
+                "last_validated_at": job.completed_at or job.started_at,
+                **summarize_validation_results(results),
+            }
+        return stats
 
     async def get_latest_archive_for_dataset(self, dataset_id: int) -> XmlArchiveModel:
         """

@@ -81,7 +81,7 @@ describe('Login', () => {
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
-        '/api/v1/auth-token',
+        '/api/v1/tokens',
         expect.objectContaining({
           method: 'POST',
         })

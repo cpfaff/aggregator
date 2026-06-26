@@ -1,5 +1,5 @@
 import React from 'react';
-import { Database, Globe, Server, Edit, Trash2, ExternalLink, Clock } from 'lucide-react';
+import { Database, Globe, Server, Edit, Trash2, ExternalLink } from 'lucide-react';
 
 const ProviderCard = ({ provider, currentUser, onEdit, onDelete, onViewDetails }) => {
   // Handler for card click

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Trash2 } from 'lucide-react';
 import { apiRequest } from '../../utils/apiUtils';
 import useFormValidation from '../../utils/useFormValidation';
@@ -188,8 +188,6 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired, onDirtyChan
     const newArchives = [...(form.values.xmlArchives || []), { id: null, url: '', isLatest: false }];
     form.setFieldValue('xmlArchives', newArchives);
 
-    // Update validation schema with the new array
-    const newSchema = createValidationSchema(newArchives, form.values.usefulLinks || []);
     // Note: We'd need to enhance useFormValidation to support dynamic schema updates
     // For now, we'll handle validation manually for new fields
   };

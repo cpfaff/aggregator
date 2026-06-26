@@ -44,6 +44,9 @@ ES_DATESTAMP_FIELD: str = "internal-datestamp"
 # URN string shape. T-6 owns the shape; T-7 owns choosing the latest archive_id.
 URN_TEMPLATE: str = "urn:gfbio.org:abcd:{provider_id}_{dataset_id}_{archive_id}"
 
+# Constant scheme prefix, derived from the template so the two never drift.
+URN_PREFIX: str = URN_TEMPLATE.split("{", 1)[0]  # "urn:gfbio.org:abcd:"
+
 
 def _parse_best_effort_datestamp(value: object) -> datetime | None:
     """Best-effort parse of a hit's ``internal-datestamp`` value to a ``datetime``.
@@ -76,6 +79,31 @@ def compose_dataset_urn(provider_id: int, dataset_id: int, archive_id: int) -> s
         dataset_id=dataset_id,
         archive_id=archive_id,
     )
+
+
+def parse_dataset_urn(identifier: str) -> tuple[int, int, int] | None:
+    """Parse a GFBio ABCD identifier back into ``(provider_id, dataset_id, archive_id)``.
+
+    The exact inverse of :func:`compose_dataset_urn`. This is the join from a
+    search ES ``abcdDatasetIdentifier`` term value back to the aggregator's
+    integer ids, used by the public validation-stats endpoint.
+
+    A ``:unitID`` suffix (unit-level docs carry the dataset URN plus the unit id,
+    per the harvester's ``ESConnector`` and panFMP ``config.xml``) is stripped so
+    a unit identifier resolves to its parent dataset. Anything that is not a
+    well-formed dataset URN — wrong scheme, wrong component count, or a
+    non-integer component — returns ``None`` rather than raising, so one bad id
+    in a batch never fails the whole lookup.
+    """
+    if not isinstance(identifier, str) or not identifier.startswith(URN_PREFIX):
+        return None
+    # Drop the scheme prefix, then any ':unitID' suffix on unit-level identifiers.
+    body = identifier[len(URN_PREFIX) :].split(":", 1)[0]
+    parts = body.split("_")
+    if len(parts) != 3 or not all(part.isascii() and part.isdigit() for part in parts):
+        return None
+    provider_id, dataset_id, archive_id = (int(part) for part in parts)
+    return provider_id, dataset_id, archive_id
 
 
 class EsUnavailable(Exception):

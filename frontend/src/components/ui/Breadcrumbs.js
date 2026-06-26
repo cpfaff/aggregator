@@ -56,6 +56,7 @@ function Breadcrumbs({ items = [], showHomeIcon = true, style = {} }) {
                 />
               )}
 
+              {/* eslint-disable-next-line jsx-a11y/anchor-is-valid */}
               <a
                 onClick={item.onClick}
                 style={{

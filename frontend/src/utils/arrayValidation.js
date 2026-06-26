@@ -3,8 +3,6 @@
  * Extends the base validation system to support dynamic array validation
  */
 
-import validationRules from './validationRules';
-
 /**
  * Creates validation schema for array fields
  * @param {Object} itemSchema - Schema for each item in the array
@@ -137,7 +135,7 @@ export const unflattenArrayErrors = (errors, arrayName) => {
   return arrayErrors;
 };
 
-export default {
+const arrayValidationUtils = {
   arrayValidation,
   createDynamicArraySchema,
   getArrayFieldName,
@@ -145,3 +143,5 @@ export default {
   flattenArrayForValidation,
   unflattenArrayErrors
 };
+
+export default arrayValidationUtils;

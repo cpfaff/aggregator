@@ -8,6 +8,7 @@ import {
   Tooltip,
   ResponsiveContainer
 } from 'recharts';
+import Skeleton from './Skeleton';
 
 /**
  * Calculate a "nice" upper bound for the y-axis that prevents
@@ -78,8 +79,7 @@ function TimeSeriesChart({
     // For integer-only charts (like dataset counts), use nice bounds
     // to prevent small changes from appearing dramatic
     if (integerOnly) {
-      const range = maxY - minY;
-      const niceUpper = getNiceUpperBound(maxY);
+      let niceUpper = getNiceUpperBound(maxY);
 
       // For high baseline values (min > 50), start from a nice round number below min
       // This avoids wasting chart space when all values are high
@@ -113,25 +113,17 @@ function TimeSeriesChart({
       <div style={{
         height,
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+        flexDirection: 'column',
         backgroundColor: 'var(--card-bg)',
         borderRadius: '0.5rem',
-        border: '1px solid var(--border)'
+        border: '1px solid var(--border)',
+        padding: '1.5rem',
       }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{
-            width: '32px',
-            height: '32px',
-            border: '3px solid var(--border)',
-            borderRadius: '50%',
-            borderTopColor: color,
-            animation: 'spin 1s linear infinite',
-            margin: '0 auto 0.5rem'
-          }} />
-          <div style={{ color: 'var(--text-light)', fontSize: '0.875rem' }}>
-            Loading chart...
-          </div>
+        {title && <Skeleton width="45%" height="1.125rem" style={{ marginBottom: '0.4rem' }} />}
+        {subtitle && <Skeleton width="60%" height="0.8125rem" style={{ marginBottom: '1.25rem' }} />}
+        {/* Plot-area placeholder fills the remaining card height. */}
+        <div style={{ flex: 1, minHeight: 0 }}>
+          <Skeleton width="100%" height="100%" radius="0.5rem" style={{ height: '100%' }} />
         </div>
       </div>
     );

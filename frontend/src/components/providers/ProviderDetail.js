@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { apiRequest } from '../../utils/apiUtils';
-import { Globe, Server, Plus, Search, ArrowLeft, Database, ExternalLink, Edit, Trash2, CheckCircle, TrendingUp } from 'lucide-react';
+import { Globe, Server, Plus, Search, Database, ExternalLink, Edit, Trash2, CheckCircle, TrendingUp } from 'lucide-react';
 import Alert from '../ui/Alert';
 import Modal from '../ui/Modal';
 import Breadcrumbs from '../ui/Breadcrumbs';
 import ActionMenu from '../ui/ActionMenu';
+import Skeleton from '../ui/Skeleton';
 import DatasetCard from '../datasets/DatasetCard';
 import DatasetForm from '../datasets/DatasetForm';
 import ProviderForm from './ProviderForm';
@@ -25,7 +26,7 @@ const ProviderDetail = ({ currentUser }) => {
   const [datasets, setDatasets] = useState([]);
   const [filteredDatasets, setFilteredDatasets] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
+  const [, setIsLoading] = useState(true);
   const [isLoadingProvider, setIsLoadingProvider] = useState(true);
   const [error, setError] = useState('');
   const [editingDataset, setEditingDataset] = useState(null);
@@ -52,6 +53,7 @@ const ProviderDetail = ({ currentUser }) => {
   // Fetch provider data when component mounts or ID changes
   useEffect(() => {
     fetchProvider();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   // Fetch datasets and stats when provider is loaded
@@ -60,6 +62,7 @@ const ProviderDetail = ({ currentUser }) => {
       fetchDatasets();
       fetchProviderStats();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [provider]);
 
   useEffect(() => {
@@ -342,25 +345,55 @@ const ProviderDetail = ({ currentUser }) => {
     setConfirmDiscardChanges(null);
   };
 
-  // Show loading state while fetching provider
+  // Loading silhouette: breadcrumb bar, the provider detail card (title,
+  // datacenter, shortName badge, stats lines) and a few dataset-row
+  // placeholders — mirrors the resolved layout so it does not shift.
   if (isLoadingProvider) {
     return (
-      <div style={{
-        flexGrow: 1,
-        padding: '2rem 1rem',
-        width: '100%',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center'
-      }}>
+      <div
+        style={{ flexGrow: 1, padding: '2rem 1rem', width: '100%' }}
+        className="content-container"
+      >
+        <Skeleton width={220} height="0.875rem" style={{ marginBottom: '1.5rem' }} />
+
         <div style={{
-          width: '32px',
-          height: '32px',
-          border: '3px solid var(--border)',
-          borderRadius: '50%',
-          borderTopColor: 'var(--primary)',
-          animation: 'spin 1s linear infinite',
-        }}></div>
+          backgroundColor: 'var(--card-bg)',
+          borderRadius: '0.75rem',
+          border: '1px solid var(--border)',
+          padding: '1.5rem',
+          marginBottom: '2rem',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+            <div style={{ flex: 1 }}>
+              <Skeleton width="45%" height="1.5rem" style={{ marginBottom: '0.5rem' }} />
+              <Skeleton width="30%" height="0.875rem" />
+            </div>
+            <Skeleton width={84} height={30} radius="0.375rem" />
+          </div>
+          <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <Skeleton width={64} height="0.8125rem" />
+            <Skeleton width="55%" height="0.875rem" style={{ paddingLeft: '0.75rem' }} />
+            <Skeleton width="40%" height="0.875rem" style={{ paddingLeft: '0.75rem' }} />
+          </div>
+        </div>
+
+        <Skeleton width={180} height="1.25rem" style={{ marginBottom: '1rem' }} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} style={{
+              backgroundColor: 'var(--card-bg)',
+              borderRadius: '0.75rem',
+              border: '1px solid var(--border)',
+              padding: '1.25rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.75rem',
+            }}>
+              <Skeleton width="60%" height="1.125rem" />
+              <Skeleton variant="text" count={2} />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

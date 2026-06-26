@@ -38,6 +38,9 @@ export const themeVariables = {
     '--section-footer-border': 'rgb(226, 232, 240)',
     // Stats icon color (muted gray for informational items)
     '--stats-icon': 'rgb(100, 116, 139)',
+    // Skeleton loading placeholder (base = resting fill, highlight = shimmer sweep)
+    '--skeleton-base': '#e2e8f0',
+    '--skeleton-highlight': '#f4f6f9',
   },
   dark: {
     '--primary': '#3b82f6',
@@ -77,6 +80,9 @@ export const themeVariables = {
     '--section-footer-border': 'rgb(51, 65, 85)',
     // Stats icon color (muted gray for informational items)
     '--stats-icon': 'rgb(148, 163, 184)',
+    // Skeleton loading placeholder (base = resting fill, highlight = shimmer sweep)
+    '--skeleton-base': '#334155',
+    '--skeleton-highlight': '#475569',
   }
 };
 

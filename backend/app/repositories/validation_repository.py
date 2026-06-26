@@ -106,6 +106,50 @@ class ValidationRepository(BaseRepository[ValidationJobModel]):
         )
         return result.scalars().first()
 
+    async def get_latest_archives_for_datasets(
+        self, dataset_ids: list[int]
+    ) -> dict[int, XmlArchiveModel]:
+        """Map each dataset id to its current (isLatest) archive, batched.
+
+        Datasets with no ``isLatest`` archive are absent from the returned map.
+        On the (not-expected) chance a dataset has multiple ``isLatest`` rows, the
+        first scanned wins — mirroring the single-dataset
+        :meth:`get_latest_archive_for_dataset` ``.first()`` behaviour.
+        """
+        if not dataset_ids:
+            return {}
+        result = await self.db.execute(
+            select(XmlArchiveModel)
+            .where(XmlArchiveModel.dataset_id.in_(dataset_ids))
+            .where(XmlArchiveModel.isLatest.is_(True))
+        )
+        archives: dict[int, XmlArchiveModel] = {}
+        for archive in result.scalars().all():
+            archives.setdefault(archive.dataset_id, archive)
+        return archives
+
+    async def get_latest_non_obsolete_jobs_for_archives(
+        self, archive_ids: list[int]
+    ) -> dict[int, ValidationJobModel]:
+        """Map each archive id to its most recent non-obsolete job, batched.
+
+        Batched form of :meth:`get_latest_non_obsolete_job`: ordered by
+        ``(archive_id, created_at desc)`` so the first row seen per archive is its
+        latest non-obsolete job.
+        """
+        if not archive_ids:
+            return {}
+        result = await self.db.execute(
+            select(ValidationJobModel)
+            .where(ValidationJobModel.archive_id.in_(archive_ids))
+            .where(ValidationJobModel.status != "obsolete")
+            .order_by(ValidationJobModel.archive_id, desc(ValidationJobModel.created_at))
+        )
+        jobs: dict[int, ValidationJobModel] = {}
+        for job in result.scalars().all():
+            jobs.setdefault(job.archive_id, job)
+        return jobs
+
     async def get_pending_jobs_for_archive(self, archive_id: int) -> list[ValidationJobModel]:
         """Get all pending validation jobs for an archive."""
         result = await self.db.execute(

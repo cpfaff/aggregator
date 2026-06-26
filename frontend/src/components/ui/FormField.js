@@ -62,14 +62,6 @@ const FormField = ({
     ...style
   };
 
-  // Add focus styles
-  const focusStyles = {
-    ':focus': {
-      borderColor: 'var(--primary)',
-      boxShadow: '0 0 0 3px rgba(var(--primary-rgb), 0.1)'
-    }
-  };
-
   // Render the appropriate input element
   const renderInput = () => {
     // Checkbox input

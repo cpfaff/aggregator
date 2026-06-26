@@ -15,6 +15,7 @@ from app.api.v1.endpoints.providers import router as providers_router
 from app.api.v1.endpoints.snapshots import router as snapshots_router
 from app.api.v1.endpoints.tasks import router as tasks_router
 from app.api.v1.endpoints.users import router as users_router
+from app.api.v1.endpoints.validation_stats import router as validation_stats_router
 from app.api.v1.endpoints.validators import router as validators_router
 
 # Create the API v1 router
@@ -25,6 +26,10 @@ api_v1_router.include_router(auth_router, tags=["authentication"])
 api_v1_router.include_router(harvest_router, tags=["harvest"])
 api_v1_router.include_router(health_router, tags=["health"])
 api_v1_router.include_router(users_router, tags=["users"])
+
+# Public, read-only batch validation summary for the search interface (no prefix:
+# sits next to the harvest feed as a server-to-server contract).
+api_v1_router.include_router(validation_stats_router, tags=["validation-stats"])
 
 # Domain-specific endpoint routers with prefixes
 api_v1_router.include_router(tasks_router, prefix="/tasks", tags=["tasks"])

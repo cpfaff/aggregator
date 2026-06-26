@@ -7,6 +7,7 @@ import {
   ResponsiveContainer,
   Legend
 } from 'recharts';
+import Skeleton from './Skeleton';
 
 /**
  * PieChart component for displaying pie chart data
@@ -42,25 +43,17 @@ function PieChart({
       <div style={{
         height,
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+        flexDirection: 'column',
         backgroundColor: 'var(--card-bg)',
         borderRadius: '0.5rem',
-        border: '1px solid var(--border)'
+        border: '1px solid var(--border)',
+        padding: '1.5rem',
       }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{
-            width: '32px',
-            height: '32px',
-            border: '3px solid var(--border)',
-            borderRadius: '50%',
-            borderTopColor: colors[0],
-            animation: 'spin 1s linear infinite',
-            margin: '0 auto 0.5rem'
-          }} />
-          <div style={{ color: 'var(--text-light)', fontSize: '0.875rem' }}>
-            Loading chart...
-          </div>
+        {title && <Skeleton width="45%" height="1.125rem" style={{ marginBottom: '0.4rem' }} />}
+        {subtitle && <Skeleton width="60%" height="0.8125rem" style={{ marginBottom: '1.25rem' }} />}
+        {/* Pie plate placeholder — a centred circle echoes the chart shape. */}
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Skeleton variant="circle" width={140} />
         </div>
       </div>
     );

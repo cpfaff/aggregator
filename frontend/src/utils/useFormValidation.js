@@ -174,6 +174,7 @@ const useFormValidation = (initialValues = {}, validationSchema = {}, onSubmit) 
     } else {
       setIsSubmitting(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [values, validateForm, validationSchema, onSubmit]);
 
   // Reset form to initial state

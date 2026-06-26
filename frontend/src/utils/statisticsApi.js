@@ -284,8 +284,10 @@ export const statsUtils = {
   }
 };
 
-export default {
+const statisticsApi = {
   publicStatsApi,
   authStatsApi,
   statsUtils
 };
+
+export default statisticsApi;

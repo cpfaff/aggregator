@@ -53,24 +53,40 @@ beforeEach(() => {
 });
 
 describe('Providers', () => {
-  test('shows loading spinner while fetching providers', () => {
-    // Never resolve the API call to keep loading state
+  test('shows skeleton placeholders while fetching providers', () => {
+    // Never resolve the API call to keep the loading state.
     apiRequest.mockReturnValue(new Promise(() => {}));
 
     render(<Providers currentUser={adminUser} onViewProviderDetails={jest.fn()} />);
 
-    // Loading spinner is a div with animation, check loading state indirectly
-    // by confirming no providers or empty message are shown
+    expect(screen.getAllByTestId('skeleton').length).toBeGreaterThan(0);
+    // Empty/loaded states must not show while still loading.
     expect(screen.queryByText('No providers found')).not.toBeInTheDocument();
+  });
+
+  test('removes the skeleton once providers load', async () => {
+    apiRequest.mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({ data: [{ id: 1, name: 'Provider A' }] }),
+    });
+
+    render(<Providers currentUser={adminUser} onViewProviderDetails={jest.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('provider-card-1')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('skeleton')).not.toBeInTheDocument();
   });
 
   test('renders provider cards after data loads', async () => {
     apiRequest.mockResolvedValue({
       ok: true,
-      json: jest.fn().mockResolvedValue([
-        { id: 1, name: 'Provider A' },
-        { id: 2, name: 'Provider B' },
-      ]),
+      json: jest.fn().mockResolvedValue({
+        data: [
+          { id: 1, name: 'Provider A' },
+          { id: 2, name: 'Provider B' },
+        ],
+      }),
     });
 
     render(<Providers currentUser={adminUser} onViewProviderDetails={jest.fn()} />);
@@ -84,7 +100,7 @@ describe('Providers', () => {
   test('shows empty state when no providers exist', async () => {
     apiRequest.mockResolvedValue({
       ok: true,
-      json: jest.fn().mockResolvedValue([]),
+      json: jest.fn().mockResolvedValue({ data: [] }),
     });
 
     render(<Providers currentUser={adminUser} onViewProviderDetails={jest.fn()} />);
@@ -111,7 +127,7 @@ describe('Providers', () => {
   test('shows action menu for admin users', async () => {
     apiRequest.mockResolvedValue({
       ok: true,
-      json: jest.fn().mockResolvedValue([]),
+      json: jest.fn().mockResolvedValue({ data: [] }),
     });
 
     render(<Providers currentUser={adminUser} onViewProviderDetails={jest.fn()} />);
@@ -122,7 +138,7 @@ describe('Providers', () => {
   test('hides action menu for non-admin users', async () => {
     apiRequest.mockResolvedValue({
       ok: true,
-      json: jest.fn().mockResolvedValue([]),
+      json: jest.fn().mockResolvedValue({ data: [] }),
     });
 
     const regularUser = { username: 'user1', is_global_admin: false, provider_roles: {} };
