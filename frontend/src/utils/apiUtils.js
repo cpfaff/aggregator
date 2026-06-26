@@ -9,6 +9,45 @@ export const API_BASE = process.env.NODE_ENV === 'production'
 // API version prefix
 export const API_VERSION = '/api/v1';
 
+// Single request timeout (ms) the resilient client enforces on every backend
+// call, so a backend that accepts the connection but never responds cannot pin
+// a request forever. See REQ-FE-CLIENT-1 / REQ-FE-CORE-1.
+export const REQUEST_TIMEOUT_MS = 15000;
+
+/**
+ * fetch bounded by REQUEST_TIMEOUT_MS via an AbortController.
+ *
+ * The returned promise always settles: when the timer fires it aborts the
+ * in-flight request (so a real fetch rejects) and rejects with a typed
+ * TimeoutError, raced against the fetch so even a fetch that never settles is
+ * bounded.
+ *
+ * @param {string} url
+ * @param {Object} options - Fetch options (a signal is merged in)
+ * @returns {Promise<Response>}
+ */
+export const fetchWithTimeout = async (url, options = {}) => {
+  const controller = new AbortController();
+  let timer;
+  const timeoutPromise = new Promise((_resolve, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      const error = new Error(`Request timed out after ${REQUEST_TIMEOUT_MS}ms`);
+      error.name = 'TimeoutError';
+      reject(error);
+    }, REQUEST_TIMEOUT_MS);
+  });
+
+  try {
+    return await Promise.race([
+      fetch(url, { ...options, signal: controller.signal }),
+      timeoutPromise,
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
 /**
  * Get CSRF token from the backend
  * @returns {Promise<string>} - CSRF token
@@ -136,8 +175,8 @@ export const fetchWithTokenExpiration = async (url, options = {}, onTokenExpired
       }
     }
 
-    // Make the API request
-    const response = await fetch(url, options);
+    // Make the API request (bounded by REQUEST_TIMEOUT_MS via AbortController)
+    const response = await fetchWithTimeout(url, options);
 
     // Handle 401 Unauthorized errors
     if (response.status === 401 && !url.endsWith(`${API_VERSION}/tokens`)) {
@@ -150,7 +189,7 @@ export const fetchWithTokenExpiration = async (url, options = {}, onTokenExpired
         if (newOptions.headers && newOptions.headers.Authorization) {
           newOptions.headers.Authorization = `Bearer ${localStorage.getItem('token')}`;
         }
-        return fetch(url, newOptions);
+        return fetchWithTimeout(url, newOptions);
       } else {
         // If refresh failed, trigger expiration callback
         if (onTokenExpired && typeof onTokenExpired === 'function') {
