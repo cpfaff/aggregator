@@ -46,10 +46,19 @@ Baseline (231c82c head be51e5e): 16 suites / 73 tests pass; eslint exit 0. CONFI
 - `toLocaleString()` separator is locale-dependent → assert digits-only, never a hardcoded separator.
 - Do NOT push or open MR — human stop-gate precedes any remote action.
 
+## Follow-up fixes (post-review regression)
+- [x] StrictMode abort-attribution bug — `006b504` (PublicStatsDashboard) + `ed431b7` (DatasetCard).
+  Symptom: "Failed to load statistics: signal is aborted without reason" on the public stats page
+  (user-reported). Root cause: catch/finally tested `abortControllerRef.current` (a newer controller a
+  remount installed) instead of the batch's OWN captured signal, and the overlap guard persisted across
+  the remount. Fix: capture signal up front; test captured signal in catch/finally; release in-flight
+  guard in unmount cleanup. Each with a StrictMode RED test. Full suite 94 green; eslint 0.
+
 ## Resume pointer
-ALL ITEMS COMPLETE: FR-01..FR-18 landed as atomic commits. Full suite 92 tests green; eslint src/ exit 0.
+ALL ITEMS COMPLETE: FR-01..FR-18 + 2 regression follow-ups. Full suite 94 tests green; eslint src/ exit 0.
 
 MILESTONE 1: MUST block FR-01..FR-09 — spec's MUST set satisfied (malformed verdict cleared).
 MILESTONE 2: SHOULD block FR-10..FR-18 — resilient-client seam completed; degradation items cleared.
+MILESTONE 3: Post-review StrictMode abort-attribution regression fixed in both abort sites.
 
 NEXT: human stop-gate before any remote action (no push/MR performed). Awaiting review.
