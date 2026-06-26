@@ -56,4 +56,26 @@ describe('apiUtils resilient client', () => {
       expect(outcome).toMatchObject({ name: 'TimeoutError' });
     });
   });
+
+  describe('FR-10 typed-error seam (REQ-FE-CLIENT-6)', () => {
+    test('apiRequest rejects with the RFC-7807 detail/title and status on a 4xx problem+json response', async () => {
+      global.fetch = jest.fn(() =>
+        Promise.resolve({
+          ok: false,
+          status: 409,
+          headers: {
+            get: (h) => (h === 'content-type' ? 'application/problem+json' : null),
+          },
+          json: () => Promise.resolve({ title: 'Conflict', detail: 'Already validating' }),
+        }),
+      );
+
+      // RED (pre-fix): apiRequest resolves to the raw Response on a non-ok
+      // status (it never calls the parser and never rejects), so .rejects fails.
+      await expect(apiRequest('/x')).rejects.toMatchObject({
+        status: 409,
+        message: 'Already validating',
+      });
+    });
+  });
 });

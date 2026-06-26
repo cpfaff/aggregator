@@ -198,6 +198,13 @@ export const fetchWithTokenExpiration = async (url, options = {}, onTokenExpired
       }
     }
 
+    // Typed-error seam (FR-10, REQ-FE-CLIENT-6): on a non-ok response, reject
+    // with the typed { status, message, ... } from parseErrorResponse instead of
+    // returning a raw Response, so every caller sees one error shape.
+    if (!response.ok) {
+      throw await parseErrorResponse(response);
+    }
+
     return response;
   } catch (error) {
     throw error;
