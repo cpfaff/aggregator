@@ -5,6 +5,7 @@ import { useAuth } from '../auth/AuthContext';
 import axios from 'axios';
 import ValidationResultsModal from './ValidationResultsModal';
 import { authStatsApi } from '../../utils/statisticsApi';
+import { REQUEST_TIMEOUT_MS } from '../../utils/apiUtils';
 
 // SWR fetcher for the harvest-status endpoint. Reuses the already-imported axios
 // (so the existing jest.mock('axios') intercepts it) and the same token idiom as
@@ -13,6 +14,7 @@ const harvestStatusFetcher = async (url) => {
   const token = localStorage.getItem('token');
   const res = await axios.get(url, {
     headers: { Authorization: `Bearer ${token}` },
+    timeout: REQUEST_TIMEOUT_MS,
   });
   return res.data;
 };
@@ -94,6 +96,7 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
           headers: {
             Authorization: `Bearer ${token}`,
           },
+          timeout: REQUEST_TIMEOUT_MS,
         }
       );
 
@@ -181,6 +184,7 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
           headers: {
             Authorization: `Bearer ${token}`,
           },
+          timeout: REQUEST_TIMEOUT_MS,
         }
       );
 

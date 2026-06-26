@@ -363,3 +363,20 @@ describe('DatasetCard harvest-status badge', () => {
     });
   });
 });
+
+describe('DatasetCard transport resilience', () => {
+  // FR-03 (REQ-FE-CLIENT-3): axios defaults to no timeout, so a hung
+  // validation/harvest/validate endpoint pins the request forever.
+  test('validation-status request is issued with a request timeout', async () => {
+    render(<DatasetCard dataset={mockDataset} onEdit={jest.fn()} onDelete={jest.fn()} />);
+
+    // RED (pre-fix): the config is { headers: { Authorization } } with no
+    // timeout key, so the objectContaining matcher fails.
+    await waitFor(() => {
+      expect(axios.get).toHaveBeenCalledWith(
+        expect.stringContaining('validation-status'),
+        expect.objectContaining({ timeout: expect.any(Number) })
+      );
+    });
+  });
+});

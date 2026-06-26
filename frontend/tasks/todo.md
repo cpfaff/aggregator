@@ -18,7 +18,7 @@ Baseline (231c82c head be51e5e): 16 suites / 73 tests pass; eslint exit 0. CONFI
 
 - [x] FR-01 timeout+AbortController in apiRequest (REQ-FE-CLIENT-1) — apiUtils.test.js [SEAM] ✓ 74 tests
 - [x] FR-02 publicStatsApi typed status error (REQ-FE-CLIENT-2) — statisticsApi.test.js ✓ 75 tests
-- [ ] FR-03 DatasetCard axios timeout (REQ-FE-CLIENT-3) — DatasetCard.test.js
+- [x] FR-03 DatasetCard axios timeout (REQ-FE-CLIENT-3) — DatasetCard.test.js ✓ 76 tests
 - [ ] FR-04 top-level ErrorBoundary (REQ-FE-EB-1) — ErrorBoundary.test.js [NEW FILE]
 - [ ] FR-05 validation poller overlap guard (REQ-FE-POLL-1) — DatasetCard.test.js
 - [ ] FR-06 validation poll abort on unmount (REQ-FE-POLL-2) — DatasetCard.test.js
@@ -47,4 +47,4 @@ Baseline (231c82c head be51e5e): 16 suites / 73 tests pass; eslint exit 0. CONFI
 - Do NOT push or open MR — human stop-gate precedes any remote action.
 
 ## Resume pointer
-Next unstarted item: **FR-03**. (Update after each commit.)
+Next unstarted item: **FR-04**. (Update after each commit.)
