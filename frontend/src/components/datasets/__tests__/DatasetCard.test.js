@@ -379,6 +379,37 @@ describe('DatasetCard transport resilience', () => {
       );
     });
   });
+
+  // FR-09 (REQ-FE-CLIENT-4): the side-effecting validate POST must carry a
+  // client-supplied Idempotency-Key so a retry/double-click cannot enqueue
+  // duplicate validation jobs.
+  test('triggerValidation sends an Idempotency-Key header on the validate POST', async () => {
+    axios.get.mockImplementation((url) =>
+      typeof url === 'string' && url.includes('validation-status')
+        ? Promise.resolve({
+            data: { has_latest_archive: true, validation_status: 'completed', is_valid: true },
+          })
+        : Promise.resolve({ data: VALIDATION_PAYLOAD })
+    );
+    axios.post.mockResolvedValue({ data: {} });
+
+    render(<DatasetCard dataset={mockDataset} onEdit={jest.fn()} onDelete={jest.fn()} />);
+
+    const button = await screen.findByRole('button', { name: /re-validate/i });
+    userEvent.click(button);
+
+    // RED (pre-fix): the post headers are only { Authorization }, so the
+    // Idempotency-Key matcher fails.
+    await waitFor(() => {
+      expect(axios.post).toHaveBeenCalledWith(
+        expect.stringContaining('/validate'),
+        expect.anything(),
+        expect.objectContaining({
+          headers: expect.objectContaining({ 'Idempotency-Key': expect.any(String) }),
+        })
+      );
+    });
+  });
 });
 
 describe('DatasetCard validation poller backpressure', () => {

@@ -24,7 +24,7 @@ Baseline (231c82c head be51e5e): 16 suites / 73 tests pass; eslint exit 0. CONFI
 - [x] FR-06 validation poll abort on unmount (REQ-FE-POLL-2) — DatasetCard.test.js ✓ 79 tests
 - [x] FR-07 UserManagement 422 per-field message (REQ-FE-DEG-1) — UserManagement.test.js ✓ 80 tests
 - [x] FR-08 DatasetForm 422 per-field message (REQ-FE-DEG-2) — DatasetForm.test.js [NEW FILE] ✓ 81 tests
-- [ ] FR-09 validate POST Idempotency-Key (REQ-FE-CLIENT-4) — DatasetCard.test.js
+- [x] FR-09 validate POST Idempotency-Key (REQ-FE-CLIENT-4) — DatasetCard.test.js ✓ 82 tests
 
 ### >>> CONFORMANCE GATE: after FR-09, report MUST milestone before SHOULD block <<<
 
@@ -47,4 +47,7 @@ Baseline (231c82c head be51e5e): 16 suites / 73 tests pass; eslint exit 0. CONFI
 - Do NOT push or open MR — human stop-gate precedes any remote action.
 
 ## Resume pointer
-Next unstarted item: **FR-09** (last MUST — then CONFORMANCE GATE report). (Update after each commit.)
+Next unstarted item: **FR-10** (first SHOULD; revives parseErrorResponse seam). (Update after each commit.)
+
+MILESTONE: MUST block FR-01..FR-09 COMPLETE — spec's MUST set (REQ-FE-CLIENT-1..4,
+-EB-1, -POLL-1..2, -DEG-1..2) satisfied. Conformance gate reported. SHOULD block follows.

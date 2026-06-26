@@ -207,12 +207,20 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
 
     try {
       const token = localStorage.getItem('token');
+      // Idempotency key captured once per validation intent (FR-09,
+      // REQ-FE-CLIENT-4) so a retry or double-click cannot enqueue duplicate
+      // validation jobs; the backend deduplicates on this key.
+      const idempotencyKey =
+        typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `${dataset.id}:validate:${Date.now()}`;
       const response = await axios.post(
         `${process.env.REACT_APP_API_BASE_URL || ''}/api/v1/validators/datasets/${dataset.id}/validate`,
         { force: true },
         {
           headers: {
             Authorization: `Bearer ${token}`,
+            'Idempotency-Key': idempotencyKey,
           },
           timeout: REQUEST_TIMEOUT_MS,
         }
