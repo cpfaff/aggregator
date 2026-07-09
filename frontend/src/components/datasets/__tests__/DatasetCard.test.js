@@ -3,6 +3,7 @@ import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SWRConfig } from 'swr';
 import axios from 'axios';
+import { authStatsApi } from '../../../utils/statisticsApi';
 import DatasetCard from '../DatasetCard';
 
 // Mock dependencies
@@ -57,6 +58,10 @@ beforeEach(() => {
   jest.clearAllMocks();
   // Default axios.get: validation payload for any URL (overridden per-test via mockHarvest).
   axios.get.mockResolvedValue({ data: VALIDATION_PAYLOAD });
+  // Default stats: a settled payload with a unit count (overridden per-test).
+  // clearAllMocks() only clears calls, not implementations, so re-assert the
+  // default each test to keep the biological-units region deterministic.
+  authStatsApi.getDatasetStats.mockResolvedValue({ unit_count: 42 });
   // Suppress console.log from DatasetCard debug statements
   jest.spyOn(console, 'log').mockImplementation(() => {});
   jest.spyOn(console, 'error').mockImplementation(() => {});
@@ -333,7 +338,7 @@ describe('DatasetCard harvest-status badge', () => {
     );
   });
 
-  test('shows loading placeholder while harvest fetch is pending and card still renders', async () => {
+  test('shows a loading skeleton while harvest fetch is pending and card still renders', async () => {
     axios.get.mockImplementation((url) =>
       typeof url === 'string' && url.includes('harvest-status')
         ? new Promise(() => {}) // never resolves
@@ -342,7 +347,11 @@ describe('DatasetCard harvest-status badge', () => {
 
     renderCard(harvestReadyDataset);
 
-    expect(await screen.findByText('Checking index…')).toBeInTheDocument();
+    // The harvest region now reserves space with a Skeleton (superseding the
+    // old "Checking index…" text placeholder), so the card does not shift when
+    // the status lands.
+    expect(await screen.findByLabelText('Loading harvest status')).toBeInTheDocument();
+    expect(screen.queryByText('Checking index…')).toBeNull();
     // Card still renders (non-blocking placeholder).
     expect(screen.getByLabelText('Dataset: Test Dataset')).toBeInTheDocument();
   });
@@ -361,6 +370,129 @@ describe('DatasetCard harvest-status badge', () => {
         expect.anything()
       );
     });
+  });
+});
+
+describe('DatasetCard anti-shift reserved regions (CLS)', () => {
+  // A harvest-ready dataset triggers the SWR fetch (no strict-false short-circuit).
+  const harvestReadyDataset = { ...mockDataset, isHarvestReady: true };
+
+  const IN_INDEX_PAYLOAD = {
+    dataset_id: 10,
+    is_harvest_ready: true,
+    harvest_status: 'in_index',
+    units_in_index: 5,
+    units_expected: 5,
+    last_seen_in_index_at: '2026-06-20T09:00:00Z',
+    index_checked_at: '2026-06-21T03:00:00Z',
+  };
+
+  // The oracle renders under <StrictMode> so the dev double-mount cannot defeat
+  // the reserve/skeleton. SWR cache is isolated per render for determinism.
+  const renderStrict = (dataset) =>
+    render(
+      <React.StrictMode>
+        <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
+          <DatasetCard dataset={dataset} onEdit={jest.fn()} onDelete={jest.fn()} />
+        </SWRConfig>
+      </React.StrictMode>
+    );
+
+  // --- Harvest-status region ---
+
+  test('harvest: a reserved skeleton fills the region while the fetch is pending; no status text', async () => {
+    // harvest-status GET never resolves -> harvestEffectiveStatus stays 'loading'.
+    axios.get.mockImplementation((url) =>
+      typeof url === 'string' && url.includes('harvest-status')
+        ? new Promise(() => {})
+        : Promise.resolve({ data: VALIDATION_PAYLOAD })
+    );
+
+    renderStrict(harvestReadyDataset);
+
+    expect(await screen.findByLabelText('Loading harvest status')).toBeInTheDocument();
+    // Neither the old text placeholder nor any settled status copy is present.
+    expect(screen.queryByText('Checking index…')).toBeNull();
+    expect(screen.queryByText(/^In index/)).toBeNull();
+    // The card still renders around the placeholder.
+    expect(screen.getByLabelText('Dataset: Test Dataset')).toBeInTheDocument();
+  });
+
+  test('harvest: status text is present and the skeleton is gone once the fetch lands', async () => {
+    mockHarvest(IN_INDEX_PAYLOAD);
+
+    renderStrict(harvestReadyDataset);
+
+    expect(
+      await screen.findByText('In index · 5 units · last seen Jun 20, 2026')
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText('Loading harvest status')).toBeNull();
+  });
+
+  test('harvest: reserved min-height is a non-empty string, equal across loading and loaded', async () => {
+    // Loading render.
+    axios.get.mockImplementation((url) =>
+      typeof url === 'string' && url.includes('harvest-status')
+        ? new Promise(() => {})
+        : Promise.resolve({ data: VALIDATION_PAYLOAD })
+    );
+    const loading = renderStrict(harvestReadyDataset);
+    await screen.findByLabelText('Loading harvest status');
+    const loadingMinHeight = screen.getByTestId('harvest-region').style.minHeight;
+    loading.unmount();
+
+    // Loaded render.
+    mockHarvest(IN_INDEX_PAYLOAD);
+    renderStrict(harvestReadyDataset);
+    await screen.findByText('In index · 5 units · last seen Jun 20, 2026');
+    const loadedMinHeight = screen.getByTestId('harvest-region').style.minHeight;
+
+    expect(loadingMinHeight).not.toBe('');
+    expect(loadingMinHeight).toBe(loadedMinHeight);
+  });
+
+  // --- Biological-units region ---
+
+  test('bio-units: a reserved skeleton fills the region while the stats fetch is pending; no unit line', async () => {
+    // Harvest settles so the only skeleton on screen is the bio-units one.
+    mockHarvest(IN_INDEX_PAYLOAD);
+    authStatsApi.getDatasetStats.mockImplementation(() => new Promise(() => {}));
+
+    renderStrict(harvestReadyDataset);
+
+    expect(await screen.findByLabelText('Loading biological units')).toBeInTheDocument();
+    expect(screen.queryByText(/biological unit/)).toBeNull();
+  });
+
+  test('bio-units: the unit line is present and the skeleton is gone once the stats land', async () => {
+    mockHarvest(IN_INDEX_PAYLOAD);
+    authStatsApi.getDatasetStats.mockResolvedValue({ unit_count: 42 });
+
+    renderStrict(harvestReadyDataset);
+
+    expect(await screen.findByText('biological units')).toBeInTheDocument();
+    expect(screen.getByText('42')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Loading biological units')).toBeNull();
+  });
+
+  test('bio-units: reserved min-height is a non-empty string, equal across loading and loaded', async () => {
+    mockHarvest(IN_INDEX_PAYLOAD);
+
+    // Loading render (stats never resolve).
+    authStatsApi.getDatasetStats.mockImplementation(() => new Promise(() => {}));
+    const loading = renderStrict(harvestReadyDataset);
+    await screen.findByLabelText('Loading biological units');
+    const loadingMinHeight = screen.getByTestId('bio-units-region').style.minHeight;
+    loading.unmount();
+
+    // Loaded render.
+    authStatsApi.getDatasetStats.mockResolvedValue({ unit_count: 42 });
+    renderStrict(harvestReadyDataset);
+    await screen.findByText('biological units');
+    const loadedMinHeight = screen.getByTestId('bio-units-region').style.minHeight;
+
+    expect(loadingMinHeight).not.toBe('');
+    expect(loadingMinHeight).toBe(loadedMinHeight);
   });
 });
 
