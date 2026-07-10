@@ -496,6 +496,97 @@ describe('DatasetCard anti-shift reserved regions (CLS)', () => {
   });
 });
 
+describe('DatasetCard validation-section reserve (CLS)', () => {
+  const withArchives = { ...mockDataset, isHarvestReady: true, xmlArchives: [{ id: 1 }] };
+  const noArchives = { ...mockDataset, isHarvestReady: true, xmlArchives: [] };
+
+  const renderStrict = (dataset) =>
+    render(
+      <React.StrictMode>
+        <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
+          <DatasetCard dataset={dataset} onEdit={jest.fn()} onDelete={jest.fn()} />
+        </SWRConfig>
+      </React.StrictMode>
+    );
+
+  // Wire axios: validation-status uses the supplied impl; harvest settles to a
+  // fixed in_index badge (so the only pending region under test is validation).
+  const wireValidation = (validationImpl) => {
+    axios.get.mockImplementation((url) => {
+      if (typeof url === 'string' && url.includes('validation-status')) return validationImpl(url);
+      if (typeof url === 'string' && url.includes('harvest-status')) {
+        return Promise.resolve({
+          data: { harvest_status: 'in_index', units_in_index: 5, units_expected: 5,
+            last_seen_in_index_at: '2026-06-20T09:00:00Z', index_checked_at: '2026-06-21T03:00:00Z' },
+        });
+      }
+      return Promise.resolve({ data: VALIDATION_PAYLOAD });
+    });
+  };
+  const HARVEST_LANDED = 'In index · 5 units · last seen Jun 20, 2026';
+  const VALIDATED = { validation_status: 'completed', is_valid: true, has_latest_archive: true, quality_score: 87.1 };
+
+  test('reserves the section with a skeleton while validation-status is pending (archives present)', async () => {
+    wireValidation(() => new Promise(() => {})); // never resolves
+    renderStrict(withArchives);
+
+    expect(await screen.findByLabelText('Loading validation status')).toBeInTheDocument();
+    // Section chrome is reserved (label present) but the result text is not.
+    expect(screen.getByText('Validation')).toBeInTheDocument();
+    expect(screen.queryByText(/^Valid \(/)).toBeNull();
+    expect(screen.queryByText('Invalid')).toBeNull();
+  });
+
+  test('shows the validation result and no skeleton once validation-status lands', async () => {
+    wireValidation(() => Promise.resolve({ data: VALIDATED }));
+    renderStrict(withArchives);
+
+    expect(await screen.findByText('Valid (87.1%)')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /re-validate/i })).toBeInTheDocument();
+    expect(screen.queryByLabelText('Loading validation status')).toBeNull();
+  });
+
+  test('does NOT reserve or render a validation section for a dataset with no archives', async () => {
+    wireValidation(() => new Promise(() => {})); // pending, but no archives -> no reserve
+    renderStrict(noArchives);
+
+    // Card has rendered its sections (harvest settled).
+    expect(await screen.findByText(HARVEST_LANDED)).toBeInTheDocument();
+    expect(screen.queryByLabelText('Loading validation status')).toBeNull();
+    expect(screen.queryByText('Validation')).toBeNull();
+  });
+
+  test('collapses (no permanent skeleton) when validation resolves without a latest archive', async () => {
+    wireValidation(() => Promise.resolve({ data: { validation_status: 'completed', is_valid: true, has_latest_archive: false } }));
+    renderStrict(withArchives);
+
+    expect(await screen.findByText(HARVEST_LANDED)).toBeInTheDocument();
+    // The transient reserve skeleton resolves away and the whole section
+    // collapses (the accepted shrink for a dataset with archives but no latest
+    // archive) - it must not spin the skeleton forever.
+    await waitFor(() => {
+      expect(screen.queryByLabelText('Loading validation status')).toBeNull();
+      expect(screen.queryByText('Validation')).toBeNull();
+    });
+  });
+
+  test('reserved validation min-height is a non-empty string, equal across loading and loaded', async () => {
+    wireValidation(() => new Promise(() => {}));
+    const loading = renderStrict(withArchives);
+    await screen.findByLabelText('Loading validation status');
+    const loadingMinH = screen.getByTestId('validation-region').style.minHeight;
+    loading.unmount();
+
+    wireValidation(() => Promise.resolve({ data: VALIDATED }));
+    renderStrict(withArchives);
+    await screen.findByText('Valid (87.1%)');
+    const loadedMinH = screen.getByTestId('validation-region').style.minHeight;
+
+    expect(loadingMinH).not.toBe('');
+    expect(loadingMinH).toBe(loadedMinH);
+  });
+});
+
 describe('DatasetCard transport resilience', () => {
   // FR-03 (REQ-FE-CLIENT-3): axios defaults to no timeout, so a hung
   // validation/harvest/validate endpoint pins the request forever.

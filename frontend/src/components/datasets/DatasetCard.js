@@ -20,6 +20,13 @@ import Skeleton from '../ui/Skeleton';
 // in the loading and loaded renders of each region.
 const HARVEST_REGION_MIN_HEIGHT = '2.5rem';
 const BIO_UNITS_REGION_MIN_HEIGHT = '1.25rem';
+// Reserved height for the validation section's content area (status line + the
+// action-button row). The whole validation section pops in only after the
+// validation-status query resolves; without a reserve it shoves the card — and,
+// because sibling cards share a grid row, the entire row — down when it lands
+// (the "wave"). Pinning the content area (~67.5px measured; buttons never wrap
+// at realistic card widths) keeps skeleton and result the same height.
+const VALIDATION_CONTENT_MIN_HEIGHT = '4.25rem';
 
 // SWR fetcher for the harvest-status endpoint. Reuses the already-imported axios
 // (so the existing jest.mock('axios') intercepts it) and the same token idiom as
@@ -79,6 +86,17 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
     : (harvestError || harvestData?.harvest_status === 'unknown')
       ? 'unknown'
       : (harvestData?.harvest_status ?? 'loading');
+
+  // Validation section reservation (CLS): a dataset that has archives will get a
+  // validation result, so reserve the section's space with a skeleton while the
+  // validation-status request is in flight (validationStatus === null) instead
+  // of letting the whole section pop in and shove the card (and its grid row)
+  // down when it lands. archive presence is a reliable predictor of
+  // has_latest_archive; the slot collapses only in the rare case a dataset with
+  // archives resolves to no latest archive.
+  const hasArchives = Array.isArray(dataset?.xmlArchives) && dataset.xmlArchives.length > 0;
+  const reserveValidation = validationStatus === null && hasArchives;
+  const validationSlotVisible = reserveValidation || (validationStatus && validationStatus.has_latest_archive);
 
   // Fetch validation status and dataset stats when component mounts
   useEffect(() => {
@@ -592,8 +610,11 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
             </div>
           </div>
 
-          {/* VALIDATION section - dedicated section for all validation UI */}
-          {validationStatus && validationStatus.has_latest_archive && (
+          {/* VALIDATION section - dedicated section for all validation UI.
+              Rendered when the dataset has archives (reserve, with a skeleton
+              while validation-status loads) or once a latest-archive result has
+              arrived, so the section does not pop in and shift the card. */}
+          {validationSlotVisible && (
             <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '1rem', position: 'relative' }}>
               {/* Vertical border for the section */}
               <div style={{
@@ -623,11 +644,25 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
                 Validation
               </div>
 
-              <div style={{
-                paddingLeft: '1.5rem',
-                position: 'relative',
-                zIndex: 1
-              }}>
+              <div
+                data-testid="validation-region"
+                style={{
+                  paddingLeft: '1.5rem',
+                  minHeight: VALIDATION_CONTENT_MIN_HEIGHT,
+                  position: 'relative',
+                  zIndex: 1
+                }}
+              >
+                {reserveValidation ? (
+                  <Skeleton
+                    count={2}
+                    width="65%"
+                    height="1.25rem"
+                    gap="0.75rem"
+                    ariaLabel="Loading validation status"
+                  />
+                ) : (
+                <>
                 {/* Validation Status - shows previous result during re-validation for stability */}
                 {(() => {
                   const hasPreviousResult = validationStatus.is_valid !== undefined && validationStatus.is_valid !== null;
@@ -777,6 +812,8 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
                     </div>
                   );
                 })()}
+                </>
+                )}
               </div>
             </div>
           )}
