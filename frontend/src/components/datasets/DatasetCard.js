@@ -6,6 +6,27 @@ import axios from 'axios';
 import ValidationResultsModal from './ValidationResultsModal';
 import { authStatsApi } from '../../utils/statisticsApi';
 import { REQUEST_TIMEOUT_MS } from '../../utils/apiUtils';
+import Skeleton from '../ui/Skeleton';
+
+// Reserved heights that hold the harvest-status and biological-units regions at
+// a fixed size while their slow index queries load, so resolving the data causes
+// zero layout shift (CLS = 0). Each is sized to its region's worst-case loaded
+// content: the harvest badge can wrap to two lines at the ~320px minimum card
+// width (see the datasets grid), while the bio-units line is always single-line.
+// Both are in rem, so they scale with the root font like the text they reserve.
+// The harvest value carries slack above a two-line badge (safe up to a ~1.5
+// line-height) since jsdom cannot measure layout; the real CLS = 0 is confirmed
+// by the Playwright getBoundingClientRect() checkpoint. The SAME value is applied
+// in the loading and loaded renders of each region.
+const HARVEST_REGION_MIN_HEIGHT = '2.5rem';
+const BIO_UNITS_REGION_MIN_HEIGHT = '1.25rem';
+// Reserved height for the validation section's content area (status line + the
+// action-button row). The whole validation section pops in only after the
+// validation-status query resolves; without a reserve it shoves the card — and,
+// because sibling cards share a grid row, the entire row — down when it lands
+// (the "wave"). Pinning the content area (~67.5px measured; buttons never wrap
+// at realistic card widths) keeps skeleton and result the same height.
+const VALIDATION_CONTENT_MIN_HEIGHT = '4.25rem';
 
 // SWR fetcher for the harvest-status endpoint. Reuses the already-imported axios
 // (so the existing jest.mock('axios') intercepts it) and the same token idiom as
@@ -66,6 +87,17 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
       ? 'unknown'
       : (harvestData?.harvest_status ?? 'loading');
 
+  // Validation section reservation (CLS): a dataset that has archives will get a
+  // validation result, so reserve the section's space with a skeleton while the
+  // validation-status request is in flight (validationStatus === null) instead
+  // of letting the whole section pop in and shove the card (and its grid row)
+  // down when it lands. archive presence is a reliable predictor of
+  // has_latest_archive; the slot collapses only in the rare case a dataset with
+  // archives resolves to no latest archive.
+  const hasArchives = Array.isArray(dataset?.xmlArchives) && dataset.xmlArchives.length > 0;
+  const reserveValidation = validationStatus === null && hasArchives;
+  const validationSlotVisible = reserveValidation || (validationStatus && validationStatus.has_latest_archive);
+
   // Fetch validation status and dataset stats when component mounts
   useEffect(() => {
     const controller = new AbortController();
@@ -96,7 +128,11 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
       setDatasetStats(stats);
     } catch (error) {
       console.error('Error fetching dataset stats:', error);
-      // Don't show error to user, just log it - stats are optional
+      // Don't surface the error - stats are optional. But settle the state off
+      // null (the "still loading" sentinel) so the biological-units region
+      // leaves its loading skeleton and shows an empty reserved box instead of
+      // spinning forever on a failed/aborted stats fetch.
+      setDatasetStats((prev) => prev ?? {});
     }
   };
 
@@ -495,37 +531,49 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
                   </span>
                 </div>
 
-                {/* Biological Units */}
-                {datasetStats?.unit_count !== undefined && datasetStats?.unit_count !== null && (
-                  <div style={{
+                {/* Biological Units — reserved height so the datasetStats fetch
+                    lands without shifting the card (CLS = 0). While the stats are
+                    in flight (datasetStats === null) a Skeleton fills the reserved
+                    space; once settled the unit line renders, or (when the dataset
+                    reports no unit count) the reserved box stays empty. */}
+                <div
+                  data-testid="bio-units-region"
+                  style={{
+                    minHeight: BIO_UNITS_REGION_MIN_HEIGHT,
                     display: 'flex',
                     alignItems: 'center',
-                  }}>
-                    <Dna
-                      size={15}
-                      style={{
-                        color: 'var(--primary)',
-                        marginRight: '0.75rem',
-                        flexShrink: 0
-                      }}
-                    />
-                    <span style={{
-                      fontSize: '0.8125rem',
-                      color: 'var(--text)',
-                      display: 'flex',
-                      alignItems: 'center',
-                    }}>
+                  }}
+                >
+                  {datasetStats === null ? (
+                    <Skeleton width="55%" height="0.85rem" ariaLabel="Loading biological units" />
+                  ) : (datasetStats.unit_count !== undefined && datasetStats.unit_count !== null) ? (
+                    <>
+                      <Dna
+                        size={15}
+                        style={{
+                          color: 'var(--primary)',
+                          marginRight: '0.75rem',
+                          flexShrink: 0
+                        }}
+                      />
                       <span style={{
-                        fontWeight: 600,
-                        color: datasetStats.unit_count > 0 ? 'var(--text)' : 'var(--text-light)',
-                        marginRight: '0.375rem'
+                        fontSize: '0.8125rem',
+                        color: 'var(--text)',
+                        display: 'flex',
+                        alignItems: 'center',
                       }}>
-                        {datasetStats.unit_count.toLocaleString()}
+                        <span style={{
+                          fontWeight: 600,
+                          color: datasetStats.unit_count > 0 ? 'var(--text)' : 'var(--text-light)',
+                          marginRight: '0.375rem'
+                        }}>
+                          {datasetStats.unit_count.toLocaleString()}
+                        </span>
+                        {datasetStats.unit_count === 1 ? 'biological unit' : 'biological units'}
                       </span>
-                      {datasetStats.unit_count === 1 ? 'biological unit' : 'biological units'}
-                    </span>
-                  </div>
-                )}
+                    </>
+                  ) : null}
+                </div>
 
                 {/* Sample count (if exists in the data) */}
                 {dataset.sampleCount !== undefined && (
@@ -562,8 +610,11 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
             </div>
           </div>
 
-          {/* VALIDATION section - dedicated section for all validation UI */}
-          {validationStatus && validationStatus.has_latest_archive && (
+          {/* VALIDATION section - dedicated section for all validation UI.
+              Rendered when the dataset has archives (reserve, with a skeleton
+              while validation-status loads) or once a latest-archive result has
+              arrived, so the section does not pop in and shift the card. */}
+          {validationSlotVisible && (
             <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '1rem', position: 'relative' }}>
               {/* Vertical border for the section */}
               <div style={{
@@ -593,11 +644,25 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
                 Validation
               </div>
 
-              <div style={{
-                paddingLeft: '1.5rem',
-                position: 'relative',
-                zIndex: 1
-              }}>
+              <div
+                data-testid="validation-region"
+                style={{
+                  paddingLeft: '1.5rem',
+                  minHeight: VALIDATION_CONTENT_MIN_HEIGHT,
+                  position: 'relative',
+                  zIndex: 1
+                }}
+              >
+                {reserveValidation ? (
+                  <Skeleton
+                    count={2}
+                    width="65%"
+                    height="1.25rem"
+                    gap="0.75rem"
+                    ariaLabel="Loading validation status"
+                  />
+                ) : (
+                <>
                 {/* Validation Status - shows previous result during re-validation for stability */}
                 {(() => {
                   const hasPreviousResult = validationStatus.is_valid !== undefined && validationStatus.is_valid !== null;
@@ -747,6 +812,8 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
                     </div>
                   );
                 })()}
+                </>
+                )}
               </div>
             </div>
           )}
@@ -786,7 +853,24 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
               position: 'relative',
               zIndex: 1
             }}>
-              {(() => {
+              {/* Reserved height so the harvest badge lands without shifting the
+                  card (CLS = 0). While the status is loading a Skeleton fills the
+                  reserved space (superseding the "Checking index…" text); once it
+                  resolves the status row renders. The min-height covers the
+                  worst-case two-line badge at the ~320px minimum card width. */}
+              <div
+                data-testid="harvest-region"
+                style={{
+                  minHeight: HARVEST_REGION_MIN_HEIGHT,
+                  display: 'flex',
+                  // Anchor the badge/skeleton to the top so the loaded status keeps
+                  // its current vertical position; the reserved slack sits below.
+                  alignItems: 'flex-start',
+                }}
+              >
+                {harvestEffectiveStatus === 'loading' ? (
+                  <Skeleton width="70%" height="0.85rem" ariaLabel="Loading harvest status" />
+                ) : (() => {
                 // M = units present in the index; N = expected unit count (snapshot).
                 const m = harvestData?.units_in_index;
                 const n = harvestData?.units_expected;
@@ -881,7 +965,8 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
                     </span>
                   </div>
                 );
-              })()}
+                })()}
+              </div>
             </div>
           </div>
 
