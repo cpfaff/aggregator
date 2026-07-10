@@ -34,6 +34,7 @@ jest.mock('../../ui/Alert', () => ({ children }) => <div data-testid="alert">{ch
 jest.mock('../../ui/Toast', () => ({ showToast: jest.fn() }));
 
 const { apiRequest } = require('../../../utils/apiUtils');
+const { authStatsApi } = require('../../../utils/statisticsApi');
 
 const adminUser = { username: 'admin', is_global_admin: true, provider_roles: {} };
 
@@ -79,5 +80,91 @@ describe('ProviderDetail', () => {
       expect(screen.getByText('Prov')).toBeInTheDocument();
     });
     expect(screen.queryByTestId('skeleton')).not.toBeInTheDocument();
+  });
+});
+
+describe('ProviderDetail validation-rate reserve (CLS)', () => {
+  // Wire the provider + datasets endpoints; getProviderStats is controlled
+  // per-test (it is the slow index query whose landing shifts the header, which
+  // sits above the dataset grid — so a header shift ripples the whole page).
+  const wireProvider = ({ datasets = [], name = 'Prov' } = {}) => {
+    apiRequest.mockImplementation((url) => {
+      if (url.includes('/data-sets')) {
+        return Promise.resolve({ ok: true, json: jest.fn().mockResolvedValue({ data: datasets }) });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: jest.fn().mockResolvedValue({ id: 1, name, datacenter: 'DC', shortName: 'P' }),
+      });
+    });
+  };
+
+  test('reserves the validation-rate slot with a skeleton while stats are pending (datasets present)', async () => {
+    wireProvider({ datasets: [{ id: 1 }] });
+    authStatsApi.getProviderStats.mockReturnValue(new Promise(() => {})); // never resolves
+
+    renderDetail();
+
+    expect(await screen.findByLabelText('Loading validation success rate')).toBeInTheDocument();
+    // The real rate value is not shown while the reserve skeleton is up.
+    expect(screen.queryByText('87.5%')).toBeNull();
+  });
+
+  test('shows the rate and no skeleton once stats land', async () => {
+    wireProvider({ datasets: [{ id: 1 }] });
+    authStatsApi.getProviderStats.mockResolvedValue({ validation_success_rate: 87.5 });
+
+    renderDetail();
+
+    expect(await screen.findByText('87.5%')).toBeInTheDocument();
+    expect(screen.getByText('validation success rate')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Loading validation success rate')).toBeNull();
+  });
+
+  test('does NOT reserve the slot when the provider has no datasets (predictor false)', async () => {
+    wireProvider({ datasets: [] });
+    authStatsApi.getProviderStats.mockReturnValue(new Promise(() => {})); // pending, but no datasets
+
+    renderDetail();
+
+    // Header has loaded (provider name shown) yet no reserve skeleton appears.
+    expect(await screen.findByText('Prov')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Loading validation success rate')).toBeNull();
+    expect(screen.queryByTestId('validation-rate-region')).toBeNull();
+  });
+
+  test('collapses the slot (no permanent skeleton) when stats resolve without a rate', async () => {
+    wireProvider({ datasets: [{ id: 1 }] });
+    authStatsApi.getProviderStats.mockResolvedValue({}); // no validation_success_rate
+
+    renderDetail();
+
+    expect(await screen.findByText('Prov')).toBeInTheDocument();
+    // The transient reserve skeleton resolves away and the slot collapses (the
+    // accepted minor shift for a provider with datasets but no rate); it must
+    // not spin the skeleton forever.
+    await waitFor(() => {
+      expect(screen.queryByTestId('validation-rate-region')).toBeNull();
+    });
+    // With the region gone, its skeleton is necessarily gone too.
+    expect(screen.queryByLabelText('Loading validation success rate')).toBeNull();
+  });
+
+  test('reserved validation-rate min-height is a non-empty string, equal across loading and loaded', async () => {
+    wireProvider({ datasets: [{ id: 1 }] });
+    authStatsApi.getProviderStats.mockReturnValue(new Promise(() => {}));
+    const { unmount } = renderDetail();
+    await screen.findByLabelText('Loading validation success rate');
+    const loadingMinH = screen.getByTestId('validation-rate-region').style.minHeight;
+    unmount();
+
+    wireProvider({ datasets: [{ id: 1 }] });
+    authStatsApi.getProviderStats.mockResolvedValue({ validation_success_rate: 87.5 });
+    renderDetail();
+    await screen.findByText('87.5%');
+    const loadedMinH = screen.getByTestId('validation-rate-region').style.minHeight;
+
+    expect(loadingMinH).not.toBe('');
+    expect(loadingMinH).toBe(loadedMinH);
   });
 });

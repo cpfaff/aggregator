@@ -18,6 +18,16 @@ import { showToast } from '../ui/Toast';
 import { authStatsApi } from '../../utils/statisticsApi';
 import { useResponsiveGrid } from '../../hooks/useMediaQuery';
 
+// Reserved height for the header's validation-success-rate row. The row pops in
+// only after the slow provider-stats index query resolves; without a reserve it
+// grows the header — and, because the header sits above the dataset grid, shoves
+// the whole page down when it lands. The value matches the single-line stat row
+// (icon + 0.8125rem text) and is applied identically in the loading (skeleton)
+// and loaded renders so the slot height never changes. jsdom cannot measure
+// layout, so the real CLS = 0 is confirmed by the Playwright getBoundingClientRect
+// checkpoint. See DatasetCard's reserved regions for the same pattern.
+const VALIDATION_RATE_REGION_MIN_HEIGHT = '1.25rem';
+
 const ProviderDetail = ({ currentUser }) => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -563,35 +573,54 @@ const ProviderDetail = ({ currentUser }) => {
                 </span>
               </div>
 
-              {/* Validation success rate */}
-              {providerStats?.validation_success_rate !== undefined && providerStats?.validation_success_rate !== null && (
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center'
-                }}>
-                  <CheckCircle
-                    size={15}
-                    style={{
-                      color: 'var(--success)',
-                      marginRight: '0.75rem',
-                      flexShrink: 0
-                    }}
-                  />
-                  <span style={{
-                    fontSize: '0.8125rem',
-                    color: 'var(--text)',
+              {/* Validation success rate — reserved so the slow provider-stats
+                  fetch lands without shifting the header (and, because the header
+                  sits above the dataset grid, the whole page). While the stats are
+                  pending AND the provider has datasets (a predictor that a rate is
+                  likely) a Skeleton fills the reserved slot; once the stats land the
+                  rate row renders at the same height. For a provider with datasets
+                  but no completed validations in the last 30 days the rate is null
+                  and the slot collapses (the accepted minor shift, matching the
+                  DatasetCard validation section). */}
+              {((providerStats === null && datasets.length > 0) ||
+                (providerStats?.validation_success_rate !== undefined && providerStats?.validation_success_rate !== null)) && (
+                <div
+                  data-testid="validation-rate-region"
+                  style={{
+                    minHeight: VALIDATION_RATE_REGION_MIN_HEIGHT,
                     display: 'flex',
-                    alignItems: 'center',
-                  }}>
-                    <span style={{
-                      fontWeight: 600,
-                      color: providerStats.validation_success_rate > 0 ? 'var(--text)' : 'var(--text-light)',
-                      marginRight: '0.375rem'
-                    }}>
-                      {providerStats.validation_success_rate.toFixed(1)}%
-                    </span>
-                    validation success rate
-                  </span>
+                    alignItems: 'center'
+                  }}
+                >
+                  {providerStats === null ? (
+                    <Skeleton width="60%" height="0.85rem" ariaLabel="Loading validation success rate" />
+                  ) : (
+                    <>
+                      <CheckCircle
+                        size={15}
+                        style={{
+                          color: 'var(--success)',
+                          marginRight: '0.75rem',
+                          flexShrink: 0
+                        }}
+                      />
+                      <span style={{
+                        fontSize: '0.8125rem',
+                        color: 'var(--text)',
+                        display: 'flex',
+                        alignItems: 'center',
+                      }}>
+                        <span style={{
+                          fontWeight: 600,
+                          color: providerStats.validation_success_rate > 0 ? 'var(--text)' : 'var(--text-light)',
+                          marginRight: '0.375rem'
+                        }}>
+                          {providerStats.validation_success_rate.toFixed(1)}%
+                        </span>
+                        validation success rate
+                      </span>
+                    </>
+                  )}
                 </div>
               )}
 
