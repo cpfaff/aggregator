@@ -1,11 +1,17 @@
 ---
 title: Statistics-Collection Harmonization & Hardening — PRD
-status: draft        # draft | final
+status: final        # draft | final
 created: 2026-06-26
-updated: 2026-06-26
+updated: 2026-08-14
 ---
 
 # Statistics-Collection Harmonization & Hardening
+
+> **Status — shipped 2026-06-26.** Merged to `master` in `6846e92` (branch
+> `DASS-3623-statistics-harmonization`, 13 atomic commits). All `REQ-SH-*` are
+> implemented; this document is retained for its design rationale and its ubiquitous
+> language, which later work consumes verbatim. Follow-on work lives in the
+> `statistics-reliability` run.
 
 > Feature-level spec built on [`brief.md`](./brief.md) and the evidence in
 > [`discovery.md`](./discovery.md). Requirements are **normative** and traceable up

@@ -1,8 +1,8 @@
 ---
 title: Statistics-Collection Harmonization & Hardening — Brief
-status: draft        # draft | final
+status: final        # draft | final
 created: 2026-06-26
-updated: 2026-06-26
+updated: 2026-08-14
 ---
 
 # Feature brief: Statistics-Collection Harmonization & Hardening
