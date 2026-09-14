@@ -44,7 +44,7 @@ from git via `.git/info/exclude` — they are local-only until deliberately prom
 | [statistics-harmonization/](./statistics-harmonization/) — language, arithmetic and dead-surface cleanup of the statistics core | **Shipped** 2026-06-26 (`6846e92`) |
 | [resilience-backend/](./resilience-backend/) — `spec.md` (target) · `roadmap.md` (sequenced work) | Backend resilience |
 | [resilience-frontend/](./resilience-frontend/) — `spec.md` (target) · `roadmap.md` (sequenced work) | Frontend resilience |
-| [DCAT_V3_IMPLEMENTATION_PRD.md](./DCAT_V3_IMPLEMENTATION_PRD.md) | Superseded — see its status note |
+| [archive/DCAT_V3_IMPLEMENTATION_PRD.md](./archive/DCAT_V3_IMPLEMENTATION_PRD.md) | Superseded 2026-06-24 — archived, direction moved to the external `nexus` catalog |
 | `statistics-reliability` — provable curves, self-healing snapshots, honest charts | In flight, in `.omc/runs/statistics-reliability/` |
 
 ## Conventions
