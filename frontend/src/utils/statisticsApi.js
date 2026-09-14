@@ -2,7 +2,7 @@
  * Statistics API service utilities
  * Provides functions to interact with the statistics endpoints
  */
-import { apiRequest, API_BASE, API_VERSION, fetchWithTimeout, parseErrorResponse } from './apiUtils';
+import { apiRequest, API_BASE, API_VERSION, fetchWithTimeout, parseErrorResponse, readJson } from './apiUtils';
 import { formatChartDate } from './dateUtils';
 
 /**
@@ -40,7 +40,7 @@ export const publicStatsApi = {
     if (!response.ok) {
       throw await parseErrorResponse(response);
     }
-    return response.json();
+    return readJson(response);
   },
 
   /**
@@ -57,7 +57,7 @@ export const publicStatsApi = {
     if (!response.ok) {
       throw await parseErrorResponse(response);
     }
-    return response.json();
+    return readJson(response);
   },
 
   /**
@@ -69,7 +69,7 @@ export const publicStatsApi = {
     if (!response.ok) {
       throw await parseErrorResponse(response);
     }
-    return response.json();
+    return readJson(response);
   }
 };
 
@@ -86,7 +86,7 @@ export const authStatsApi = {
     // apiRequest already rejects a non-ok response with the typed parseErrorResponse
     // shape (REQ-SH-ERR-1), so no generic-Error downgrade guard is needed here.
     const response = await apiRequest('/statistics/overview', {}, onTokenExpired);
-    return response.json();
+    return readJson(response);
   },
 
   /**
@@ -97,7 +97,7 @@ export const authStatsApi = {
    */
   getProviderStats: async (providerId, onTokenExpired) => {
     const response = await apiRequest(`/statistics/providers/${providerId}`, {}, onTokenExpired);
-    return response.json();
+    return readJson(response);
   },
 
   /**
@@ -108,7 +108,7 @@ export const authStatsApi = {
    */
   getDatasetStats: async (datasetId, onTokenExpired) => {
     const response = await apiRequest(`/statistics/datasets/${datasetId}`, {}, onTokenExpired);
-    return response.json();
+    return readJson(response);
   },
 
   /**
@@ -129,7 +129,7 @@ export const authStatsApi = {
       {},
       onTokenExpired
     );
-    return response.json();
+    return readJson(response);
   },
 
   /**
@@ -152,7 +152,7 @@ export const authStatsApi = {
       {},
       onTokenExpired
     );
-    return response.json();
+    return readJson(response);
   },
 
   /**
@@ -162,7 +162,7 @@ export const authStatsApi = {
    */
   getQualityMetrics: async (onTokenExpired) => {
     const response = await apiRequest('/statistics/quality', {}, onTokenExpired);
-    return response.json();
+    return readJson(response);
   },
 
   /**
@@ -184,7 +184,7 @@ export const authStatsApi = {
       {},
       onTokenExpired
     );
-    return response.json();
+    return readJson(response);
   },
 
   /**
@@ -206,7 +206,7 @@ export const authStatsApi = {
       {},
       onTokenExpired
     );
-    return response.json();
+    return readJson(response);
   }
 };
 

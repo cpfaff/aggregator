@@ -3,7 +3,11 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import DatasetForm from '../DatasetForm';
 
-jest.mock('../../../utils/apiUtils', () => ({ apiRequest: jest.fn() }));
+jest.mock('../../../utils/apiUtils', () => ({
+  // readJson stays real: it is the content-type guard the component now relies on.
+  readJson: jest.requireActual('../../../utils/apiUtils').readJson,
+  apiRequest: jest.fn(),
+}));
 jest.mock('../../ui/Toast', () => ({ showToast: jest.fn() }));
 
 const { apiRequest } = require('../../../utils/apiUtils');

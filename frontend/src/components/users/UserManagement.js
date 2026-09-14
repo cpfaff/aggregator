@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Edit, Trash2, Plus, Search } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
-import { apiRequest } from '../../utils/apiUtils';
+import { apiRequest, readJson } from '../../utils/apiUtils';
 import useFormValidation from '../../utils/useFormValidation';
 import validationRules from '../../utils/validationRules';
 import { formatRelativeTime } from '../../utils/dateUtils';
@@ -104,7 +104,7 @@ function UserManagement() {
         return;
       }
 
-      const data = await res.json();
+      const data = await readJson(res);
       setProviders(data.data);
     } catch (err) {
       console.error('Error fetching providers:', err.message);
@@ -213,7 +213,7 @@ function UserManagement() {
         return;
       }
 
-      const data = await res.json();
+      const data = await readJson(res);
       setUsers(data.data);
       setIsLoading(false);
     } catch (err) {

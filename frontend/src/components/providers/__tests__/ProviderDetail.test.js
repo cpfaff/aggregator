@@ -8,6 +8,8 @@ jest.mock('../../auth/AuthContext', () => ({
 }));
 
 jest.mock('../../../utils/apiUtils', () => ({
+  // readJson stays real: it is the content-type guard the component now relies on.
+  readJson: jest.requireActual('../../../utils/apiUtils').readJson,
   apiRequest: jest.fn(),
 }));
 
@@ -61,10 +63,10 @@ describe('ProviderDetail', () => {
   test('removes the skeleton once the provider loads', async () => {
     apiRequest.mockImplementation((url) => {
       if (url.includes('/data-sets')) {
-        return Promise.resolve({ ok: true, json: jest.fn().mockResolvedValue({ data: [] }) });
+        return Promise.resolve({ ok: true, headers: { get: () => 'application/json' }, json: jest.fn().mockResolvedValue({ data: [] }) });
       }
       return Promise.resolve({
-        ok: true,
+        ok: true, headers: { get: () => 'application/json' },
         json: jest.fn().mockResolvedValue({
           id: 1,
           name: 'Prov',
@@ -90,10 +92,10 @@ describe('ProviderDetail validation-rate reserve (CLS)', () => {
   const wireProvider = ({ datasets = [], name = 'Prov' } = {}) => {
     apiRequest.mockImplementation((url) => {
       if (url.includes('/data-sets')) {
-        return Promise.resolve({ ok: true, json: jest.fn().mockResolvedValue({ data: datasets }) });
+        return Promise.resolve({ ok: true, headers: { get: () => 'application/json' }, json: jest.fn().mockResolvedValue({ data: datasets }) });
       }
       return Promise.resolve({
-        ok: true,
+        ok: true, headers: { get: () => 'application/json' },
         json: jest.fn().mockResolvedValue({ id: 1, name, datacenter: 'DC', shortName: 'P' }),
       });
     });

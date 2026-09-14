@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../auth/AuthContext';
-import { apiRequest } from '../../utils/apiUtils';
+import { apiRequest, readJson } from '../../utils/apiUtils';
 import Alert from '../ui/Alert';
 import Button from '../ui/Button';
 import Modal from '../ui/Modal';
@@ -102,7 +102,7 @@ function Providers({ currentUser, onViewProviderDetails }) {
         return;
       }
 
-      const data = await res.json();
+      const data = await readJson(res);
       setProviders(data.data);
       setIsLoading(false);
     } catch (err) {

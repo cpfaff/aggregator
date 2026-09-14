@@ -10,6 +10,8 @@ jest.mock('../../auth/AuthContext', () => ({
 }));
 
 jest.mock('../../../utils/apiUtils', () => ({
+  // readJson stays real: it is the content-type guard the component now relies on.
+  readJson: jest.requireActual('../../../utils/apiUtils').readJson,
   apiRequest: jest.fn(),
 }));
 
@@ -66,7 +68,7 @@ describe('Providers', () => {
 
   test('removes the skeleton once providers load', async () => {
     apiRequest.mockResolvedValue({
-      ok: true,
+      ok: true, headers: { get: () => 'application/json' },
       json: jest.fn().mockResolvedValue({ data: [{ id: 1, name: 'Provider A' }] }),
     });
 
@@ -80,7 +82,7 @@ describe('Providers', () => {
 
   test('renders provider cards after data loads', async () => {
     apiRequest.mockResolvedValue({
-      ok: true,
+      ok: true, headers: { get: () => 'application/json' },
       json: jest.fn().mockResolvedValue({
         data: [
           { id: 1, name: 'Provider A' },
@@ -97,7 +99,7 @@ describe('Providers', () => {
 
   test('shows empty state when no providers exist', async () => {
     apiRequest.mockResolvedValue({
-      ok: true,
+      ok: true, headers: { get: () => 'application/json' },
       json: jest.fn().mockResolvedValue({ data: [] }),
     });
 
@@ -122,7 +124,7 @@ describe('Providers', () => {
 
   test('shows action menu for admin users', async () => {
     apiRequest.mockResolvedValue({
-      ok: true,
+      ok: true, headers: { get: () => 'application/json' },
       json: jest.fn().mockResolvedValue({ data: [] }),
     });
 
@@ -133,7 +135,7 @@ describe('Providers', () => {
 
   test('hides action menu for non-admin users', async () => {
     apiRequest.mockResolvedValue({
-      ok: true,
+      ok: true, headers: { get: () => 'application/json' },
       json: jest.fn().mockResolvedValue({ data: [] }),
     });
 

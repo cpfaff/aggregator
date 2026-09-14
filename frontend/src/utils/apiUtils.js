@@ -96,7 +96,7 @@ export const getCsrfToken = async () => {
         throw new Error(`Failed to get CSRF token: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data = await readJson(response);
       csrfToken = data.csrf_token;
 
       // Store token in localStorage for reuse
@@ -168,7 +168,7 @@ export const refreshAccessToken = async () => {
     }
 
     // Parse response and update stored tokens using the updateTokens function
-    const data = await response.json();
+    const data = await readJson(response);
     return updateTokens(data.access_token, data.refresh_token, data.expires_in);
   } catch (error) {
     console.error('Token refresh failed:', error);
@@ -373,6 +373,59 @@ export const parseErrorResponse = async (response) => {
   }
 };
 
+export const NON_JSON_RESPONSE_MESSAGE =
+  'The service is temporarily unavailable. Please try again shortly.';
+
+const nonJsonResponseError = (response, contentType) => {
+  const error = new Error(NON_JSON_RESPONSE_MESSAGE);
+  error.name = 'NonJsonResponseError';
+  error.status = response.status;
+  error.class = 'server';
+  error.type = null;
+  error.contentType = contentType;
+  return error;
+};
+
+/**
+ * Read a successful response's JSON body behind a content-type guard
+ * (REQ-FE-CLIENT-6; the companion to parseErrorResponse).
+ *
+ * `response.ok` is a STATUS check only. A proxy in front of the backend — the
+ * maintenance nginx during a deploy, a captive portal, any misrouted edge — can
+ * answer 200 with an HTML body. `response.json()` then throws a raw
+ * `SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON`, which
+ * is neither classifiable nor showable to a user, and which several screens
+ * rendered verbatim into an error banner (DASS-3814).
+ *
+ * Treat it as the transient backend-unavailable condition it actually is, using
+ * parseErrorResponse's own vocabulary: class 'server', which isRetriableError
+ * already treats as retriable and statisticsErrorMessage already maps to a
+ * "temporarily unavailable" message. No consumer needs to change to benefit.
+ *
+ * @param {Response} response - an already-ok Response
+ * @returns {Promise<any>} the parsed JSON body
+ * @throws {Error} typed { name, message, status, class: 'server', contentType }
+ */
+export const readJson = async (response) => {
+  // A real Response always has headers; guard anyway so a malformed stub or an
+  // exotic polyfill surfaces the typed error rather than a bare TypeError.
+  const contentType =
+    (response.headers && typeof response.headers.get === 'function'
+      ? response.headers.get('content-type')
+      : '') || '';
+  if (!contentType.includes('json')) {
+    throw nonJsonResponseError(response, contentType);
+  }
+  try {
+    return await response.json();
+  } catch (error) {
+    // Content-type claimed JSON but the body will not parse (a truncated proxy
+    // response, or HTML under a mislabelled header): same transient condition,
+    // and still never a raw SyntaxError reaching a caller.
+    throw nonJsonResponseError(response, contentType);
+  }
+};
+
 const apiUtils = {
   API_BASE,
   API_VERSION,
@@ -382,7 +435,8 @@ const apiUtils = {
   refreshAccessToken,
   updateTokens,
   initCsrfProtection,
-  parseErrorResponse
+  parseErrorResponse,
+  readJson
 };
 
 export default apiUtils;
