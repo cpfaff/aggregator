@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import { apiRequest } from '../../utils/apiUtils';
+import { apiRequest, readJson } from '../../utils/apiUtils';
 import { Globe, Server, Plus, Search, Database, ExternalLink, Edit, Trash2, CheckCircle, TrendingUp } from 'lucide-react';
 import Alert from '../ui/Alert';
 import Modal from '../ui/Modal';
@@ -153,7 +153,7 @@ const ProviderDetail = ({ currentUser }) => {
         return;
       }
 
-      const data = await res.json();
+      const data = await readJson(res);
       setProvider(data);
       setIsLoadingProvider(false);
     } catch (err) {
@@ -175,7 +175,7 @@ const ProviderDetail = ({ currentUser }) => {
         return;
       }
 
-      const data = await res.json();
+      const data = await readJson(res);
 
       // Ensure each dataset has properly normalized data and provider_id
       // API returns paginated format: {data: [...], pagination: {...}}

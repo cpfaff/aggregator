@@ -1,4 +1,4 @@
-import { apiRequest, parseErrorResponse } from '../apiUtils';
+import { apiRequest, parseErrorResponse, readJson, getCsrfToken } from '../apiUtils';
 
 // Build a Response stub whose headers.get is keyed on the header NAME, with an
 // optional header map merged in (used to exercise parseErrorResponse directly).
@@ -240,5 +240,70 @@ describe('apiUtils resilient client', () => {
         randomSpy.mockRestore();
       }
     });
+  });
+});
+
+
+// A proxy (the maintenance nginx during a deploy) answering an API path with the
+// HTML page: HTTP 200, Content-Type: text/html, and a json() that throws exactly
+// what V8 throws. No pre-existing mock in this suite produces this shape --
+// every other one hardcodes 'application/json' -- which is why the defect class
+// was structurally invisible to the suite (DASS-3814).
+const htmlResponse = (status = 200) => ({
+  ok: status < 400,
+  status,
+  headers: { get: (h) => (String(h).toLowerCase() === 'content-type' ? 'text/html' : null) },
+  json: () =>
+    Promise.reject(new SyntaxError(`Unexpected token '<', "<!DOCTYPE "... is not valid JSON`)),
+  text: () => Promise.resolve('<!DOCTYPE html>\n<html lang="en">'),
+});
+
+describe('readJson content-type guard (DASS-3814)', () => {
+  test('rejects a 200 text/html body as a transient server error, not a SyntaxError', async () => {
+    expect.assertions(4);
+    try {
+      await readJson(htmlResponse(200));
+    } catch (err) {
+      expect(err).not.toBeInstanceOf(SyntaxError);
+      expect(err.name).toBe('NonJsonResponseError');
+      expect(err.class).toBe('server');
+      expect(err.status).toBe(200);
+    }
+  });
+
+  test('passes a genuine JSON body through unchanged', async () => {
+    await expect(readJson(mk(200, { total_datasets: 42 }))).resolves.toEqual({
+      total_datasets: 42,
+    });
+  });
+
+  test('accepts application/problem+json', async () => {
+    const res = {
+      ok: true,
+      status: 200,
+      headers: { get: () => 'application/problem+json' },
+      json: () => Promise.resolve({ ok: 1 }),
+    };
+    await expect(readJson(res)).resolves.toEqual({ ok: 1 });
+  });
+
+  test('maps a malformed body under a JSON content-type to the same typed error', async () => {
+    const res = {
+      ok: true,
+      status: 200,
+      headers: { get: () => 'application/json' },
+      json: () => Promise.reject(new SyntaxError('Unexpected end of JSON input')),
+    };
+    await expect(readJson(res)).rejects.toMatchObject({
+      name: 'NonJsonResponseError',
+      class: 'server',
+    });
+  });
+
+  test('getCsrfToken surfaces a typed error and does not poison localStorage', async () => {
+    localStorage.removeItem('csrfToken');
+    global.fetch = jest.fn(() => Promise.resolve(htmlResponse(200)));
+    await expect(getCsrfToken()).rejects.toMatchObject({ name: 'NonJsonResponseError' });
+    expect(localStorage.getItem('csrfToken')).toBeNull();
   });
 });

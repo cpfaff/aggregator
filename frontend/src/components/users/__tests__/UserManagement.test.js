@@ -11,6 +11,8 @@ jest.mock('../../auth/AuthContext', () => ({
 }));
 
 jest.mock('../../../utils/apiUtils', () => ({
+  // readJson stays real: it is the content-type guard the component now relies on.
+  readJson: jest.requireActual('../../../utils/apiUtils').readJson,
   apiRequest: jest.fn(),
 }));
 
@@ -44,14 +46,14 @@ describe('UserManagement', () => {
     apiRequest.mockImplementation((url) => {
       if (url.includes('/users')) {
         return Promise.resolve({
-          ok: true,
+          ok: true, headers: { get: () => 'application/json' },
           json: jest.fn().mockResolvedValue({
             data: [{ username: 'alice', provider_roles: {}, is_global_admin: false }],
           }),
         });
       }
       // providers (or anything else)
-      return Promise.resolve({ ok: true, json: jest.fn().mockResolvedValue({ data: [] }) });
+      return Promise.resolve({ ok: true, headers: { get: () => 'application/json' }, json: jest.fn().mockResolvedValue({ data: [] }) });
     });
 
     render(<UserManagement />);
@@ -86,7 +88,7 @@ describe('UserManagement 422 degradation', () => {
       }
       // mount fetches (users + providers) -> empty so the empty-state Add User
       // button renders.
-      return Promise.resolve({ ok: true, json: () => Promise.resolve({ data: [] }) });
+      return Promise.resolve({ ok: true, headers: { get: () => 'application/json' }, json: () => Promise.resolve({ data: [] }) });
     });
 
     render(<UserManagement />);

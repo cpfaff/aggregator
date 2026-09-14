@@ -23,6 +23,10 @@ jest.mock('../../../utils/apiUtils', () => ({
   API_BASE: '',
   API_VERSION: '/api/v1',
   initCsrfProtection: jest.fn().mockResolvedValue(undefined),
+  // readJson stays real: it is the content-type guard Login now relies on.
+  readJson: jest.requireActual('../../../utils/apiUtils').readJson,
+  NON_JSON_RESPONSE_MESSAGE:
+    jest.requireActual('../../../utils/apiUtils').NON_JSON_RESPONSE_MESSAGE,
 }));
 
 // Mock Toast

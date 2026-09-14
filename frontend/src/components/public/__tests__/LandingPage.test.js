@@ -25,7 +25,7 @@ describe('LandingPage', () => {
   test('removes the stat skeletons once statistics load', async () => {
     global.fetch = jest.fn(() =>
       Promise.resolve({
-        ok: true,
+        ok: true, headers: { get: () => 'application/json' },
         json: () =>
           Promise.resolve({ total_providers: 5, total_datacenters: 3, total_datasets: 42 }),
       })

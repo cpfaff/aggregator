@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Trash2 } from 'lucide-react';
-import { apiRequest } from '../../utils/apiUtils';
+import { apiRequest, readJson } from '../../utils/apiUtils';
 import useFormValidation from '../../utils/useFormValidation';
 import validationRules from '../../utils/validationRules';
 import { getArrayFieldName, flattenArrayForValidation } from '../../utils/arrayValidation';
@@ -131,7 +131,7 @@ function DatasetForm({ providerId, dataset, onClose, onTokenExpired, onDirtyChan
         return;
       }
 
-      const updatedDataset = await res.json();
+      const updatedDataset = await readJson(res);
 
       // Normalize the dataset response to ensure xmlArchives and usefulLinks are always arrays
       const normalizedDataset = {

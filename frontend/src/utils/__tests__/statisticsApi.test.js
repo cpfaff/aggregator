@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { publicStatsApi, authStatsApi, statsUtils } from '../statisticsApi';
+import { publicStatsApi, authStatsApi, statsUtils, statisticsErrorMessage } from '../statisticsApi';
 
 describe('ERR-1 both statistics clients reject with one typed error shape (REQ-SH-ERR-1)', () => {
   afterEach(() => {
@@ -96,5 +96,30 @@ describe('publicStatsApi resilient transport', () => {
       // fails. GREEN: a typed { status, message } propagates.
       await expect(publicStatsApi.getOverview()).rejects.toMatchObject({ status: 503 });
     });
+  });
+});
+
+
+describe('DASS-3814 a proxy HTML body is classified, not thrown raw', () => {
+  afterEach(() => {
+    localStorage.removeItem('token');
+    delete global.fetch;
+  });
+
+  test('a 200 text/html overview is a transient server error with a usable message', async () => {
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        headers: { get: () => 'text/html' },
+        json: () =>
+          Promise.reject(new SyntaxError(`Unexpected token '<', "<!DOCTYPE "... is not valid JSON`)),
+      }),
+    );
+
+    const err = await publicStatsApi.getOverview().catch((e) => e);
+    expect(err).not.toBeInstanceOf(SyntaxError);
+    expect(err).toMatchObject({ name: 'NonJsonResponseError', class: 'server' });
+    expect(statisticsErrorMessage(err)).toMatch(/temporarily unavailable/i);
   });
 });

@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useAuth } from './AuthContext';
-import { API_BASE, API_VERSION, initCsrfProtection } from '../../utils/apiUtils';
+import { API_BASE, API_VERSION, initCsrfProtection, readJson, NON_JSON_RESPONSE_MESSAGE } from '../../utils/apiUtils';
 import useFormValidation from '../../utils/useFormValidation';
 import validationRules from '../../utils/validationRules';
 import FormField from '../ui/FormField';
@@ -50,14 +50,21 @@ function Login({ sessionExpired, onViewPublicStats }) {
         return;
       }
 
-      const data = await res.json();
+      const data = await readJson(res);
 
       // Use the context's login function
       await login(data.access_token, data.refresh_token, data.expires_in);
       setIsLoading(false);
       showToast('Successfully logged in!', 'success');
     } catch (err) {
-      setLoginError('Network error. Please check your connection and try again.');
+      // A transient service condition (the maintenance page, a 5xx) is not a
+      // connection problem — telling the user to check their network sends them
+      // after the wrong fault.
+      setLoginError(
+        err && err.class === 'server'
+          ? NON_JSON_RESPONSE_MESSAGE
+          : 'Network error. Please check your connection and try again.'
+      );
       setIsLoading(false);
     }
   };

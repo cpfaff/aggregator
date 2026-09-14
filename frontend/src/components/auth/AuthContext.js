@@ -1,6 +1,6 @@
 // src/components/auth/AuthContext.js
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { refreshAccessToken, apiRequest } from '../../utils/apiUtils';
+import { refreshAccessToken, apiRequest, readJson } from '../../utils/apiUtils';
 
 const AuthContext = createContext(null);
 
@@ -24,7 +24,7 @@ export const AuthProvider = ({ children }) => {
         const response = await apiRequest('/me/permissions', {}, handleTokenExpiration);
 
         if (response.ok) {
-          const userData = await response.json();
+          const userData = await readJson(response);
           setCurrentUser(userData);
           localStorage.setItem('currentUser', JSON.stringify(userData));
         }

@@ -5,6 +5,28 @@ All notable changes to the aggregator frontend are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.4.1] - 2026-09-14
+
+### Fixed
+
+- **The maintenance page no longer breaks open tabs during a deploy** — its nginx
+  answered every `/api/*` request with the SPA catch-all, i.e. HTTP 200 and an
+  HTML body, and its Traefik router is `PathPrefix(/)` at priority 100 with no
+  `/api` exclusion. Because the client only checked `response.ok`, that 200 was
+  parsed as JSON and threw `Unexpected token '<', "<!DOCTYPE "... is not valid
+  JSON` in every authenticated tab. `/api` now returns a real 503 with an
+  RFC 7807 body, which the client already classifies as transient. Latent since
+  DASS-3210; not a 2.4.0 regression. (DASS-3814)
+
+### Added
+
+- **`readJson()` in `utils/apiUtils`** — a content-type guard for success-path
+  responses, the companion to `parseErrorResponse` for failures. `response.ok`
+  is a status check only, so any proxy returning HTML with a 200 could reach
+  `JSON.parse`; the raw `SyntaxError` was rendered verbatim into the error
+  banner on the Providers, Provider detail and User Management screens. Adopted
+  at all 22 success-path parse sites. (DASS-3814)
+
 ## [2.4.0] - 2026-09-14
 
 ### Fixed

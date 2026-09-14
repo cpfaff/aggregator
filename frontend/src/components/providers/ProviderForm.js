@@ -1,5 +1,5 @@
 import React from 'react';
-import { apiRequest } from '../../utils/apiUtils';
+import { apiRequest, readJson } from '../../utils/apiUtils';
 import useFormValidation from '../../utils/useFormValidation';
 import validationRules from '../../utils/validationRules';
 import FormField from '../ui/FormField';
@@ -91,7 +91,7 @@ function ProviderForm({ provider, onClose, onTokenExpired, currentUser, onDirtyC
         return;
       }
 
-      const updatedProvider = await res.json();
+      const updatedProvider = await readJson(res);
       setIsLoading(false);
       showToast(
         isEditing

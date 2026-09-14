@@ -1,6 +1,6 @@
 # GFBio Design System
 
-**Version:** 2.4.0
+**Version:** 2.4.1
 **Last Updated:** September 2026
 **Framework:** React 18.2.0
 **Styling Approach:** Static CSS Variables (`theme.css`) + Inline Styles
