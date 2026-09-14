@@ -41,7 +41,7 @@ asking. `CLAUDE.md` in the repo root stays a thin router into this folder.
 | [resilience-backend/](./resilience-backend/) — bounding queries, uploads, tasks and the DLQ · `spec.md` (target) · `roadmap.md` (RH-01…) | **Active** — roadmap checkboxes are not maintained; read the code, not the ticks |
 | [resilience-frontend/](./resilience-frontend/) — timeouts, abort handling and typed errors in the client · `spec.md` (target) · `roadmap.md` (FR-01…) | **Active** — same caveat |
 | [archive/DCAT_V3_IMPLEMENTATION_PRD.md](./archive/DCAT_V3_IMPLEMENTATION_PRD.md) | Superseded 2026-06-24 — archived, direction moved to the external `nexus` catalog |
-| `statistics-reliability` — provable curves, self-healing snapshots, honest charts | In flight, in `.omc/runs/statistics-reliability/` |
+| `statistics-reliability` — provable curves, self-healing snapshots, honest charts | **Status unknown** — no spec in this folder, no commits on `master`, and the `.omc/runs/` working area it was drafted in is no longer present. Promote a spec here or drop this row. |
 
 ## Conventions
 
