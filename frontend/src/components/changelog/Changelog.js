@@ -35,6 +35,16 @@ const Changelog = ({ currentUser }) => {
 
   const changelogEntries = [
     {
+      version: '2.4.0',
+      date: 'September 14, 2026',
+      changes: [
+        'Dark mode now looks right the instant a page opens — it no longer flashes a bright white screen before switching over on every load and reload',
+        'If you have never picked a theme yourself, the site now matches whatever your device is already set to, light or dark; once you use the theme switch, your choice is always respected',
+        'Dark mode is now complete to the edges of the window — the scrollbar, the area you reveal when you scroll past the end of a page, and form controls follow the theme instead of staying light',
+        'On phones, the navigation menu no longer briefly appears and slides away while a page is loading'
+      ]
+    },
+    {
       version: '2.3.0',
       date: 'June 24, 2026',
       changes: [
