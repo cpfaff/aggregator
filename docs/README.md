@@ -42,8 +42,8 @@ from git via `.git/info/exclude` — they are local-only until deliberately prom
 | Initiative | Status |
 |---|---|
 | [statistics-harmonization/](./statistics-harmonization/) — language, arithmetic and dead-surface cleanup of the statistics core | **Shipped** 2026-06-26 (`6846e92`) |
-| [RESILIENCE_HARDENING_SPEC.md](./RESILIENCE_HARDENING_SPEC.md) · [RESILIENCE_ROADMAP.md](./RESILIENCE_ROADMAP.md) | Backend resilience |
-| [RESILIENCE_FRONTEND_SPEC.md](./RESILIENCE_FRONTEND_SPEC.md) · [RESILIENCE_FRONTEND_ROADMAP.md](./RESILIENCE_FRONTEND_ROADMAP.md) | Frontend resilience |
+| [resilience-backend/](./resilience-backend/) — `spec.md` (target) · `roadmap.md` (sequenced work) | Backend resilience |
+| [resilience-frontend/](./resilience-frontend/) — `spec.md` (target) · `roadmap.md` (sequenced work) | Frontend resilience |
 | [DCAT_V3_IMPLEMENTATION_PRD.md](./DCAT_V3_IMPLEMENTATION_PRD.md) | Superseded — see its status note |
 | `statistics-reliability` — provable curves, self-healing snapshots, honest charts | In flight, in `.omc/runs/statistics-reliability/` |
 

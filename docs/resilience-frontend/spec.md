@@ -2,8 +2,8 @@
 
 > Status: **draft for human approval** (discovery + spec; no production code changed).
 > Scope: `aggregator/frontend/src/` (CRA, React 18, plain JS).
-> Companion: `RESILIENCE_FRONTEND_ROADMAP.md` sequences the work that makes this
-> specification true. The backend counterpart is `RESILIENCE_HARDENING_SPEC.md`
+> Companion: `roadmap.md` sequences the work that makes this
+> specification true. The backend counterpart is `../resilience-backend/spec.md`
 > (already hardened on this branch); this document is its frontend mirror and
 > reuses its structure, keyword convention, and traceability discipline.
 

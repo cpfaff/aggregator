@@ -1,6 +1,6 @@
 # GFBio Aggregator Backend Resilience Hardening — Roadmap
 
-This roadmap sequences the work that makes `RESILIENCE_HARDENING_SPEC.md` true.
+This roadmap sequences the work that makes `spec.md` true.
 Each item closes exactly one confirmed defect, is independently committable, and
 is driven test-first: **write the named RED test, watch it fail for the stated
 reason, then make the minimal fix turn it green.** No item changes behaviour

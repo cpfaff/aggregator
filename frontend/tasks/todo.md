@@ -1,7 +1,7 @@
 # DASS-3622 Frontend Resilience Hardening — Execution Tracker
 
 Branch: `DASS-3622-resilience-hardening`. Source of truth:
-`docs/RESILIENCE_FRONTEND_ROADMAP.md` (work list) + `docs/RESILIENCE_FRONTEND_SPEC.md` (target).
+`docs/resilience-frontend/roadmap.md` (work list) + `docs/resilience-frontend/spec.md` (target).
 
 Method per item: write named RED test → observe FAIL for stated reason → minimal fix →
 observe GREEN → full suite green (≥73) + `npx eslint src/` exit 0 → ONE atomic conventional commit.

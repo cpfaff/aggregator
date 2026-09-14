@@ -5,7 +5,7 @@
 `validator/`, specifically the six trust/process boundaries enumerated in §1.3.
 **NOT covered:** the React `frontend/`; the harvester, Elasticsearch `index`, and
 `search` siblings; and any production-code change (deferred to the gated
-hardening sub-goals that consume this spec — see `RESILIENCE_ROADMAP.md`).
+hardening sub-goals that consume this spec — see `roadmap.md`).
 **Audience:** aggregator maintainers and reviewers; the engineers executing the
 roadmap; the resilience gate that verifies conformance.
 **Keyword convention:** BCP 14 (RFC 2119 / RFC 8174). The UPPERCASE words MUST,
@@ -55,7 +55,7 @@ independent reviewers; every candidate defect was then put through an adversaria
 **12 distinct defects** (7 MUST-class, 5 SHOULD-class) and refuted 8 candidates.
 The Elasticsearch gateway produced **zero** confirmed defects (rubric 19/24,
 acceptable) and stands as the conformance exemplar. Each confirmed defect maps to
-exactly one requirement in §3 and one roadmap item in `RESILIENCE_ROADMAP.md`.
+exactly one requirement in §3 and one roadmap item in `roadmap.md`.
 The per-boundary filled blueprints are in **Appendix A**.
 
 ### 1.4 Terms (glossary — each defined once)
