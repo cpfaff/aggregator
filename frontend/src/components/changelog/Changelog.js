@@ -35,6 +35,14 @@ const Changelog = ({ currentUser }) => {
 
   const changelogEntries = [
     {
+      version: '2.4.1',
+      date: 'September 14, 2026',
+      changes: [
+        'Fixed an error that appeared while the site was being updated — pages such as the provider list, provider details and user management could show a technical error message instead of your data, and saving changes could be refused until the update finished',
+        'While the site is briefly unavailable for an update, it now says so clearly and recovers on its own once the update completes, instead of leaving pages in a broken state'
+      ]
+    },
+    {
       version: '2.4.0',
       date: 'September 14, 2026',
       changes: [
