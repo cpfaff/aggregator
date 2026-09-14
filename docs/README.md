@@ -42,8 +42,8 @@ from git via `.git/info/exclude` — they are local-only until deliberately prom
 | Initiative | Status |
 |---|---|
 | [statistics-harmonization/](./statistics-harmonization/) — language, arithmetic and dead-surface cleanup of the statistics core | **Shipped** 2026-06-26 (`6846e92`) |
-| [resilience-backend/](./resilience-backend/) — `spec.md` (target) · `roadmap.md` (sequenced work) | Backend resilience |
-| [resilience-frontend/](./resilience-frontend/) — `spec.md` (target) · `roadmap.md` (sequenced work) | Frontend resilience |
+| [resilience-backend/](./resilience-backend/) — bounding queries, uploads, tasks and the DLQ · `spec.md` (target) · `roadmap.md` (RH-01…) | **Active** — roadmap checkboxes are not maintained; read the code, not the ticks |
+| [resilience-frontend/](./resilience-frontend/) — timeouts, abort handling and typed errors in the client · `spec.md` (target) · `roadmap.md` (FR-01…) | **Active** — same caveat |
 | [archive/DCAT_V3_IMPLEMENTATION_PRD.md](./archive/DCAT_V3_IMPLEMENTATION_PRD.md) | Superseded 2026-06-24 — archived, direction moved to the external `nexus` catalog |
 | `statistics-reliability` — provable curves, self-healing snapshots, honest charts | In flight, in `.omc/runs/statistics-reliability/` |
 
@@ -51,8 +51,21 @@ from git via `.git/info/exclude` — they are local-only until deliberately prom
 
 - A doc answers **one** reader question. If it drifts between "how do I" and "why is it",
   split it rather than letting it grow.
+- **An initiative is a folder**, not a prefix: `<initiative>/` holding `spec.md`,
+  `roadmap.md`, `brief.md`, `discovery.md`, `prd.md` as the work needs. Sibling
+  references inside it are bare (`spec.md`), so the folder can be renamed freely.
 - Mark a spec whose work has landed with a `> **Status — shipped <date>.**` banner at the
   top and `status: final` in its frontmatter; keep it for the design rationale rather than
   deleting it.
+- Specs and roadmaps carry frontmatter: `title`, `status` (`draft | active | final`),
+  `created`, `updated`, `last_reviewed`. `last_reviewed` is what the staleness
+  scanner reads — bump it when you have actually re-read the doc, not when you edit it.
+- **Never delete a doc.** When it is superseded or abandoned, leave a stub at its
+  path and move the body to [archive/](./archive/) — links this repo cannot see
+  (CLAUDE.md, code comments, the wiki) must keep resolving. Merely out of date is
+  not a reason to archive; refresh `last_reviewed` instead.
+- **Commands live in one place.** `CLAUDE.md` owns test, lint and format commands and
+  their baselines. Docs point at it rather than restating it — the copies that used to
+  sit in the resilience roadmaps both rotted while the original stayed right.
 - There is currently no `docs/adr/` and no `CONTEXT.md`. When a decision needs to outlive
   the spec that made it, start `docs/adr/0001-<slug>.md`.
