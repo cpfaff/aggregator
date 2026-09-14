@@ -8,19 +8,20 @@ beyond what its requirement demands.
 
 ## How to run an item (the gate every item must pass)
 
-All commands run from `backend/`. The host `make test` omits the validator on the
-import path, so provision it explicitly (documented host gap, not a code change):
+All commands run from `backend/`. The validator is a local path package that is not
+declared in `pyproject.toml`, so install it editable once per checkout — after that it
+imports normally and needs no `PYTHONPATH` juggling:
 
 ```bash
 cd backend
-# absolute path avoids cwd surprises:
-PP=/home/ctpfaff/Projects/search.gfbio.org/aggregator/validator/src
+# once per checkout (also the fix for `ModuleNotFoundError: abcd_validator`):
+poetry run pip install -e validator
 
 # fast local red→green loop (one test):
-PYTHONPATH=$PP poetry run pytest tests/<the_red_test_file>.py -v
+poetry run pytest tests/<the_red_test_file>.py -v
 
-# full suite (must stay green; 574 passing at baseline, commit 6976091):
-PYTHONPATH=$PP poetry run pytest tests/ -q
+# full suite (must stay green; 639 passing at baseline, commit 041863e):
+poetry run pytest tests/ -q
 
 # CI-equivalent (uv resolves newer deps than the poetry pin — green here is the
 # real gate; service tests need Docker for testcontainers):
