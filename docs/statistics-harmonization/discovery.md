@@ -1,3 +1,11 @@
+---
+title: Statistics-Collection Harmonization — Discovery
+status: final    # draft | active | final
+created: 2026-06-26
+updated: 2026-06-26
+last_reviewed: 2026-09-14
+---
+
 # Statistics-Collection Harmonization — Discovery
 
 > **Status:** read-only discovery. No production code, migrations, or tests were

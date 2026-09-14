@@ -1,3 +1,11 @@
+---
+title: GFBio Aggregator Backend Resilience Hardening — Roadmap
+status: active   # draft | active | final
+created: 2026-06-26
+updated: 2026-09-14
+last_reviewed: 2026-09-14
+---
+
 # GFBio Aggregator Backend Resilience Hardening — Roadmap
 
 This roadmap sequences the work that makes `spec.md` true.

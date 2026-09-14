@@ -1,3 +1,11 @@
+---
+title: GFBio Aggregator Frontend Resilience Hardening — Spec
+status: active   # draft | active | final
+created: 2026-06-26
+updated: 2026-06-26
+last_reviewed: 2026-09-14
+---
+
 # GFBio Aggregator Frontend Resilience Hardening — A Specification
 
 > Status: **draft for human approval** (discovery + spec; no production code changed).
