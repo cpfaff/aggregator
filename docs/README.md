@@ -35,10 +35,6 @@ asking. `CLAUDE.md` in the repo root stays a thin router into this folder.
 
 ## Specs and initiatives
 
-Feature specs live here once they are worth keeping. **In-flight** run artifacts
-(`brief.md` / `discovery.md` / `prd.md`) live in `.omc/runs/<run-id>/`, which is excluded
-from git via `.git/info/exclude` — they are local-only until deliberately promoted here.
-
 | Initiative | Status |
 |---|---|
 | [statistics-harmonization/](./statistics-harmonization/) — language, arithmetic and dead-surface cleanup of the statistics core | **Shipped** 2026-06-26 (`6846e92`) |
