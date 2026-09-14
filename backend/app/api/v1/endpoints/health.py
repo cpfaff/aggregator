@@ -48,7 +48,7 @@ async def health_check(db: Annotated[AsyncSession, Depends(get_db)]):
                 "status": "connected",
                 "response_time_ms": round(db_response_time * 1000, 2),
             },
-            "version": "1.9.0",
+            "version": "2.4.0",
             "timestamp": datetime.now(UTC).isoformat(),
         }
     except Exception as e:
