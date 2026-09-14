@@ -105,3 +105,12 @@ AGENTS.md
 
 # Experimental/external
 data-catalog-with-dcat/
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+# .ignore re-admits graft/ to ripgrep, which reads it ahead of .gitignore, so
+# the cards stay greppable while staying untracked.
+/graft/
+.ignore
+
+# Local MCP server wiring — points at per-developer tooling.
+.mcp.json
