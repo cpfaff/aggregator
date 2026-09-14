@@ -8,35 +8,15 @@ beyond what its requirement demands.
 
 ## How to run an item (the gate every item must pass)
 
-All commands run from `backend/`. The validator is a local path package that is not
-declared in `pyproject.toml`, so install it editable once per checkout — after that it
-imports normally and needs no `PYTHONPATH` juggling:
+Every item passes the project's standard gate — test suite, ruff check and ruff
+format. `CLAUDE.md` ("Running Tests" and "Linting/Formatting") is the single
+source for those commands and the current green baselines; it is not repeated
+here, because the copy that used to live in this section rotted while the
+original stayed correct.
 
-```bash
-cd backend
-# once per checkout (also the fix for `ModuleNotFoundError: abcd_validator`):
-poetry run pip install -e validator
-
-# fast local red→green loop (one test):
-poetry run pytest tests/<the_red_test_file>.py -v
-
-# full suite (must stay green; 639 passing at baseline, commit 041863e):
-poetry run pytest tests/ -q
-
-# CI-equivalent (uv resolves newer deps than the poetry pin — green here is the
-# real gate; service tests need Docker for testcontainers):
-PYTHONPATH=validator/src uv run --no-project pytest tests/ -v
-
-# lint + format gates (both independent, both must pass):
-poetry run ruff check app/ tests/
-poetry run ruff format --check app/ tests/
-```
-
-Commit on branch `DASS-3622-resilience-hardening` with
-`git commit --no-verify` (the host pre-commit hook is broken — replicate the
-ruff gates manually, as above). Use one atomic conventional commit per item, e.g.
+Use one atomic conventional commit per item, e.g.
 `fix(resilience): bound request body size (RH-02, REQ-ROUTE-1)`. Land the RED
-test and its fix in the **same** commit (the test is the regression lock).
+test and its fix in the **same** commit — the test is the regression lock.
 
 ## Definition of Done (per item)
 

@@ -16,32 +16,15 @@ a frontend-only baseline and the branch also carries backend commits.)
 
 ## How to run an item (the gate every item must pass)
 
-All commands run from `frontend/`.
+Every item passes the project's standard gate — the frontend suite plus
+`npx eslint src/`. `CLAUDE.md` ("Running Tests") is the single source for those
+commands and the current green baselines; it is not repeated here, because the
+copy that used to live in this section had drifted to a stale baseline while the
+original stayed correct.
 
-```bash
-cd frontend
-
-# Put the pre-commit venv on PATH so the git hook runs (known host gotcha — the
-# ruff hooks are scoped to backend/app/ and skip frontend files; only the
-# whitespace/eof hooks touch your files):
-export PATH="$PWD/../backend/.venv/bin:$PATH"
-
-# fast local red→green loop (one test file):
-CI=true npx react-scripts test --watchAll=false src/utils/__tests__/apiUtils.test.js
-
-# full suite (must stay green; 73 passing at baseline, commit 231c82c):
-CI=true npm test -- --watchAll=false
-
-# lint gate (must stay clean; exit 0 at baseline 231c82c):
-npx eslint src/
-```
-
-Commit on branch `DASS-3622-resilience-hardening`. Use one atomic conventional
-commit per item, landing the RED test and its fix in the **same** commit (the
-test is the regression lock), e.g.
+Use one atomic conventional commit per item, landing the RED test and its fix in
+the **same** commit — the test is the regression lock — e.g.
 `fix(resilience): bound the api client with a request timeout (FR-01, REQ-FE-CLIENT-1)`.
-If the pre-commit hook cannot find `pre-commit`, prepend the venv bin as above, or
-replicate the gate manually (`npx eslint src/` + the full test run).
 
 ## Definition of Done (per item)
 
