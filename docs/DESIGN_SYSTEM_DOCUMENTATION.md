@@ -1,9 +1,9 @@
 # GFBio Design System
 
-**Version:** 2.0.0
-**Last Updated:** January 2026
+**Version:** 2.4.0
+**Last Updated:** September 2026
 **Framework:** React 18.2.0
-**Styling Approach:** CSS Variables + Inline Styles
+**Styling Approach:** Static CSS Variables (`theme.css`) + Inline Styles
 
 ---
 
@@ -78,21 +78,38 @@ The GFBio Design System is a custom-built, variable-driven design framework that
 
 ### Architecture
 
-Colors are defined in `/frontend/src/styles/theme.js` as CSS Custom Properties and applied dynamically via JavaScript.
+Colors are defined in `/frontend/src/styles/theme.css` as **static** CSS Custom
+Properties, keyed on a `data-theme` attribute on `<html>`.
 
-```javascript
-export const themeVariables = {
-  light: { /* ... */ },
-  dark: { /* ... */ }
-};
+```css
+:root {
+  color-scheme: light;
+  --primary: #2563eb;
+  --background: #f8fafc;
+  /* ... */
+}
 
-export const applyTheme = (isDarkTheme) => {
-  const theme = isDarkTheme ? themeVariables.dark : themeVariables.light;
-  Object.entries(theme).forEach(([property, value]) => {
-    document.documentElement.style.setProperty(property, value);
-  });
-};
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --primary: #3b82f6;
+  --background: #1e293b;
+  /* ... */
+}
 ```
+
+Which palette is active is decided **before the first paint**, by a blocking
+inline script at the top of `public/index.html` that reads the stored choice
+(falling back to the OS preference) and stamps `data-theme`. `styles/theme.js`
+owns only that one decision afterwards, and applies it with a single
+`setAttribute` — never by writing properties.
+
+> **Do not move these values back into JavaScript.** They used to live in a
+> `themeVariables` object that `applyTheme()` wrote onto
+> `document.documentElement.style` from a React effect. Effects run *after* the
+> first paint, so every `var()` was invalid-at-computed-value-time for at least
+> one frame and the page visibly flashed light before darkening on every load
+> (DASS-3813). A token that is not in a stylesheet is not available to the first
+> frame.
 
 ### Light Theme
 
@@ -1219,7 +1236,7 @@ Confirmation dialog wrapper around the base Modal component.
 
 ### Keyframe Animations
 
-Defined in `/frontend/src/styles/globalStyles.js`:
+Defined in `/frontend/src/styles/global.css`:
 
 #### Spin Animation
 ```css
@@ -1588,37 +1605,45 @@ export const useIsMobileOrSmallTablet = () => {
 
 ### Setting Up the Design System
 
-#### 1. Initialize Theme Variables
+#### 1. Load the Stylesheets
 
-In your app's entry point (`App.js` or `index.js`):
+In the entry point (`index.js`), tokens first, then the rules that consume them:
 
 ```javascript
-import { applyTheme } from './styles/theme';
-import { addGlobalStyles } from './styles/globalStyles';
-
-// On mount
-useEffect(() => {
-  addGlobalStyles();
-
-  // Check for saved theme preference
-  const savedTheme = localStorage.getItem('isDarkTheme');
-  const isDarkTheme = savedTheme === 'true';
-
-  applyTheme(isDarkTheme);
-}, []);
+import './styles/theme.css';
+import './styles/global.css';
+import App from './App';
 ```
+
+That is the whole setup. There is **no** initialization step and nothing to call
+on mount: the palette is static CSS, and `public/index.html` has already stamped
+`data-theme` on `<html>` before the bundle runs. Anything you add here that
+decides or applies the theme will run after the first paint, which is the bug
+described under [Color System](#color-system).
 
 #### 2. Theme Toggle Implementation
 
 ```javascript
-const [isDarkTheme, setIsDarkTheme] = useState(false);
+import {
+  applyTheme,
+  resolveInitialTheme,
+  storeThemeChoice,
+} from './styles/theme';
+
+// Mirrors the boot script, so React's first render agrees with what is painted.
+const [isDarkTheme, setIsDarkTheme] = useState(resolveInitialTheme);
 
 const toggleTheme = () => {
   const newTheme = !isDarkTheme;
   setIsDarkTheme(newTheme);
-  applyTheme(newTheme);
-  localStorage.setItem('isDarkTheme', newTheme);
+  storeThemeChoice(newTheme);
 };
+
+// useLayoutEffect, not useEffect: a passive effect can let a frame paint
+// between the commit and the attribute swap.
+useLayoutEffect(() => {
+  applyTheme(isDarkTheme);
+}, [isDarkTheme]);
 ```
 
 #### 3. Using CSS Variables in Components

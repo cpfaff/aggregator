@@ -1,8 +1,8 @@
 # Skeleton Loading
 
 **Component:** `src/components/ui/Skeleton.js`
-**Tokens:** `src/styles/theme.js` (`--skeleton-base`, `--skeleton-highlight`)
-**Animation:** `src/styles/globalStyles.js` (`shimmer` keyframe, `.skeleton-shimmer`)
+**Tokens:** `src/styles/theme.css` (`--skeleton-base`, `--skeleton-highlight`)
+**Animation:** `src/styles/global.css` (`shimmer` keyframe, `.skeleton-shimmer`)
 **Status:** Reference
 
 A skeleton is a **content-shaped placeholder** shown while async data loads. It
@@ -47,7 +47,7 @@ submit buttons and the login flow — which are out of scope here.
    animation — an inline style cannot be overridden by the media query.
 6. **Theme via tokens.** Bars draw from `--skeleton-base` (resting fill) and
    `--skeleton-highlight` (sweep), defined for both light and dark in
-   `theme.js`. Never hard-code skeleton greys.
+   `theme.css`. Never hard-code skeleton greys.
 
 ---
 
