@@ -12,7 +12,7 @@ import React from 'react';
  * screen reader announces the load once, not once per bar.
  *
  * Motion: the shimmer animation is supplied by the `.skeleton-shimmer` class
- * (see styles/globalStyles.js), which a `prefers-reduced-motion` media query
+ * (see styles/global.css), which a `prefers-reduced-motion` media query
  * downgrades to a gentle pulse. Colours come from the `--skeleton-base` /
  * `--skeleton-highlight` theme tokens, so light and dark both work.
  *

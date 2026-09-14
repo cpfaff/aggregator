@@ -4,15 +4,104 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <!--
+      Theme bootstrap. Runs during head parsing, before any stylesheet has been
+      applied and before the first paint, so the page never paints the wrong
+      theme.
+
+      Deliberately the FIRST element in <head>: a parser-inserted script placed
+      after a <link rel=stylesheet> is blocked until that sheet loads, which
+      would put a cross-origin CDN round trip in front of the decision.
+
+      Storage contract, shared with src/styles/theme.js:
+        'isDarkTheme' === 'true'    -> the user explicitly chose dark
+        'isDarkTheme' === 'false'   -> the user explicitly chose light
+        absent / unreadable / other -> no choice yet, follow the OS
+
+      (JSON.stringify(true) is the string 'true', so values written by the
+      previous implementation are read back correctly here.)
+
+      ES5 on purpose, and free of the percent sign: this block is not
+      transpiled, and CRA's InterpolateHtmlPlugin rewrites %TOKEN% sequences
+      anywhere in this file. Only the getItem call sits inside the try, so a
+      storage failure still falls through to the OS preference rather than
+      silently forcing light.
+    -->
+    <script>
+      (function () {
+        var stored = null;
+        try {
+          stored = window.localStorage.getItem('isDarkTheme');
+        } catch (e) {
+          /* private mode / storage blocked: fall through to the OS preference */
+        }
+        var dark;
+        if (stored === 'true') {
+          dark = true;
+        } else if (stored === 'false') {
+          dark = false;
+        } else {
+          dark =
+            !!window.matchMedia &&
+            window.matchMedia('(prefers-color-scheme: dark)').matches;
+        }
+        var theme = dark ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', theme);
+        document.documentElement.setAttribute('data-bs-theme', theme);
+      })();
+    </script>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
       integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
       crossorigin="anonymous"
     />
+    <!--
+      Document ground, covering the window before the webpack stylesheet is in
+      force. Must come AFTER the Bootstrap link so it outranks Reboot's
+      body { background-color: #fff }.
+
+      These two colours are the only theme values duplicated outside
+      src/styles/theme.css, and they have to be: the CRA dev server injects that
+      file with style-loader when the bundle evaluates, which is after the first
+      paint opportunity. src/styles/__tests__/themeBootstrap.test.js fails if
+      they drift from --background in either palette.
+
+      theme.css re-declares this ground at equal specificity and is applied
+      later in document order, so --background stays authoritative in both
+      palettes once it loads. These literals only cover the gap before that.
+    -->
+    <style>
+      html {
+        background-color: #f8fafc;
+        color-scheme: light;
+        overflow-y: scroll;
+      }
+      html[data-theme='dark'] {
+        background-color: #1e293b;
+        color-scheme: dark;
+      }
+      /* No stored choice and no JavaScript to resolve one: follow the OS.
+         Guarded so an explicit light choice is never overridden. */
+      @media (prefers-color-scheme: dark) {
+        html:not([data-theme='light']) {
+          background-color: #1e293b;
+          color-scheme: dark;
+        }
+      }
+      body {
+        background-color: transparent;
+      }
+    </style>
     <title>Provider Management</title>
   </head>
   <body>
+    <noscript>
+      <div style="padding: 2rem; font-family: system-ui, sans-serif; color: #64748b">
+        This application needs JavaScript. Please enable it and reload the page.
+      </div>
+    </noscript>
     <div id="root"></div>
   </body>
 </html>

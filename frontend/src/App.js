@@ -1,12 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import ProviderDetail from './components/providers/ProviderDetail';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import { initCsrfProtection } from './utils/apiUtils';
 import { useAuth } from './components/auth/AuthContext';
-import { applyTheme } from './styles/theme';
-import { addGlobalStyles } from './styles/globalStyles';
+import {
+  applyTheme,
+  resolveInitialTheme,
+  storeThemeChoice,
+  subscribeToSystemTheme,
+} from './styles/theme';
 import Login from './components/auth/Login';
 import Providers from './components/providers/Providers';
 import UserManagement from './components/users/UserManagement';
@@ -57,27 +61,28 @@ function App() {
   const { token, currentUser, logout, sessionExpired } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [isDarkTheme, setIsDarkTheme] = useState(() => {
-    const savedTheme = localStorage.getItem('isDarkTheme');
-    return savedTheme ? JSON.parse(savedTheme) : false;
-  });
+  // Mirrors the boot script in public/index.html, which has already stamped
+  // data-theme on <html> before this ever runs. Resolving it the same way here
+  // keeps React's first render in agreement with what is already painted.
+  const [isDarkTheme, setIsDarkTheme] = useState(resolveInitialTheme);
 
   // Toggle theme function
   const toggleTheme = () => {
     const newTheme = !isDarkTheme;
     setIsDarkTheme(newTheme);
-    localStorage.setItem('isDarkTheme', JSON.stringify(newTheme));
+    storeThemeChoice(newTheme);
   };
 
-  // Apply theme variables to root element when theme changes
-  useEffect(() => {
+  // Keep <html data-theme> in sync with React's view of the theme. A layout
+  // effect, not a passive one: passive effects are scheduled as a separate
+  // task, which lets a frame paint in between — that gap was the theme flash.
+  // On first load this is a no-op, because the boot script already set it.
+  useLayoutEffect(() => {
     applyTheme(isDarkTheme);
   }, [isDarkTheme]);
 
-  // Add global styles on first render
-  useEffect(() => {
-    addGlobalStyles();
-  }, []);
+  // Follow the OS while the user has made no explicit choice.
+  useEffect(() => subscribeToSystemTheme(setIsDarkTheme), []);
 
   // Initialize CSRF protection on first render
   useEffect(() => {
