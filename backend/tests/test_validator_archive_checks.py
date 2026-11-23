@@ -35,7 +35,9 @@ def test_check_error_is_recorded_not_raised(archive):
     ):
         report = ValidatorService().validate_archive("file://unused", archive_path=str(archive))
 
-    assert report["validation_results"]["archive_checks"]["duplicate_unit_ids"] == {"error": "boom"}
+    assert report["validation_results"]["archive_checks"]["duplicate_unit_ids"] == {
+        "error": "ValueError: boom"
+    }
     assert "units_not_indexable" not in report["summary"]
 
 

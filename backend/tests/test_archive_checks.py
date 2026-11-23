@@ -111,3 +111,29 @@ def test_iterparse_called_with_tag_filter(tmp_path, monkeypatch):
     zip_path = build_abcd_zip(tmp_path / "a.zip", {"r1.xml": ["A"]})
     find_duplicate_unit_ids(zip_path)
     assert calls and calls[0]["tag"] == "{*}Unit"
+
+
+def test_whitespace_matches_ascii_only(tmp_path):
+    # U+00A0 is not whitespace for the harvester (Java \s), so it stays distinct.
+    zip_path = build_abcd_zip(tmp_path / "a.zip", {"r1.xml": ["X 123", "X 123"]})
+    report = find_duplicate_unit_ids(zip_path)
+    assert report.distinct_unit_ids == 2
+    assert report.units_not_indexable == 0
+
+    zip_path = build_abcd_zip(tmp_path / "b.zip", {"r1.xml": ["X\t123", "X 123"]})
+    report = find_duplicate_unit_ids(zip_path)
+    assert report.distinct_unit_ids == 1
+    assert report.units_not_indexable == 1
+
+
+def test_unreadable_member_is_skipped(tmp_path):
+    import zipfile
+
+    zip_path = build_abcd_zip(tmp_path / "a.zip", {"r1.xml": ["A", "A", "B"]})
+    with zipfile.ZipFile(zip_path, "a") as archive:
+        archive.writestr("r2.xml", "<not-xml")
+    report = find_duplicate_unit_ids(zip_path)
+    assert report.total_units == 3
+    assert report.units_not_indexable == 1
+    assert report.duplicated_unit_ids == 1
+    assert report.unreadable_members == 1

@@ -7,6 +7,7 @@ import logging
 import os
 import shutil
 import tempfile
+import time
 from dataclasses import asdict
 from datetime import datetime
 from typing import Any
@@ -71,13 +72,19 @@ class ValidatorService:
     @staticmethod
     def _add_archive_checks(report: dict[str, Any], archive_path: str) -> None:
         """Attach archive-wide checks to the report; never fails the validation."""
+        started = time.monotonic()
         try:
             duplicates = find_duplicate_unit_ids(archive_path)
             result: dict[str, Any] = asdict(duplicates)
             units_not_indexable = duplicates.units_not_indexable
+            logger.info(
+                "Duplicate UnitID check finished in %.2f seconds (%d units)",
+                time.monotonic() - started,
+                duplicates.total_units,
+            )
         except Exception as e:
-            logger.warning(f"Duplicate UnitID check failed for {archive_path}: {e}")
-            result = {"error": str(e)}
+            logger.warning(f"Duplicate UnitID check failed for {archive_path}", exc_info=True)
+            result = {"error": f"{type(e).__name__}: {e}"}
             units_not_indexable = None
 
         report.setdefault("validation_results", {})["archive_checks"] = {
@@ -117,6 +124,8 @@ class ValidatorService:
             # Generate the aggregated report
             report_strategy = JSONReportStrategy()
             final_report = report_strategy.generate_report(results)
+            # Free the per-file results before the memory-heavy archive check.
+            del results
             self._add_archive_checks(final_report, local_path)
 
             duration = (datetime.now() - start_time).total_seconds()
