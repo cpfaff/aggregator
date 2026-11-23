@@ -5,6 +5,32 @@ All notable changes to the aggregator frontend are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.5.0] - 2026-11-23
+
+### Added
+
+- **Validation reports units that share a UnitID** — the search index keys
+  every unit document on the dataset URN plus the UnitID, so units that reuse a
+  UnitID overwrite each other and only one per UnitID is ever searchable, while
+  validation reported the archive as valid (dataset #165: 4602 units, 2478
+  distinct UnitIDs, 2478 indexed). A new archive-wide check streams every XML
+  member, keys units exactly like the harvester (UnitID with ASCII whitespace
+  runs collapsed to one space, not stripped) and stores the result under
+  `validation_results.archive_checks.duplicate_unit_ids` plus
+  `summary.units_not_indexable`. Unreadable members are skipped and counted;
+  the check never fails a validation job. The dataset card shows
+  "N units share a UnitID" next to the validation result, and the validation
+  details list the affected UnitIDs. Archives validated earlier show nothing
+  until they are re-validated. (DASS-3961)
+
+### Fixed
+
+- **Backend test job resolves a working SQLAlchemy again** — the job installs
+  from `pyproject.toml` without a lock and picked up SQLAlchemy 2.1, which no
+  longer installs `greenlet`, so the async engine failed to import. The
+  dependency now declares the `asyncio` extra and stays below 2.1, matching the
+  2.0.x the images are built from. (DASS-3961)
+
 ## [2.4.1] - 2026-09-14
 
 ### Fixed
