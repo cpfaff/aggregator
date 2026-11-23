@@ -35,6 +35,15 @@ const Changelog = ({ currentUser }) => {
 
   const changelogEntries = [
     {
+      version: '2.5.0',
+      date: 'November 23, 2026',
+      changes: [
+        'Validation now tells you when several records in an archive share the same UnitID — only one record per UnitID can appear in the GFBio search, so the others never become searchable even though the archive is otherwise valid',
+        'The dataset card shows how many records are affected right next to the validation result, and the validation details list the UnitIDs concerned so you can correct them at the source',
+        'Datasets validated before this release show the new check after you re-validate them'
+      ]
+    },
+    {
       version: '2.4.1',
       date: 'September 14, 2026',
       changes: [
