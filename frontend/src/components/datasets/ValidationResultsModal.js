@@ -246,6 +246,8 @@ const ValidationResultsModal = ({ isOpen, onClose, validationResults }) => {
   // Extract relevant data from validation results
   const summary = validationResults.validation_results?.summary || {};
   const schemaValidation = validationResults.validation_results?.validation_results?.schema_validation || [];
+  const duplicateCheck = validationResults.validation_results?.validation_results?.archive_checks?.duplicate_unit_ids;
+  const duplicateUnitIds = duplicateCheck?.units_not_indexable > 0 ? duplicateCheck : null;
   const mandatoryRules = validationResults.validation_results?.validation_results?.custom_rules?.mandatory || [];
   const recommendedRules = validationResults.validation_results?.validation_results?.custom_rules?.recommended || [];
 
@@ -466,6 +468,34 @@ const ValidationResultsModal = ({ isOpen, onClose, validationResults }) => {
               ))}
             </div>
           </>
+        )}
+
+        {/* Duplicate UnitIDs */}
+        {duplicateUnitIds && (
+          <div style={styles.ruleSection}>
+            <h2 style={styles.sectionTitle}>Duplicate UnitIDs</h2>
+            <p style={{ color: 'var(--text)' }}>
+              {`${duplicateUnitIds.duplicated_unit_ids} UnitIDs are used by more than one unit; ${duplicateUnitIds.units_not_indexable} units cannot be indexed separately.`}
+            </p>
+            {duplicateUnitIds.examples?.length > 0 && (
+              <table style={{ borderCollapse: 'collapse', color: 'var(--text)' }}>
+                <thead>
+                  <tr>
+                    <th style={{ textAlign: 'left', padding: '0.25rem 1rem 0.25rem 0' }}>UnitID</th>
+                    <th style={{ textAlign: 'left', padding: '0.25rem 0' }}>Units</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {duplicateUnitIds.examples.map((example) => (
+                    <tr key={example.unit_id}>
+                      <td style={{ padding: '0.25rem 1rem 0.25rem 0', wordBreak: 'break-all' }}>{example.unit_id}</td>
+                      <td style={{ padding: '0.25rem 0' }}>{example.units}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         )}
 
         {/* Rule Validation */}

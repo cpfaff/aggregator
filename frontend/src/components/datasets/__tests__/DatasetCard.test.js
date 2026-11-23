@@ -790,3 +790,48 @@ describe('DatasetCard validation poller backpressure', () => {
     expect(signal.aborted).toBe(true);
   });
 });
+
+describe('DatasetCard duplicate UnitID chip', () => {
+  const mockStatus = (extra) =>
+    axios.get.mockImplementation((url) =>
+      typeof url === 'string' && url.includes('validation-status')
+        ? Promise.resolve({
+            data: {
+              has_latest_archive: true,
+              validation_status: 'completed',
+              is_valid: true,
+              quality_score: 90,
+              ...extra,
+            },
+          })
+        : Promise.resolve({ data: VALIDATION_PAYLOAD })
+    );
+
+  test('renders duplicate UnitID chip', async () => {
+    mockStatus({ units_not_indexable: 2124 });
+    renderCard(mockDataset);
+
+    const chip = await screen.findByText('2124 units share a UnitID');
+    expect(chip).toHaveAttribute('role', 'status');
+    expect(chip).toHaveAttribute(
+      'title',
+      '2124 units repeat a UnitID that another unit in this archive already uses. The search index keeps one unit per UnitID, so these units are not searchable. In ABCD, SourceInstitutionID + SourceID + UnitID must identify exactly one unit.'
+    );
+  });
+
+  test('does not render chip for zero', async () => {
+    mockStatus({ units_not_indexable: 0 });
+    renderCard(mockDataset);
+
+    await screen.findByText(/Valid \(/);
+    expect(screen.queryByText(/share a UnitID/)).not.toBeInTheDocument();
+  });
+
+  test('does not render chip for legacy results', async () => {
+    mockStatus({});
+    renderCard(mockDataset);
+
+    await screen.findByText(/Valid \(/);
+    expect(screen.queryByText(/share a UnitID/)).not.toBeInTheDocument();
+  });
+});
