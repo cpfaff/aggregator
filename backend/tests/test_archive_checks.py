@@ -86,3 +86,28 @@ def test_clears_parsed_units(tmp_path):
     report = find_duplicate_unit_ids(zip_path)
     assert time.monotonic() - start < 10
     assert report.total_units == 5000
+
+
+def test_whitespace_only_unit_id_is_keyed(tmp_path):
+    zip_path = build_abcd_zip(tmp_path / "a.zip", {"r1.xml": ["  ", "\t", "A1"]})
+    report = find_duplicate_unit_ids(zip_path)
+    assert report.units_without_unit_id == 0
+    assert report.distinct_unit_ids == 2
+    assert report.units_not_indexable == 1
+    assert report.examples == [{"unit_id": " ", "units": 2}]
+
+
+def test_iterparse_called_with_tag_filter(tmp_path, monkeypatch):
+    from abcd_validator import archive_checks
+
+    calls = []
+    real = archive_checks.etree.iterparse
+
+    def spy(*args, **kwargs):
+        calls.append(kwargs)
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(archive_checks.etree, "iterparse", spy)
+    zip_path = build_abcd_zip(tmp_path / "a.zip", {"r1.xml": ["A"]})
+    find_duplicate_unit_ids(zip_path)
+    assert calls and calls[0]["tag"] == "{*}Unit"

@@ -31,7 +31,7 @@ def find_duplicate_unit_ids(
 
     Members are parsed as a stream and every processed ``Unit`` is cleared, so
     memory is bounded by the number of distinct UnitIDs. The key is the UnitID
-    text with whitespace runs collapsed to one space (not stripped).
+    text with whitespace runs collapsed to one space.
     """
     counts: Counter[str] = Counter()
     total_units = 0
@@ -45,7 +45,7 @@ def find_duplicate_unit_ids(
                     total_units += 1
                     unit_id = unit.find("{*}UnitID")
                     text = unit_id.text if unit_id is not None else None
-                    if text and text.strip():
+                    if text:
                         counts[_WHITESPACE.sub(" ", text)] += 1
                     else:
                         without_unit_id += 1
