@@ -724,6 +724,21 @@ const DatasetCard = ({ dataset, onEdit, onDelete }) => {
                               : 'Invalid')
                             : 'Not validated'}
                         </span>
+                        {validationStatus.units_not_indexable > 0 && (
+                          <span
+                            role="status"
+                            title={`${validationStatus.units_not_indexable} units repeat a UnitID that another unit in this archive already uses. The search index keeps one unit per UnitID, so these units are not searchable. In ABCD, SourceInstitutionID + SourceID + UnitID must identify exactly one unit.`}
+                            style={{
+                              marginLeft: '0.5rem',
+                              fontWeight: 600,
+                              fontSize: '0.75rem',
+                              color: 'var(--warning)',
+                              cursor: 'help',
+                            }}
+                          >
+                            {`${validationStatus.units_not_indexable} units share a UnitID`}
+                          </span>
+                        )}
                       </span>
                     </div>
                   );
