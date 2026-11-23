@@ -7,10 +7,12 @@ import logging
 import os
 import shutil
 import tempfile
+from dataclasses import asdict
 from datetime import datetime
 from typing import Any
 
 from abcd_validator import ABCDValidator, JSONReportStrategy, download_archive
+from abcd_validator.archive_checks import find_duplicate_unit_ids
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +68,24 @@ class ValidatorService:
             logger.error(f"Failed to download archive from {url}: {e}")
             raise
 
+    @staticmethod
+    def _add_archive_checks(report: dict[str, Any], archive_path: str) -> None:
+        """Attach archive-wide checks to the report; never fails the validation."""
+        try:
+            duplicates = find_duplicate_unit_ids(archive_path)
+            result: dict[str, Any] = asdict(duplicates)
+            units_not_indexable = duplicates.units_not_indexable
+        except Exception as e:
+            logger.warning(f"Duplicate UnitID check failed for {archive_path}: {e}")
+            result = {"error": str(e)}
+            units_not_indexable = None
+
+        report.setdefault("validation_results", {})["archive_checks"] = {
+            "duplicate_unit_ids": result
+        }
+        if units_not_indexable is not None:
+            report.setdefault("summary", {})["units_not_indexable"] = units_not_indexable
+
     def validate_archive(self, archive_url: str, archive_path: str | None = None) -> dict[str, Any]:
         """
         Validate an XML archive either from a URL or local path.
@@ -97,6 +117,7 @@ class ValidatorService:
             # Generate the aggregated report
             report_strategy = JSONReportStrategy()
             final_report = report_strategy.generate_report(results)
+            self._add_archive_checks(final_report, local_path)
 
             duration = (datetime.now() - start_time).total_seconds()
             logger.info(f"Validation completed in {duration:.2f} seconds")

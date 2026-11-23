@@ -114,6 +114,9 @@ class DatasetValidationStatus(BaseModel):
     is_valid: bool | None = None
     quality_score: float | None = None
 
+    # Units sharing a UnitID with another unit (None for jobs without the check)
+    units_not_indexable: int | None = None
+
     # Complete validation results as JSON
     validation_results: dict[str, Any] | None = None
 

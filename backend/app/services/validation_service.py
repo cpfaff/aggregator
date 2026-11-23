@@ -298,6 +298,7 @@ class ValidationService:
             "last_validated_at": None,
             "is_valid": None,
             "quality_score": None,
+            "units_not_indexable": None,
             "validation_results": None,
         }
 
@@ -337,6 +338,8 @@ class ValidationService:
                 valid_files = summary.get("valid_files")
                 if total_files is not None and valid_files is not None:
                     status_response["is_valid"] = total_files == valid_files
+
+                status_response["units_not_indexable"] = summary.get("units_not_indexable")
 
                 # Extract quality score
                 data_quality = summary.get("data_quality")
